@@ -10,6 +10,7 @@ import { MobileThreadView } from './MobileThreadView';
 import { VoiceChannelView } from '@/components/channels/VoiceChannelView';
 import { MobileVoiceChannelView } from './MobileVoiceChannelView';
 import { MobileChannelHeader } from './MobileChannelHeader';
+import { MobileVoicePreJoinSheet } from './MobileVoicePreJoinSheet';
 import { VoicePiP } from './VoicePiP';
 import { StageChannel } from '@/components/channels/StageChannel';
 import { MediaChannel } from '@/components/channels/MediaChannel';
@@ -90,6 +91,7 @@ export function MobileLayout({
   const [settingsServerId, setSettingsServerId] = useState<string | null>(null);
   const [settingsInitialTab, setSettingsInitialTab] = useState<string | undefined>(undefined);
   const [externalLinkUrl, setExternalLinkUrl] = useState<string | null>(null);
+  const [voicePreJoin, setVoicePreJoin] = useState<{ serverId: string; channel: { id: string; name: string } } | null>(null);
 
   const openServerSettings = (serverId: string, initialTab?: string) => {
     setSettingsInitialTab(initialTab);
@@ -216,6 +218,19 @@ export function MobileLayout({
       return;
     }
 
+    // Intercept voice channels — open the pre-join bottom sheet over the channel list
+    if (channelType === 'voice') {
+      const ch = findChannel(channelId);
+      if (!ch) return;
+      // Only open pre-join if user isn't already connected to this very channel
+      if (voiceState.channelId !== channelId) {
+        onServerSelect(serverId);
+        setVoicePreJoin({ serverId, channel: { id: channelId, name: ch.name } });
+        return;
+      }
+      // Already connected — open the full voice view
+    }
+
     if (serverId) {
       onServerSelect(serverId);
       setMobileView({ type: 'chat', serverId, channelId, channelType, fromTab: true });
@@ -228,6 +243,14 @@ export function MobileLayout({
       const url = ch?.description || '';
       if (url) setExternalLinkUrl(url);
       return;
+    }
+    if (channelType === 'voice' && mobileView.type === 'channels') {
+      const ch = findChannel(channelId);
+      if (!ch) return;
+      if (voiceState.channelId !== channelId) {
+        setVoicePreJoin({ serverId: mobileView.serverId, channel: { id: channelId, name: ch.name } });
+        return;
+      }
     }
     if (mobileView.type === 'channels') {
       setMobileView({ type: 'chat', serverId: mobileView.serverId, channelId, channelType });
@@ -767,6 +790,20 @@ export function MobileLayout({
           onClose={() => setExternalLinkUrl(null)}
         />
       )}
+
+      <MobileVoicePreJoinSheet
+        open={!!voicePreJoin}
+        onOpenChange={(o) => { if (!o) setVoicePreJoin(null); }}
+        channel={voicePreJoin?.channel ?? null}
+        serverId={voicePreJoin?.serverId ?? ''}
+        serverName={rawServers.find((s: any) => s.id === voicePreJoin?.serverId)?.name}
+        onJoined={(channelId) => {
+          if (voicePreJoin) {
+            setMobileView({ type: 'chat', serverId: voicePreJoin.serverId, channelId, channelType: 'voice' });
+            setVoicePreJoin(null);
+          }
+        }}
+      />
     </div>
   );
 }

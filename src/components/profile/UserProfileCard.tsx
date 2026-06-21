@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { CustomStatusBubble } from "./CustomStatusBubble";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePresenceContext } from "@/contexts/PresenceContext";
-import { Pencil, ChevronRight, ChevronDown, Smile, Gamepad2, Headphones, HeadphoneOff, Eye, Trophy, Copy, Settings, Mic, MicOff, Plus } from "lucide-react";
+import { Pencil, ChevronRight, ChevronDown, ChevronUp, Smile, Gamepad2, Headphones, HeadphoneOff, Eye, Trophy, Copy, Settings, Mic, MicOff, Plus } from "lucide-react";
 import { DiscordMic } from "@/components/icons/DiscordMic";
 import { DiscordMicOff } from "@/components/icons/DiscordMicOff";
 import { DiscordHeadphones } from "@/components/icons/DiscordHeadphones";

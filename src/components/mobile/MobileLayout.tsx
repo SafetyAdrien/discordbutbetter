@@ -560,7 +560,7 @@ export function MobileLayout({
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', stiffness: 400, damping: 35 }}
-              className={`absolute inset-0 ${overlayBottomClass} z-30 bg-background`}
+              className={`absolute inset-0 ${overlayBottomClass} z-30 pointer-events-auto`}
               onTouchStart={threadSwipe.onTouchStart}
               onTouchMove={threadSwipe.onTouchMove}
               onTouchEnd={threadSwipe.onTouchEnd}
@@ -585,7 +585,7 @@ export function MobileLayout({
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', stiffness: 400, damping: 35 }}
-              className={`absolute inset-0 ${overlayBottomClass} z-20 bg-background`}
+              className={`absolute inset-0 ${overlayBottomClass} z-20 pointer-events-auto`}
               onTouchStart={chatSwipe.onTouchStart}
               onTouchMove={chatSwipe.onTouchMove}
               onTouchEnd={chatSwipe.onTouchEnd}
@@ -604,7 +604,7 @@ export function MobileLayout({
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', stiffness: 400, damping: 35 }}
-              className={`absolute inset-0 ${overlayBottomClass} z-10 bg-background rounded-tl-[30px] overflow-hidden`}
+              className={`absolute inset-0 ${overlayBottomClass} z-10 pointer-events-auto rounded-tl-[30px] overflow-hidden`}
               onTouchStart={channelSwipe.onTouchStart}
               onTouchMove={channelSwipe.onTouchMove}
               onTouchEnd={channelSwipe.onTouchEnd}

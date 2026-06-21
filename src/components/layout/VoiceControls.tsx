@@ -9,6 +9,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useVoice } from '@/contexts/VoiceContext';
 import { VoiceConnectionIndicator } from '@/components/channels/voice/VoiceConnectionIndicator';
 import { MicrophoneSettingsPopover } from '@/components/channels/voice/MicrophoneSettingsPopover';
+import { OutputSettingsPopover } from '@/components/channels/voice/OutputSettingsPopover';
 
 interface VoiceControlsProps {
   channelName: string;
@@ -46,6 +47,8 @@ export function VoiceControls({
     setVadSensitivity,
     audioFilters,
     setAudioFilter,
+    outputVolume,
+    setOutputVolume,
   } = useVoice();
 
   return (
@@ -163,30 +166,41 @@ export function VoiceControls({
             </MicrophoneSettingsPopover>
           </div>
 
-          <Tooltip>
-            <TooltipTrigger asChild>
+          <div className="flex items-center flex-1">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="sm"
+                  variant={isDeafened ? 'destructive' : 'ghost'}
+                  className={cn(
+                    'flex-1 h-10 rounded-l-2xl rounded-r-none transition-all active:scale-95',
+                    isDeafened
+                      ? 'bg-destructive/15 hover:bg-destructive/25 text-destructive'
+                      : 'bg-muted/40 hover:bg-muted/60',
+                  )}
+                  onClick={onToggleDeafen}
+                >
+                  {isDeafened ? (
+                    <DiscordHeadphonesOff className="w-[18px] h-[18px]" />
+                  ) : (
+                    <DiscordHeadphones className="w-[18px] h-[18px]" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {isDeafened ? 'Activer le son' : 'Couper le son'}
+              </TooltipContent>
+            </Tooltip>
+            <OutputSettingsPopover outputVolume={outputVolume} onOutputVolumeChange={setOutputVolume}>
               <Button
                 size="sm"
-                variant={isDeafened ? 'destructive' : 'ghost'}
-                className={cn(
-                  'flex-1 h-10 rounded-2xl transition-all active:scale-95',
-                  isDeafened
-                    ? 'bg-destructive/15 hover:bg-destructive/25 text-destructive'
-                    : 'bg-muted/40 hover:bg-muted/60',
-                )}
-                onClick={onToggleDeafen}
+                variant="ghost"
+                className="h-10 w-7 px-0 rounded-l-none rounded-r-2xl border-l border-border/30 bg-muted/40 hover:bg-muted/60"
               >
-                {isDeafened ? (
-                  <DiscordHeadphonesOff className="w-[18px] h-[18px]" />
-                ) : (
-                  <DiscordHeadphones className="w-[18px] h-[18px]" />
-                )}
+                <ChevronDown className="w-3 h-3" />
               </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              {isDeafened ? 'Activer le son' : 'Couper le son'}
-            </TooltipContent>
-          </Tooltip>
+            </OutputSettingsPopover>
+          </div>
 
           <Tooltip>
             <TooltipTrigger asChild>

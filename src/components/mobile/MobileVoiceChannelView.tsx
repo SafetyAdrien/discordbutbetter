@@ -1,16 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useVoice, useVoiceParticipants } from '@/contexts/VoiceContext';
-import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronRight, Volume2, VolumeX, UserPlus, PhoneOff, MessageSquare, Hand } from 'lucide-react';
-import { DiscordMic as Mic } from '@/components/icons/DiscordMic';
-import { DiscordMicOff as MicOff } from '@/components/icons/DiscordMicOff';
-import { Video, VideoOff } from 'lucide-react';
+import { ChevronDown, ChevronRight, Volume2, VolumeX, UserPlus } from 'lucide-react';
 import { VoiceParticipantGrid } from '@/components/channels/voice/VoiceParticipantGrid';
 import { VoiceEmptyState } from '@/components/channels/voice/VoiceEmptyState';
-import { VoiceChannelChat } from '@/components/channels/voice/VoiceChannelChat';
-import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { useMultipleChannelPermissions } from '@/hooks/useUserChannelPermissions';
 
 interface Props {
@@ -20,32 +14,21 @@ interface Props {
   ownerId: string;
   onOpenDM: (id: string) => void;
   onBack: () => void;
-  initialShowChat?: boolean;
-  onChatOpened?: () => void;
 }
 
-export function MobileVoiceChannelView({ channel, serverId, onBack, initialShowChat, onChatOpened }: Props) {
-  const { user } = useAuth();
+export function MobileVoiceChannelView({ channel, onBack }: Props) {
   const {
-    voiceState, joinChannel, leaveChannel, toggleMute, toggleDeafen,
+    voiceState, joinChannel, leaveChannel, toggleDeafen,
     speakingUsers, audioLevels,
-    isCameraActive, localCameraStream, toggleCamera,
-    localScreenStream, remoteVideoStreams, remoteScreenStreams,
+    localCameraStream, localScreenStream, remoteVideoStreams, remoteScreenStreams,
   } = useVoice();
 
   const { data: participants = [] } = useVoiceParticipants(channel.id);
   const isConnected = voiceState.channelId === channel.id;
   const [isConnecting, setIsConnecting] = useState(false);
-  const [showChat, setShowChat] = useState(!!initialShowChat);
 
-  useEffect(() => {
-    if (initialShowChat) { setShowChat(true); onChatOpened?.(); }
-  }, [initialShowChat, onChatOpened]);
-
-  const { can } = useMultipleChannelPermissions(channel.id, ['connect_voice', 'speak_voice', 'video']);
+  const { can } = useMultipleChannelPermissions(channel.id, ['connect_voice']);
   const canConnect = can('connect_voice');
-  const canSpeak = can('speak_voice');
-  const canVideo = can('video');
 
   const handleJoin = async () => {
     setIsConnecting(true);
@@ -105,42 +88,8 @@ export function MobileVoiceChannelView({ channel, serverId, onBack, initialShowC
         </button>
       )}
 
-      {/* Bottom control pill */}
-      {isConnected ? (
-        <div className="px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          <div className="mx-auto bg-[hsl(var(--surface-1))]/90 backdrop-blur rounded-full px-3 py-2.5 flex items-center justify-around gap-1 max-w-md">
-            <PillButton
-              active={isCameraActive}
-              onClick={canVideo ? toggleCamera : undefined}
-              icon={isCameraActive ? <Video className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
-              aria-label={isCameraActive ? 'Désactiver la caméra' : 'Activer la caméra'}
-            />
-            <PillButton
-              danger={voiceState.isMuted}
-              onClick={canSpeak ? toggleMute : undefined}
-              icon={voiceState.isMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-              aria-label={voiceState.isMuted ? 'Désactiver la sourdine' : 'Couper le micro'}
-            />
-            <PillButton
-              onClick={() => setShowChat(true)}
-              icon={<MessageSquare className="w-5 h-5" />}
-              aria-label="Chat textuel"
-            />
-            <PillButton
-              onClick={() => {}}
-              icon={<Hand className="w-5 h-5" />}
-              aria-label="Lever la main"
-            />
-            <button
-              onClick={leaveChannel}
-              className="w-12 h-12 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center active:scale-95 transition-transform"
-              aria-label="Raccrocher"
-            >
-              <PhoneOff className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-      ) : (
+      {/* Join button when not connected */}
+      {!isConnected && (
         <div className="p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
           <Button
             onClick={handleJoin}
@@ -151,20 +100,6 @@ export function MobileVoiceChannelView({ channel, serverId, onBack, initialShowC
           </Button>
         </div>
       )}
-
-      {/* Chat sheet */}
-      <Sheet open={showChat} onOpenChange={setShowChat}>
-        <SheetContent side="bottom" className="h-[85vh] p-0 bg-background border-white/10">
-          <div className="h-full flex flex-col">
-            <VoiceChannelChat
-              channelId={channel.id}
-              channelName={channel.name}
-              serverId={serverId}
-              onClose={() => setShowChat(false)}
-            />
-          </div>
-        </SheetContent>
-      </Sheet>
     </div>
   );
 }
@@ -197,36 +132,5 @@ function MobileVoiceHeader({ channelName, onBack, isDeafened, onToggleDeafen, ca
         </button>
       </div>
     </header>
-  );
-}
-
-function PillButton({
-  icon,
-  onClick,
-  active,
-  danger,
-  'aria-label': ariaLabel,
-}: {
-  icon: React.ReactNode;
-  onClick?: () => void;
-  active?: boolean;
-  danger?: boolean;
-  'aria-label'?: string;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={!onClick}
-      aria-label={ariaLabel}
-      className={cn(
-        'w-12 h-12 rounded-full flex items-center justify-center transition-colors active:scale-95',
-        'bg-white/10 text-white',
-        active && 'bg-[hsl(var(--online))]/30 text-[hsl(var(--online))]',
-        danger && 'bg-destructive/20 text-destructive',
-        !onClick && 'opacity-40'
-      )}
-    >
-      {icon}
-    </button>
   );
 }

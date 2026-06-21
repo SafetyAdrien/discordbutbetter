@@ -294,9 +294,8 @@ export function MobileServersView({
       <div
         data-swipe-ignore="true"
         className={cn(
-        'w-[72px] flex-shrink-0 bg-[hsl(var(--surface-server-list))] relative overflow-visible'
+        'w-[72px] flex-shrink-0 bg-[hsl(var(--surface-server-list))] flex flex-col items-center py-2 gap-1.5 overflow-y-auto scrollbar-hide'
       )}>
-        <div className="absolute inset-0 overflow-y-auto overflow-x-visible scrollbar-hide flex flex-col items-center py-2 gap-1.5" style={{ overflowX: 'visible' as any }}>
         {/* DM Button */}
         <button
           onClick={handleDMClick}
@@ -370,7 +369,6 @@ export function MobileServersView({
         >
           <Plus className="w-6 h-6" />
         </button>
-        </div>
       </div>
 
       {/* Right: Content panel */}

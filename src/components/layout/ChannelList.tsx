@@ -1899,7 +1899,7 @@ threads={threadsByChannel[channel.id] || []}
       </ContextMenu>
 
       {/* Spacer reserving room for floating VoiceStatusBadge + UserProfileCard at Index level */}
-      <div className={cn("shrink-0", isConnected && voiceState.channelName ? "h-[170px]" : "h-[64px]")} />
+      <div className={cn("shrink-0", isConnected && voiceState.channelName ? "h-[150px]" : "h-[64px]")} />
 
       {showAccountSettings && <AccountSettingsModal onClose={() => setShowAccountSettings(false)} />}
 

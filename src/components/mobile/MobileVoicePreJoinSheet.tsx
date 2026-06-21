@@ -92,7 +92,7 @@ export function MobileVoicePreJoinSheet({
             transition={{ type: 'spring', damping: 26, stiffness: 300 }}
             drag="y"
             dragConstraints={{ top: 0, bottom: 0 }}
-            dragElastic={0.18}
+            dragElastic={{ top: 0, bottom: 0.18 }}
             dragListener={true}
             onDragEnd={handleDragEnd}
             style={{ y }}

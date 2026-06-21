@@ -21,10 +21,13 @@ export function useSwipeBack({
 }: SwipeBackOptions) {
   const startXRef = useRef<number | null>(null);
   const startYRef = useRef<number | null>(null);
+  const lockOffsetRef = useRef(0);
   const currentXRef = useRef(0);
   const isSwipingRef = useRef(false);
   const lockedRef = useRef<'horizontal' | 'vertical' | null>(null);
   const elementRef = useRef<HTMLElement | null>(null);
+  const rafRef = useRef<number | null>(null);
+  const pendingXRef = useRef(0);
   const [isDragging, setIsDragging] = useState(false);
   const exitAnimationRef = useRef<Animation | null>(null);
   const snapBackAnimationRef = useRef<Animation | null>(null);
@@ -41,16 +44,16 @@ export function useSwipeBack({
 
   const cancelAnimations = useCallback(() => {
     if (exitAnimationRef.current) {
-      try {
-        exitAnimationRef.current.cancel();
-      } catch {}
+      try { exitAnimationRef.current.cancel(); } catch {}
       exitAnimationRef.current = null;
     }
     if (snapBackAnimationRef.current) {
-      try {
-        snapBackAnimationRef.current.cancel();
-      } catch {}
+      try { snapBackAnimationRef.current.cancel(); } catch {}
       snapBackAnimationRef.current = null;
+    }
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
     }
   }, []);
 
@@ -61,38 +64,56 @@ export function useSwipeBack({
       startXRef.current = touch.clientX;
       startYRef.current = touch.clientY;
       currentXRef.current = 0;
+      lockOffsetRef.current = 0;
       isSwipingRef.current = false;
       lockedRef.current = null;
       clearTransform();
     }
   }, [edgeWidth, fullScreen, clearTransform, cancelAnimations]);
 
+  const flushTransform = useCallback(() => {
+    rafRef.current = null;
+    if (elementRef.current) {
+      elementRef.current.style.transform = `translate3d(${pendingXRef.current}px, 0, 0)`;
+    }
+  }, []);
+
   const onTouchMove = useCallback((e: React.TouchEvent) => {
     if (startXRef.current === null || startYRef.current === null) return;
     const touch = e.touches[0];
-    const dx = touch.clientX - startXRef.current;
+    const dxRaw = touch.clientX - startXRef.current;
     const dy = Math.abs(touch.clientY - startYRef.current);
-    const absDx = Math.abs(dx);
+    const absDx = Math.abs(dxRaw);
 
-    // Lock axis on first meaningful movement to preserve vertical scrolling.
-    // More sensitive: lock horizontal as soon as dx clearly leads dy.
     if (lockedRef.current === null && (absDx > 4 || dy > 6)) {
       lockedRef.current = absDx > dy * 1.1 ? 'horizontal' : 'vertical';
       if (lockedRef.current === 'horizontal') {
+        // Anchor at the current finger position to avoid an initial jump
+        // equal to the lock threshold.
+        lockOffsetRef.current = dxRaw;
         setIsDragging(true);
       }
     }
     if (lockedRef.current !== 'horizontal') return;
 
-    // Only rightward (left→right) swipe counts as back.
+    const dx = dxRaw - lockOffsetRef.current;
     if (dx > 0) {
       isSwipingRef.current = true;
       currentXRef.current = dx;
-      if (elementRef.current) {
-        elementRef.current.style.transform = `translateX(${dx}px)`;
+      pendingXRef.current = dx;
+      if (rafRef.current === null) {
+        rafRef.current = requestAnimationFrame(flushTransform);
+      }
+    } else if (isSwipingRef.current) {
+      // Finger moved back past origin — clamp to 0.
+      currentXRef.current = 0;
+      pendingXRef.current = 0;
+      if (rafRef.current === null) {
+        rafRef.current = requestAnimationFrame(flushTransform);
       }
     }
-  }, []);
+  }, [flushTransform]);
+
 
   const onTouchEnd = useCallback(() => {
     if (isSwipingRef.current && currentXRef.current > threshold) {

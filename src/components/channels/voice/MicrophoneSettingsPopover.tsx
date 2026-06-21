@@ -53,9 +53,11 @@ export function MicrophoneSettingsPopover({
   onToggleLowShelf,
   enableHighPass,
   onToggleHighPass,
+  open,
+  onOpenChange,
 }: MicrophoneSettingsPopoverProps) {
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>
         {children}
       </PopoverTrigger>

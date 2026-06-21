@@ -49,7 +49,7 @@ export function VoiceChannelDetailsSheet({
 
   const handleCopyId = async () => {
     try {
-      const snowflake = toSnowflake(channel.id);
+      const snowflake = uuidToSnowflake(channel.id);
       await copyToClipboard(snowflake);
       toast.success('ID copié');
     } catch {

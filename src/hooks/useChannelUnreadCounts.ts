@@ -68,6 +68,33 @@ export function useChannelUnreadCounts(serverId: string | null) {
     };
   }, [user, serverId, queryClient]);
 
+  // Realtime — listen to my own channel_read_states changes (cross-device sync)
+  useEffect(() => {
+    if (!user || !serverId) return;
+    const readChannel = supabase
+      .channel(`channel-read-states-${serverId}-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'channel_read_states',
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          clearTimeout(debounceRef.current);
+          debounceRef.current = setTimeout(() => {
+            queryClient.invalidateQueries({ queryKey: ['channel-unread-counts', serverId, user.id] });
+            queryClient.invalidateQueries({ queryKey: ['server-unread-counts'] });
+          }, 200);
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(readChannel);
+    };
+  }, [user, serverId, queryClient]);
+
   const query = useQuery({
     queryKey: ['channel-unread-counts', serverId, user?.id],
     queryFn: async (): Promise<Record<string, ChannelUnreadInfo>> => {
@@ -83,15 +110,17 @@ export function useChannelUnreadCounts(serverId: string | null) {
 
       const channelIds = channels.map(c => c.id);
 
-      // 2. Get read state for this server (single row)
-      const { data: readState } = await supabase
-        .from('server_read_states')
-        .select('last_read_at')
-        .eq('server_id', serverId)
+      // 2. Per-channel read states (source of truth)
+      const { data: channelReads } = await supabase
+        .from('channel_read_states')
+        .select('channel_id, last_read_at')
         .eq('user_id', user.id)
-        .maybeSingle();
+        .in('channel_id', channelIds);
 
-      const lastReadAt = readState?.last_read_at || new Date(0).toISOString();
+      const readMap: Record<string, string> = {};
+      channelReads?.forEach(r => {
+        readMap[r.channel_id] = r.last_read_at || new Date(0).toISOString();
+      });
 
       // 3. Get mention counts in a SINGLE query
       const { data: mentions } = await supabase
@@ -105,18 +134,27 @@ export function useChannelUnreadCounts(serverId: string | null) {
         mentionCountsMap[m.channel_id] = (mentionCountsMap[m.channel_id] || 0) + 1;
       });
 
-      // 4. BATCHED: get all unread message channel_ids in ONE query (no N+1)
+      // 4. BATCHED: pull recent messages across all channels in one query,
+      //    bucket per-channel against each channel's own last_read_at.
+      const oldestRead = channelIds.reduce((oldest, cid) => {
+        const ts = readMap[cid] || new Date(0).toISOString();
+        return ts < oldest ? ts : oldest;
+      }, new Date().toISOString());
+
       const { data: unreadMessages } = await supabase
         .from('messages')
-        .select('channel_id')
+        .select('channel_id, created_at')
         .in('channel_id', channelIds)
-        .gt('created_at', lastReadAt)
+        .gt('created_at', oldestRead)
         .neq('author_id', user.id)
         .limit(2000);
 
       const hasUnreadMap: Record<string, boolean> = {};
       unreadMessages?.forEach(m => {
-        hasUnreadMap[m.channel_id] = true;
+        const cutoff = readMap[m.channel_id] || new Date(0).toISOString();
+        if ((m.created_at || '') > cutoff) {
+          hasUnreadMap[m.channel_id] = true;
+        }
       });
 
       const result: Record<string, ChannelUnreadInfo> = {};

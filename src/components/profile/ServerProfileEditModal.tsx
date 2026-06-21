@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Camera, Loader2, RotateCcw, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { InputMarkdownOverlay, parseLines, hasInlineMarkdown, OVERLAY_FONT_SIZE, OVERLAY_LINE_HEIGHT, INPUT_FONT_FAMILY } from '@/components/chat/InputMarkdownOverlay';
+import { InputMarkdownOverlay, hasOverlayMarkdown, OVERLAY_FONT_SIZE, OVERLAY_LINE_HEIGHT, INPUT_FONT_FAMILY } from '@/components/chat/InputMarkdownOverlay';
 import { useMemo } from 'react';
 
 interface ServerProfileEditModalProps {
@@ -121,11 +121,7 @@ export function ServerProfileEditModal({ open, onOpenChange, initialServerId }: 
   const bioLength = formData.bio.length;
   const maxBio = 500;
   const overlayRef = useRef<HTMLDivElement>(null);
-  const hasBioMarkdown = useMemo(() => {
-    if (!formData.bio) return false;
-    const lines = parseLines(formData.bio);
-    return lines.some(l => l.type !== 'normal') || hasInlineMarkdown(formData.bio);
-  }, [formData.bio]);
+  const hasBioMarkdown = useMemo(() => hasOverlayMarkdown(formData.bio), [formData.bio]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

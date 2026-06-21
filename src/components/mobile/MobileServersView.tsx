@@ -84,32 +84,32 @@ function SortableMobileServerIcon({
   } as React.CSSProperties;
 
   return (
-    <div ref={setNodeRef} style={style} className="relative overflow-visible">
+    <div ref={setNodeRef} style={style} className="relative w-full flex flex-col items-center overflow-visible">
 
       {dropIndicator === 'before' && (
         <div className="w-10 h-0.5 bg-primary rounded-full mx-auto mb-0.5" />
       )}
+      {/* Active pill indicator — same style/behavior as desktop */}
+      <div
+        className={cn(
+          'absolute left-0 top-1/2 -translate-y-1/2 w-[4px] rounded-r-full bg-foreground pointer-events-none z-10',
+          isActive
+            ? 'h-10'
+            : hasUnread || mentionCount > 0
+              ? 'h-2'
+              : 'h-0 group-hover:h-5'
+        )}
+        style={{ transition: 'height 300ms' }}
+      />
       <button
         {...attributes}
         {...listeners}
         onClick={onTap}
         className={cn(
-          'relative flex items-center justify-center w-full py-0.5 group',
+          'relative flex items-center justify-center py-0.5 group',
           isDragging && 'opacity-30'
         )}
       >
-        <div
-          className={cn(
-            'absolute left-0 w-[4px] rounded-r-full bg-foreground z-10',
-            isActive
-              ? 'h-10'
-              : hasUnread || mentionCount > 0
-                ? 'h-2'
-                : 'h-0 group-hover:h-5'
-          )}
-          style={{ transition: 'height 300ms' }}
-        />
-
         <div className="relative">
           <Avatar className={cn(
             ICON_SIZE,

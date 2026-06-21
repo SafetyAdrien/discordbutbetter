@@ -82,6 +82,17 @@ export function useUnreadCounts() {
   useEffect(() => {
     if (!user) return;
 
+    const patchUnread = (conversationId: string, delta: number) => {
+      queryClient.setQueryData<Record<string, number>>(['unread-counts', user.id], (old = {}) => {
+        const nextCount = Math.max(0, (old[conversationId] || 0) + delta);
+        if (nextCount === 0) {
+          const { [conversationId]: _, ...rest } = old;
+          return rest;
+        }
+        return { ...old, [conversationId]: nextCount };
+      });
+    };
+
     const invalidate = () => {
       queryClient.invalidateQueries({ queryKey: ['unread-counts'] });
       queryClient.invalidateQueries({ queryKey: ['dm-mention-counts'] });
@@ -90,7 +101,13 @@ export function useUnreadCounts() {
 
     const messagesChannel = supabase
       .channel(`unread-counts-dm-messages-${user.id}-${instanceIdRef.current}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'dm_messages' }, invalidate)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'dm_messages' }, (payload) => {
+        const msg = payload.new as { conversation_id?: string; author_id?: string };
+        if (msg.conversation_id && msg.author_id !== user.id) {
+          patchUnread(msg.conversation_id, 1);
+        }
+        invalidate();
+      })
       .subscribe();
 
     const readsChannel = supabase
@@ -98,7 +115,16 @@ export function useUnreadCounts() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'dm_read_states', filter: `user_id=eq.${user.id}` },
-        invalidate,
+        (payload) => {
+          const conversationId = ((payload.new || payload.old) as { conversation_id?: string })?.conversation_id;
+          if (conversationId) {
+            queryClient.setQueryData<Record<string, number>>(['unread-counts', user.id], (old = {}) => {
+              const { [conversationId]: _, ...rest } = old;
+              return rest;
+            });
+          }
+          invalidate();
+        },
       )
       .subscribe();
 

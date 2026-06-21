@@ -104,7 +104,7 @@ export function MobileVoiceSettingsPanel({ channelName, onClose, onInvite }: Pro
           </button>
           <div className="mx-4 h-px bg-white/5" />
           <ToggleRow
-            icon={<EarOff className="w-6 h-6" />}
+            icon={<Ear className="w-6 h-6" />}
             title="Deafen"
             subtitle="Disables all sound"
             value={deafen}

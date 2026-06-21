@@ -7,6 +7,7 @@ import {
   useDeleteNotification,
   useRespondToDeletionRequest,
 } from '@/hooks/useNotifications';
+import type { ServerNotification } from '@/hooks/useNotifications';
 import { useUnreadCounts } from '@/hooks/useUnreadCounts';
 import { useMarkChannelAsRead } from '@/hooks/useMarkChannelAsRead';
 import { useUnifiedNotifications, type UnifiedNotification } from '@/hooks/useUnifiedNotifications';
@@ -125,20 +126,27 @@ export function MobileNotificationsView({
       onOpenDM?.(n.conversationId);
       return;
     }
-    if (n.isUnread) markRead.mutate((n.raw as any).id);
+    if (n.source === 'server_notification' && n.isUnread) {
+      markRead.mutate((n.raw as ServerNotification).id);
+    }
     if (n.serverId) onOpenServer?.(n.serverId);
   };
 
   const handleMarkRead = (n: UnifiedNotification) => {
     if (n.source === 'channel_mention' && n.channelId) void markChannelRead(n.channelId, n.serverId);
     else if (n.kind === 'dm' && n.conversationId) markDMRead.mutate(n.conversationId);
-    else markRead.mutate((n.raw as any).id);
+    else if (n.source === 'server_notification') markRead.mutate((n.raw as ServerNotification).id);
   };
 
   const handleDelete = (n: UnifiedNotification) => {
     if (n.source === 'channel_mention' && n.channelId) void markChannelRead(n.channelId, n.serverId);
     else if (n.kind === 'dm' && n.conversationId) markDMRead.mutate(n.conversationId);
-    else deleteNotification.mutate((n.raw as any).id);
+    else if (n.source === 'server_notification') deleteNotification.mutate((n.raw as ServerNotification).id);
+  };
+
+  const handleRespond = (n: UnifiedNotification, accept: boolean) => {
+    if (n.source !== 'server_notification') return;
+    respondToDeletion.mutate({ notificationId: (n.raw as ServerNotification).id, accept });
   };
 
   const handleMarkAllRead = () => {
@@ -284,9 +292,7 @@ export function MobileNotificationsView({
                   onTap={() => handleTap(n)}
                   onMarkRead={() => handleMarkRead(n)}
                   onDelete={() => handleDelete(n)}
-                  onRespond={(accept) =>
-                    respondToDeletion.mutate({ notificationId: (n.raw as any).id, accept })
-                  }
+                  onRespond={(accept) => handleRespond(n, accept)}
                 />
               ))}
             </NotificationSection>
@@ -298,9 +304,7 @@ export function MobileNotificationsView({
                   onTap={() => handleTap(n)}
                   onMarkRead={() => handleMarkRead(n)}
                   onDelete={() => handleDelete(n)}
-                  onRespond={(accept) =>
-                    respondToDeletion.mutate({ notificationId: (n.raw as any).id, accept })
-                  }
+                  onRespond={(accept) => handleRespond(n, accept)}
                 />
               ))}
             </NotificationSection>
@@ -316,9 +320,7 @@ export function MobileNotificationsView({
                   onTap={() => handleTap(n)}
                   onMarkRead={() => handleMarkRead(n)}
                   onDelete={() => handleDelete(n)}
-                  onRespond={(accept) =>
-                    respondToDeletion.mutate({ notificationId: (n.raw as any).id, accept })
-                  }
+                  onRespond={(accept) => handleRespond(n, accept)}
                 />
               ))}
             </NotificationSection>

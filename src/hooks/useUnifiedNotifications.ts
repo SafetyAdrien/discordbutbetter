@@ -61,7 +61,7 @@ export function useUnifiedNotifications() {
         channelName: null,
         mentionId: null,
         conversationId: null,
-        userId: (n as any).sender_id ?? null,
+        userId: n.sender_id ?? null,
         unreadCount: 0,
         mentionCount: kind === 'mention' && n.status === 'pending' ? 1 : 0,
         raw: n,

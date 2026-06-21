@@ -54,7 +54,9 @@ export function InboxPanel() {
       markDMRead.mutate(notification.conversationId);
       return;
     }
-    if (notification.isUnread) markRead.mutate((notification.raw as any).id);
+    if (notification.source === 'server_notification' && notification.isUnread) {
+      markRead.mutate((notification.raw as ServerNotification).id);
+    }
   };
 
   const handleMarkAllRead = () => {
@@ -74,7 +76,7 @@ export function InboxPanel() {
   };
 
   const handleDelete = (notification: UnifiedNotification) => {
-    if (notification.source === 'server_notification') deleteNotification.mutate((notification.raw as any).id);
+    if (notification.source === 'server_notification') deleteNotification.mutate((notification.raw as ServerNotification).id);
     else markItemRead(notification);
   };
 

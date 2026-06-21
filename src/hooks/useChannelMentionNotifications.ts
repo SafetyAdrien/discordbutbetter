@@ -18,6 +18,12 @@ export interface ChannelMentionNotificationItem {
   createdAt: string;
 }
 
+type MentionRow = { id: string; channel_id: string; message_id: string; created_at: string };
+type MessageRow = { id: string; content: string | null; created_at: string | null; author_id: string | null };
+type ChannelRow = { id: string; name: string | null; server_id: string | null };
+type ProfileRow = { id: string; display_name: string | null; username: string | null; avatar_url: string | null };
+type ServerRow = { id: string; name: string | null; icon_url: string | null };
+
 export function useChannelMentionNotifications() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -48,19 +54,21 @@ export function useChannelMentionNotifications() {
               .from('messages')
               .select('id, content, created_at, author_id')
               .in('id', messageIds)
-          : Promise.resolve({ data: [] as any[] }),
+          : Promise.resolve({ data: [] as MessageRow[] }),
         channelIds.length
           ? supabase
               .from('channels')
               .select('id, name, server_id')
               .in('id', channelIds)
-          : Promise.resolve({ data: [] as any[] }),
+          : Promise.resolve({ data: [] as ChannelRow[] }),
       ]);
 
-      const messageMap = new Map((messages || []).map((m: any) => [m.id, m]));
-      const channelMap = new Map((channels || []).map((c: any) => [c.id, c]));
-      const authorIds = [...new Set((messages || []).map((m: any) => m.author_id).filter(Boolean))];
-      const serverIds = [...new Set((channels || []).map((c: any) => c.server_id).filter(Boolean))];
+      const typedMessages = (messages || []) as MessageRow[];
+      const typedChannels = (channels || []) as ChannelRow[];
+      const messageMap = new Map(typedMessages.map((m) => [m.id, m]));
+      const channelMap = new Map(typedChannels.map((c) => [c.id, c]));
+      const authorIds = [...new Set(typedMessages.map((m) => m.author_id).filter((id): id is string => !!id))];
+      const serverIds = [...new Set(typedChannels.map((c) => c.server_id).filter((id): id is string => !!id))];
 
       const [{ data: authors }, { data: servers }] = await Promise.all([
         authorIds.length
@@ -68,20 +76,20 @@ export function useChannelMentionNotifications() {
               .from('profiles')
               .select('id, display_name, username, avatar_url')
               .in('id', authorIds)
-          : Promise.resolve({ data: [] as any[] }),
+          : Promise.resolve({ data: [] as ProfileRow[] }),
         serverIds.length
           ? supabase
               .from('servers')
               .select('id, name, icon_url')
               .in('id', serverIds)
-          : Promise.resolve({ data: [] as any[] }),
+          : Promise.resolve({ data: [] as ServerRow[] }),
       ]);
 
-      const authorMap = new Map((authors || []).map((a: any) => [a.id, a]));
-      const serverMap = new Map((servers || []).map((s: any) => [s.id, s]));
+      const authorMap = new Map(((authors || []) as ProfileRow[]).map((a) => [a.id, a]));
+      const serverMap = new Map(((servers || []) as ServerRow[]).map((s) => [s.id, s]));
 
-      return mentions
-        .map((mention: any) => {
+      return ((mentions || []) as MentionRow[])
+        .map((mention) => {
           const message = messageMap.get(mention.message_id);
           const channel = channelMap.get(mention.channel_id);
           const server = channel?.server_id ? serverMap.get(channel.server_id) : null;

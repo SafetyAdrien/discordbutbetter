@@ -52,8 +52,6 @@ export function MobileVoicePreJoin({
       {/* Bottom control pill */}
       <div className="px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <div className="relative bg-[hsl(var(--surface-1))] rounded-full p-2 flex items-center gap-2 shadow-lg">
-          {/* Drag handle visual indicator */}
-          <div className="absolute left-1/2 -translate-x-1/2 -top-2 w-9 h-1 rounded-full bg-white/20 pointer-events-none" />
 
           {/* Mic toggle */}
           <button

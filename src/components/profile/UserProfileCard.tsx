@@ -122,8 +122,8 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
 
   return (
     <div
-      className="h-14 px-2 py-1.5 mx-2 mb-2 rounded-2xl flex items-center gap-2 bg-[hsl(var(--surface-2))] border border-border/40"
-      style={{ boxShadow: 'var(--shadow-elevation-1)' }}
+      className="h-full mx-2 mb-2 px-3 py-2 rounded-2xl flex items-center gap-3 bg-[hsl(var(--surface-2))] border border-border/40"
+      style={{ boxShadow: 'var(--shadow-elevation-2)' }}
     >
       <Popover>
         <PopoverTrigger asChild>
@@ -131,7 +131,7 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
             <div className="relative">
               <Avatar
                 className={cn(
-                  "w-8 h-8 transition-all",
+                  "w-9 h-9 transition-all",
                   profile?.id && speakingUsers?.has(profile.id)
                     ? "ring-2 ring-[hsl(var(--voice-active))] voice-active-ring"
                     : "ring-2 ring-primary/30",
@@ -149,7 +149,7 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
               />
             </div>
             <div className="flex-1 min-w-0 text-left">
-              <p className="text-sm font-medium truncate">{profile?.display_name || "Chargement..."}</p>
+              <p className="text-[15px] font-semibold truncate">{profile?.display_name || "Chargement..."}</p>
               <div className="text-xs text-muted-foreground truncate">{getDisplayText()}</div>
             </div>
           </button>
@@ -279,23 +279,23 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
       <button
         onClick={() => voiceCtx.toggleMute()}
         className={cn(
-          "p-1.5 hover:bg-muted rounded-md transition-colors",
+          "p-2 hover:bg-muted rounded-md transition-colors",
           voiceCtx.voiceState.isMuted && "text-destructive"
         )}
       >
-        {voiceCtx.voiceState.isMuted ? <DiscordMicOff className="w-4 h-4" /> : <DiscordMic className="w-4 h-4 text-muted-foreground" />}
+        {voiceCtx.voiceState.isMuted ? <DiscordMicOff className="w-[18px] h-[18px]" /> : <DiscordMic className="w-[18px] h-[18px] text-muted-foreground" />}
       </button>
       <button
         onClick={() => voiceCtx.toggleDeafen()}
         className={cn(
-          "p-1.5 hover:bg-muted rounded-md transition-colors",
+          "p-2 hover:bg-muted rounded-md transition-colors",
           voiceCtx.voiceState.isDeafened && "text-destructive"
         )}
       >
-        {voiceCtx.voiceState.isDeafened ? <DiscordHeadphonesOff className="w-4 h-4" /> : <DiscordHeadphones className="w-4 h-4 text-muted-foreground" />}
+        {voiceCtx.voiceState.isDeafened ? <DiscordHeadphonesOff className="w-[18px] h-[18px]" /> : <DiscordHeadphones className="w-[18px] h-[18px] text-muted-foreground" />}
       </button>
-      <button onClick={onOpenSettings} className="p-1.5 hover:bg-muted rounded-md transition-colors">
-        <DiscordSettings className="w-4 h-4 text-muted-foreground" />
+      <button onClick={onOpenSettings} className="p-2 hover:bg-muted rounded-md transition-colors">
+        <DiscordSettings className="w-[18px] h-[18px] text-muted-foreground" />
       </button>
 
       {/* Custom Status Modal */}

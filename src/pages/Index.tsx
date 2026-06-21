@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ServerList } from '@/components/layout/ServerList';
 import { ChannelList } from '@/components/layout/ChannelList';
+import { UserProfileCard } from '@/components/profile/UserProfileCard';
+import { AccountSettingsModal } from '@/components/account-settings/AccountSettingsModal';
 import { MemberList } from '@/components/layout/MemberList';
 import { ChatArea } from '@/components/chat/ChatArea';
 import { DMPage } from '@/components/dm/DMPage';
@@ -210,7 +212,8 @@ const Index = () => {
 
 
   // Voice state
-  const { voiceState, toggleMute } = useVoice();
+  const { voiceState, toggleMute, speakingUsers } = useVoice();
+  const [showAccountSettingsGlobal, setShowAccountSettingsGlobal] = useState(false);
 
   // Mutations
   const createServer = useCreateServer();
@@ -881,6 +884,23 @@ const Index = () => {
             // TODO: Scroll to message
           }}
         />
+      )}
+      {/* Floating User Profile Panel - desktop only, spans ServerList + ChannelList width */}
+      {!isMobile && !isTablet && (
+        <div
+          className="fixed bottom-0 left-0 z-40 h-[68px]"
+          style={{ width: 'calc(80px + 2px + 240px)' }}
+        >
+          <UserProfileCard
+            onOpenSettings={() => setShowAccountSettingsGlobal(true)}
+            onOpenProfile={() => setShowAccountSettingsGlobal(true)}
+            speakingUsers={speakingUsers}
+          />
+        </div>
+      )}
+
+      {showAccountSettingsGlobal && (
+        <AccountSettingsModal onClose={() => setShowAccountSettingsGlobal(false)} />
       )}
     </div>
   );

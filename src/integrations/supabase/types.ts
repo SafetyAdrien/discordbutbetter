@@ -283,6 +283,42 @@ export type Database = {
           },
         ]
       }
+      badges: {
+        Row: {
+          color: string
+          created_at: string
+          description: string
+          icon_url: string | null
+          id: string
+          key: string
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          description?: string
+          icon_url?: string | null
+          id?: string
+          key: string
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          description?: string
+          icon_url?: string | null
+          id?: string
+          key?: string
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       calendar_events: {
         Row: {
           color: string
@@ -2836,6 +2872,38 @@ export type Database = {
           },
         ]
       }
+      user_badges: {
+        Row: {
+          badge_id: string
+          granted_at: string
+          granted_by: string | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          badge_id: string
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          badge_id?: string
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_badges_badge_id_fkey"
+            columns: ["badge_id"]
+            isOneToOne: false
+            referencedRelation: "badges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_channel_settings: {
         Row: {
           category_id: string | null
@@ -2910,6 +2978,27 @@ export type Database = {
           id?: string
           target_user_id?: string
           updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
         }
         Relationships: []
@@ -3234,6 +3323,15 @@ export type Database = {
         }
         Returns: undefined
       }
+      admin_search_profiles: {
+        Args: { _query: string }
+        Returns: {
+          avatar_url: string
+          display_name: string
+          id: string
+          username: string
+        }[]
+      }
       ban_member: {
         Args: { _reason?: string; _server_id: string; _user_id: string }
         Returns: undefined
@@ -3330,6 +3428,17 @@ export type Database = {
           permission: Database["public"]["Enums"]["server_permission"]
         }[]
       }
+      grant_badge: {
+        Args: { _badge_id: string; _user_id: string }
+        Returns: undefined
+      }
+      has_app_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       has_channel_permission: {
         Args: {
           _channel_id: string
@@ -3359,6 +3468,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      is_app_admin: { Args: never; Returns: boolean }
       is_dm_participant: {
         Args: { _conversation_id: string; _user_id: string }
         Returns: boolean
@@ -3395,6 +3505,10 @@ export type Database = {
         Args: { _accept: boolean; _notification_id: string }
         Returns: boolean
       }
+      revoke_badge: {
+        Args: { _badge_id: string; _user_id: string }
+        Returns: undefined
+      }
       server_deafen_participant: {
         Args: {
           _channel_id: string
@@ -3427,10 +3541,23 @@ export type Database = {
         Args: { _server_id: string; _user_id: string }
         Returns: undefined
       }
+      upsert_badge: {
+        Args: {
+          _color: string
+          _description: string
+          _icon_url: string
+          _id: string
+          _key: string
+          _name: string
+          _sort_order: number
+        }
+        Returns: string
+      }
       use_invite: { Args: { invite_code: string }; Returns: string }
       uuid_to_snowflake: { Args: { _id: string }; Returns: string }
     }
     Enums: {
+      app_role: "app_admin"
       channel_type:
         | "text"
         | "voice"
@@ -3684,6 +3811,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["app_admin"],
       channel_type: [
         "text",
         "voice",

@@ -20,6 +20,7 @@ import { toast } from 'sonner';
 import { ProfileCalendar } from '@/components/profile/calendar/ProfileCalendar';
 import { EventListBelow } from '@/components/profile/calendar/EventListBelow';
 import { StatusIndicator } from '@/components/ui/StatusIndicator';
+import { UserBadgeList } from '@/components/badges/UserBadgeList';
 
 const statusColors: Record<string, string> = {
   online: 'bg-green-500',
@@ -217,6 +218,12 @@ export function FullUserProfileModal({
             {memberSince && (
               <p className="mt-3 text-[11px] text-muted-foreground">Membre depuis {memberSince}</p>
             )}
+          </section>
+
+          {/* Badges */}
+          <section className="rounded-2xl bg-card border border-border/50 p-4">
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Badges</h4>
+            <UserBadgeList userId={user.id} size="lg" showEmpty />
           </section>
 
           {/* About */}

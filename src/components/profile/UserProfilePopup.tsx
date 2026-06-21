@@ -58,6 +58,7 @@ import { CustomStatusModal } from '@/components/profile/CustomStatusModal';
 import { useVoice } from '@/contexts/VoiceContext';
 import { useVoiceUserSettings } from '@/hooks/useVoiceUserSettings';
 import { useServerProfile } from '@/hooks/useServerProfile';
+import { UserBadgeList } from '@/components/badges/UserBadgeList';
 
 const BADGE_ICONS: Record<string, { icon: React.ElementType; label: string; color: string }> = {
   staff: { icon: Shield, label: 'Équipe', color: '#5865F2' },
@@ -489,29 +490,9 @@ export function UserProfilePopup({
             </div>
           </div>
 
-          {/* Badges row */}
-          {userBadges.length > 0 && (
-            <div className="flex items-center gap-1 flex-wrap">
-              {userBadges.map((key) => {
-                const def = BADGE_ICONS[key];
-                if (!def) return null;
-                const Icon = def.icon;
-                return (
-                  <Tooltip key={key} delayDuration={0}>
-                    <TooltipTrigger asChild>
-                      <span
-                        className="inline-flex items-center justify-center w-5 h-5 rounded"
-                        style={{ color: def.color }}
-                      >
-                        <Icon className="w-4 h-4" />
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent>{def.label}</TooltipContent>
-                  </Tooltip>
-                );
-              })}
-            </div>
-          )}
+          {/* Badges row (from DB) */}
+          <UserBadgeList userId={user.id} size="sm" />
+
 
           {/* Activity */}
           {(user as any).activity_type && (user as any).activity_text && ActivityIcon && (

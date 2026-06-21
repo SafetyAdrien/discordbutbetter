@@ -435,7 +435,7 @@ function renderBlockToken(block: BlockToken, key: number, context: MarkdownConte
       );
     }
     case 'paragraph':
-    default: return <React.Fragment key={key}><span>{renderInlineContent(block.content)}</span>{!isLast && <br />}</React.Fragment>;
+    default: return <React.Fragment key={key}><span>{renderInlineContent(block.content)}</span>{!isLast && !suppressBr && <br />}</React.Fragment>;
   }
 }
 

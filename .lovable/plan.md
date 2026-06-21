@@ -1,56 +1,110 @@
-# Unifier l'indicateur d'unread mobile ↔ desktop
+## Objectif
 
-## Référence desktop — comportement exact
+Trois extensions du système Markdown, à appliquer partout (desktop + mobile) :
 
-| Surface | Indicateur "blanc" desktop | Source |
-| --- | --- | --- |
-| Liste serveurs (`ServerList.tsx`) | Pastille verticale `bg-foreground`, `w-1`, `rounded-r-full` à gauche. Hauteur : `h-10` actif · `h-2` `hasUnread \|\| mentionCount>0` · `h-5` hover · `h-0` sinon. Transition `height 300ms`. | l. 119-130 |
-| Liste salons (`ChannelList.tsx`) | Salon non lu : fond `bg-muted/30` (si non actif) + libellé `text-foreground` (sinon `text-[#9B9CA3]`). Mention : pill rouge `bg-destructive`. | l. 688-718 |
-| Threads (sous-arbre `ChannelList`) | Aucun indicateur blanc dédié, juste `text-muted-foreground hover:text-foreground`. | l. 471-474 |
-| DM (`DMList.tsx`) | Aucun indicateur blanc, uniquement badge rouge `bg-destructive` quand `unreadCount>0`. | l. 207-211 |
+1. **Aperçu WYSIWYG dans tous les champs de saisie** Markdown (overlay `InputMarkdownOverlay`).
+2. **Markdown dans les *topics* (descriptions) de tous les types de salons**, en affichage et en édition.
+3. **Alertes GitHub-style** (`> [!NOTE]` / `> [!TIP]` / `> [!IMPORTANT]` / `> [!WARNING]` / `> [!CAUTION]`) dans le renderer.
 
-Source de vérité des compteurs : `useServerUnreadCounts`, `useChannelUnreadCounts`, `useUnreadCounts` (DM), `useThreadUnreadCounts`.
+---
 
-## État mobile actuel — écarts
+## 1) Overlay WYSIWYG sur tous les composers
 
-1. **`MobileServersView.tsx`** (l. 101-107) — pastille déjà alignée après la passe précédente. OK.
-2. **`MobileChannelListView.tsx`** (l. 668-680 et 801-813) — applique `text-foreground` mais **manque le fond `bg-muted/30`** sur les salons non lus non actifs. Pas non plus de pastille mention en cohérence visuelle (juste pill rouge présente).
-3. **`MobileChannelListView.tsx`** (threads) — pas de rendu de threads sous les salons sur mobile : à confirmer si requis. Hors scope (alignement, pas nouvelle feature).
-4. **`MobileDMListItem.tsx`** (l. 311-380) — déjà aligné desktop (pas de pastille blanche, badge rouge présent, libellé renforcé). Aucun changement nécessaire.
-5. **`MobileServersListView.tsx`** (profil) — pastille ajoutée à la passe précédente. OK.
+Aujourd'hui l'overlay n'est branché que sur `MessageInput` (chat principal) et `MarkdownLiveTextarea` (bios). Les `<Textarea>` listés ci-dessous tapent encore en texte brut.
 
-## Plan d'intégration
+**Refactor** : extraire `src/components/chat/MarkdownTextarea.tsx` — wrap `<Textarea>` + `<InputMarkdownOverlay>` synchronisés (scroll, font-metrics, padding, markers ~55 % d'opacité, ref forwardée pour `HTMLTextAreaElement` et auto-resize). `MessageInput` consomme ce composant ; chaque site ci-dessous remplace son `<Textarea>` par `<MarkdownTextarea>`.
 
-### 1. `src/components/mobile/MobileChannelListView.tsx`
-Aligner le rendu des salons non lus sur desktop :
-- Sur les deux boutons salon (l. 658-680 et 791-813), ajouter sur le `className`:
-  ```ts
-  cn(
-    "channel-item w-full",
-    activeChannelId === ch.id && "active",
-    info?.hasUnread && activeChannelId !== ch.id && "bg-muted/30"
-  )
+Sites à patcher :
+
+- **Édition inline de message** : `ChatArea.tsx` (≈ l. 1704 et 1824), `DMConversation.tsx` (≈ l. 581), `ThreadView.tsx` (≈ l. 952), `VoiceChannelChat.tsx` (≈ l. 316), `AnnouncementChannel.tsx` (édition annonce + commentaire, ≈ l. 976 et 1086).
+- **Composers Markdown dédiés** : `announcement/AnnouncementComposer.tsx` (≈ l. 335), `announcement/CreateAnnouncementModal.tsx` (≈ l. 165), `media/CreateMediaPostModal.tsx` (≈ l. 251).
+- **Topic / description de salon** (édition) : `channel-settings/ChannelOverview.tsx` (≈ l. 264).
+
+Mobile : `MobileDMConversation`, `MobileChatView`, `MobileThreadView` consomment déjà `MessageInput` → bénéficient automatiquement du refactor. Pas d'édition inline mobile à patcher.
+
+Hors scope : bios (déjà sur `MarkdownLiveTextarea`), question de sondage, description de serveur (reste texte brut tant que produit ne valide pas le Markdown serveur).
+
+---
+
+## 2) Topics Markdown sur tous les types de salons
+
+Le topic est déjà rendu via `MarkdownText` sur le header desktop du chat texte (`ChatArea.tsx:1109`). À aligner ailleurs :
+
+- **Affichage** : passer `channel.description` à `MarkdownText variant="chat"` (inline-compact) au lieu de `<p>{description}</p>` dans :
+  - `channels/VoiceChannelView.tsx` (≈ l. 171)
+  - `channels/AnnouncementChannel.tsx` (≈ l. 537 et 542)
+  - `channels/StageChannel.tsx`, `ForumChannel.tsx`, `MediaChannel.tsx`, `CalendarChannel.tsx`, `TasksChannel.tsx`, `LinkChannel.tsx` — wherever the header/sidebar renders the topic (ajouter le rendu Markdown s'il y en a un, sinon noter qu'il n'y en a pas).
+  - Mobile : `mobile/MobileChannelDetailSheet.tsx` (≈ l. 60) → `MarkdownText variant="chat"` à la place du `<p>`.
+- **Édition** : `ChannelOverview.tsx` → `MarkdownTextarea` (cf. point 1) pour saisir le topic en WYSIWYG.
+
+Aucun changement de schéma : `channels.description` est déjà du texte libre.
+
+---
+
+## 3) Alertes GitHub-style dans le renderer
+
+Étendre `src/lib/markdown.tsx` pour reconnaître le bloc :
+
+```
+> [!TYPE]
+> Contenu sur une ou plusieurs lignes commençant par `> `
+```
+
+avec `TYPE ∈ {NOTE, TIP, IMPORTANT, WARNING, CAUTION}` (case-insensitive). Le bloc entier remplace la séquence de blockquotes consécutifs.
+
+### Parsing (`parseMarkdown`)
+- Dans le pré-parse des lignes, lorsqu'une ligne `> [!TYPE]` est rencontrée, regrouper toutes les lignes `>`-préfixées suivantes en un nouveau bloc `{ type: 'alert', alertType, content }` (content = jointure des lignes sans le `> `).
+- Si le type est inconnu, retomber sur le rendu blockquote actuel.
+
+### Rendu
+- Nouveau case `'alert'` rendant :
   ```
-- Conserver la coloration du libellé `text-foreground` quand non lu (déjà OK).
-- Conserver le pill rouge mention (déjà OK).
+  <div role="note" class="border-l-[4px] pl-3 my-1.5" style="border-color: var(--alert-{type}-border)">
+    <div class="flex items-center gap-1.5 font-semibold mb-0.5" style="color: var(--alert-{type}-fg)">
+      <Icon /> {Label localisé FR}
+    </div>
+    <div>{renderInlineContent(content)}</div>
+  </div>
+  ```
+- Icônes (lucide-react) :
+  - NOTE → `Info` (bleu)
+  - TIP → `Lightbulb` (vert)
+  - IMPORTANT → `MessageSquareWarning` (violet)
+  - WARNING → `TriangleAlert` (ambre)
+  - CAUTION → `OctagonAlert` (rouge)
+- Labels FR : `Note`, `Astuce`, `Important`, `Avertissement`, `Attention`.
 
-### 2. `src/components/mobile/MobileServersView.tsx`
-Aucun changement (déjà aligné).
+### Tokens (`src/index.css`)
+Ajouter des variables HSL sémantiques (light + dark) :
+```
+--alert-note-fg / --alert-note-border    (bleu)
+--alert-tip-fg / --alert-tip-border      (vert)
+--alert-important-fg / --alert-important-border (violet)
+--alert-warning-fg / --alert-warning-border (ambre)
+--alert-caution-fg / --alert-caution-border (rouge)
+```
+Valeurs alignées sur la palette GitHub adaptée au thème sombre du projet — pas de couleur en dur dans le JSX.
 
-### 3. `src/components/mobile/profile/MobileServersListView.tsx`
-Aucun changement (déjà aligné).
+### Overlay (`InputMarkdownOverlay.tsx`)
+- Étendre `parseLines` pour reconnaître `> [!TYPE]` comme un nouveau line type `alertHeader`, rendu coloré (couleur de l'alerte, marker `[!TYPE]` visible à ~55 %).
+- Les lignes `>` qui suivent gardent le style `blockquote`. Pas de bloc visuel multi-ligne dans l'overlay (impossible sans casser l'alignement caret) — seul l'entête de la première ligne se colore. Le rendu complet apparaît côté message envoyé.
 
-### 4. `src/components/mobile/dm/MobileDMListItem.tsx`
-Aucun changement (desktop n'a pas de pastille blanche DM ; le comportement est déjà identique).
+### Fallbacks
+- `> [!XYZ]` non reconnu → rendu blockquote standard (compat avant).
+- Alerte vide (`> [!NOTE]` sans contenu) → bloc rendu avec entête seul.
 
-### 5. Threads mobiles
-- `MobileThreadView.tsx` et `MobileChannelDetailSheet.tsx` n'affichent pas de liste de threads avec indicateur dédié — desktop non plus. Pas de changement.
+---
 
-## Détails techniques
-- Tokens uniquement (`bg-muted/30`, `text-foreground`, `bg-foreground`, `bg-destructive`). Pas de couleur hard-codée.
-- Hooks de unread déjà branchés (`useChannelUnreadCounts`, `useServerUnreadCounts`, `useUnreadCounts`). Aucune nouvelle requête, aucun changement backend.
-- Vérification finale : `bunx tsc --noEmit` puis preview mobile 360×590.
+## Validation
 
-## Hors scope (à confirmer si souhaité)
-- Ajouter un indicateur visuel d'unread sur les threads dans les vues mobiles (le desktop n'en a pas non plus).
-- Ajouter une pastille blanche aux DM mobile (le desktop n'en a pas).
+- `bunx tsc --noEmit`.
+- Aperçu visuel desktop + mobile :
+  - Topic Markdown affiché correctement dans chaque type de salon (vocal, annonce, forum, média, calendrier, tâches, stage, lien, mobile sheet).
+  - Composer overlay actif lors de l'édition d'un message (chat/DM/thread/vocal/annonce), composer d'annonce, composer média et édition de topic — markers gris faibles + rendu WYSIWYG.
+  - Coller le bloc des 5 alertes (cf. message utilisateur) dans un message : rendu identique à l'image, couleurs/icônes correctes, marker `[!TYPE]` visible mais discret dans le composer.
+
+## Hors scope
+
+- Pas de Markdown sur la description de serveur (à confirmer séparément).
+- Pas de migration des bios (`parseMarkdown` legacy → `<MarkdownText>`) — déjà fonctionnel.
+- Pas de support des alertes imbriquées dans des listes.

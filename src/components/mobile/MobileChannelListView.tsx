@@ -665,11 +665,7 @@ export function MobileChannelListView({
                     setActiveChannelId(ch.id); onChannelSelect(ch.id, ch.type);
                   }}
                   {...chLongPressHandlers}
-                  className={cn(
-                    "channel-item w-full",
-                    activeChannelId === ch.id && "active",
-                    info?.hasUnread && activeChannelId !== ch.id && "bg-muted/30"
-                  )}
+                  className={cn("channel-item w-full", activeChannelId === ch.id && "active")}
                 >
                   <Icon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                   <span className={cn(
@@ -802,11 +798,7 @@ export function MobileChannelListView({
                           setActiveChannelId(ch.id); onChannelSelect(ch.id, ch.type);
                         }}
                         {...chLongPressHandlers}
-                        className={cn(
-                          "channel-item w-full",
-                          activeChannelId === ch.id && "active",
-                          info?.hasUnread && activeChannelId !== ch.id && "bg-muted/30"
-                        )}
+                        className={cn("channel-item w-full", activeChannelId === ch.id && "active")}
                       >
                         <Icon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                         <span className={cn(

@@ -230,14 +230,11 @@ export function MobileLayout({
     // Intercept voice channels — open the pre-join bottom sheet over the channel list
     if (channelType === 'voice') {
       const ch = findChannel(channelId);
-      if (!ch) return;
-      // Only open pre-join if user isn't already connected to this very channel
       if (voiceState.channelId !== channelId) {
         onServerSelect(serverId);
-        setVoicePreJoin({ serverId, channel: { id: channelId, name: ch.name } });
+        setVoicePreJoin({ serverId, channel: { id: channelId, name: ch?.name || 'Salon vocal' } });
         return;
       }
-      // Already connected — open the full voice view
     }
 
     if (serverId) {

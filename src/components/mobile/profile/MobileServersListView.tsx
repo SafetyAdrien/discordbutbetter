@@ -4,6 +4,9 @@ import { Crown } from 'lucide-react';
 import { MobileProfileSubpage } from './MobileProfileSubpage';
 import { useAuth } from '@/contexts/AuthContext';
 import { haptics } from '@/lib/haptics';
+import { useServerUnreadCounts } from '@/hooks/useServerUnreadCounts';
+import { cn } from '@/lib/utils';
+
 
 interface Props {
   onBack: () => void;

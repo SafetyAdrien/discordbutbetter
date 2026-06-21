@@ -85,7 +85,7 @@ export function useChannelUnreadCounts(serverId: string | null) {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages' },
         (payload) => {
-          const newMsg = payload.new as any;
+          const newMsg = payload.new as { id?: string; channel_id?: string; author_id?: string | null; content?: string | null };
           const channelId = newMsg?.channel_id;
           if (serverChannelIds && channelId && !serverChannelIds.has(channelId)) return;
           if (!channelId || newMsg.author_id === user.id) return;

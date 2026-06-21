@@ -14,7 +14,7 @@ export function useChannelUnreadCounts(serverId: string | null) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
-  const optimisticMentionMessageIdsRef = useRef<Set<string>>(new Set());
+  const countedMentionMessageIdsRef = useRef<Set<string>>(new Set());
 
   const cachedKey = serverId && user?.id ? `channel-unread:${serverId}:${user.id}` : null;
   const cachedData = cachedKey ? cacheGetSync<Record<string, ChannelUnreadInfo>>(cachedKey) : undefined;
@@ -56,7 +56,10 @@ export function useChannelUnreadCounts(serverId: string | null) {
           const mention = payload.new as { channel_id?: string; message_id?: string };
           if (!mention.channel_id) return;
           if (serverChannelIds && !serverChannelIds.has(mention.channel_id)) return;
-          if (mention.message_id && optimisticMentionMessageIdsRef.current.delete(mention.message_id)) return;
+          if (mention.message_id) {
+            if (countedMentionMessageIdsRef.current.has(mention.message_id)) return;
+            countedMentionMessageIdsRef.current.add(mention.message_id);
+          }
           patchChannel(mention.channel_id, {
             mentionCount: ((queryClient.getQueryData<Record<string, ChannelUnreadInfo>>(['channel-unread-counts', serverId, user.id]) || {})[mention.channel_id]?.mentionCount || 0) + 1,
           });
@@ -90,10 +93,11 @@ export function useChannelUnreadCounts(serverId: string | null) {
 
           const isMention = isDirectMentionForUser(newMsg.content, user.id);
           const current = (queryClient.getQueryData<Record<string, ChannelUnreadInfo>>(['channel-unread-counts', serverId, user.id]) || {})[channelId];
-          if (isMention && newMsg.id) optimisticMentionMessageIdsRef.current.add(newMsg.id);
+          const shouldCountMention = isMention && (!newMsg.id || !countedMentionMessageIdsRef.current.has(newMsg.id));
+          if (shouldCountMention && newMsg.id) countedMentionMessageIdsRef.current.add(newMsg.id);
           patchChannel(channelId, {
             hasUnread: true,
-            mentionCount: (current?.mentionCount || 0) + (isMention ? 1 : 0),
+            mentionCount: (current?.mentionCount || 0) + (shouldCountMention ? 1 : 0),
           });
           queryClient.invalidateQueries({ queryKey: ['channel-unread-counts', serverId, user.id] });
         }

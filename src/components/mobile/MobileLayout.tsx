@@ -218,7 +218,7 @@ export function MobileLayout({
     return null;
   }, [rawServers, channelsData]);
 
-  const handleServerChannelSelect = (serverId: string, channelId: string, channelType: string) => {
+  const handleServerChannelSelect = (serverId: string, channelId: string, channelType: string, channelName?: string) => {
     // Intercept link channels — open external link modal instead of navigating to a chat
     if (channelType === 'link') {
       const ch = findChannel(channelId);
@@ -232,7 +232,7 @@ export function MobileLayout({
       const ch = findChannel(channelId);
       if (voiceState.channelId !== channelId) {
         onServerSelect(serverId);
-        setVoicePreJoin({ serverId, channel: { id: channelId, name: ch?.name || 'Salon vocal' } });
+        setVoicePreJoin({ serverId, channel: { id: channelId, name: channelName || ch?.name || 'Salon vocal' } });
         return;
       }
     }
@@ -243,7 +243,7 @@ export function MobileLayout({
     }
   };
 
-  const handleChannelSelect = (channelId: string, channelType: string) => {
+  const handleChannelSelect = (channelId: string, channelType: string, channelName?: string) => {
     if (channelType === 'link') {
       const ch = findChannel(channelId);
       const url = ch?.description || '';
@@ -253,7 +253,7 @@ export function MobileLayout({
     if (channelType === 'voice' && mobileView.type === 'channels') {
       const ch = findChannel(channelId);
       if (voiceState.channelId !== channelId) {
-        setVoicePreJoin({ serverId: mobileView.serverId, channel: { id: channelId, name: ch?.name || 'Salon vocal' } });
+        setVoicePreJoin({ serverId: mobileView.serverId, channel: { id: channelId, name: channelName || ch?.name || 'Salon vocal' } });
         return;
       }
     }

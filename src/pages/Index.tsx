@@ -886,17 +886,30 @@ const Index = () => {
           }}
         />
       )}
-      {/* Floating User Profile Panel - desktop only, spans ServerList + ChannelList width */}
+      {/* Floating Voice + Profile Panel - desktop only, spans ServerList + ChannelList width */}
       {!isMobile && !isTablet && (
         <div
-          className="fixed bottom-0 left-0 z-40 h-[68px]"
+          className="fixed bottom-0 left-0 z-40 flex flex-col gap-1"
           style={{ width: 'calc(80px + 2px + 240px)' }}
         >
-          <UserProfileCard
-            onOpenSettings={() => setShowAccountSettingsGlobal(true)}
-            onOpenProfile={() => setShowAccountSettingsGlobal(true)}
-            speakingUsers={speakingUsers}
-          />
+          {isConnected && voiceState.channelName && (
+            <VoiceControls
+              channelName={voiceState.channelName}
+              serverName={voiceState.serverName}
+              isMuted={voiceState.isMuted}
+              isDeafened={voiceState.isDeafened}
+              onToggleMute={() => toggleMute()}
+              onToggleDeafen={() => toggleDeafen()}
+              onDisconnect={() => leaveChannel()}
+            />
+          )}
+          <div className="h-[68px]">
+            <UserProfileCard
+              onOpenSettings={() => setShowAccountSettingsGlobal(true)}
+              onOpenProfile={() => setShowAccountSettingsGlobal(true)}
+              speakingUsers={speakingUsers}
+            />
+          </div>
         </div>
       )}
 

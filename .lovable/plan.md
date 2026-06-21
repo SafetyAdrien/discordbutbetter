@@ -1,26 +1,116 @@
-## Problème
+# Système de Badges (Discord-like)
 
-Sur mobile, le contenu des messages dans `ChatArea.tsx` utilise plusieurs overrides `max-sm:` qui réduisent les espacements (gap avatar/contenu, padding vertical, marges entre éléments). Résultat : la zone du message est plus compacte/serrée qu'en desktop (visible dans la capture mobile vs desktop).
+Badges retenus : **Bug Hunter**, **Moderator Alumni**, **Staff**, **Early Supporter**, **Active Developer**.
+Attribution : 100 % manuelle via une page admin (réservée Main Owner / Secondary Owner).
+Icônes : SVG custom uploadées en DB (bucket Storage).
 
-## Changements (un seul fichier : `src/components/chat/ChatArea.tsx`)
+---
 
-Supprimer les overrides mobiles d'espacement sur les blocs de message pour que mobile = desktop :
+## 1. Backend (Lovable Cloud)
 
-| Ligne | Avant | Après |
-|---|---|---|
-| 1303 | `px-4 py-4 max-sm:py-2 max-sm:px-3` | `px-4 py-4` |
-| 1329 | `gap-4 my-3 max-sm:my-2` | `gap-4 my-3` |
-| 1611 | `px-8 max-sm:px-4 ... pt-[5px] pb-[2px] max-sm:pt-[2px] max-sm:pb-[1px]` | `px-8 ... pt-[5px] pb-[2px]` |
-| 1665 | `mb-1 max-sm:mb-0.5` | `mb-1` |
-| 1668 | `flex gap-3 max-sm:gap-2 items-start` | `flex gap-3 items-start` |
-| 1780 | `mt-0.5 max-sm:mt-0` | `mt-0.5` |
-| 1786 | `mt-1 max-sm:mt-0.5` | `mt-1` |
-| 1804 | `pt-1.5 pl-[50px] max-sm:pt-1` | `pt-1.5 pl-[50px]` |
-| 1816 | `flex gap-3 max-sm:gap-2 items-start` | `flex gap-3 items-start` |
-| 1900 | `mt-0.5 max-sm:mt-0` | `mt-0.5` |
-| 1906 | `mt-1 max-sm:mt-0.5` | `mt-1` |
-| 1924 | `pt-1.5 pl-[50px] max-sm:pt-1` | `pt-1.5 pl-[50px]` |
+### Bucket Storage
+- `badge-icons` (public, SELECT anon) pour héberger les SVG/PNG.
 
-## Hors scope
+### Tables
 
-Aucun changement de logique, ni des bulles DM mobile (`MobileMessageBubble`), ni des composants de mentions/MentionBadge. Uniquement l'espacement visuel des messages dans `ChatArea`.
+**`badges`** — catalogue des badges disponibles
+- `id uuid pk`
+- `key text unique` (ex: `bug_hunter`, `mod_alumni`, `staff`, `early_supporter`, `active_dev`)
+- `name text`
+- `description text`
+- `icon_url text` (vers `badge-icons`)
+- `color text` (couleur d'accent du tooltip)
+- `sort_order int` (ordre d'affichage)
+- `created_at timestamptz default now()`
+
+**`user_badges`** — attribution
+- `id uuid pk`
+- `user_id uuid → auth.users on delete cascade`
+- `badge_id uuid → badges on delete cascade`
+- `granted_at timestamptz default now()`
+- `granted_by uuid` (admin qui l'a donné)
+- `unique(user_id, badge_id)`
+
+### GRANT + RLS
+- `badges` : `SELECT` ouvert à `anon` + `authenticated` (lecture publique). Écriture : Main/Secondary Owner uniquement via RPC `SECURITY DEFINER`.
+- `user_badges` : `SELECT` à `authenticated` (tout le monde voit les badges des autres). Écriture via RPC `grant_badge` / `revoke_badge` qui vérifient `is_main_owner_or_secondary(auth.uid())`.
+
+### Seed initial
+Insertion des 5 badges (clé, nom, description, couleur). `icon_url` rempli après upload dans la page admin.
+
+---
+
+## 2. Page Admin (`/admin/badges`)
+
+Accessible uniquement aux Main/Secondary Owner globaux (réutilise la logique existante `useSecondaryOwner` / owner global de l'app). Si pas owner → redirect.
+
+**Onglet 1 — Catalogue Badges**
+- Liste des 5 badges avec aperçu icône, nom, description.
+- Upload/replace icône SVG (drag-drop → `badge-icons` bucket).
+- Édition nom / description / couleur / ordre.
+
+**Onglet 2 — Attribution**
+- Recherche utilisateur (réutilise `useGlobalSearch` pattern profils).
+- Pour l'utilisateur sélectionné : checkboxes ON/OFF de chaque badge.
+- Toggle = appel RPC `grant_badge` / `revoke_badge` + invalidation cache.
+
+---
+
+## 3. Affichage des badges
+
+### a) `UserProfilePopup` (mini-profil)
+Sous le nom d'utilisateur, ligne de petites icônes (16-20px) avec `Tooltip` au survol affichant `name + description`.
+
+### b) `FullUserProfileModal` (profil complet)
+Nouvelle section "Badges" avant "À propos de moi" :
+- Grille d'icônes plus grandes (28-32px)
+- Clic → popover détaillé (nom, description, date d'obtention).
+
+### c) Emplacement supplémentaire
+Laissé en attente — l'utilisateur précisera après validation. Le composant `<UserBadgeList userId size="sm|md|lg" />` sera réutilisable n'importe où.
+
+---
+
+## 4. Hooks & composants
+
+- `useBadges()` → catalogue (cache long, realtime sur `badges`).
+- `useUserBadges(userId)` → badges d'un user (realtime sur `user_badges` filtré).
+- `useGrantBadge()` / `useRevokeBadge()` → mutations RPC, invalidation optimiste.
+- `<UserBadgeList userId size />` → composant générique réutilisable.
+- `<BadgeTooltip badge />` → tooltip standardisé.
+
+---
+
+## 5. Realtime & cache
+- Channel Supabase dédié `badges` + `user_badges` (1 channel par table — respect de l'architecture existante).
+- Invalidation des popups/modals à la réception d'événements.
+- Cache IndexedDB via `warmCache` existant.
+
+---
+
+## Fichiers créés / modifiés (estimation)
+
+**Nouveaux**
+- Migration SQL (tables, RLS, GRANT, RPC, seed, bucket)
+- `src/hooks/useBadges.ts`
+- `src/hooks/useUserBadges.ts`
+- `src/components/badges/UserBadgeList.tsx`
+- `src/components/badges/BadgeTooltip.tsx`
+- `src/components/admin/BadgesAdminPage.tsx`
+- `src/components/admin/BadgeCatalogEditor.tsx`
+- `src/components/admin/BadgeAssignmentPanel.tsx`
+- Route admin dans `App.tsx`
+
+**Modifiés**
+- `src/components/profile/UserProfilePopup.tsx` → insertion `<UserBadgeList size="sm" />`
+- `src/components/profile/FullUserProfileModal.tsx` → section "Badges"
+- `src/lib/cache.ts` → warmCache badges
+- `mem://index.md` → nouvelle référence mémoire
+
+---
+
+## Points à confirmer avant build
+
+1. **Qui peut gérer les badges ?** Je propose : Main Owner + Secondary Owner globaux uniquement. OK ?
+2. **Icônes initiales** : tu fournis les SVG ou je génère des placeholders propres (style Streamline / Discord) que tu remplaceras ensuite via la page admin ?
+3. **Le 3e emplacement d'affichage** (chat ? member list ? autre ?) : tu confirmes qu'on l'ajoute plus tard une fois le système en place ?

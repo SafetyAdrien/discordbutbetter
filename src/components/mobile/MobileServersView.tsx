@@ -134,7 +134,7 @@ function SortableMobileServerIcon({
             count={mentionCount}
             size="lg"
             className={cn(
-              'absolute -top-1.5 -right-1.5 border-2 border-[hsl(var(--surface-server-list))] animate-badge-pop',
+              'absolute top-0 right-0 translate-x-[35%] -translate-y-[35%] border-2 border-[hsl(var(--surface-server-list))] animate-badge-pop',
               isShaking && 'animate-badge-shake'
             )}
             style={{ boxShadow: 'var(--shadow-elevation-1)' }}
@@ -366,7 +366,7 @@ export function MobileServersView({
                 count={totalDMMentions}
                 size="md"
                 className={cn(
-                  'absolute -bottom-1 -right-1 border-2 border-[hsl(var(--surface-server-list))] animate-badge-pop',
+                  'absolute bottom-0 right-0 translate-x-[35%] translate-y-[35%] border-2 border-[hsl(var(--surface-server-list))] animate-badge-pop',
                   shakingDMs && 'animate-badge-shake'
                 )}
                 style={{ boxShadow: 'var(--shadow-elevation-1)' }}

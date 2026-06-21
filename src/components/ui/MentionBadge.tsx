@@ -14,6 +14,11 @@ interface MentionBadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
  * - count < 100 → perfect circle (square w==h, rounded-full), shows exact number.
  * - count >= 100 → horizontal pill (h fixed, min-w, padded), shows "99+".
  * Returns null if count <= 0.
+ *
+ * Stable anchoring: width transitions are smooth and the element does not
+ * intercept pointer events so absolutely-positioned overlays never block clicks
+ * on the parent (server icon, channel row, etc.). Use `right-0 translate-x-*`
+ * on the call-site wrapper to make the badge grow leftward without shifting.
  */
 export const MentionBadge = forwardRef<HTMLSpanElement, MentionBadgeProps>(
   ({ count, size = 'md', className, ...rest }, ref) => {
@@ -52,7 +57,7 @@ export const MentionBadge = forwardRef<HTMLSpanElement, MentionBadgeProps>(
       <span
         ref={ref}
         className={cn(
-          'inline-flex items-center justify-center rounded-full font-bold leading-none bg-destructive text-destructive-foreground tabular-nums',
+          'inline-flex items-center justify-center rounded-full font-bold leading-none bg-destructive text-destructive-foreground tabular-nums select-none pointer-events-none whitespace-nowrap origin-center transform-gpu transition-[min-width,width] duration-150 ease-out',
           d.text,
           overflow ? d.pill : d.circle,
           className,

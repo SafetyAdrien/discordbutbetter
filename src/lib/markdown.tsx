@@ -335,7 +335,7 @@ function renderInlineToken(token: MarkdownToken, key: number, context: MarkdownC
       const mentionId = token.mentionId || (token.content as string);
       const roleId = isValidSnowflake(mentionId) ? (snowflakeToUuid(mentionId) || [...(context.roles?.keys() ?? [])].find((id) => uuidToSnowflake(id) === mentionId) || mentionId) : mentionId;
       const roleData = context.roles?.get(roleId);
-      return <RoleMention key={key} roleId={roleId} roleName={roleData?.name || 'Rôle inconnu'} roleColor={roleData?.color || '#99aab5'} serverId={context.serverId} />;
+      return <RoleMention key={key} roleId={roleId} roleName={roleData?.name || 'Rôle inconnu'} roleColor={roleData?.color || '#5865F2'} serverId={context.serverId} />;
     }
     case 'channelMention': {
       const mentionId = token.mentionId || (token.content as string);

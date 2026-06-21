@@ -561,18 +561,19 @@ export function MobileLayout({
               exit={{ x: '100%' }}
               transition={{ type: 'spring', stiffness: 400, damping: 35 }}
               className={`absolute inset-0 ${overlayBottomClass} z-30 bg-background`}
-              ref={threadSwipe.setRef}
               onTouchStart={threadSwipe.onTouchStart}
               onTouchMove={threadSwipe.onTouchMove}
               onTouchEnd={threadSwipe.onTouchEnd}
             >
-              <MobileThreadView
-                threadId={mobileView.threadId}
-                channelId={mobileView.channelId}
-                serverId={mobileView.serverId}
-                channelName={mobileView.channelName}
-                onBack={handleBackToChannels}
-              />
+              <div ref={threadSwipe.setRef} className="absolute inset-0 will-change-transform">
+                <MobileThreadView
+                  threadId={mobileView.threadId}
+                  channelId={mobileView.channelId}
+                  serverId={mobileView.serverId}
+                  channelName={mobileView.channelName}
+                  onBack={handleBackToChannels}
+                />
+              </div>
             </motion.div>
           )}
 
@@ -585,12 +586,13 @@ export function MobileLayout({
               exit={{ x: '100%' }}
               transition={{ type: 'spring', stiffness: 400, damping: 35 }}
               className={`absolute inset-0 ${overlayBottomClass} z-20 bg-background`}
-              ref={chatSwipe.setRef}
               onTouchStart={chatSwipe.onTouchStart}
               onTouchMove={chatSwipe.onTouchMove}
               onTouchEnd={chatSwipe.onTouchEnd}
             >
-              {renderChannelContent()}
+              <div ref={chatSwipe.setRef} className="absolute inset-0 will-change-transform">
+                {renderChannelContent()}
+              </div>
             </motion.div>
           )}
 
@@ -603,21 +605,23 @@ export function MobileLayout({
               exit={{ x: '100%' }}
               transition={{ type: 'spring', stiffness: 400, damping: 35 }}
               className={`absolute inset-0 ${overlayBottomClass} z-10 bg-background rounded-tl-[30px] overflow-hidden`}
-              ref={channelSwipe.setRef}
               onTouchStart={channelSwipe.onTouchStart}
               onTouchMove={channelSwipe.onTouchMove}
               onTouchEnd={channelSwipe.onTouchEnd}
             >
-              <MobileChannelListView
-                serverName={currentServer?.name || 'Serveur'}
-                serverId={mobileView.serverId}
-                categories={categoriesForList}
-                orphanChannels={orphanChannelsForList}
-                onBack={handleBackToServers}
-                onChannelSelect={handleChannelSelect}
-                onOpenSettings={(initialTab) => openServerSettings(mobileView.serverId, initialTab)}
-              />
+              <div ref={channelSwipe.setRef} className="absolute inset-0 will-change-transform">
+                <MobileChannelListView
+                  serverName={currentServer?.name || 'Serveur'}
+                  serverId={mobileView.serverId}
+                  categories={categoriesForList}
+                  orphanChannels={orphanChannelsForList}
+                  onBack={handleBackToServers}
+                  onChannelSelect={handleChannelSelect}
+                  onOpenSettings={(initialTab) => openServerSettings(mobileView.serverId, initialTab)}
+                />
+              </div>
             </motion.div>
+
           )}
         </AnimatePresence>
 

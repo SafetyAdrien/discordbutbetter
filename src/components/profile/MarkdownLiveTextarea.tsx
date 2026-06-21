@@ -40,7 +40,7 @@ export function MarkdownLiveTextarea({
         <InputMarkdownOverlay
           ref={overlayRef}
           content={value}
-          className="py-3 px-3 border border-transparent rounded-xl"
+          className="absolute inset-0 pointer-events-none py-3 px-3 border border-transparent rounded-xl overflow-y-auto"
         />
       )}
       <textarea

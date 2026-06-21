@@ -33,7 +33,7 @@ export function useServerUnreadCounts() {
         if (!memberships?.length) return;
         const { data: channels } = await supabase
           .from('channels')
-          .select('id')
+          .select('id, server_id')
           .in('server_id', memberships.map(m => m.server_id));
         userChannelToServer = new Map((channels || []).map(c => [c.id, c.server_id]));
       });

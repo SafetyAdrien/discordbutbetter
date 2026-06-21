@@ -37,6 +37,7 @@ export function MobileVoiceChannelView({
     speakingUsers, audioLevels,
     localCameraStream, localScreenStream, remoteVideoStreams, remoteScreenStreams,
   } = useVoice();
+  const { user } = useAuth();
 
   const { data: participants = [] } = useVoiceParticipants(channel.id);
   const isConnected = voiceState.channelId === channel.id;

@@ -1801,7 +1801,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
 
                             {/* Thread System Message */}
                             {threadsByMessageId.has(message.id) && (
-                              <div className="pt-1.5 pl-[50px] max-sm:pt-1">
+                              <div className="pt-1.5 pl-[50px]">
                                 <ThreadSystemMessage
                                   thread={threadsByMessageId.get(message.id)!}
                                   onClick={() => onSelectThread?.(threadsByMessageId.get(message.id)!.id)}

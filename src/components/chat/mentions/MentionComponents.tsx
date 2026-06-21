@@ -41,7 +41,7 @@ export function UserMention({ userId, displayName, avatarUrl, isSelf, onClick, v
               mention-pill inline-flex items-center gap-0.5 px-1 rounded-[3px] cursor-pointer font-medium
               transition-colors duration-100
                 ${isSelf
-                  ? 'bg-[rgba(88,101,242,0.3)] text-[#5865F2] border-l-2 border-[#5865F2] hover:bg-[rgba(88,101,242,0.5)] hover:text-white max-sm:!min-h-0 max-sm:py-0 max-sm:px-0.5 max-sm:leading-[1rem]'
+                  ? 'bg-[rgba(88,101,242,0.3)] text-[#5865F2] hover:bg-[rgba(88,101,242,0.5)] hover:text-white max-sm:!min-h-0 max-sm:py-0 max-sm:px-0.5 max-sm:leading-[1rem]'
                   : 'bg-[rgba(88,101,242,0.15)] text-[#5865F2] hover:bg-[rgba(88,101,242,0.3)] hover:text-white max-sm:!min-h-0 max-sm:py-0 max-sm:px-0.5 max-sm:leading-[1rem]'
                 }
             `}

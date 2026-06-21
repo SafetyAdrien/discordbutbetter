@@ -890,6 +890,7 @@ function FloatingProfileCard({ children, onClose, cardPosition, showRolePanel, r
 
   useEffect(() => {
     const handleDown = (e: MouseEvent) => {
+      console.log('FloatingProfileCard handleDown', { target: e.target, cardRef: cardRef.current, contains: cardRef.current ? cardRef.current.contains(e.target as Node) : null });
       if (!cardRef.current) return;
       if (!cardRef.current.contains(e.target as Node)) {
         onClose();

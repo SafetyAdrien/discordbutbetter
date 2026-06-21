@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence, useMotionValue, PanInfo } from 'framer-motion';
 import { ChevronDown, ChevronRight, Smartphone, UserPlus } from 'lucide-react';
 import { useVoice, useVoiceParticipants } from '@/contexts/VoiceContext';
 import { useMultipleChannelPermissions } from '@/hooks/useUserChannelPermissions';
@@ -30,10 +30,20 @@ export function MobileVoicePreJoinSheet({
   const [preJoinMuted, setPreJoinMuted] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
 
+  const y = useMotionValue(0);
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const [sheetHeight, setSheetHeight] = useState(0);
+
   useEffect(() => {
     if (!open) {
       setIsConnecting(false);
       setPreJoinMuted(false);
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (open && sheetRef.current) {
+      setSheetHeight(sheetRef.current.offsetHeight);
     }
   }, [open]);
 
@@ -53,71 +63,97 @@ export function MobileVoicePreJoinSheet({
     }
   };
 
-  return (
-    <>
-      <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent
-          side="bottom"
-          className="p-0 rounded-t-3xl bg-[hsl(var(--surface-1))] border-t border-white/5 h-[58vh] max-h-[58vh] [&>button.absolute]:hidden flex flex-col"
-        >
-          {/* Top bar: collapse + channel name pill + phone + add */}
-          <div className="flex items-center gap-2 px-3 pt-3 pb-2 shrink-0">
-            <button
-              type="button"
-              onClick={() => onOpenChange(false)}
-              aria-label="Réduire"
-              className="w-10 h-10 rounded-full bg-[hsl(var(--surface-2))] flex items-center justify-center active:bg-[hsl(var(--surface-3))] transition-colors shrink-0"
-            >
-              <ChevronDown className="w-5 h-5 text-foreground" />
-            </button>
+  const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    const threshold = sheetHeight * 0.25;
+    if (info.offset.y > threshold || info.velocity.y > 500) {
+      onOpenChange(false);
+    }
+  };
 
-            <div className="flex-1 flex justify-center min-w-0">
-              <button
-                type="button"
-                className="flex items-center gap-1 px-4 h-10 rounded-full bg-[hsl(var(--surface-2))] active:bg-[hsl(var(--surface-3))] transition-colors max-w-full"
-              >
-                <span className="font-bold text-foreground truncate">{channel.name}</span>
-                <ChevronRight className="w-4 h-4 text-foreground shrink-0" />
-              </button>
+  return (
+    <AnimatePresence>
+      {open && (
+        <>
+          <motion.div
+            key="voice-prejoin-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => onOpenChange(false)}
+            className="fixed inset-0 z-50 bg-black/80"
+          />
+          <motion.div
+            key="voice-prejoin-sheet"
+            ref={sheetRef}
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            transition={{ type: 'spring', damping: 26, stiffness: 300 }}
+            drag="y"
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={0.18}
+            dragListener={true}
+            onDragEnd={handleDragEnd}
+            style={{ y }}
+            className="fixed inset-x-0 bottom-0 z-50 rounded-t-3xl bg-[hsl(var(--surface-1))] border-t border-white/5 h-[32vh] max-h-[32vh] flex flex-col shadow-2xl touch-pan-y"
+          >
+            {/* Drag handle + top bar */}
+            <div className="flex flex-col shrink-0">
+              <div className="w-full pt-2 pb-1 flex justify-center">
+                <div className="w-10 h-1 rounded-full bg-white/20" />
+              </div>
+              <div className="flex items-center gap-2 px-3 pt-1 pb-2">
+                <button
+                  type="button"
+                  onClick={() => onOpenChange(false)}
+                  aria-label="Réduire"
+                  className="w-10 h-10 rounded-full bg-[hsl(var(--surface-2))] flex items-center justify-center active:bg-[hsl(var(--surface-3))] transition-colors shrink-0"
+                >
+                  <ChevronDown className="w-5 h-5 text-foreground" />
+                </button>
+
+                <div className="flex-1 flex justify-center min-w-0">
+                  <button
+                    type="button"
+                    className="flex items-center gap-1 px-4 h-10 rounded-full bg-[hsl(var(--surface-2))] active:bg-[hsl(var(--surface-3))] transition-colors max-w-full"
+                  >
+                    <span className="font-bold text-foreground truncate">{channel.name}</span>
+                    <ChevronRight className="w-4 h-4 text-foreground shrink-0" />
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  aria-label="Appel téléphonique"
+                  className="w-10 h-10 rounded-full bg-[hsl(var(--surface-2))] flex items-center justify-center active:bg-[hsl(var(--surface-3))] transition-colors shrink-0"
+                >
+                  <Smartphone className="w-5 h-5 text-foreground" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInviteOpen(true)}
+                  aria-label="Inviter"
+                  className="w-10 h-10 rounded-full bg-[hsl(var(--surface-2))] flex items-center justify-center active:bg-[hsl(var(--surface-3))] transition-colors shrink-0"
+                >
+                  <UserPlus className="w-5 h-5 text-foreground" />
+                </button>
+              </div>
             </div>
 
-            <button
-              type="button"
-              aria-label="Appel téléphonique"
-              className="w-10 h-10 rounded-full bg-[hsl(var(--surface-2))] flex items-center justify-center active:bg-[hsl(var(--surface-3))] transition-colors shrink-0"
-            >
-              <Smartphone className="w-5 h-5 text-foreground" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setInviteOpen(true)}
-              aria-label="Inviter"
-              className="w-10 h-10 rounded-full bg-[hsl(var(--surface-2))] flex items-center justify-center active:bg-[hsl(var(--surface-3))] transition-colors shrink-0"
-            >
-              <UserPlus className="w-5 h-5 text-foreground" />
-            </button>
-          </div>
-
-          {/* Pre-join content */}
-          <MobileVoicePreJoin
-            participantCount={participants.length}
-            isMuted={preJoinMuted}
-            isConnecting={isConnecting}
-            canConnect={canConnect}
-            onToggleMuted={() => setPreJoinMuted(v => !v)}
-            onJoin={handleJoin}
-            onOpenChat={onOpenChat ? () => { onOpenChat(channel.id); onOpenChange(false); } : undefined}
-          />
-        </SheetContent>
-      </Sheet>
-
-      {inviteOpen && (
-        <CreateInviteModal
-          serverId={serverId}
-          channelName={channel.name}
-          onClose={() => setInviteOpen(false)}
-        />
+            {/* Pre-join content */}
+            <MobileVoicePreJoin
+              participantCount={participants.length}
+              isMuted={preJoinMuted}
+              isConnecting={isConnecting}
+              canConnect={canConnect}
+              onToggleMuted={() => setPreJoinMuted(v => !v)}
+              onJoin={handleJoin}
+              onOpenChat={onOpenChat ? () => { onOpenChat(channel.id); onOpenChange(false); } : undefined}
+            />
+          </motion.div>
+        </>
       )}
-    </>
+    </AnimatePresence>
   );
 }

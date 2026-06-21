@@ -116,15 +116,24 @@ export function useSwipeBack({
 
 
   const onTouchEnd = useCallback(() => {
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    // Ensure final pending value is committed before animating from it.
+    if (elementRef.current && isSwipingRef.current) {
+      elementRef.current.style.transform = `translate3d(${currentXRef.current}px, 0, 0)`;
+    }
     if (isSwipingRef.current && currentXRef.current > threshold) {
       const el = elementRef.current;
       if (el && typeof el.animate === 'function') {
+        const fromX = currentXRef.current;
         exitAnimationRef.current = el.animate(
           [
-            { transform: `translateX(${currentXRef.current}px)` },
-            { transform: 'translateX(100%)' },
+            { transform: `translate3d(${fromX}px, 0, 0)` },
+            { transform: 'translate3d(100%, 0, 0)' },
           ],
-          { duration: 250, easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)' }
+          { duration: 220, easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)', fill: 'forwards' }
         );
         exitAnimationRef.current.onfinish = () => {
           haptics.light();
@@ -137,10 +146,11 @@ export function useSwipeBack({
     } else {
       const el = elementRef.current;
       if (el && currentXRef.current > 0 && typeof el.animate === 'function') {
+        const fromX = currentXRef.current;
         snapBackAnimationRef.current = el.animate(
           [
-            { transform: `translateX(${currentXRef.current}px)` },
-            { transform: 'translateX(0px)' },
+            { transform: `translate3d(${fromX}px, 0, 0)` },
+            { transform: 'translate3d(0, 0, 0)' },
           ],
           { duration: 200, easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)' }
         );
@@ -154,10 +164,12 @@ export function useSwipeBack({
     startXRef.current = null;
     startYRef.current = null;
     currentXRef.current = 0;
+    lockOffsetRef.current = 0;
     isSwipingRef.current = false;
     lockedRef.current = null;
     setIsDragging(false);
   }, [onBack, threshold, clearTransform]);
+
 
   return { onTouchStart, onTouchMove, onTouchEnd, setRef, isDragging };
 }

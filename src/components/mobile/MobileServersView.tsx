@@ -98,10 +98,13 @@ function SortableMobileServerIcon({
           isDragging && 'opacity-30'
         )}
       >
-        <div className={cn(
-          'absolute -left-[11px] top-1/2 -translate-y-1/2 w-1 rounded-r-full bg-foreground transition-all',
-          isActive ? 'h-8' : hasUnread ? 'h-3' : 'h-0 opacity-0'
-        )} />
+        <div
+          className={cn(
+            'absolute -left-[11px] top-1/2 -translate-y-1/2 w-1 rounded-r-full bg-foreground',
+            isActive ? 'h-8' : (hasUnread || mentionCount > 0) ? 'h-2' : 'h-0 opacity-0'
+          )}
+          style={{ transition: 'height 300ms' }}
+        />
 
         <div className="relative">
           <Avatar className={cn(

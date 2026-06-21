@@ -9,9 +9,10 @@ interface VoiceStatusBadgeProps {
   channelName: string;
   serverName: string | null;
   onDisconnect: () => void;
+  connectedToProfile?: boolean;
 }
 
-export function VoiceStatusBadge({ channelName, serverName, onDisconnect }: VoiceStatusBadgeProps) {
+export function VoiceStatusBadge({ channelName, serverName, onDisconnect, connectedToProfile }: VoiceStatusBadgeProps) {
   const {
     connectionStats,
     isCameraActive,
@@ -26,10 +27,13 @@ export function VoiceStatusBadge({ channelName, serverName, onDisconnect }: Voic
 
   return (
     <div
-      className="mx-2 px-3 py-2 rounded-2xl bg-[hsl(var(--surface-2))] border border-border/40"
-      style={{ boxShadow: 'var(--shadow-elevation-2)' }}
+      className={cn(
+        "mx-2 px-3 py-2 bg-[hsl(var(--surface-2))] border border-border/40",
+        connectedToProfile ? "rounded-t-2xl rounded-b-none border-b-0" : "rounded-2xl"
+      )}
+      style={{ boxShadow: connectedToProfile ? undefined : 'var(--shadow-elevation-2)' }}
     >
-      {/* Ligne 1 : statut */}
+      {/* Ligne 1 : statut + Krisp + déconnexion */}
       <div className="flex items-center gap-2">
         <VoiceConnectionIndicator stats={connectionStats} connected />
         <div className="flex-1 min-w-0">
@@ -40,6 +44,25 @@ export function VoiceStatusBadge({ channelName, serverName, onDisconnect }: Voic
             {channelName}{serverName ? ` / ${serverName}` : ''}
           </p>
         </div>
+
+        <TooltipProvider delayDuration={200}>
+          {/* Krisp / Noise suppression */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setNoiseSuppression(krispActive ? 'off' : 'high')}
+                className={cn(
+                  'w-7 h-7 rounded-full flex items-center justify-center transition-colors hover:bg-muted shrink-0',
+                  krispActive && 'bg-[hsl(var(--online))]/15 text-[hsl(var(--online))] hover:bg-[hsl(var(--online))]/25'
+                )}
+              >
+                <Wand2 className={cn('w-3.5 h-3.5', !krispActive && 'text-muted-foreground')} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>{krispActive ? 'Krisp activé' : 'Krisp désactivé'}</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -103,22 +126,6 @@ export function VoiceStatusBadge({ channelName, serverName, onDisconnect }: Voic
               </button>
             </TooltipTrigger>
             <TooltipContent>Soundboard — Bientôt disponible</TooltipContent>
-          </Tooltip>
-
-          {/* Krisp / Noise suppression */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => setNoiseSuppression(krispActive ? 'off' : 'high')}
-                className={cn(
-                  'w-8 h-8 rounded-lg flex items-center justify-center transition-colors hover:bg-muted',
-                  krispActive && 'bg-[hsl(var(--online))]/15 text-[hsl(var(--online))] hover:bg-[hsl(var(--online))]/25'
-                )}
-              >
-                <Wand2 className={cn('w-4 h-4', !krispActive && 'text-muted-foreground')} />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>{krispActive ? 'Krisp activé' : 'Krisp désactivé'}</TooltipContent>
           </Tooltip>
         </TooltipProvider>
       </div>

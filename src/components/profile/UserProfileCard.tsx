@@ -53,9 +53,10 @@ interface UserProfileCardProps {
   onOpenSettings: () => void;
   onOpenProfile: () => void;
   speakingUsers?: Set<string>;
+  connectedToVoice?: boolean;
 }
 
-export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }: UserProfileCardProps) {
+export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers, connectedToVoice }: UserProfileCardProps) {
   const { profile, updateStatus } = useAuth();
   const { setManualStatus } = usePresenceContext();
   const voiceCtx = useVoice();
@@ -126,8 +127,11 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
 
   return (
     <div
-      className="h-full mx-2 mb-2 px-3 py-1.5 rounded-2xl flex items-center gap-2.5 bg-[hsl(var(--surface-2))] border border-border/40"
-      style={{ boxShadow: 'var(--shadow-elevation-2)' }}
+      className={cn(
+        "h-full mx-2 mb-2 px-3 py-1.5 flex items-center gap-2.5 bg-[hsl(var(--surface-2))] border border-border/40",
+        connectedToVoice ? "rounded-b-2xl rounded-t-none border-t-0" : "rounded-2xl"
+      )}
+      style={{ boxShadow: connectedToVoice ? undefined : 'var(--shadow-elevation-2)' }}
     >
       <Popover>
         <PopoverTrigger asChild>

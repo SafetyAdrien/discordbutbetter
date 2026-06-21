@@ -889,7 +889,7 @@ const Index = () => {
       {/* Floating Voice + Profile Panel - desktop only, spans ServerList + ChannelList width */}
       {!isMobile && !isTablet && (
         <div
-          className="fixed bottom-0 left-0 z-40 flex flex-col gap-1.5 pb-0"
+          className="fixed bottom-0 left-0 z-40 flex flex-col gap-0 pb-0"
           style={{ width: 'calc(80px + 2px + 240px)' }}
         >
           {isConnected && voiceState.channelName && (
@@ -897,6 +897,7 @@ const Index = () => {
               channelName={voiceState.channelName}
               serverName={voiceState.serverName}
               onDisconnect={() => leaveChannel()}
+              connectedToProfile
             />
           )}
           <div className="h-[68px]">
@@ -904,6 +905,7 @@ const Index = () => {
               onOpenSettings={() => setShowAccountSettingsGlobal(true)}
               onOpenProfile={() => setShowAccountSettingsGlobal(true)}
               speakingUsers={speakingUsers}
+              connectedToVoice={isConnected && !!voiceState.channelName}
             />
           </div>
         </div>

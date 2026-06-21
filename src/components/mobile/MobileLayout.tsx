@@ -199,15 +199,24 @@ export function MobileLayout({
     }
   }, [onServerSelect, mobileView.type, setMobileView]);
 
-  // Resolve a channel object from any loaded server (used to intercept link channels)
+  // Resolve a channel object from any loaded server, including the live channelsData
+  // (which may not be merged into rawServers yet).
   const findChannel = useCallback((channelId: string) => {
     for (const s of rawServers) {
       const all = [...s.categories.flatMap((c: any) => c.channels), ...(s.orphanChannels || [])];
       const found = all.find((ch: any) => ch.id === channelId);
       if (found) return found;
     }
+    if (channelsData) {
+      const all = [
+        ...(channelsData.categories || []).flatMap((c: any) => c.channels || []),
+        ...(channelsData.orphanChannels || []),
+      ];
+      const found = all.find((ch: any) => ch.id === channelId);
+      if (found) return found;
+    }
     return null;
-  }, [rawServers]);
+  }, [rawServers, channelsData]);
 
   const handleServerChannelSelect = (serverId: string, channelId: string, channelType: string) => {
     // Intercept link channels — open external link modal instead of navigating to a chat

@@ -4,6 +4,7 @@ import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffect, useRef } from 'react';
 import { soundEffects } from '@/utils/audio/SoundEffects';
+import { isDirectMentionForUser } from '@/lib/mentions';
 
 export interface ServerUnreadInfo {
   hasUnread: boolean;
@@ -14,6 +15,7 @@ export function useServerUnreadCounts() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const optimisticMentionMessageIdsRef = useRef<Set<string>>(new Set());
 
   const cachedKey = user?.id ? `server-unread:${user.id}` : null;
   const cachedData = cachedKey ? cacheGetSync<Record<string, ServerUnreadInfo>>(cachedKey) : undefined;
@@ -22,7 +24,7 @@ export function useServerUnreadCounts() {
   useEffect(() => {
     if (!user) return;
 
-    let userChannelIds: Set<string> | null = null;
+    let userChannelToServer: Map<string, string> | null = null;
     supabase
       .from('server_members')
       .select('server_id')
@@ -33,8 +35,23 @@ export function useServerUnreadCounts() {
           .from('channels')
           .select('id')
           .in('server_id', memberships.map(m => m.server_id));
-        userChannelIds = new Set(channels?.map(c => c.id) || []);
+        userChannelToServer = new Map((channels || []).map(c => [c.id, c.server_id]));
       });
+
+    const patchServer = (serverId: string, patch: Partial<ServerUnreadInfo>) => {
+      queryClient.setQueryData<Record<string, ServerUnreadInfo>>(
+        ['server-unread-counts', user.id],
+        (old = {}) => {
+          const current = old[serverId] || { hasUnread: false, mentionCount: 0 };
+          const next = { ...current, ...patch };
+          if (!next.hasUnread && next.mentionCount <= 0) {
+            const { [serverId]: _, ...rest } = old;
+            return rest;
+          }
+          return { ...old, [serverId]: next };
+        }
+      );
+    };
 
     const messagesChannel = supabase
       .channel('server-unread-messages')
@@ -42,16 +59,23 @@ export function useServerUnreadCounts() {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages' },
         (payload) => {
-          const newMsg = payload.new as { author_id: string; channel_id: string };
-          if (userChannelIds && !userChannelIds.has(newMsg.channel_id)) return;
+          const newMsg = payload.new as { id?: string; author_id: string; channel_id: string; content?: string | null };
+          const serverId = userChannelToServer?.get(newMsg.channel_id);
+          if (userChannelToServer && !serverId) return;
 
           if (newMsg.author_id !== user.id) {
             soundEffects.playMessageNotification();
+            if (serverId) {
+              const current = queryClient.getQueryData<Record<string, ServerUnreadInfo>>(['server-unread-counts', user.id])?.[serverId];
+              const isMention = isDirectMentionForUser(newMsg.content, user.id);
+              if (isMention && newMsg.id) optimisticMentionMessageIdsRef.current.add(newMsg.id);
+              patchServer(serverId, {
+                hasUnread: true,
+                mentionCount: (current?.mentionCount || 0) + (isMention ? 1 : 0),
+              });
+            }
           }
-          clearTimeout(debounceRef.current);
-          debounceRef.current = setTimeout(() => {
-            queryClient.invalidateQueries({ queryKey: ['server-unread-counts'] });
-          }, 800);
+          queryClient.invalidateQueries({ queryKey: ['server-unread-counts'] });
         }
       )
       .subscribe();
@@ -60,12 +84,33 @@ export function useServerUnreadCounts() {
       .channel('server-unread-mentions')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'channel_mentions' },
-        () => {
-          clearTimeout(debounceRef.current);
-          debounceRef.current = setTimeout(() => {
-            queryClient.invalidateQueries({ queryKey: ['server-unread-counts'] });
-          }, 800);
+        { event: 'INSERT', schema: 'public', table: 'channel_mentions', filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          const mention = payload.new as { channel_id?: string; message_id?: string };
+          if (!mention.channel_id) return;
+          const serverId = userChannelToServer?.get(mention.channel_id);
+          if (userChannelToServer && !serverId) return;
+          if (serverId) {
+            if (mention.message_id && optimisticMentionMessageIdsRef.current.delete(mention.message_id)) return;
+            const current = queryClient.getQueryData<Record<string, ServerUnreadInfo>>(['server-unread-counts', user.id])?.[serverId];
+            patchServer(serverId, { mentionCount: (current?.mentionCount || 0) + 1 });
+          }
+          queryClient.invalidateQueries({ queryKey: ['server-unread-counts'] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'channel_mentions', filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          const mention = payload.old as { channel_id?: string };
+          if (!mention.channel_id) return;
+          const serverId = userChannelToServer?.get(mention.channel_id);
+          if (userChannelToServer && !serverId) return;
+          if (serverId) {
+            const current = queryClient.getQueryData<Record<string, ServerUnreadInfo>>(['server-unread-counts', user.id])?.[serverId];
+            patchServer(serverId, { mentionCount: Math.max(0, (current?.mentionCount || 0) - 1) });
+          }
+          queryClient.invalidateQueries({ queryKey: ['server-unread-counts'] });
         }
       )
       .subscribe();

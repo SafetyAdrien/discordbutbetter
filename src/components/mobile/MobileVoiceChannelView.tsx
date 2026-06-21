@@ -109,7 +109,6 @@ export function MobileVoiceChannelView({ channel, serverId, onBack, initialShowC
       {isConnected ? (
         <div className="px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <div className="mx-auto bg-[hsl(var(--surface-1))]/90 backdrop-blur rounded-full px-3 py-2.5 flex items-center justify-around gap-1 max-w-md">
-            <div className="absolute left-1/2 -translate-x-1/2 -mt-4 w-9 h-1 rounded-full bg-white/20" />
             <PillButton
               active={isCameraActive}
               onClick={canVideo ? toggleCamera : undefined}

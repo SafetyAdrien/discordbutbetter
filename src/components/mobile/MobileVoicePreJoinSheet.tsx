@@ -5,6 +5,7 @@ import { useVoice, useVoiceParticipants } from '@/contexts/VoiceContext';
 import { useMultipleChannelPermissions } from '@/hooks/useUserChannelPermissions';
 import { MobileVoicePreJoin } from './MobileVoicePreJoin';
 import { CreateInviteModal } from '@/components/modals/CreateInviteModal';
+import { MobileVoiceSettingsPanel } from './MobileVoiceSettingsPanel';
 
 interface Props {
   open: boolean;
@@ -29,6 +30,7 @@ export function MobileVoicePreJoinSheet({
   const [isConnecting, setIsConnecting] = useState(false);
   const [preJoinMuted, setPreJoinMuted] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const y = useMotionValue(0);
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -118,6 +120,8 @@ export function MobileVoicePreJoinSheet({
                 <div className="flex-1 flex justify-center min-w-0">
                   <button
                     type="button"
+                    onClick={() => setSettingsOpen(true)}
+                    aria-label="Paramètres du salon"
                     className="flex items-center gap-1 px-4 h-10 rounded-full bg-[hsl(var(--surface-2))] active:bg-[hsl(var(--surface-3))] transition-colors max-w-full"
                   >
                     <span className="font-bold text-foreground truncate">{channel.name}</span>
@@ -154,6 +158,16 @@ export function MobileVoicePreJoinSheet({
               onOpenChat={onOpenChat ? () => { onOpenChat(channel.id); onOpenChange(false); } : undefined}
             />
           </motion.div>
+
+          <AnimatePresence>
+            {settingsOpen && (
+              <MobileVoiceSettingsPanel
+                channelName={channel.name}
+                onClose={() => setSettingsOpen(false)}
+                onInvite={() => { setSettingsOpen(false); setInviteOpen(true); }}
+              />
+            )}
+          </AnimatePresence>
 
           {inviteOpen && (
             <CreateInviteModal

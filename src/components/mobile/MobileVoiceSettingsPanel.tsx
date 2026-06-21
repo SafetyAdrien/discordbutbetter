@@ -1,6 +1,6 @@
-import { motion } from 'framer-motion';
+import { motion, useMotionValue, PanInfo } from 'framer-motion';
 import { ChevronDown, ChevronRight, Settings, Ear, Video, UserPlus, Wrench } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 
 interface Props {
   channelName: string;

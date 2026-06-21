@@ -1,6 +1,6 @@
-import { motion, useMotionValue, PanInfo } from 'framer-motion';
+import { motion, useMotionValue, useDragControls, PanInfo } from 'framer-motion';
 import { ChevronRight, Settings, Ear, Video, UserPlus, Wrench } from 'lucide-react';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 interface Props {
   channelName: string;

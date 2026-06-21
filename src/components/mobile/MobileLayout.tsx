@@ -91,6 +91,7 @@ export function MobileLayout({
   const [settingsServerId, setSettingsServerId] = useState<string | null>(null);
   const [settingsInitialTab, setSettingsInitialTab] = useState<string | undefined>(undefined);
   const [externalLinkUrl, setExternalLinkUrl] = useState<string | null>(null);
+  const [voicePreJoin, setVoicePreJoin] = useState<{ serverId: string; channel: { id: string; name: string } } | null>(null);
 
   const openServerSettings = (serverId: string, initialTab?: string) => {
     setSettingsInitialTab(initialTab);

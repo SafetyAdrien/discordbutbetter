@@ -134,27 +134,42 @@ function ServerProfileSheet({
     if (!user || markingRead) return;
     setMarkingRead(true);
     try {
-      // Upsert server-level read marker
-      await supabase
-        .from('server_read_states')
-        .upsert(
-          { user_id: user.id, server_id: serverId, last_read_at: new Date().toISOString() },
-          { onConflict: 'user_id,server_id' }
-        );
+      const nowIso = new Date().toISOString();
 
-      // Clear pending mentions for all this server's channels
+      // Get this server's channels
       const { data: chs } = await supabase
         .from('channels')
         .select('id')
         .eq('server_id', serverId);
       const channelIds = (chs || []).map((c) => c.id);
-      if (channelIds.length > 0) {
-        await supabase
-          .from('channel_mentions')
-          .delete()
-          .eq('user_id', user.id)
-          .in('channel_id', channelIds);
-      }
+
+      // Upsert per-channel read state (source of truth) + keep server-level marker in sync
+      const upserts = channelIds.map((cid) => ({
+        user_id: user.id,
+        channel_id: cid,
+        last_read_at: nowIso,
+      }));
+
+      await Promise.all([
+        upserts.length > 0
+          ? supabase
+              .from('channel_read_states')
+              .upsert(upserts, { onConflict: 'user_id,channel_id' })
+          : Promise.resolve({ error: null } as any),
+        supabase
+          .from('server_read_states')
+          .upsert(
+            { user_id: user.id, server_id: serverId, last_read_at: nowIso },
+            { onConflict: 'user_id,server_id' }
+          ),
+        channelIds.length > 0
+          ? supabase
+              .from('channel_mentions')
+              .delete()
+              .eq('user_id', user.id)
+              .in('channel_id', channelIds)
+          : Promise.resolve({ error: null } as any),
+      ]);
 
       queryClient.invalidateQueries({ queryKey: ['channel-unread-counts', serverId, user.id] });
       queryClient.invalidateQueries({ queryKey: ['server-unread-mentions'] });

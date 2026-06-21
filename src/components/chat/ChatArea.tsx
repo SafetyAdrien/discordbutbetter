@@ -96,6 +96,7 @@ import { RoleBadgePopover } from "@/components/chat/RoleBadgePopover";
 import { DeleteMessageDialog } from "./DeleteMessageDialog";
 import { toast } from "sonner";
 import { useSummaries } from "@/hooks/useSummaries";
+import { useMarkChannelAsRead } from "@/hooks/useMarkChannelAsRead";
 import { SummariesBar } from "@/components/summaries/SummariesBar";
 import { UploadDropOverlay } from "@/components/chat/upload/UploadDropOverlay";
 import { usePendingAttachments, PendingAttachment } from "@/hooks/usePendingAttachments";
@@ -711,6 +712,18 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     toggleLike,
     likedCount,
   } = useSummaries(channel?.id);
+
+  // Auto mark-as-read for this channel (clears unread dot + mentions)
+  const markChannelAsRead = useMarkChannelAsRead();
+  useEffect(() => {
+    if (!user || !channel?.id) return;
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+    const t = setTimeout(() => {
+      markChannelAsRead(channel.id, channel.server_id || null);
+    }, 400);
+    return () => clearTimeout(t);
+    // Re-run when channel changes or new messages arrive while focused
+  }, [channel?.id, channel?.server_id, user, messages.length, markChannelAsRead]);
 
   // Get owner/admin status (already loaded from server context - instant)
   const { isGod, hasPermission: hasServerPermission } = usePermissions(channel.server_id || null);

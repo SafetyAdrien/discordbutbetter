@@ -19,7 +19,7 @@ interface Props {
 }
 
 export function MobileVoicePreJoinSheet({
-  open, onOpenChange, channel, serverId, serverName, onJoined,
+  open, onOpenChange, channel, serverId, serverName, onJoined, onOpenChat,
 }: Props) {
   const { voiceState, joinChannel, toggleMute } = useVoice();
   const { data: participants = [] } = useVoiceParticipants(channel?.id ?? null);

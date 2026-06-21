@@ -114,11 +114,13 @@ export function MobileVoiceChannelView({ channel, serverId, onBack, initialShowC
               active={isCameraActive}
               onClick={canVideo ? toggleCamera : undefined}
               icon={isCameraActive ? <Video className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
+              aria-label={isCameraActive ? 'Désactiver la caméra' : 'Activer la caméra'}
             />
             <PillButton
               danger={voiceState.isMuted}
               onClick={canSpeak ? toggleMute : undefined}
               icon={voiceState.isMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+              aria-label={voiceState.isMuted ? 'Désactiver la sourdine' : 'Couper le micro'}
             />
             <PillButton
               onClick={() => setShowChat(true)}
@@ -128,6 +130,7 @@ export function MobileVoiceChannelView({ channel, serverId, onBack, initialShowC
             <PillButton
               onClick={() => {}}
               icon={<Hand className="w-5 h-5" />}
+              aria-label="Lever la main"
             />
             <button
               onClick={leaveChannel}

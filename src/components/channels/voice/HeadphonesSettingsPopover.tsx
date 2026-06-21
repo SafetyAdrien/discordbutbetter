@@ -14,6 +14,8 @@ interface HeadphonesSettingsPopoverProps {
   onOutputVolumeChange: (vol: number) => void;
   isDeafened: boolean;
   onToggleDeafen: () => void;
+  open?: boolean;
+  onOpenChange?: (o: boolean) => void;
 }
 
 export function HeadphonesSettingsPopover({
@@ -22,9 +24,11 @@ export function HeadphonesSettingsPopover({
   onOutputVolumeChange,
   isDeafened,
   onToggleDeafen,
+  open,
+  onOpenChange,
 }: HeadphonesSettingsPopoverProps) {
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>{children}</PopoverTrigger>
       <PopoverContent side="top" align="center" className="w-72 p-0">
         <div className="p-3 space-y-3">

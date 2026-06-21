@@ -1,59 +1,67 @@
-## 1. Préchargement de la liste sous le swipe (Mobile)
+## Objectif
 
-**Problème**
-`AnimatePresence mode="wait"` dans `MobileLayout.tsx` attend la fin de l'animation d'exit de l'overlay (chat / thread) avant de monter l'overlay parent (`channels`). Pendant ce délai, l'écran est vide → "page blanche" pendant la transition.
+Étendre les pastilles rouges "mention" (style Discord) à:
+1. Les conversations DM (Desktop `DMList` + Mobile `MobileDMHomeView`).
+2. L'icône Inbox / Notifications (Desktop `InboxButton`, Mobile `MobileProfileView` → Bell, et le compteur du header dans `MobileNotificationsView`).
 
-**Correctif**
-- Dans `src/components/mobile/MobileLayout.tsx`:
-  - Retirer le `mode="wait"` de l'`AnimatePresence` qui contient thread / chat / channels.
-  - Au déclenchement du swipe (handler `onSwipeStart` du hook `useSwipeBack`), monter immédiatement la vue parente (`channels` pour un swipe depuis `chat`, `tab/servers` pour un swipe depuis `channels`) dans une couche dédiée placée derrière l'overlay (z-index inférieur). Cette couche "preview" est rendue dès le `touchstart` et démontée après l'`onfinish` de l'animation.
-  - Pour `channels → swipe → tab`, s'assurer que la vue `MobileServersView` reste rendue en arrière-plan (déjà le cas via `activeTab === 'servers'`) — le vrai correctif consiste donc à ne plus bloquer le rendu du parent pendant la sortie.
-- Dans `src/hooks/useSwipeBack.ts`: exposer un callback `onSwipeStart` invoqué dès que le lock horizontal est détecté, pour permettre à `MobileLayout` d'allumer le preview.
+Règle (cohérente avec la mémoire "Notification distinctions"):
+- Pastille rouge avec compteur = "mention" (message qui vous est adressé).
+- DM 1-on-1: **chaque** message non lu compte comme une mention (la conversation entière vous est adressée).
+- Groupe DM: seuls les `<@me>` explicites (UUID ou Snowflake) comptent comme mention; le reste reste un simple "unread".
 
-Résultat: la liste de salons (ou serveurs) est visible sous le doigt avant même le début de la translation, plus aucune frame vide.
+## 1. Hook `useDMMentionCounts`
 
-## 2. Système de notification / "messages lus" (Mobile + Desktop)
+Nouveau hook `src/hooks/useDMMentionCounts.ts`:
+- Entrée: rien (utilise `useAuth`).
+- Fetch:
+  - `dm_participants` de l'utilisateur → ids des conversations.
+  - `dm_conversations` (champ `is_group`) en batch.
+  - `dm_read_states` (last_read_at par conv) en batch.
+  - `dm_messages` filtré: `conversation_id IN (...)`, `created_at > min(last_read_at)`, `author_id != me`, limit 2000.
+- Calcul en mémoire par conv:
+  - 1-on-1: `mentionCount = nombre de messages non lus reçus`.
+  - Groupe: ne compter que les messages dont `content` matche `<@(my_uuid)>` ou `<@(my_snowflake)>` (snowflake calculé une fois via `uuidToSnowflake`).
+- Souscription Realtime sur `dm_messages` (déjà filtrable côté hook) + `dm_read_states` (invalidate debounce 200ms).
+- Cache via `cacheGetSync`/`cacheSetAsync` clé `dm-mention-counts:${user.id}`.
+- Retour: `{ mentionCounts: Record<convId, number>, totalMentionCount: number }`.
 
-**Problème actuel**
-- Le seul marqueur de lecture est `server_read_states` (un `last_read_at` par serveur). `useChannelUnreadCounts` l'utilise pour tous les salons, donc:
-  - Marquer un salon = marquer tout le serveur.
-  - Ouvrir un salon ne marque PAS automatiquement comme lu (aucun appel à `markAsRead` n'existe lors de l'entrée d'un salon, ni Desktop ni Mobile — celui passé à `ChatArea` provient de `useSummaries`).
-- Les pastilles ne disparaissent donc jamais (sauf via "Marquer tout comme lu" dans la sheet mobile).
+## 2. Hook agrégé `useTotalMentionCount`
 
-**Correctif: introduire un read state par salon**
+Nouveau `src/hooks/useTotalMentionCount.ts`:
+- Combine:
+  - `useServerUnreadCounts().unreadInfo` → `sum(info.mentionCount)`.
+  - `useDMMentionCounts().totalMentionCount`.
+- Retourne `number`.
 
-### 2.1 Backend (migration Supabase)
-Nouvelle table `channel_read_states`:
-```
-user_id uuid, channel_id uuid, last_read_at timestamptz
-PRIMARY KEY (user_id, channel_id)
-```
-- `GRANT SELECT, INSERT, UPDATE, DELETE … TO authenticated;` + `GRANT ALL … TO service_role;`
-- RLS: `using (auth.uid() = user_id) with check (auth.uid() = user_id)`.
-- Index sur `(user_id, channel_id)`.
-- `REPLICA IDENTITY FULL` + ajout à la publication `supabase_realtime`.
+## 3. Affichage DM list — pastille rouge mention
 
-### 2.2 Hook unifié `useMarkChannelAsRead`
-Nouveau hook qui:
-1. Upsert `channel_read_states` avec `last_read_at = now()`.
-2. Supprime les `channel_mentions` de l'utilisateur sur ce salon.
-3. Met à jour optimistiquement les caches `['channel-unread-counts', serverId, userId]` et `['server-unread-counts', userId]` (retire l'entrée du salon, recalcule la pastille serveur).
-4. Invalide `['server-unread-counts']` et `['channel-unread-counts', serverId]`.
+- **Desktop** `src/components/dm/DMList.tsx`:
+  - Récupérer `mentionCounts` via `useDMMentionCounts`.
+  - Passer `mentionCount` au `DMListItem`.
+  - Remplacer le bloc actuel (badge bg-destructive avec `unreadCount`) par la logique:
+    - `mentionCount > 0` → pastille rouge avec `mentionCount` (style identique à `ChannelList` lignes 715-719: `bg-destructive text-destructive-foreground rounded-full text-xs px-1.5 py-0.5`).
+    - sinon si `unreadCount > 0` → petit point blanc (style "unread dot" déjà utilisé pour les salons sans mention, cf. mémoire).
+- **Mobile** `src/components/mobile/dm/MobileDMHomeView.tsx`:
+  - Même hook, même règle d'affichage à l'endroit où le `unreadCount` est rendu.
 
-### 2.3 Mise à jour des hooks de lecture
-- `useChannelUnreadCounts` (`src/hooks/useChannelUnreadCounts.ts`): remplacer la lecture d'un `server_read_states` unique par un fetch batch de `channel_read_states` filtré sur `channel_id in (channelIds)`, et calculer `hasUnread` par salon avec son propre `last_read_at` (fallback `epoch`).
-- `useServerUnreadCounts` (`src/hooks/useServerUnreadCounts.ts`): même logique d'agrégation, mais en pivotant sur la map `channel → last_read_at`. La pastille serveur s'éteint dès que tous ses salons sont à jour.
-- Ajouter une souscription Realtime sur `channel_read_states` (INSERT/UPDATE filtrée par `user_id`) pour invalider les deux query keys, garantissant la synchro multi-onglet/multi-appareil.
+## 4. Inbox / Notifications — pastille rouge
 
-### 2.4 Déclenchement automatique
-- Desktop `src/components/chat/ChatArea.tsx`: ajouter un `useEffect` dépendant de `channel.id` + du dernier message visible (ou du fait que `messages.length > 0` et qu'on est en bas) → appelle `markChannelAsRead(channel.id)`. Couvre l'ouverture initiale et l'arrivée de nouveaux messages quand on est focus.
-- Mobile `src/components/mobile/MobileChatView.tsx`: même `useEffect` dans le composant (avant le rendu de `ChatArea`) avec une garde "vue active".
-- `src/components/mobile/MobileChannelListView.tsx` "Marquer tout comme lu": remplacer l'upsert direct par un upsert batch sur `channel_read_states` pour tous les salons du serveur + suppression des mentions (cohérence avec le nouveau modèle). Garder l'upsert de `server_read_states` pour compatibilité tant que `useServerUnreadCounts` ne s'en sert plus.
+- **Desktop** `src/components/layout/MemberList.tsx` (`InboxButton` lignes 228-256):
+  - Remplacer `unreadCount = notifications.filter(status==='pending').length` par `totalMentionCount = useTotalMentionCount()`.
+  - Conserver le Badge `variant="destructive"` mais branché sur `totalMentionCount` (affichage si > 0, "99+" au-delà).
+  - Garder éventuellement un point blanc supplémentaire si `unreadCount > 0 && totalMentionCount === 0` (cohérence dot/bubble).
+- **Mobile** `src/components/mobile/MobileProfileView.tsx` (bouton Bell lignes 178-188):
+  - Remplacer `notifCount` par `useTotalMentionCount()`; même règle.
+- **Header `MobileNotificationsView`** lignes 170-172, 299: laisser le label "X non lue" inchangé (il représente l'unread général), mais ajouter à côté un sous-compteur rouge si `totalMentionCount > 0` pour cohérence visuelle.
 
-### 2.5 Compatibilité
-- `server_read_states` reste en place mais n'est plus la source de vérité côté unread. Aucune migration des données existantes nécessaire: à la première ouverture d'un salon, sa ligne `channel_read_states` est créée.
+## 5. Aucune migration DB requise
 
-## 3. Vérification
+Tout est dérivé des tables existantes (`dm_messages`, `dm_read_states`, `dm_participants`, `dm_conversations`, `channel_mentions`). Aucune nouvelle table, aucun trigger.
+
+## 6. Vérification
+
+- DM 1-on-1: envoyer un message depuis A vers B → pastille rouge "1" sur la ligne DM (Desktop + Mobile) et incrément du compteur Inbox/Bell.
+- Groupe DM: message sans @ → simple point blanc, pas de rouge; message avec `<@B>` → pastille rouge "1".
+- Mention serveur (déjà couverte) → continue d'incrémenter le compteur Inbox/Bell global.
+- Ouvrir la conversation / le salon → le compteur retombe (déjà géré par `useMarkChannelAsRead` et `useUnreadCounts.markAsRead`).
 - `bunx tsc --noEmit`.
-- Test manuel Mobile: ouvrir un salon → la pastille du salon disparaît, la pastille serveur disparaît si plus rien d'autre n'est non lu, swipe back affiche immédiatement la liste sans frame blanche.
-- Test manuel Desktop: idem (ouverture salon, mention dans un autre salon → seules les pastilles correspondantes s'allument).

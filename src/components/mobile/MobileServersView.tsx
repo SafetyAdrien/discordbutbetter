@@ -84,7 +84,7 @@ function SortableMobileServerIcon({
   } as React.CSSProperties;
 
   return (
-    <div ref={setNodeRef} style={style} className="relative w-full flex flex-col items-center overflow-visible">
+    <div ref={setNodeRef} style={style} className="group relative w-full flex flex-col items-center overflow-visible">
 
       {dropIndicator === 'before' && (
         <div className="w-10 h-0.5 bg-primary rounded-full mx-auto mb-0.5" />

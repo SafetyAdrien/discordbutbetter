@@ -79,6 +79,15 @@ export function MobileVoicePreJoinSheet({
       {open && (
         <>
           <motion.div
+            key="voice-sheet-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4, ease: 'easeOut' }}
+            onClick={() => onOpenChange(false)}
+            className="fixed inset-0 z-50 bg-black/60"
+          />
+          <motion.div
             key="voice-sheet"
             ref={sheetRef}
             initial={{ y: '100%' }}
@@ -91,7 +100,7 @@ export function MobileVoicePreJoinSheet({
             dragListener={true}
             onDragEnd={handleDragEnd}
             style={{ y }}
-            className="fixed inset-x-0 bottom-0 z-40 rounded-t-3xl bg-[hsl(var(--surface-1))] border-t border-white/5 h-[32vh] max-h-[32vh] flex flex-col shadow-2xl touch-pan-y"
+            className="fixed inset-x-0 bottom-0 z-50 rounded-t-3xl bg-[hsl(var(--surface-1))] border-t border-white/5 h-[32vh] max-h-[32vh] flex flex-col shadow-2xl touch-pan-y"
           >
             {/* Drag handle + top bar */}
             <div className="flex flex-col shrink-0">

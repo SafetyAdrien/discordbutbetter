@@ -110,8 +110,7 @@ export function useDMMentionCounts() {
         const msg = payload.new as { conversation_id?: string; author_id?: string; content?: string | null };
         if (!msg.conversation_id || msg.author_id === user.id) return;
         const meta = convMeta[msg.conversation_id];
-        if (!meta) return;
-        if (!meta.isGroup || isDirectMentionForUser(msg.content, user.id)) {
+        if (!meta || !meta.isGroup || isDirectMentionForUser(msg.content, user.id)) {
           patchConversation(msg.conversation_id, 1);
         }
         queryClient.invalidateQueries({ queryKey: ['dm-mention-counts'] });

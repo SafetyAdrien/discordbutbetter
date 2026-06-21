@@ -10,6 +10,7 @@ import { MobileThreadView } from './MobileThreadView';
 import { VoiceChannelView } from '@/components/channels/VoiceChannelView';
 import { MobileVoiceChannelView } from './MobileVoiceChannelView';
 import { MobileChannelHeader } from './MobileChannelHeader';
+import { MobileVoicePreJoinSheet } from './MobileVoicePreJoinSheet';
 import { VoicePiP } from './VoicePiP';
 import { StageChannel } from '@/components/channels/StageChannel';
 import { MediaChannel } from '@/components/channels/MediaChannel';

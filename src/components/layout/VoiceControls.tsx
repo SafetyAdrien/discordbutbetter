@@ -9,6 +9,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useVoice } from '@/contexts/VoiceContext';
 import { VoiceConnectionIndicator } from '@/components/channels/voice/VoiceConnectionIndicator';
 import { MicrophoneSettingsPopover } from '@/components/channels/voice/MicrophoneSettingsPopover';
+import { OutputSettingsPopover } from '@/components/channels/voice/OutputSettingsPopover';
 
 interface VoiceControlsProps {
   channelName: string;

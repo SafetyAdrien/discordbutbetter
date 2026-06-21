@@ -52,6 +52,7 @@ function SortableMobileServerIcon({
   isActive,
   hasUnread,
   mentionCount,
+  isShaking,
   isDragging,
   dragActive,
   dropIndicator,
@@ -61,6 +62,7 @@ function SortableMobileServerIcon({
   isActive: boolean;
   hasUnread: boolean;
   mentionCount: number;
+  isShaking: boolean;
   isDragging: boolean;
   dragActive: boolean;
   dropIndicator: 'before' | 'after' | null;
@@ -127,7 +129,13 @@ function SortableMobileServerIcon({
           </Avatar>
 
           {mentionCount > 0 && (
-            <span className="absolute -top-1.5 -right-1.5 min-w-[22px] h-[22px] px-1.5 flex items-center justify-center text-[11px] font-bold bg-destructive text-destructive-foreground rounded-full border-2 border-[hsl(var(--surface-server-list))]">
+            <span
+              className={cn(
+                'absolute -top-1.5 -right-1.5 min-w-[22px] h-[22px] px-1.5 flex items-center justify-center text-[11px] font-bold bg-destructive text-destructive-foreground rounded-full border-2 border-[hsl(var(--surface-server-list))] animate-badge-pop',
+                isShaking && 'animate-badge-shake'
+              )}
+              style={{ boxShadow: 'var(--shadow-elevation-1)' }}
+            >
               {mentionCount > 99 ? '99+' : mentionCount}
             </span>
           )}
@@ -182,6 +190,39 @@ export function MobileServersView({
   const wasDraggingRef = useRef(false);
 
   const totalUnreadDMs = Object.values(dmUnreadCounts).reduce((a, b) => a + b, 0);
+
+  // Shake animation state — mirrors desktop ServerList
+  const prevMentionCounts = useRef<Record<string, number>>({});
+  const prevDMCount = useRef<number>(0);
+  const [shakingServers, setShakingServers] = useState<Set<string>>(new Set());
+  const [shakingDMs, setShakingDMs] = useState(false);
+
+  useEffect(() => {
+    const newShaking = new Set<string>();
+    Object.entries(unreadInfo).forEach(([serverId, info]) => {
+      const prevCount = prevMentionCounts.current[serverId] || 0;
+      if (info.mentionCount > prevCount) {
+        newShaking.add(serverId);
+      }
+    });
+    if (newShaking.size > 0) {
+      setShakingServers(newShaking);
+      setTimeout(() => setShakingServers(new Set()), 500);
+    }
+    const newPrevCounts: Record<string, number> = {};
+    Object.entries(unreadInfo).forEach(([serverId, info]) => {
+      newPrevCounts[serverId] = info.mentionCount;
+    });
+    prevMentionCounts.current = newPrevCounts;
+  }, [unreadInfo]);
+
+  useEffect(() => {
+    if (totalUnreadDMs > prevDMCount.current) {
+      setShakingDMs(true);
+      setTimeout(() => setShakingDMs(false), 500);
+    }
+    prevDMCount.current = totalUnreadDMs;
+  }, [totalUnreadDMs]);
 
   const sensors = useSensors(
     useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } })
@@ -320,7 +361,13 @@ export function MobileServersView({
           >
             <MessageCircle className="w-6 h-6" />
             {totalUnreadDMs > 0 && !showDMs && (
-              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 flex items-center justify-center text-[10px] font-bold bg-destructive text-destructive-foreground rounded-full">
+              <span
+                className={cn(
+                  'absolute -bottom-1 -right-1 min-w-[20px] h-5 px-1.5 flex items-center justify-center text-xs font-bold bg-destructive text-destructive-foreground rounded-full border-2 border-[hsl(var(--surface-server-list))] animate-badge-pop',
+                  shakingDMs && 'animate-badge-shake'
+                )}
+                style={{ boxShadow: 'var(--shadow-elevation-1)' }}
+              >
                 {totalUnreadDMs > 99 ? '99+' : totalUnreadDMs}
               </span>
             )}
@@ -349,6 +396,7 @@ export function MobileServersView({
                   isActive={!showDMs && selectedServerId === server.id}
                   hasUnread={info.hasUnread}
                   mentionCount={info.mentionCount}
+                  isShaking={shakingServers.has(server.id)}
                   isDragging={activeDragId === server.id}
                   dragActive={!!activeDragId}
                   dropIndicator={isOver ? dropPosition : null}

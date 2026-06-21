@@ -76,17 +76,17 @@ export function MobileVoicePreJoinSheet({
         <>
           <motion.div
             key="voice-prejoin-overlay"
-            initial={{ opacity: 0 }}
+            initial={{ opacity: 1 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
+            transition={{ duration: 0 }}
             onClick={() => onOpenChange(false)}
             className="fixed inset-0 z-50 bg-black/80"
           />
           <motion.div
             key="voice-prejoin-sheet"
             ref={sheetRef}
-            initial={{ y: '100%' }}
+            initial={{ y: 0 }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 26, stiffness: 300 }}

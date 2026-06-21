@@ -47,6 +47,8 @@ export function VoiceControls({
     setVadSensitivity,
     audioFilters,
     setAudioFilter,
+    outputVolume,
+    setOutputVolume,
   } = useVoice();
 
   return (

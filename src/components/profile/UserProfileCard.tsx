@@ -126,7 +126,7 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
 
   return (
     <div
-      className="h-full mx-2 mb-2 px-3 py-2 rounded-2xl flex items-center gap-3 bg-[hsl(var(--surface-2))] border border-border/40"
+      className="h-full mx-2 mb-2 px-3 py-1.5 rounded-2xl flex items-center gap-2.5 bg-[hsl(var(--surface-2))] border border-border/40"
       style={{ boxShadow: 'var(--shadow-elevation-2)' }}
     >
       <Popover>

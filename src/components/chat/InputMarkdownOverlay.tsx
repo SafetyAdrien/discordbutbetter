@@ -56,7 +56,7 @@ export function parseLines(content: string): OverlayLine[] {
     const alertMatch = /^>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*$/i.exec(line);
     if (alertMatch) { result.push({ type: 'alertHeader', text: line, alertType: alertMatch[1].toUpperCase() as OverlayLine['alertType'] }); continue; }
     if (line.startsWith('> ') || line.startsWith('>>> ')) { result.push({ type: 'blockquote', text: line }); continue; }
-    if (/^(?:-{3,}|\*{3,}|_{3,})$/.test(line.trim())) { result.push({ type: 'separator', text: line }); continue; }
+    if (/^-{3,}$/.test(line.trim())) { result.push({ type: 'separator', text: line }); continue; }
     if (/^(\s*)[-*] \[x\] /i.test(line)) { result.push({ type: 'taskItemChecked', text: line }); continue; }
     if (/^(\s*)[-*] \[ \] /.test(line)) { result.push({ type: 'taskItemUnchecked', text: line }); continue; }
     if (/^(\s*)[-*] /.test(line)) { result.push({ type: 'listItem', text: line }); continue; }
@@ -131,7 +131,7 @@ export function getLineTypeAtCursor(content: string, cursorPos: number): Overlay
   if (currentLine.startsWith('# ')) return 'header1';
   if (currentLine.startsWith('-# ')) return 'subtext';
   if (currentLine.startsWith('> ') || currentLine.startsWith('>>> ')) return 'blockquote';
-  if (/^(?:-{3,}|\*{3,}|_{3,})$/.test(currentLine.trim())) return 'separator';
+  if (/^-{3,}$/.test(currentLine.trim())) return 'separator';
   if (/^(\s*)[-*] \[x\] /i.test(currentLine)) return 'taskItemChecked';
   if (/^(\s*)[-*] \[ \] /.test(currentLine)) return 'taskItemUnchecked';
   if (/^(\s*)[-*] /.test(currentLine)) return 'listItem';

@@ -123,7 +123,7 @@ export function MobileVoiceChannelView({ channel, serverId, onBack, initialShowC
             />
             <PillButton
               onClick={() => setShowChat(true)}
-              icon={<MessageSquare className="w-5 h-5" fill="currentColor" strokeWidth={0} />}
+              icon={<MessageSquare className="w-5 h-5" />}
               aria-label="Chat textuel"
             />
             <PillButton

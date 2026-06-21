@@ -408,6 +408,7 @@ export function MobileLayout({
             serverId={currentServer.id}
             members={memberListData}
             ownerId={currentServer.owner_id || ''}
+            serverName={currentServer.name}
             onOpenDM={onOpenDM}
             onBack={handleBackToChannels}
           />

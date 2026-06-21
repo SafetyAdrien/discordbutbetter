@@ -74,7 +74,7 @@ export function MobileVoiceSettingsPanel({ channelName, onClose, onInvite }: Pro
       dragListener={true}
       onDragEnd={handleDragEnd}
       style={{ y }}
-      className="fixed inset-0 z-[60] bg-[hsl(var(--surface-1))] flex flex-col overflow-y-auto touch-pan-y"
+      className="fixed inset-x-0 bottom-0 z-[60] h-[90vh] max-h-[90vh] rounded-t-3xl bg-[hsl(var(--surface-1))] border-t border-white/5 flex flex-col overflow-y-auto touch-pan-y shadow-2xl"
     >
       {/* Drag handle */}
       <div className="w-full pt-2 pb-1 flex justify-center shrink-0">

@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useVoice, useVoiceParticipants } from '@/contexts/VoiceContext';
-import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { ChevronDown, ChevronRight, Volume2, VolumeX, UserPlus } from 'lucide-react';
 import { VoiceParticipantGrid } from '@/components/channels/voice/VoiceParticipantGrid';
@@ -18,12 +17,10 @@ interface Props {
 }
 
 export function MobileVoiceChannelView({ channel, onBack }: Props) {
-  const { user } = useAuth();
   const {
     voiceState, joinChannel, leaveChannel, toggleDeafen,
     speakingUsers, audioLevels,
-    isCameraActive, localCameraStream, toggleCamera,
-    localScreenStream, remoteVideoStreams, remoteScreenStreams,
+    localCameraStream, localScreenStream, remoteVideoStreams, remoteScreenStreams,
   } = useVoice();
 
   const { data: participants = [] } = useVoiceParticipants(channel.id);

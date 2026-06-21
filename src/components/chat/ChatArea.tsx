@@ -1300,7 +1300,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
 
       {/* Messages */}
       <ScrollArea className="flex-1 min-h-0 w-full [&>div[data-radix-scroll-area-viewport]]:!flex [&>div[data-radix-scroll-area-viewport]]:!flex-col [&>div[data-radix-scroll-area-viewport]>div]:!flex [&>div[data-radix-scroll-area-viewport]>div]:!flex-col [&>div[data-radix-scroll-area-viewport]>div]:!min-h-full [&>div[data-radix-scroll-area-viewport]>div]:!justify-end">
-        <div className="flex flex-col min-h-full px-4 py-4 max-sm:py-2 max-sm:px-3 space-y-0.5 w-full max-w-full">
+        <div className="flex flex-col min-h-full px-4 py-4 space-y-0.5 w-full max-w-full">
           {/* Spacer to push content to bottom */}
           <div className="flex-1" />
 
@@ -1326,7 +1326,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
             const showDateSeparator = !prevItem || currentDate.toDateString() !== prevItem.timestamp.toDateString();
 
             const DateSeparator = showDateSeparator ? (
-              <div className="flex items-center gap-4 my-3 max-sm:my-2">
+              <div className="flex items-center gap-4 my-3">
                 <div className="flex-1 h-px bg-border/40" />
                 <span className="text-[11px] text-muted-foreground font-semibold bg-[hsl(var(--surface-3))] border border-border/30 px-3 py-1 rounded-full shadow-sm">
                   {formatDate(currentDate)}
@@ -1608,7 +1608,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                           if (el) messageRefs.current.set(message.id, el);
                         }}
                         className={cn(
-                          "group/message group message-hover -mx-4 px-8 max-sm:px-4 mb-0 relative pt-[5px] pb-[2px] max-sm:pt-[2px] max-sm:pb-[1px]",
+                          "group/message group message-hover -mx-4 px-8 mb-0 relative pt-[5px] pb-[2px]",
                           messageMentionsMe(
                             message.content,
                             user?.id,
@@ -1662,10 +1662,10 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                     ? (memberRoles?.get(message.repliedMessage.author.id)?.[0] ?? null)
                                     : null
                                 }
-                                className="mb-1 max-sm:mb-0.5"
+                                className="mb-1"
                               />
                             )}
-                            <div className="flex gap-3 max-sm:gap-2 items-start -ml-[11px]">
+                            <div className="flex gap-3 items-start -ml-[11px]">
                               <button onClick={() => handleUserClick(message.author)} className="flex-shrink-0">
                                 <Avatar className="w-10 h-10 mt-[2px] hover:opacity-80 transition-opacity">
                                   <AvatarImage src={message.author.avatar} alt={message.author.displayName} />
@@ -1777,13 +1777,13 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
 
                                 {/* Edited indicator - after attachments */}
                                 {message.edited_at && (
-                                  <span className="text-[.625rem] text-muted-foreground/40 mt-0.5 max-sm:mt-0 block">
+                                  <span className="text-[.625rem] text-muted-foreground/40 mt-0.5 block">
                                     (modifié)
                                   </span>
                                 )}
 
                                 {(reactionsData?.[message.id]?.length ?? 0) > 0 && (
-                                  <div className="mt-1 max-sm:mt-0.5">
+                                  <div className="mt-1">
                                     <ReactionBar
                                       reactions={reactionsData?.[message.id] || []}
                                       onToggle={(emoji) => handleAddReaction(message.id, emoji)}
@@ -1801,7 +1801,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
 
                             {/* Thread System Message */}
                             {threadsByMessageId.has(message.id) && (
-                              <div className="pt-1.5 pl-[50px] max-sm:pt-1">
+                              <div className="pt-1.5 pl-[50px]">
                                 <ThreadSystemMessage
                                   thread={threadsByMessageId.get(message.id)!}
                                   onClick={() => onSelectThread?.(threadsByMessageId.get(message.id)!.id)}
@@ -1813,7 +1813,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                           <div className="relative">
                             {threadsByMessageId.has(message.id) && <ThreadSpine startY={0} />}
                             {/* Note: hasReply forces showAuthor=true, so RepliedLine never renders here. */}
-                            <div className="flex gap-3 max-sm:gap-2 items-start -ml-[11px]">
+                            <div className="flex gap-3 items-start -ml-[11px]">
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <span className="w-10 flex-shrink-0 text-xs text-muted-foreground/40 text-right pt-0.5 cursor-default opacity-0 group-hover/message:opacity-100 transition-opacity">
@@ -1897,13 +1897,13 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
 
                                 {/* Edited indicator - after attachments */}
                                 {message.edited_at && (
-                                  <span className="text-[.625rem] text-muted-foreground/40 mt-0.5 max-sm:mt-0 block">
+                                  <span className="text-[.625rem] text-muted-foreground/40 mt-0.5 block">
                                     (modifié)
                                   </span>
                                 )}
 
                                 {(reactionsData?.[message.id]?.length ?? 0) > 0 && (
-                                  <div className="mt-1 max-sm:mt-0.5">
+                                  <div className="mt-1">
                                     <ReactionBar
                                       reactions={reactionsData?.[message.id] || []}
                                       onToggle={(emoji) => handleAddReaction(message.id, emoji)}
@@ -1921,7 +1921,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
 
                             {/* Thread System Message for grouped messages */}
                             {threadsByMessageId.has(message.id) && (
-                              <div className="pt-1.5 pl-[50px] max-sm:pt-1">
+                              <div className="pt-1.5 pl-[50px]">
                                 <ThreadSystemMessage
                                   thread={threadsByMessageId.get(message.id)!}
                                   onClick={() => onSelectThread?.(threadsByMessageId.get(message.id)!.id)}

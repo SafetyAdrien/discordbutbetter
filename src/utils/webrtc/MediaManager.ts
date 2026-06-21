@@ -351,9 +351,10 @@ export class MediaManager {
       audio.autoplay = true;
       audio.muted = this.isDeafened;
       
-      // Apply saved volume — clamp native volume to [0,1]
+      // Apply saved volume — clamp native volume to [0,1] (master applied below)
       const savedVolume = this.peerVolumes.get(peerId) ?? 100;
-      audio.volume = Math.max(0, Math.min(1, savedVolume / 100));
+      this.peerVolumes.set(peerId, savedVolume);
+      audio.volume = Math.max(0, Math.min(1, (savedVolume / 100) * this._masterOutputVolume));
 
       // Robust play with retry on autoplay policy block
       const tryPlay = () => {
@@ -393,15 +394,15 @@ export class MediaManager {
       analyser.smoothingTimeConstant = 0.3;
       source.connect(analyser);
 
-      // GainNode for amplification beyond 100%
+      // GainNode for amplification beyond 100% (taking master into account)
       let gainNode: GainNode | null = null;
-      if (savedVolume > 100) {
+      const effective = (savedVolume / 100) * this._masterOutputVolume;
+      if (effective > 1) {
         gainNode = context.createGain();
-        gainNode.gain.value = savedVolume / 100;
+        gainNode.gain.value = effective;
         source.connect(gainNode);
         gainNode.connect(context.destination);
         // When using GainNode for amplification, mute the native element
-        // and let Web Audio API handle playback
         audio.volume = 0;
         audio.muted = true;
       }

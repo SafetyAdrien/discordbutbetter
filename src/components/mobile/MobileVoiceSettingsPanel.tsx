@@ -77,17 +77,17 @@ export function MobileVoiceSettingsPanel({ channelName, onClose, onInvite }: Pro
       className="fixed inset-x-0 bottom-0 z-[60] h-[90vh] max-h-[90vh] rounded-t-3xl bg-[hsl(var(--surface-1))] border-t border-white/5 flex flex-col overflow-y-auto touch-pan-y shadow-2xl"
     >
       {/* Drag handle */}
-      <div className="w-full h-11 flex items-center justify-center shrink-0">
+      <div className="w-full h-9 flex items-center justify-center shrink-0">
         <div className="w-[76px] h-2 rounded-full bg-[hsl(var(--surface-3))]" />
       </div>
 
 
       {/* Header */}
-      <div className="px-6 pt-6 pb-6 flex items-center justify-center shrink-0">
+      <div className="px-6 pt-4 pb-3 flex items-center justify-center shrink-0">
         <h2 className="text-xl font-bold text-foreground truncate">{channelName}</h2>
       </div>
 
-      <div className="flex-1 px-3 pb-8 space-y-4">
+      <div className="flex-1 px-3 pb-5 space-y-3">
         {/* Channel Settings */}
         <button
           type="button"

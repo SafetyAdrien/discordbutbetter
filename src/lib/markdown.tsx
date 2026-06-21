@@ -371,7 +371,7 @@ function renderInlineToken(token: MarkdownToken, key: number, context: MarkdownC
   }
 }
 
-function renderBlockToken(block: BlockToken, key: number, context: MarkdownContext, isLast: boolean = false): React.ReactNode {
+function renderBlockToken(block: BlockToken, key: number, context: MarkdownContext, isLast: boolean = false, suppressBr: boolean = false): React.ReactNode {
   const renderInlineContent = (content: string) => tokenizeInline(content).map((token, i) => renderInlineToken(token, i, context));
   const compact = context.variant === 'chat';
   switch (block.type) {

@@ -551,7 +551,7 @@ export function MobileLayout({
     >
       {/* Main Content */}
       <div className="flex-1 overflow-hidden relative">
-        <AnimatePresence mode="wait">
+        <AnimatePresence initial={false}>
           {/* Thread overlay */}
           {mobileView.type === 'thread' && (
             <motion.div

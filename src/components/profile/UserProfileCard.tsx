@@ -61,6 +61,8 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers }
   const voiceCtx = useVoice();
   const [showStatusMenu, setShowStatusMenu] = useState(false);
   const [showCustomStatusModal, setShowCustomStatusModal] = useState(false);
+  const [micPopoverOpen, setMicPopoverOpen] = useState(false);
+  const [headphonesPopoverOpen, setHeadphonesPopoverOpen] = useState(false);
   const statusButtonRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });

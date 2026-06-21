@@ -129,7 +129,13 @@ function SortableMobileServerIcon({
           </Avatar>
 
           {mentionCount > 0 && (
-            <span className="absolute -top-1.5 -right-1.5 min-w-[22px] h-[22px] px-1.5 flex items-center justify-center text-[11px] font-bold bg-destructive text-destructive-foreground rounded-full border-2 border-[hsl(var(--surface-server-list))]">
+            <span
+              className={cn(
+                'absolute -top-1.5 -right-1.5 min-w-[22px] h-[22px] px-1.5 flex items-center justify-center text-[11px] font-bold bg-destructive text-destructive-foreground rounded-full border-2 border-[hsl(var(--surface-server-list))] animate-badge-pop',
+                isShaking && 'animate-badge-shake'
+              )}
+              style={{ boxShadow: 'var(--shadow-elevation-1)' }}
+            >
               {mentionCount > 99 ? '99+' : mentionCount}
             </span>
           )}

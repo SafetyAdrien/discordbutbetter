@@ -132,10 +132,7 @@ export function useServerUnreadCounts() {
           filter: `user_id=eq.${user.id}`,
         },
         () => {
-          clearTimeout(debounceRef.current);
-          debounceRef.current = setTimeout(() => {
-            queryClient.invalidateQueries({ queryKey: ['server-unread-counts'] });
-          }, 200);
+          queryClient.invalidateQueries({ queryKey: ['server-unread-counts'] });
         }
       )
       .subscribe();

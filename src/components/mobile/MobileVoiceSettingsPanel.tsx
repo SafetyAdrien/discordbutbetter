@@ -76,18 +76,19 @@ export function MobileVoiceSettingsPanel({ channelName, onClose, onInvite }: Pro
       style={{ y }}
       className="fixed inset-0 z-[60] bg-[hsl(var(--surface-1))] flex flex-col overflow-y-auto touch-pan-y"
     >
-      {/* Header */}
-      <div className="px-4 pt-12 pb-4 flex items-center justify-between shrink-0">
+      {/* Drag handle */}
+      <div className="w-full pt-2 pb-1 flex justify-center shrink-0">
         <button
           type="button"
           onClick={onClose}
           aria-label="Fermer"
-          className="w-10 h-10 rounded-full bg-[hsl(var(--surface-2))] flex items-center justify-center active:bg-[hsl(var(--surface-3))] transition-colors shrink-0"
-        >
-          <ChevronDown className="w-6 h-6 text-foreground" />
-        </button>
-        <h2 className="text-lg font-bold text-foreground truncate px-2">{channelName}</h2>
-        <div className="w-10 shrink-0" />
+          className="w-10 h-1 rounded-full bg-white/30"
+        />
+      </div>
+
+      {/* Header */}
+      <div className="px-6 pt-6 pb-6 flex items-center justify-center shrink-0">
+        <h2 className="text-xl font-bold text-foreground truncate">{channelName}</h2>
       </div>
 
       <div className="flex-1 px-3 pb-8 space-y-4">

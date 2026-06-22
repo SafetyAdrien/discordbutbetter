@@ -161,20 +161,19 @@ export function RoleCheckboxItem({ role, serverId, memberId, userId, disabled }:
 
         // Rollback
         if (previousMembers) queryClient.setQueryData(["members", serverId], previousMembers);
+        clearTimeout(graceTimeoutRef.current);
         clearRoleMutationPending(serverId, memberId, role.id);
-        membersMutationLockRef.current = false;
         setIsPending(false);
         return;
       }
 
-      // Success: keep isPending/lock active until realtime confirms (handled by listener).
-      // Safety net: if realtime never fires, settle after 8s.
-      clearTimeout(safetyTimeoutRef.current);
-      safetyTimeoutRef.current = setTimeout(() => {
+      // Success: free the UI immediately, but keep the mutation target for a
+      // short grace period so a stale background refetch cannot cause a jump.
+      setIsPending(false);
+      clearTimeout(graceTimeoutRef.current);
+      graceTimeoutRef.current = setTimeout(() => {
         clearRoleMutationPending(serverId, memberId, role.id);
-        membersMutationLockRef.current = false;
-        setIsPending(false);
-      }, 8000);
+      }, 500);
     },
     [disabled, getHasRoleNow, isPending, memberId, queryClient, role, serverId, userId]
   );

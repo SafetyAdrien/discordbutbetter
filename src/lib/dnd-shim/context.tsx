@@ -57,8 +57,12 @@ function notifyDndState(state: DndSharedState) {
   state.listeners.forEach((listener) => listener());
 }
 
-export function purgeDndArtifacts() {
+export function purgeDndArtifacts({ removeOverlay = false } = {}) {
   if (typeof document === "undefined") return;
+  if (removeOverlay) {
+    document.querySelectorAll<HTMLElement>("[data-dnd-overlay-root]").forEach((el) => el.remove());
+    document.querySelectorAll<HTMLElement>('body > div[style*="z-index: 9999"][style*="pointer-events: none"]').forEach((el) => el.remove());
+  }
   document.querySelectorAll<HTMLElement>(".drag-previewer").forEach((el) => {
     el.style.display = "none";
     el.innerHTML = "";
@@ -87,7 +91,7 @@ export function setDndActiveState(
 }
 
 export function hideDndOverlay(state: DndSharedState) {
-  purgeDndArtifacts();
+  purgeDndArtifacts({ removeOverlay: true });
   const changed = !state.overlayHidden || state.activeId != null || state.activeData != null;
   state.overlayHidden = true;
   state.activeId = null;
@@ -96,7 +100,7 @@ export function hideDndOverlay(state: DndSharedState) {
 }
 
 export function clearDndSharedState(state: DndSharedState) {
-  purgeDndArtifacts();
+  purgeDndArtifacts({ removeOverlay: state.activeId != null });
   const changed = state.activeId != null || state.activeData != null || state.lastOverId != null || state.activatorEvent != null || state.overlayHidden;
   state.activatorEvent = null;
   state.lastOverId = null;

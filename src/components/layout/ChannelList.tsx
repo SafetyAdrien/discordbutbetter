@@ -1163,7 +1163,6 @@ export function ChannelList({
   const handleDragStart = (event: DragStartEvent) => {
     dropPositionRef.current = "after";
     dropModeRef.current = "after";
-    setOverId(null);
     setActiveId(event.active.id as string);
   };
 
@@ -1195,7 +1194,6 @@ export function ChannelList({
     return pointerCollisions.length > 0 ? pointerCollisions : closestCenter({ ...args, droppableContainers });
   }, []);
   const handleDragOver = (event: DragOverEvent) => {
-    if (!activeId) return;
     const { active, over, delta } = event;
     const activeIdStr = active.id.toString();
 

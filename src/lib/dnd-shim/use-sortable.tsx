@@ -92,9 +92,9 @@ export function useSortable(opts: UseSortableOptions): SortableResult {
           console.error("[dnd-shim] drag-end handler threw:", err);
         }
       },
-      isDragging: (monitor) => monitor.getItem()?.id === id,
+      isDragging: (monitor) => (monitor.getItem() as any)?.id === id,
       collect: (monitor) => ({
-        isDragging: monitor.isDragging() && activeDragIds.has(id) && monitor.getItem()?.id === id,
+        isDragging: monitor.isDragging() && activeDragIds.has(id) && (monitor.getItem() as any)?.id === id,
       }),
     }),
     [id, disabled],

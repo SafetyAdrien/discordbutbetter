@@ -105,6 +105,21 @@ export function useSortable(opts: UseSortableOptions): SortableResult {
     if (ctx.state.activeId === id) clearDndSharedState(ctx.state);
   }, [ctx.state, id]);
 
+  useEffect(() => {
+    const releaseStaleDrag = () => {
+      window.setTimeout(() => {
+        if (ctx.state.activeId !== id) return;
+        activeDragIds.delete(id);
+        clearDndSharedState(ctx.state);
+      }, 80);
+    };
+    const events = ["pointerup", "mouseup", "touchend", "touchcancel", "drop", "dragend", "blur"] as const;
+    events.forEach((eventName) => window.addEventListener(eventName, releaseStaleDrag, { capture: true, passive: true }));
+    return () => {
+      events.forEach((eventName) => window.removeEventListener(eventName, releaseStaleDrag, { capture: true }));
+    };
+  }, [ctx.state, id]);
+
   // rAF-throttled hover dispatch — avoids spamming onDragOver on every mousemove
   const hoverFrameRef = useRef<number | null>(null);
   const pendingHoverRef = useRef<{ item: any; delta: { x: number; y: number } } | null>(null);
@@ -190,6 +205,8 @@ export function useSortable(opts: UseSortableOptions): SortableResult {
     [disabled],
   );
 
+  const isActivelyDragging = isDragging && activeDragIds.has(id) && ctx.state.activeId === id;
+
   return {
     attributes,
     listeners: {},
@@ -197,7 +214,7 @@ export function useSortable(opts: UseSortableOptions): SortableResult {
     setActivatorNodeRef,
     transform: null,
     transition: undefined,
-    isDragging,
+    isDragging: isActivelyDragging,
     isOver,
   };
 }

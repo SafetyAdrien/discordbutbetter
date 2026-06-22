@@ -28,7 +28,7 @@ export function DragOverlay({ children }: DragOverlayProps) {
 
   useEffect(() => {
     const hide = () => hideDndOverlay(ctx.state);
-    const hideEvents = ["pointerup", "mouseup", "touchend", "touchcancel", "drop", "dragend", "blur"] as const;
+    const hideEvents = ["pointerup", "pointercancel", "mouseup", "touchend", "touchcancel", "drop", "dragend", "blur"] as const;
     hideEvents.forEach((eventName) => window.addEventListener(eventName, hide, { capture: true, passive: true }));
     return () => {
       hideEvents.forEach((eventName) => window.removeEventListener(eventName, hide, { capture: true }));

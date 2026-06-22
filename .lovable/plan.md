@@ -1,38 +1,62 @@
-Problème : dans `RoleCheckboxItem`, l'état des rôles est mis à jour de façon optimiste, mais deux mécanismes (`useMembers.rolesChannelRef` et `usePermissionsRealtime`) déclenchent un refetch de `['members', serverId]` juste après le verrou de mutation. Si ce refetch revient avant que l'écriture DB ne soit propagée, il écrase l'état optimiste par l'ancienne valeur, puis l'événement Realtime (ou un second refetch) le remet à jour → le rôle disparaît/réapparaît instantanément.
+# Instant UI partout — corriger délais de profils, messages et listes (desktop + mobile)
 
-Objectif : empêcher tout retour en arrière temporaire (« saut ») lors d'un clic sur un rôle.
+## Objectif
 
-Plan de correction
-------------------
+Tout doit s'afficher **immédiatement** depuis le cache IndexedDB (warmCache) lorsqu'il existe, et un **skeleton instantané** sinon. Aucun "pop-in" silencieux, aucun spinner intermédiaire quand la donnée est déjà en mémoire.
 
-1. Ajouter un tracker de mutations de rôles
-   - Créer `src/lib/role-mutation-tracker.ts`.
-   - Stocker les opérations en cours par clé `serverId:memberId:roleId` avec une cible (`'add'` ou `'remove'`).
-   - Fournir `setRoleMutationPending`, `clearRoleMutationPending`, `isRoleMutationPending`, `getRoleMutationTarget`.
+## Diagnostic actuel
 
-2. Protéger `RoleCheckboxItem`
-   - Avant l'appel Supabase, enregistrer la cible dans le tracker.
-   - Garder le bouton désactivé tant que la mutation est en vol (pas seulement `isPending` local).
-   - Libérer le tracker après succès + une fenêtre de stabilisation (~800 ms), ou dès qu'un événement Realtime confirmant la même direction est reçu.
-   - En cas d'erreur, rollback et libérer immédiatement.
+Le pipeline cache-first (cacheGetSync + warmCache + preloader) couvre déjà `useMessages`, `useMembers`, `useDMConversations`, `useServers`. Les trous qui causent les délais ressentis :
 
-3. Renforcer `useMembers`
-   - Dans le handler Realtime `member_roles` (INSERT/DELETE), ignorer les événements qui contredisent une mutation pending pour le couple membre/rôle.
-   - Si l'événement correspond à la cible attendue, appliquer le patch et libérer le pending.
-   - Dans `scheduleGuaranteedRefetch`, lorsque le refetch revient, fusionner le résultat serveur avec les cibles pending : pour chaque rôle pending, forcer la présence/absence selon la cible plutôt que d'écraser aveuglément.
-   - Augmenter la durée du `membersMutationLockRef` à ~800 ms pour coller au pattern de la mémoire projet.
+1. **Profils utilisateur** — `useBadges`, `useUserBadges`, `useServerProfile`, `useMutualServers`, `useMutualFriends` n'ont **aucun** cache → 2-5 requêtes réseau à chaque ouverture du popup profil.
+2. **Messages** — `placeholderData` OK mais le preloader ne pré-charge **que le dernier salon visité** ; les autres salons ré-attendent le réseau. Aucun skeleton dans `ChatArea` / `MobileLayout` quand vide.
+3. **Membres / DMs / Serveurs** — cache OK mais listes vides en cold boot sans skeleton (desktop + mobile).
+4. **Mobile** — `MobileDMHomeView`, `MobileLayout` (messages, members) n'ont aucun état de chargement.
 
-4. Désactiver le refetch agressif de `usePermissionsRealtime` sur `member_roles`
-   - Ce listener continuera d'invalider/refetcher les clés de permissions, mais ne refetchera plus activement `['members', serverId]` (car `useMembers` gère déjà le patch ciblé).
-   - Cela supprime un second refetch qui court-circuite l'état optimiste.
+## Plan d'implémentation
 
-5. Vérification
-   - Build TypeScript sans erreur.
-   - Test manuel : ouvrir le panneau « Gérer les rôles », cliquer plusieurs fois sur un rôle → aucun retour en arrière visuel.
+### A. Profils utilisateur (priorité 1 — popup ressenti lent)
 
-Fichiers concernés
-------------------
-- `src/lib/role-mutation-tracker.ts` (nouveau)
-- `src/components/profile/RoleCheckboxItem.tsx`
-- `src/hooks/useMembers.ts`
-- `src/hooks/usePermissionsRealtime.ts`
+- **`src/hooks/useBadges.ts`** + **`useUserBadges.ts`** : ajouter `placeholderData: cacheGetSync('badges:all')` / `cacheGetSync(\`user-badges:\${userId}\`)`, écriture dans `cacheSetAsync` au succès, `staleTime: 5min`, `refetchOnMount: false` si cache.
+- **`src/hooks/useServerProfile.ts`** : même pattern, clé `server-profile:${serverId}:${userId}`.
+- **`src/hooks/useMutualServers.ts`** + **`useMutualFriends.ts`** : même pattern, clés `mutual-servers:${userId}` / `mutual-friends:${userId}`.
+- **`src/hooks/usePreloader.ts`** : ajouter, en slice idle 3 (après DMs), warm-up de `badges:all` (global) et, pour le user courant, `user-badges:${authUserId}`. Les mutual/server-profile restent lazy (pas warmés au boot, juste cachés à la 1ère ouverture pour la 2ème visite instantanée).
+- **`UserBadgeList`** : skeleton dot (3 pastilles `animate-pulse`) quand `data === undefined && isFetching`.
+- **`FullUserProfileModal`** : skeleton lignes pour sections "Serveurs en commun" / "Amis en commun" quand undefined.
+
+### B. Messages (toutes les salles instant)
+
+- **`src/hooks/usePreloader.ts`** : étendre la slice 2 idle pour seed `messages:${channelId}` des **N derniers salons visités** (lire la queue depuis le cache `recent-channels`, fallback : top 5 salons non-lus du serveur actif). Limite 5 salons pour éviter coût Supabase.
+- **`src/components/chat/ChatArea.tsx`** : afficher un skeleton de messages (5-8 placeholders `animate-pulse` reproduisant avatar+nom+texte) quand `messages.length === 0 && isLoading`. Le composant reçoit déjà `messages` en prop → ajouter prop `isLoading` depuis le parent (`Index.tsx` / `MobileLayout.tsx`).
+- **`MobileLayout.tsx`** : propager `isLoading` de `useMessages` vers `ChatArea`.
+
+### C. Listes membres / DMs / serveurs (skeletons cold-boot)
+
+- **`MemberList.tsx`** : skeleton (8 lignes avatar+nom `animate-pulse`) quand `isLoading && members.length === 0`.
+- **`MobileLayout.tsx`** (member panel) : idem.
+- **`MobileDMHomeView.tsx`** : skeleton 6 conversations quand `isLoading && conversations.length === 0`.
+- **`ChannelList.tsx`** (sidebar serveurs) : skeleton 4 server icons + channel rows quand `servers.length === 0 && isLoading`.
+
+### D. Garanties anti-régression
+
+- Tous les nouveaux `placeholderData` retournent `undefined` si pas de cache → React Query passe en `isLoading=true` → skeleton s'affiche bien.
+- Quand cache présent : `isLoading=false`, render instantané, pas de flash skeleton.
+- `cacheSetAsync` appelé dans `onSuccess` / `useEffect` au succès réseau pour rafraîchir IndexedDB.
+- Mobile utilise les mêmes hooks → bénéficie automatiquement de chaque amélioration.
+
+## Détails techniques
+
+- Clés cache cohérentes avec `src/lib/cache.ts` (préfixes existants).
+- Skeletons via composants `<Skeleton>` shadcn déjà présents (`src/components/ui/skeleton.tsx`).
+- Aucune modification des subscriptions Realtime existantes — uniquement ajout d'une couche cache + skeletons.
+- Aucune nouvelle dépendance.
+
+## Fichiers touchés
+
+Hooks : `useBadges.ts`, `useUserBadges.ts`, `useServerProfile.ts`, `useMutualServers.ts`, `useMutualFriends.ts`, `usePreloader.ts`.
+Composants : `UserBadgeList.tsx`, `FullUserProfileModal.tsx`, `ChatArea.tsx`, `MobileLayout.tsx`, `MemberList.tsx`, `MobileDMHomeView.tsx`, `ChannelList.tsx`.
+
+## Hors scope
+
+- Pas de changement des mutations rôles (déjà instantanées suite à la session précédente).
+- Pas de refactor de l'architecture cache existante — uniquement combler les trous.

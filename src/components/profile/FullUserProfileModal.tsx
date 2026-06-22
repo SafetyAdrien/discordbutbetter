@@ -60,8 +60,8 @@ export function FullUserProfileModal({
   const [customStatusOpen, setCustomStatusOpen] = useState(false);
 
   const { user: currentUser } = useAuth();
-  const { data: mutualServers = [] } = useMutualServers(user?.id || null);
-  const { data: mutualFriends = [] } = useMutualFriends(user?.id || null);
+  const { data: mutualServers, isFetching: mutualServersFetching } = useMutualServers(user?.id || null);
+  const { data: mutualFriends, isFetching: mutualFriendsFetching } = useMutualFriends(user?.id || null);
   const { data: conversations = [] } = useDMConversations();
   const createDM = useCreateDMConversation();
   const { data: friends = [] } = useFriends();
@@ -251,10 +251,21 @@ export function FullUserProfileModal({
             <div className="flex items-center gap-2 mb-3">
               <Server className="w-4 h-4 text-primary" />
               <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                {mutualServers.length} serveur{mutualServers.length !== 1 ? 's' : ''} en commun
+                {mutualServers
+                  ? `${mutualServers.length} serveur${mutualServers.length !== 1 ? 's' : ''} en commun`
+                  : 'Serveurs en commun'}
               </h4>
             </div>
-            {mutualServers.length === 0 ? (
+            {!mutualServers && mutualServersFetching ? (
+              <div className="space-y-1">
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="flex items-center gap-3 p-2">
+                    <div className="w-9 h-9 rounded-full bg-muted/40 animate-pulse" />
+                    <div className="h-3 w-32 bg-muted/40 rounded animate-pulse" />
+                  </div>
+                ))}
+              </div>
+            ) : !mutualServers || mutualServers.length === 0 ? (
               <p className="text-xs text-muted-foreground">Aucun serveur en commun.</p>
             ) : (
               <div className="space-y-1">
@@ -274,7 +285,25 @@ export function FullUserProfileModal({
           </section>
 
           {/* Mutual friends */}
-          {mutualFriends.length > 0 && (
+          {!mutualFriends && mutualFriendsFetching ? (
+            <section className="rounded-2xl bg-card border border-border/50 p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Users className="w-4 h-4 text-primary" />
+                <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Amis en commun</h4>
+              </div>
+              <div className="space-y-1">
+                {[0, 1].map((i) => (
+                  <div key={i} className="flex items-center gap-3 p-2">
+                    <div className="w-9 h-9 rounded-full bg-muted/40 animate-pulse" />
+                    <div className="flex-1 space-y-1.5">
+                      <div className="h-3 w-28 bg-muted/40 rounded animate-pulse" />
+                      <div className="h-2.5 w-20 bg-muted/40 rounded animate-pulse" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ) : mutualFriends && mutualFriends.length > 0 ? (
             <section className="rounded-2xl bg-card border border-border/50 p-4">
               <div className="flex items-center gap-2 mb-3">
                 <Users className="w-4 h-4 text-primary" />
@@ -303,7 +332,7 @@ export function FullUserProfileModal({
                 ))}
               </div>
             </section>
-          )}
+          ) : null}
 
           {/* Private note */}
           {!isOwnProfile && (

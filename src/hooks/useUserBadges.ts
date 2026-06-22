@@ -1,12 +1,15 @@
 import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 
 export interface UserBadgeRow {
   badge_id: string;
   user_id: string;
   granted_at: string;
 }
+
+const userBadgesCacheKey = (uid: string) => `user-badges:${uid}`;
 
 export function useUserBadges(userId?: string | null) {
   const queryClient = useQueryClient();
@@ -21,9 +24,15 @@ export function useUserBadges(userId?: string | null) {
         .select('badge_id, user_id, granted_at')
         .eq('user_id', userId);
       if (error) throw error;
-      return data ?? [];
+      const result = data ?? [];
+      cacheSetAsync(userBadgesCacheKey(userId), result);
+      return result;
     },
-    staleTime: 1000 * 60 * 2,
+    placeholderData: () =>
+      userId ? cacheGetSync<UserBadgeRow[]>(userBadgesCacheKey(userId)) : undefined,
+    staleTime: 1000 * 60 * 5,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 
   useEffect(() => {

@@ -209,7 +209,7 @@ export function usePreloader(
       recordPerf('preloader:hydrate:members-roles-perms', performance.now() - t0);
     }, 150);
 
-    // Slice 3: DM/unread/friends/notifications
+    // Slice 3: DM/unread/friends/notifications + badges
     idle(() => {
       const t0 = performance.now();
       const dmCached = readCache<any>(`dm-conversations:${user.id}`);
@@ -228,10 +228,15 @@ export function usePreloader(
       if (friendsCached) queryClient.setQueryData(['friends', user.id], friendsCached);
       const notifCached = readCache<any>(`notifications:${user.id}`);
       if (notifCached) queryClient.setQueryData(['notifications'], notifCached);
+      // Badges (global + current user) — used by every profile popup
+      const badgesCached = readCache<any>('badges:all');
+      if (badgesCached) queryClient.setQueryData(['badges'], badgesCached);
+      const myBadgesCached = readCache<any>(`user-badges:${user.id}`);
+      if (myBadgesCached) queryClient.setQueryData(['user-badges', user.id], myBadgesCached);
       recordPerf('preloader:hydrate:dm-unread-friends', performance.now() - t0);
     }, 300);
 
-    // Slice 4: emojis/stickers
+    // Slice 4: emojis/stickers + recent channels' messages
     idle(() => {
       const t0 = performance.now();
       for (const sid of serverIds) {
@@ -240,6 +245,14 @@ export function usePreloader(
         const stickersCached = readCache<any>(`server-stickers:${sid}`);
         if (stickersCached) queryClient.setQueryData(['server-stickers', sid], stickersCached);
       }
+      // Seed messages for the N last visited channels so any salon opens instantly
+      try {
+        const recent = readCache<string[]>('recent-channels') || [];
+        for (const cid of recent.slice(0, 5)) {
+          const cachedMsgs = readCache<any>(`messages:${cid}`);
+          if (cachedMsgs) queryClient.setQueryData(['messages', cid], cachedMsgs);
+        }
+      } catch {}
       writeCache('preloader-done', '1');
       recordPerf('preloader:hydrate:emojis-stickers', performance.now() - t0);
     }, 500);

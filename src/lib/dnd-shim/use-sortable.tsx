@@ -106,9 +106,11 @@ export function useSortable(opts: UseSortableOptions): SortableResult {
 
   useEffect(() => {
     const releaseStaleDrag = () => {
+      const wasActive = ctx.state.activeId === id || activeDragIds.has(id);
+      const activeData = ctx.state.activeData ?? dataRef.current;
       window.setTimeout(() => {
-        if (ctx.state.activeId !== id) return;
-        const active = { id, data: { current: ctx.state.activeData } };
+        if (!wasActive || !activeDragIds.has(id)) return;
+        const active = { id, data: { current: activeData } };
         activeDragIds.delete(id);
         clearDndSharedState(ctx.state);
         ctx.handlersRef.current.onDragCancel?.({ active });

@@ -4,33 +4,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { useAuth } from '@/contexts/AuthContext';
-import {
-  getRoleMutationTarget,
-  getPendingForServer,
-  clearRoleMutationPending,
-} from '@/lib/role-mutation-tracker';
-
-// Mutation lock to prevent Realtime invalidations during local role mutations
-export const membersMutationLockRef = { current: false };
-
-let membersLockExpiresAt = 0;
-let membersLockTimer: ReturnType<typeof setTimeout> | null = null;
-
-/** Lock members mutations for `ms`. Extends any existing lock so rapid toggles
- *  share one protection window, preventing background refetches from overwriting
- *  optimistic UI updates. The lock auto-releases and never needs manual clearing. */
-export function lockMembersMutation(ms = 500) {
-  const now = Date.now();
-  membersLockExpiresAt = Math.max(membersLockExpiresAt, now + ms);
-  membersMutationLockRef.current = true;
-  if (membersLockTimer) clearTimeout(membersLockTimer);
-  membersLockTimer = setTimeout(() => {
-    if (Date.now() >= membersLockExpiresAt) {
-      membersMutationLockRef.current = false;
-    }
-    membersLockTimer = null;
-  }, membersLockExpiresAt - now);
-}
+import { getRoleMutationTarget, clearRoleMutationPending } from '@/lib/role-mutation-tracker';
 
 export interface ServerProfileData {
   id: string;
@@ -215,73 +189,6 @@ export function useMembers(serverId: string | null) {
     };
   }, [serverId, user, queryClient]);
 
-  // Debounced refetch to guarantee server truth after local patch
-  const debouncedRefetchRef = useRef<ReturnType<typeof setTimeout>>();
-  const pendingPostLockRef = useRef(false);
-
-  // Re-apply pending optimistic targets on top of the freshly-fetched cache so a
-  // stale server snapshot (write not yet propagated) can never overwrite the UI.
-  const reconcilePending = useCallback(() => {
-    if (!serverId) return;
-    const pendingMutations = getPendingForServer(serverId);
-    if (pendingMutations.length === 0) return;
-
-    queryClient.setQueryData<MemberWithProfile[]>(['members', serverId], (old) => {
-      if (!old) return old;
-      // Fetch role metadata from any member that has it, for fallback inserts.
-      const roleCatalog = new Map<string, MemberWithProfile['roles'][number]>();
-      for (const m of old) for (const r of m.roles) roleCatalog.set(r.id, r);
-
-      return old.map((m) => {
-        const myPending = pendingMutations.filter((p) => p.memberId === m.id);
-        if (myPending.length === 0) return m;
-        let roles = m.roles;
-        for (const { roleId, target } of myPending) {
-          const has = roles.some((r) => r.id === roleId);
-          if (target === 'add' && !has) {
-            const meta = roleCatalog.get(roleId);
-            if (meta) {
-              roles = [...roles, meta].sort(
-                (a, b) => (b.position ?? 0) - (a.position ?? 0),
-              );
-            }
-          } else if (target === 'remove' && has) {
-            roles = roles.filter((r) => r.id !== roleId);
-          }
-        }
-        return roles === m.roles ? m : { ...m, roles };
-      });
-    });
-  }, [queryClient, serverId]);
-
-  const refetchAndReconcile = useCallback(async () => {
-    await queryClient.refetchQueries({ queryKey: ['members', serverId] });
-    reconcilePending();
-  }, [queryClient, serverId, reconcilePending]);
-
-  const scheduleGuaranteedRefetch = useCallback(() => {
-    // If mutation lock is active, schedule refetch for after lock releases
-    if (membersMutationLockRef.current) {
-      pendingPostLockRef.current = true;
-      return;
-    }
-    clearTimeout(debouncedRefetchRef.current);
-    debouncedRefetchRef.current = setTimeout(() => {
-      refetchAndReconcile();
-    }, 300);
-  }, [refetchAndReconcile]);
-
-  // Check for pending post-lock refetch
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (pendingPostLockRef.current && !membersMutationLockRef.current) {
-        pendingPostLockRef.current = false;
-        refetchAndReconcile();
-      }
-    }, 200);
-    return () => clearInterval(interval);
-  }, [refetchAndReconcile]);
-
   // Separate real-time subscription for member_roles changes
   useEffect(() => {
     if (!serverId || !user) return;
@@ -308,9 +215,6 @@ export function useMembers(serverId: string | null) {
           table: 'member_roles',
         },
         async (payload) => {
-          // Always schedule a guaranteed refetch (even during lock — it'll run post-lock)
-          scheduleGuaranteedRefetch();
-
           if (payload.eventType === 'INSERT') {
             const inserted = payload.new as { member_id: string; role_id: string };
 
@@ -321,9 +225,6 @@ export function useMembers(serverId: string | null) {
               if (target === 'remove') return; // stale event, ignore
               if (target === 'add') clearRoleMutationPending(serverId, inserted.member_id, inserted.role_id);
             }
-
-            // Local optimistic mutation already put the UI in the confirmed state.
-            if (membersMutationLockRef.current) return;
 
             const { data: roleData } = await supabase
               .from('roles')
@@ -357,9 +258,6 @@ export function useMembers(serverId: string | null) {
               if (target === 'remove') clearRoleMutationPending(serverId, deleted.member_id, deleted.role_id);
             }
 
-            // Local optimistic mutation already put the UI in the confirmed state.
-            if (membersMutationLockRef.current) return;
-
             queryClient.setQueryData<MemberWithProfile[]>(
               ['members', serverId],
               (old) =>
@@ -385,7 +283,6 @@ export function useMembers(serverId: string | null) {
       });
 
     return () => {
-      clearTimeout(debouncedRefetchRef.current);
       if (retryTimeoutRef.current) {
         clearTimeout(retryTimeoutRef.current);
       }
@@ -394,7 +291,7 @@ export function useMembers(serverId: string | null) {
         rolesChannelRef.current = null;
       }
     };
-  }, [serverId, user, queryClient, scheduleGuaranteedRefetch]);
+  }, [serverId, user, queryClient]);
 
   return query;
 }

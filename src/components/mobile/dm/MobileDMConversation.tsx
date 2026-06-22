@@ -285,19 +285,8 @@ export function MobileDMConversation({ conversationId, onBack }: Props) {
       {/* Messages */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto overscroll-contain">
         <div className="flex flex-col justify-end min-h-full py-3">
-          {isLoading ? (
-            <div className="flex-1 px-3 py-2 space-y-3">
-              {[0, 1, 2, 3, 4].map((i) => (
-                <div key={i} className={cn('flex items-end gap-2', i % 2 === 0 ? '' : 'flex-row-reverse')}>
-                  {i % 2 === 0 && <div className="w-8 h-8 rounded-full bg-muted/40 animate-pulse shrink-0" />}
-                  <div
-                    className="h-9 bg-muted/40 rounded-2xl animate-pulse"
-                    style={{ width: `${40 + ((i * 17) % 45)}%` }}
-                  />
-                </div>
-              ))}
-            </div>
-          ) : messages.length === 0 ? (
+          {messages.length === 0 && !isLoading ? (
+
             <div className="flex-1 flex flex-col items-center justify-center text-center px-8 py-12">
               <div className="w-16 h-16 rounded-full bg-primary/15 text-primary flex items-center justify-center text-2xl font-bold mb-3">
                 {displayName.charAt(0).toUpperCase()}
@@ -614,14 +603,9 @@ function ProfileLoader({ userId, onClose }: { userId: string; onClose: () => voi
     refetchOnWindowFocus: false,
   });
   if (!data) {
-    return (
-      <div className="flex flex-col items-center gap-3 py-10">
-        <div className="w-20 h-20 rounded-full bg-muted/40 animate-pulse" />
-        <div className="h-4 w-32 bg-muted/40 rounded animate-pulse" />
-        <div className="h-3 w-20 bg-muted/30 rounded animate-pulse" />
-      </div>
-    );
+    return null;
   }
+
   return (
     <UserProfilePopup
       user={{

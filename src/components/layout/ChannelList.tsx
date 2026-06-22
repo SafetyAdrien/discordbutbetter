@@ -115,7 +115,8 @@ import {
   DragStartEvent,
   DragOverEvent,
   DragOverlay,
-  CollisionDetection } from
+  CollisionDetection,
+  useDroppable } from
 "@dnd-kit/core";
 import {
   SortableContext,
@@ -155,6 +156,32 @@ const DropIndicator = React.forwardRef<
         )} />);
   });
 DropIndicator.displayName = "DropIndicator";
+
+const TOP_ORPHAN_DROP_ID = "channel-list-top-orphan-drop";
+
+function TopOrphanDropTarget({
+  activeId,
+  overId
+}: { activeId: string | null; overId: string | null }) {
+  const isChannelDrag = activeId?.startsWith("channel-") ?? false;
+  const { setNodeRef } = useDroppable({
+    id: TOP_ORPHAN_DROP_ID,
+    disabled: !isChannelDrag
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      data-dnd-type="orphan-top"
+      className={cn(
+        "relative mx-2 overflow-visible transition-[height] duration-100",
+        isChannelDrag ? "h-7 mb-0.5" : "h-0"
+      )}>
+      <DropIndicator isVisible={isChannelDrag && overId === TOP_ORPHAN_DROP_ID} position="after" variant="channel" />
+    </div>
+  );
+}
+
 interface Channel {
   id: string;
   name: string;
@@ -1186,7 +1213,7 @@ export function ChannelList({
       const collidedId = container.id.toString();
       if (collidedId === activeIdStr) return false;
       if (isCategory) return collidedId.startsWith("category-");
-      return collidedId.startsWith("channel-") || collidedId.startsWith("category-");
+      return collidedId.startsWith("channel-") || collidedId.startsWith("category-") || collidedId === TOP_ORPHAN_DROP_ID;
     });
 
     // Pointer-first detection is critical for opened categories: their rectangles are tall,
@@ -1223,8 +1250,14 @@ export function ChannelList({
     }
     const overIdStr = over.id.toString();
 
-
-
+    if (overIdStr === TOP_ORPHAN_DROP_ID) {
+      dropPositionRef.current = "before";
+      dropModeRef.current = "before";
+      setDropPosition("before");
+      setDropMode("before");
+      setOverId(TOP_ORPHAN_DROP_ID);
+      return;
+    }
 
     // Strict type validation for drop indicator
     const isActiveCategory = activeIdStr.startsWith("category-");
@@ -1358,9 +1391,17 @@ export function ChannelList({
         sourceCategoryId = null;
       }
 
-
-
-
+      if (overIdStr === TOP_ORPHAN_DROP_ID) {
+        const existingOrphanIds = visibleOrphanChannels
+          .map((ch) => ch.id)
+          .filter((id) => id !== activeChannelId);
+        reorderChannels.mutate({
+          serverId: server.id,
+          categoryId: null,
+          orderedIds: [activeChannelId, ...existingOrphanIds]
+        });
+        return;
+      }
 
       // Dropping on another channel
       if (overIdStr.startsWith("channel-")) {
@@ -1446,8 +1487,7 @@ export function ChannelList({
         const targetCategory = server.categories.find((c) => c.id === targetCategoryId);
         if (targetCategory) {
           // "before" on the FIRST visible category header → move out of any
-          // category (becomes orphan, appended to existing orphans so the
-          // shortcut still works when there are already orphans).
+          // category as the first orphan, matching the dedicated invisible top target.
           const firstVisibleCategoryId = visibleCategories[0]?.id;
           if (
             currentDropMode === "before" &&
@@ -1459,7 +1499,7 @@ export function ChannelList({
             reorderChannels.mutate({
               serverId: server.id,
               categoryId: null,
-              orderedIds: [...existingOrphanIds, activeChannelId]
+              orderedIds: [activeChannelId, ...existingOrphanIds]
             });
             return;
           }
@@ -1750,6 +1790,8 @@ export function ChannelList({
 
 
               {/* Orphan Channels - displayed BEFORE categories to allow insertion at top */}
+              <TopOrphanDropTarget activeId={activeId} overId={overId} />
+
               {visibleOrphanChannels.length > 0 &&
               <div className="px-2 space-y-0.5 mb-2">
                   <SortableContext

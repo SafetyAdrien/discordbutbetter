@@ -1384,6 +1384,22 @@ export function ChannelList({
         sourceCategoryId = null;
       }
 
+      // Dropped on the "no category" zone → move channel out of its category
+      if (overIdStr === ORPHAN_DROP_ID) {
+        // Already an orphan: nothing to do
+        if (sourceCategoryId === null) return;
+        const existingOrphanIds = orphanChannels
+          .map((ch) => ch.id)
+          .filter((id) => id !== activeChannelId);
+        reorderChannels.mutate({
+          serverId: server.id,
+          categoryId: null,
+          orderedIds: [activeChannelId, ...existingOrphanIds]
+        });
+        return;
+      }
+
+
       // Dropping on another channel
       if (overIdStr.startsWith("channel-")) {
         const overChannelId = overIdStr.replace("channel-", "");

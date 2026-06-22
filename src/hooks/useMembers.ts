@@ -292,9 +292,6 @@ export function useMembers(serverId: string | null) {
           // Always schedule a guaranteed refetch (even during lock — it'll run post-lock)
           scheduleGuaranteedRefetch();
 
-          // Skip optimistic patch if lock is active (local mutation already handled it)
-          if (membersMutationLockRef.current) return;
-
           if (payload.eventType === 'INSERT') {
             const inserted = payload.new as { member_id: string; role_id: string };
 
@@ -305,6 +302,9 @@ export function useMembers(serverId: string | null) {
               if (target === 'remove') return; // stale event, ignore
               if (target === 'add') clearRoleMutationPending(serverId, inserted.member_id, inserted.role_id);
             }
+
+            // Local optimistic mutation already put the UI in the confirmed state.
+            if (membersMutationLockRef.current) return;
 
             const { data: roleData } = await supabase
               .from('roles')
@@ -338,11 +338,15 @@ export function useMembers(serverId: string | null) {
               if (target === 'remove') clearRoleMutationPending(serverId, deleted.member_id, deleted.role_id);
             }
 
+            // Local optimistic mutation already put the UI in the confirmed state.
+            if (membersMutationLockRef.current) return;
+
             queryClient.setQueryData<MemberWithProfile[]>(
               ['members', serverId],
               (old) =>
                 old?.map((m) => {
                   if (m.id !== deleted.member_id) return m;
+                  if (!m.roles.some((r) => r.id === deleted.role_id)) return m;
                   return {
                     ...m,
                     roles: m.roles.filter((r) => r.id !== deleted.role_id),

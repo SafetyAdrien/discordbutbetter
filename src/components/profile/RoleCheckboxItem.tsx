@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Loader2 } from "lucide-react";
+import { Check } from "lucide-react";
 import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
@@ -232,9 +232,6 @@ export function RoleCheckboxItem({ role, serverId, memberId, userId, disabled }:
         <span style={{ color: role.color || undefined }} className="truncate">
           {role.name}
         </span>
-      </span>
-      <span className="flex h-3 w-3 shrink-0 items-center justify-center">
-        {isPending && <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />}
       </span>
     </div>
   );

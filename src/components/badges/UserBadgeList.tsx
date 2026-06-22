@@ -30,23 +30,14 @@ export function UserBadgeList({ userId, size = 'sm', className, showEmpty = fals
 
   const sz = SIZE_MAP[size];
 
-  // Cold-boot skeleton: data not yet available but a fetch is in flight
+  // No data yet: render nothing (cache-first fills instantly; avoid skeleton flash)
   if (!catalog || !rows) {
-    if (!catalogFetching && !rowsFetching) {
-      if (!showEmpty) return null;
+    if (showEmpty && !catalogFetching && !rowsFetching) {
       return <span className="text-xs text-muted-foreground">Aucun badge</span>;
     }
-    return (
-      <div className={cn('flex items-center', sz.gap, className)}>
-        {[0, 1, 2].map((i) => (
-          <span
-            key={i}
-            className={cn('inline-block rounded-md bg-muted/40 animate-pulse', sz.box)}
-          />
-        ))}
-      </div>
-    );
+    return null;
   }
+
 
   if (!badges.length) {
     if (!showEmpty) return null;

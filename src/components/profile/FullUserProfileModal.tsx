@@ -256,17 +256,9 @@ export function FullUserProfileModal({
                   : 'Serveurs en commun'}
               </h4>
             </div>
-            {!mutualServers && mutualServersFetching ? (
-              <div className="space-y-1">
-                {[0, 1, 2].map((i) => (
-                  <div key={i} className="flex items-center gap-3 p-2">
-                    <div className="w-9 h-9 rounded-full bg-muted/40 animate-pulse" />
-                    <div className="h-3 w-32 bg-muted/40 rounded animate-pulse" />
-                  </div>
-                ))}
-              </div>
-            ) : !mutualServers || mutualServers.length === 0 ? (
+            {!mutualServers ? null : mutualServers.length === 0 ? (
               <p className="text-xs text-muted-foreground">Aucun serveur en commun.</p>
+
             ) : (
               <div className="space-y-1">
                 {mutualServers.map((server) => (
@@ -285,25 +277,8 @@ export function FullUserProfileModal({
           </section>
 
           {/* Mutual friends */}
-          {!mutualFriends && mutualFriendsFetching ? (
-            <section className="rounded-2xl bg-card border border-border/50 p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <Users className="w-4 h-4 text-primary" />
-                <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Amis en commun</h4>
-              </div>
-              <div className="space-y-1">
-                {[0, 1].map((i) => (
-                  <div key={i} className="flex items-center gap-3 p-2">
-                    <div className="w-9 h-9 rounded-full bg-muted/40 animate-pulse" />
-                    <div className="flex-1 space-y-1.5">
-                      <div className="h-3 w-28 bg-muted/40 rounded animate-pulse" />
-                      <div className="h-2.5 w-20 bg-muted/40 rounded animate-pulse" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          ) : mutualFriends && mutualFriends.length > 0 ? (
+          {mutualFriends && mutualFriends.length > 0 ? (
+
             <section className="rounded-2xl bg-card border border-border/50 p-4">
               <div className="flex items-center gap-2 mb-3">
                 <Users className="w-4 h-4 text-primary" />

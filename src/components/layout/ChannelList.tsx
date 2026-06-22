@@ -175,7 +175,7 @@ function TopOrphanDropTarget({
       data-dnd-type="orphan-top"
       className={cn(
         "relative mx-2 overflow-visible transition-[height] duration-100",
-        isChannelDrag ? "h-5 mb-0.5" : "h-0"
+        isChannelDrag ? "h-7 mb-0.5" : "h-0"
       )}>
       <DropIndicator isVisible={isChannelDrag && overId === TOP_ORPHAN_DROP_ID} position="after" variant="channel" />
     </div>

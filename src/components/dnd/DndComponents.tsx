@@ -225,9 +225,9 @@ export const DroppableZone = forwardRef<HTMLDivElement, DroppableZoneProps>(
         ref={ref}
         data-droppable-id={id}
         className={cn(
-          "transition-all duration-150",
-          isOver && canDrop && "bg-[#5865f2]/5 ring-1 ring-[#5865f2]/30 rounded-md",
-          isOver && !canDrop && "bg-destructive/5 ring-1 ring-destructive/30 rounded-md",
+          "transition-[background-color,box-shadow] duration-100 ease-out rounded-md",
+          isOver && canDrop && "bg-[#5865f2]/10 shadow-[inset_0_0_0_1px_rgba(88,101,242,0.35)]",
+          isOver && !canDrop && "bg-destructive/10 shadow-[inset_0_0_0_1px_hsl(var(--destructive)/0.4)]",
           className,
         )}
       >

@@ -63,6 +63,10 @@ export function purgeDndArtifacts() {
     el.style.display = "none";
     el.style.visibility = "hidden";
   });
+  document.querySelectorAll<HTMLElement>('body > div[style*="z-index: 9999"][style*="pointer-events: none"]').forEach((el) => {
+    el.style.display = "none";
+    el.style.visibility = "hidden";
+  });
   document.querySelectorAll<HTMLElement>(".drag-previewer").forEach((el) => {
     el.style.display = "none";
     el.innerHTML = "";

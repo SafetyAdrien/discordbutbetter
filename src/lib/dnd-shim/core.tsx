@@ -9,6 +9,7 @@ export {
   type UniqueIdentifier,
 } from "./context";
 export { DragOverlay, type DragOverlayProps } from "./drag-overlay";
+export { useDroppable, type UseDroppableOptions, type DroppableResult } from "./use-droppable";
 export {
   PointerSensor,
   KeyboardSensor,

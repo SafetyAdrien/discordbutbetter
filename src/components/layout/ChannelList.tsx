@@ -115,7 +115,8 @@ import {
   DragStartEvent,
   DragOverEvent,
   DragOverlay,
-  CollisionDetection } from
+  CollisionDetection,
+  useDroppable } from
 "@dnd-kit/core";
 import {
   SortableContext,
@@ -155,6 +156,30 @@ const DropIndicator = React.forwardRef<
         )} />);
   });
 DropIndicator.displayName = "DropIndicator";
+
+// Drop zone shown at the very top of the channel list while a channel is being
+// dragged. Lets users drop into the "no category" area even when it's empty.
+const ORPHAN_DROP_ID = "orphan-zone";
+function OrphanDropZone({ isDragging }: { isDragging: boolean }) {
+  const { setNodeRef, isOver } = useDroppable({ id: ORPHAN_DROP_ID });
+  if (!isDragging) return null;
+  return (
+    <div
+      ref={setNodeRef}
+      data-dnd-type="orphan-zone"
+      className={cn(
+        "mx-2 mb-2 h-6 rounded-md border border-dashed transition-colors",
+        isOver
+          ? "border-[#5865f2] bg-[#5865f2]/15"
+          : "border-muted-foreground/30 bg-muted/20"
+      )}
+    >
+      <div className="flex items-center justify-center h-full text-[11px] font-medium text-muted-foreground select-none pointer-events-none">
+        Déposer ici pour retirer de la catégorie
+      </div>
+    </div>
+  );
+}
 interface Channel {
   id: string;
   name: string;
@@ -1186,7 +1211,12 @@ export function ChannelList({
       const collidedId = container.id.toString();
       if (collidedId === activeIdStr) return false;
       if (isCategory) return collidedId.startsWith("category-");
-      return collidedId.startsWith("channel-") || collidedId.startsWith("category-");
+      // Channels can target: other channels, category headers, and the orphan drop zone
+      return (
+        collidedId.startsWith("channel-") ||
+        collidedId.startsWith("category-") ||
+        collidedId === ORPHAN_DROP_ID
+      );
     });
 
     // Pointer-first detection is critical for opened categories: their rectangles are tall,
@@ -1222,6 +1252,16 @@ export function ChannelList({
       return;
     }
     const overIdStr = over.id.toString();
+
+    // Channel dragged onto the "no category" drop zone (top of list)
+    if (overIdStr === ORPHAN_DROP_ID && activeIdStr.startsWith("channel-")) {
+      dropPositionRef.current = "before";
+      dropModeRef.current = "inside";
+      setDropPosition("before");
+      setDropMode("inside");
+      setOverId(ORPHAN_DROP_ID);
+      return;
+    }
 
     // Strict type validation for drop indicator
     const isActiveCategory = activeIdStr.startsWith("category-");
@@ -1348,6 +1388,22 @@ export function ChannelList({
       if (!sourceCategoryId && orphanChannels.some((ch) => ch.id === activeChannelId)) {
         sourceCategoryId = null;
       }
+
+      // Dropped on the "no category" zone → move channel out of its category
+      if (overIdStr === ORPHAN_DROP_ID) {
+        // Already an orphan: nothing to do
+        if (sourceCategoryId === null) return;
+        const existingOrphanIds = orphanChannels
+          .map((ch) => ch.id)
+          .filter((id) => id !== activeChannelId);
+        reorderChannels.mutate({
+          serverId: server.id,
+          categoryId: null,
+          orderedIds: [activeChannelId, ...existingOrphanIds]
+        });
+        return;
+      }
+
 
       // Dropping on another channel
       if (overIdStr.startsWith("channel-")) {
@@ -1714,6 +1770,13 @@ export function ChannelList({
               onDragOver={handleDragOver}
               onDragEnd={handleDragEnd}
               onDragCancel={handleDragCancel}>
+
+              {/* "No category" drop zone — visible only while dragging a channel.
+                  Lets users drop a channel out of its category, even when the
+                  orphan area is empty. */}
+              <OrphanDropZone
+                isDragging={!!activeId && (activeId as string).startsWith("channel-")}
+              />
 
               {/* Orphan Channels - displayed BEFORE categories to allow insertion at top */}
               {visibleOrphanChannels.length > 0 &&

@@ -1,6 +1,7 @@
 // Re-exports for the @dnd-kit compatibility layer
 export * from "./context";
 export * from "./use-sortable";
+export * from "./use-droppable";
 export * from "./drag-overlay";
 
 // arrayMove helper (parity with @dnd-kit/sortable)

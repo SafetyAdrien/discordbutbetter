@@ -35,11 +35,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect, useRef, useMemo, useCallback, forwardRef } from 'react';
 
 
-// DnD Kit imports
-import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, DragOverlay } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
+// DnD imports — backed by react-dnd + react-dnd-accessible-backend (Discord) via shim
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, DragOverlay } from '@/lib/dnd-react';
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@/lib/dnd-react';
+import { CSS } from '@/lib/dnd-react';
+import { restrictToVerticalAxis } from '@/lib/dnd-react';
 
 // (Drop indicator removed - now rendered inline like mobile)
 

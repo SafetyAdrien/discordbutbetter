@@ -106,7 +106,7 @@ import { useLeaveServer } from "@/hooks/useLeaveServer";
 import { useServerChannelPermissions } from "@/hooks/useServerChannelPermissions";
 import { useStageAudienceCount } from "@/hooks/useStageAudience";
 import { Search } from "lucide-react";
-// DnD Kit imports
+// DnD imports — backed by react-dnd + react-dnd-accessible-backend (Discord) via shim
 import {
   DndContext,
   closestCenter,
@@ -116,14 +116,14 @@ import {
   DragOverEvent,
   DragOverlay,
   CollisionDetection } from
-"@dnd-kit/core";
+"@/lib/dnd-react";
 import {
   SortableContext,
   verticalListSortingStrategy,
   useSortable } from
-"@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
+"@/lib/dnd-react";
+import { CSS } from "@/lib/dnd-react";
+import { restrictToVerticalAxis } from "@/lib/dnd-react";
 import { useDndSensors } from "@/hooks/useDndSensors";
 import React from "react";
 

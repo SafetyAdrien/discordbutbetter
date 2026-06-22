@@ -1,62 +1,99 @@
-# Instant UI partout — corriger délais de profils, messages et listes (desktop + mobile)
+# Migration drag-and-drop : @dnd-kit → react-dnd + react-dnd-accessible-backend
 
-## Objectif
+Remplacement intégral du système DnD par la stack utilisée par Discord :
+- `react-dnd` (core)
+- `react-dnd-html5-backend` (souris/touch HTML5)
+- `react-dnd-accessible-backend` (clavier + lecteur d'écran, repo Discord)
+- `react-dnd-multi-backend` + `dnd-multi-backend` (pour combiner les backends souris + accessibilité simultanément, comme recommandé par Discord)
 
-Tout doit s'afficher **immédiatement** depuis le cache IndexedDB (warmCache) lorsqu'il existe, et un **skeleton instantané** sinon. Aucun "pop-in" silencieux, aucun spinner intermédiaire quand la donnée est déjà en mémoire.
+## Périmètre (tout le système DnD du projet)
 
-## Diagnostic actuel
+Fichiers actuellement basés sur @dnd-kit qui seront réécrits :
 
-Le pipeline cache-first (cacheGetSync + warmCache + preloader) couvre déjà `useMessages`, `useMembers`, `useDMConversations`, `useServers`. Les trous qui causent les délais ressentis :
+1. `src/hooks/useDndSensors.ts` — supprimé (remplacé par configuration `MultiBackend`)
+2. `src/components/dnd/DndComponents.tsx` — réécrit en wrappers react-dnd (`DndProvider`, `useDrag`, `useDrop`, `Sortable`)
+3. `src/components/layout/ServerList.tsx` — réordonnancement vertical des serveurs (desktop)
+4. `src/components/layout/ChannelList.tsx` — réordonnancement salons + catégories
+5. `src/components/server-settings/RoleManager.tsx` — réordonnancement rôles
+6. `src/components/mobile/MobileServersView.tsx` — réordonnancement serveurs (mobile, long-press)
 
-1. **Profils utilisateur** — `useBadges`, `useUserBadges`, `useServerProfile`, `useMutualServers`, `useMutualFriends` n'ont **aucun** cache → 2-5 requêtes réseau à chaque ouverture du popup profil.
-2. **Messages** — `placeholderData` OK mais le preloader ne pré-charge **que le dernier salon visité** ; les autres salons ré-attendent le réseau. Aucun skeleton dans `ChatArea` / `MobileLayout` quand vide.
-3. **Membres / DMs / Serveurs** — cache OK mais listes vides en cold boot sans skeleton (desktop + mobile).
-4. **Mobile** — `MobileDMHomeView`, `MobileLayout` (messages, members) n'ont aucun état de chargement.
+Hooks dépendants à vérifier/ajuster : `useServerOrder`, persistance ordre salons/rôles (logique métier inchangée, seulement la couche DnD change).
 
-## Plan d'implémentation
+## Architecture cible
 
-### A. Profils utilisateur (priorité 1 — popup ressenti lent)
+```text
+main.tsx
+  └─ <DndProvider backend={MultiBackend} options={HTML5ToAccessibleBackendTransition}>
+        └─ <App />
 
-- **`src/hooks/useBadges.ts`** + **`useUserBadges.ts`** : ajouter `placeholderData: cacheGetSync('badges:all')` / `cacheGetSync(\`user-badges:\${userId}\`)`, écriture dans `cacheSetAsync` au succès, `staleTime: 5min`, `refetchOnMount: false` si cache.
-- **`src/hooks/useServerProfile.ts`** : même pattern, clé `server-profile:${serverId}:${userId}`.
-- **`src/hooks/useMutualServers.ts`** + **`useMutualFriends.ts`** : même pattern, clés `mutual-servers:${userId}` / `mutual-friends:${userId}`.
-- **`src/hooks/usePreloader.ts`** : ajouter, en slice idle 3 (après DMs), warm-up de `badges:all` (global) et, pour le user courant, `user-badges:${authUserId}`. Les mutual/server-profile restent lazy (pas warmés au boot, juste cachés à la 1ère ouverture pour la 2ème visite instantanée).
-- **`UserBadgeList`** : skeleton dot (3 pastilles `animate-pulse`) quand `data === undefined && isFetching`.
-- **`FullUserProfileModal`** : skeleton lignes pour sections "Serveurs en commun" / "Amis en commun" quand undefined.
+HTML5ToAccessibleBackendTransition = {
+  backends: [
+    { id: 'html5',        backend: HTML5Backend,        transition: MouseTransition },
+    { id: 'accessible',   backend: AccessibleBackend,
+      preview: true,
+      transition: createTransition('keydown', e => e.key === 'Tab' || e.key === ' ') }
+  ]
+}
+```
 
-### B. Messages (toutes les salles instant)
+Chaque item draggable :
+```tsx
+const [{ isDragging }, drag] = useDrag({
+  type: 'SERVER',
+  item: { id, index },
+  collect: m => ({ isDragging: m.isDragging() }),
+});
+const [, drop] = useDrop({
+  accept: 'SERVER',
+  hover: (item, monitor) => reorder(item.index, index),
+});
+return <div ref={node => drag(drop(node))} aria-grabbed={isDragging} />;
+```
 
-- **`src/hooks/usePreloader.ts`** : étendre la slice 2 idle pour seed `messages:${channelId}` des **N derniers salons visités** (lire la queue depuis le cache `recent-channels`, fallback : top 5 salons non-lus du serveur actif). Limite 5 salons pour éviter coût Supabase.
-- **`src/components/chat/ChatArea.tsx`** : afficher un skeleton de messages (5-8 placeholders `animate-pulse` reproduisant avatar+nom+texte) quand `messages.length === 0 && isLoading`. Le composant reçoit déjà `messages` en prop → ajouter prop `isLoading` depuis le parent (`Index.tsx` / `MobileLayout.tsx`).
-- **`MobileLayout.tsx`** : propager `isLoading` de `useMessages` vers `ChatArea`.
+## Accessibilité (modèle Discord)
 
-### C. Listes membres / DMs / serveurs (skeletons cold-boot)
+`react-dnd-accessible-backend` ajoute automatiquement :
+- `Tab` pour cibler un draggable, `Space` pour saisir/déposer, `Escape` pour annuler
+- Annonces ARIA live (`announceMessages` configurable, en français)
+- Focus visible sur la cible courante
 
-- **`MemberList.tsx`** : skeleton (8 lignes avatar+nom `animate-pulse`) quand `isLoading && members.length === 0`.
-- **`MobileLayout.tsx`** (member panel) : idem.
-- **`MobileDMHomeView.tsx`** : skeleton 6 conversations quand `isLoading && conversations.length === 0`.
-- **`ChannelList.tsx`** (sidebar serveurs) : skeleton 4 server icons + channel rows quand `servers.length === 0 && isLoading`.
+Messages personnalisés (FR) :
+```ts
+announceMessages: {
+  pickedUpItem: (item) => `${item?.name} saisi`,
+  droppedItem:  (item, target) => `${item?.name} déposé sur ${target?.name}`,
+  hoveredTarget:(item, target) => `${item?.name} survole ${target?.name}`,
+  canceledDrag: (item) => `Déplacement de ${item?.name} annulé`,
+}
+```
 
-### D. Garanties anti-régression
+## Mobile
 
-- Tous les nouveaux `placeholderData` retournent `undefined` si pas de cache → React Query passe en `isLoading=true` → skeleton s'affiche bien.
-- Quand cache présent : `isLoading=false`, render instantané, pas de flash skeleton.
-- `cacheSetAsync` appelé dans `onSuccess` / `useEffect` au succès réseau pour rafraîchir IndexedDB.
-- Mobile utilise les mêmes hooks → bénéficie automatiquement de chaque amélioration.
+`react-dnd-html5-backend` ne gère pas le touch nativement. Pour préserver le long-press → drag actuel sur mobile :
+- Ajouter `react-dnd-touch-backend` dans le `MultiBackend` avec `TouchTransition` (`delayTouchStart: 400ms`, `enableMouseEvents: false`)
+- Configuration finale = 3 backends : Mouse (HTML5) + Touch + Accessible (clavier)
 
-## Détails techniques
+## Étapes d'exécution
 
-- Clés cache cohérentes avec `src/lib/cache.ts` (préfixes existants).
-- Skeletons via composants `<Skeleton>` shadcn déjà présents (`src/components/ui/skeleton.tsx`).
-- Aucune modification des subscriptions Realtime existantes — uniquement ajout d'une couche cache + skeletons.
-- Aucune nouvelle dépendance.
+1. **Install** : `bun add react-dnd react-dnd-html5-backend react-dnd-touch-backend react-dnd-multi-backend dnd-multi-backend react-dnd-accessible-backend`
+2. **Provider global** dans `src/main.tsx` (wrap `<App />` avec `DndProvider` configuré MultiBackend)
+3. **Nouveau `DndComponents.tsx`** : exports `Sortable`, `SortableItem`, `DragHandle`, hooks `useSortableList(items, onReorder, type)` — API compatible avec l'usage existant pour minimiser les diffs
+4. **Réécriture des 4 listes** (`ServerList`, `ChannelList`, `RoleManager`, `MobileServersView`) avec la nouvelle API
+5. **Suppression** : `useDndSensors.ts`, désinstallation des 4 packages `@dnd-kit/*`
+6. **Validation** :
+   - Desktop : drag souris serveurs/salons/rôles
+   - Mobile : long-press 400ms puis drag
+   - Clavier : Tab + Space + flèches + Escape sur chaque liste
+   - Annonces ARIA visibles via DevTools accessibility tree
 
-## Fichiers touchés
+## Points techniques
 
-Hooks : `useBadges.ts`, `useUserBadges.ts`, `useServerProfile.ts`, `useMutualServers.ts`, `useMutualFriends.ts`, `usePreloader.ts`.
-Composants : `UserBadgeList.tsx`, `FullUserProfileModal.tsx`, `ChatArea.tsx`, `MobileLayout.tsx`, `MemberList.tsx`, `MobileDMHomeView.tsx`, `ChannelList.tsx`.
+- `react-dnd-accessible-backend` est typé TypeScript ✓
+- L'optimistic lock `mutationLockRef` (mémoire projet) et la latence 800ms restent appliqués dans les callbacks `onReorder` — la migration ne touche pas la persistance
+- `dropAnimation` désactivé reste l'effet par défaut de react-dnd (pas d'animation native)
+- IDs serveurs gardent `rounded-full` (mémoire projet), préservé car ce sont les styles, pas le DnD
 
-## Hors scope
+## Hors périmètre
 
-- Pas de changement des mutations rôles (déjà instantanées suite à la session précédente).
-- Pas de refactor de l'architecture cache existante — uniquement combler les trous.
+- `usePendingAttachments` (drag externe HTML5 natif pour fichiers) : conservé tel quel, ce n'est pas du tri intra-liste
+- `useSwipeTabs` / `useSwipeToReply` : gestes tactiles indépendants du DnD, non concernés

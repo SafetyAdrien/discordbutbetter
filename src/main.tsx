@@ -1,6 +1,7 @@
 import { createRoot } from "react-dom/client";
 import { warmCache, purgeAllCaches } from "./lib/cache";
 import App from "./App.tsx";
+import { AppDndProvider } from "./lib/dnd-react";
 import "./index.css";
 
 async function bootstrap() {
@@ -13,7 +14,11 @@ async function bootstrap() {
   } catch (e) {
     console.warn('[bootstrap] warmCache failed, rendering anyway', e);
   }
-  createRoot(document.getElementById("root")!).render(<App />);
+  createRoot(document.getElementById("root")!).render(
+    <AppDndProvider>
+      <App />
+    </AppDndProvider>,
+  );
 }
 
 void bootstrap();

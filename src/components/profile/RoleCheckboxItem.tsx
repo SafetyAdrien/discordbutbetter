@@ -233,9 +233,6 @@ export function RoleCheckboxItem({ role, serverId, memberId, userId, disabled }:
           {role.name}
         </span>
       </span>
-      <span className="flex h-3 w-3 shrink-0 items-center justify-center">
-        {isPending && <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />}
-      </span>
     </div>
   );
 }

@@ -186,7 +186,7 @@ export function DndContext({
       }, 90);
     };
 
-    const cleanupEvents = ["pointerup", "mouseup", "touchend", "touchcancel", "dragend", "drop", "blur"] as const;
+    const cleanupEvents = ["pointerup", "pointercancel", "mouseup", "touchend", "touchcancel", "dragend", "drop", "blur"] as const;
     cleanupEvents.forEach((eventName) => {
       window.addEventListener(eventName, scheduleStaleDragCleanup, { capture: true, passive: true });
     });

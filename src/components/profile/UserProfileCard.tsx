@@ -294,7 +294,7 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers, 
               voiceCtx.voiceState.isMuted && "text-destructive"
             )}
           >
-            {voiceCtx.voiceState.isMuted ? <DiscordMicOff className="w-[15px] h-[15px]" /> : <DiscordMic className="w-[15px] h-[15px] text-muted-foreground" />}
+            {voiceCtx.voiceState.isMuted ? <DiscordMicOff className="w-[19px] h-[19px]" /> : <DiscordMic className="w-[19px] h-[19px] text-muted-foreground" />}
           </button>
           <MicrophoneSettingsPopover
             open={micPopoverOpen}
@@ -314,7 +314,7 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers, 
             onToggleHighPass={(v) => voiceCtx.setAudioFilter('highPass', v)}
           >
             <button className="px-0.5 py-1 hover:bg-muted rounded-l-none rounded-r-md transition-colors border-l border-border/30">
-              {micPopoverOpen ? <ChevronUp className="w-3 h-3 text-muted-foreground" /> : <ChevronDown className="w-3 h-3 text-muted-foreground" />}
+              {micPopoverOpen ? <ChevronUp className="w-[15px] h-[15px] text-muted-foreground" /> : <ChevronDown className="w-[15px] h-[15px] text-muted-foreground" />}
             </button>
           </MicrophoneSettingsPopover>
         </div>
@@ -328,7 +328,7 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers, 
               voiceCtx.voiceState.isDeafened && "text-destructive"
             )}
           >
-            {voiceCtx.voiceState.isDeafened ? <DiscordHeadphonesOff className="w-[15px] h-[15px]" /> : <DiscordHeadphones className="w-[15px] h-[15px] text-muted-foreground" />}
+            {voiceCtx.voiceState.isDeafened ? <DiscordHeadphonesOff className="w-[19px] h-[19px]" /> : <DiscordHeadphones className="w-[19px] h-[19px] text-muted-foreground" />}
           </button>
           <HeadphonesSettingsPopover
             open={headphonesPopoverOpen}
@@ -339,14 +339,14 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers, 
             onToggleDeafen={() => voiceCtx.toggleDeafen()}
           >
             <button className="px-0.5 py-1 hover:bg-muted rounded-l-none rounded-r-md transition-colors border-l border-border/30">
-              {headphonesPopoverOpen ? <ChevronUp className="w-3 h-3 text-muted-foreground" /> : <ChevronDown className="w-3 h-3 text-muted-foreground" />}
+              {headphonesPopoverOpen ? <ChevronUp className="w-[15px] h-[15px] text-muted-foreground" /> : <ChevronDown className="w-[15px] h-[15px] text-muted-foreground" />}
             </button>
           </HeadphonesSettingsPopover>
         </div>
 
         {/* Paramètres */}
         <button onClick={onOpenSettings} className="p-1 hover:bg-muted rounded-md transition-colors ml-0.5">
-          <DiscordSettings className="w-[15px] h-[15px] text-muted-foreground" />
+          <DiscordSettings className="w-[19px] h-[19px] text-muted-foreground" />
         </button>
       </div>
 

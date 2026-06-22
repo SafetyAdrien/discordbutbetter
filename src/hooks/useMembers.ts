@@ -13,6 +13,20 @@ import {
 // Mutation lock to prevent Realtime invalidations during local role mutations
 export const membersMutationLockRef = { current: false };
 
+let membersLockTimer: ReturnType<typeof setTimeout> | null = null;
+
+/** Lock members mutations for `ms`. Extends any existing lock so rapid toggles
+ *  are grouped under one protection window, preventing background refetches
+ *  from overwriting optimistic UI updates. */
+export function lockMembersMutation(ms = 500) {
+  membersMutationLockRef.current = true;
+  if (membersLockTimer) clearTimeout(membersLockTimer);
+  membersLockTimer = setTimeout(() => {
+    membersMutationLockRef.current = false;
+    membersLockTimer = null;
+  }, ms);
+}
+
 export interface ServerProfileData {
   id: string;
   user_id: string;

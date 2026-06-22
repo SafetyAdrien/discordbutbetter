@@ -43,6 +43,7 @@ export function DragOverlay({ children }: DragOverlayProps) {
 
   return createPortal(
     <div
+      data-dnd-overlay-root="true"
       style={{
         position: "fixed",
         pointerEvents: "none",

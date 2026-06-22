@@ -105,6 +105,17 @@ export function usePreloader(
       : serverIds[0];
     const targetChannelId = lastChannelId || null;
 
+    // === SERVERS LIST: hydrate ['servers'] query from cache immediately ===
+    // Safety net in case useServers' initialData missed (e.g. cache warmed
+    // after first render). Ensures the server rail paints on first frame.
+    const cachedServers = readCache<any[]>(`servers:${user.id}`);
+    if (cachedServers && Array.isArray(cachedServers) && cachedServers.length > 0) {
+      const existing = queryClient.getQueryData<any[]>(['servers']);
+      if (!existing || existing.length === 0) {
+        queryClient.setQueryData(['servers'], cachedServers);
+      }
+    }
+
     // === PROFILE: cache-first, mark loaded immediately, refresh in background ===
     const cachedProfile = readCache<any>(`profile:${user.id}`);
     if (cachedProfile) {
@@ -112,6 +123,7 @@ export function usePreloader(
       queryClient.setQueryData(['server-order', user.id], cachedProfile.server_order || []);
     }
     setProfileLoaded(true);
+
     // Background profile refresh — does NOT block UI ready.
     void (async () => {
       const t0 = performance.now();

@@ -565,33 +565,6 @@
     animation: fade-in 0.2s ease-out;
   }
 
-  /* Drag-and-drop indicator entry + placeholder pulse */
-  @keyframes dnd-indicator-in {
-    from {
-      opacity: 0;
-      transform: scaleX(0.6);
-    }
-    to {
-      opacity: 1;
-      transform: scaleX(1);
-    }
-  }
-
-  @keyframes dnd-placeholder-pulse {
-    0%, 100% {
-      opacity: 0.55;
-    }
-    50% {
-      opacity: 0.95;
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    [class*="animate-[dnd-"] {
-      animation: none !important;
-    }
-  }
-
   @keyframes slide-down {
     from {
       opacity: 0;

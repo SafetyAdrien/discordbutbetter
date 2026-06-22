@@ -901,7 +901,6 @@ export function ChannelList({
   const [dropPosition, setDropPosition] = useState<"before" | "after">("after");
   const [dropMode, setDropMode] = useState<"before" | "after" | "inside">("after");
   const [optimisticCategoryOrder, setOptimisticCategoryOrder] = useState<string[] | null>(null);
-  const activeIdRef = useRef<string | null>(null);
   // Synchronous refs mirroring dropPosition/dropMode so handleDragEnd reads fresh values
   // (avoids stale closure when React batches setState between dragOver and dragEnd)
   const dropPositionRef = useRef<"before" | "after">("after");
@@ -1164,12 +1163,10 @@ export function ChannelList({
   const handleDragStart = (event: DragStartEvent) => {
     dropPositionRef.current = "after";
     dropModeRef.current = "after";
-    activeIdRef.current = event.active.id as string;
     setActiveId(event.active.id as string);
   };
 
   const handleDragCancel = () => {
-    activeIdRef.current = null;
     setActiveId(null);
     setOverId(null);
     dropPositionRef.current = "after";
@@ -1288,7 +1285,6 @@ export function ChannelList({
     // Snapshot ref values synchronously — handleDragOver writes them; state may be stale here
     const currentDropPosition = dropPositionRef.current;
     const currentDropMode = dropModeRef.current;
-    activeIdRef.current = null;
     setOverId(null);
     const { active, over } = event;
     setActiveId(null);
@@ -1455,31 +1451,6 @@ export function ChannelList({
       }
     }
   };
-
-  useEffect(() => {
-    const clearVisibleDragState = () => {
-      activeIdRef.current = null;
-      setActiveId(null);
-      setOverId(null);
-      setDropPosition("after");
-      setDropMode("after");
-    };
-    const clearOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") clearVisibleDragState();
-    };
-    const clearOnVisibilityChange = () => {
-      if (document.visibilityState === "hidden") clearVisibleDragState();
-    };
-    const events = ["pointerup", "pointercancel", "mouseup", "touchend", "touchcancel", "drop", "dragend", "blur", "pagehide"] as const;
-    events.forEach((eventName) => window.addEventListener(eventName, clearVisibleDragState, { capture: true, passive: true }));
-    window.addEventListener("keydown", clearOnEscape, { capture: true });
-    document.addEventListener("visibilitychange", clearOnVisibilityChange, { capture: true });
-    return () => {
-      events.forEach((eventName) => window.removeEventListener(eventName, clearVisibleDragState, { capture: true }));
-      window.removeEventListener("keydown", clearOnEscape, { capture: true });
-      document.removeEventListener("visibilitychange", clearOnVisibilityChange, { capture: true });
-    };
-  }, []);
 
   // Helper to find a channel by ID for the DragOverlay
   const findChannelById = (id: string): Channel | undefined => {
@@ -1778,7 +1749,7 @@ export function ChannelList({
                     onCreateInvite={() => handleCreateInvite(channel.id)}
                     onDelete={() => handleDeleteChannel(channel.id, channel.name)}
                     onDuplicate={() => handleDuplicateChannel(channel.id)}
-                    showDropIndicator={activeId != null && overId === `channel-${channel.id}`}
+                    showDropIndicator={overId === `channel-${channel.id}`}
                     dropPosition={dropPosition}
 threads={threadsByChannel[channel.id] || []}
                     activeThreadId={activeThreadId}
@@ -1818,11 +1789,11 @@ threads={threadsByChannel[channel.id] || []}
                     })
                     }
                     onDelete={() => handleDeleteCategory(category.id)}
-                    showDropIndicator={activeId != null && overId === `category-${category.id}` && dropMode !== "inside"}
+                    showDropIndicator={overId === `category-${category.id}` && dropMode !== "inside"}
                     dropPosition={dropPosition}
                     canManageChannels={canManageChannels}
                     serverId={server.id}
-                    showInsideHighlight={activeId != null && overId === `category-${category.id}` && dropMode === "inside"}>
+                    showInsideHighlight={overId === `category-${category.id}` && dropMode === "inside"}>
 
                       <div className="mt-1 px-2 space-y-0.5">
                         <SortableContext
@@ -1846,7 +1817,7 @@ threads={threadsByChannel[channel.id] || []}
                           onCreateInvite={() => handleCreateInvite(channel.id)}
                           onDelete={() => handleDeleteChannel(channel.id, channel.name)}
                           onDuplicate={() => handleDuplicateChannel(channel.id)}
-                          showDropIndicator={activeId != null && overId === `channel-${channel.id}`}
+                          showDropIndicator={overId === `channel-${channel.id}`}
                           dropPosition={dropPosition}
                           threads={threadsByChannel[channel.id] || []}
                           activeThreadId={activeThreadId}

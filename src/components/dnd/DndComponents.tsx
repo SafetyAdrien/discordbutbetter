@@ -1,9 +1,11 @@
-import React, { forwardRef, memo, useMemo } from "react";
+import React, { forwardRef } from "react";
 import { cn } from "@/lib/utils";
 import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 // ============================================
 // DROP INDICATOR - Discord-style blue line with circles
+// Pixel-perfect positioning with absolute placement
 // ============================================
 export interface DropIndicatorProps {
   isVisible: boolean;
@@ -13,10 +15,7 @@ export interface DropIndicatorProps {
   fullWidth?: boolean;
 }
 
-const DROP_INDICATOR_ANIM =
-  "animate-[dnd-indicator-in_120ms_cubic-bezier(0.22,1,0.36,1)_forwards] will-change-transform";
-
-const DropIndicatorImpl = forwardRef<HTMLDivElement, DropIndicatorProps>(
+export const DropIndicator = forwardRef<HTMLDivElement, DropIndicatorProps>(
   ({ isVisible, position, orientation = "horizontal", fullWidth = false }, ref) => {
     if (!isVisible) return null;
 
@@ -24,16 +23,15 @@ const DropIndicatorImpl = forwardRef<HTMLDivElement, DropIndicatorProps>(
       return (
         <div
           ref={ref}
-          aria-hidden
           className={cn(
-            "absolute top-0 bottom-0 w-[2px] z-20 pointer-events-none origin-center",
-            "bg-[#5865f2] shadow-[0_0_6px_rgba(88,101,242,0.55)] rounded-full",
+            "absolute top-0 bottom-0 w-[2px] z-10 pointer-events-none",
+            "bg-[#5865f2]",
+            // Circles at endpoints
             "before:absolute before:top-0 before:left-1/2 before:-translate-x-1/2 before:-translate-y-[3px]",
             "before:w-[8px] before:h-[3px] before:rounded-full before:bg-[#5865f2]",
             "after:absolute after:bottom-0 after:left-1/2 after:-translate-x-1/2 after:translate-y-[3px]",
             "after:w-[8px] after:h-[3px] after:rounded-full after:bg-[#5865f2]",
             position === "before" ? "left-0 -translate-x-1/2" : "right-0 translate-x-1/2",
-            DROP_INDICATOR_ANIM,
           )}
         />
       );
@@ -42,24 +40,26 @@ const DropIndicatorImpl = forwardRef<HTMLDivElement, DropIndicatorProps>(
     return (
       <div
         ref={ref}
-        aria-hidden
         className={cn(
-          "absolute h-[2px] z-20 pointer-events-none origin-center",
+          // Absolute positioning with z-index above everything
+          "absolute h-[2px] z-10 pointer-events-none",
+          // Full width, ignoring parent padding
           fullWidth ? "-left-2 -right-2" : "left-0 right-0",
-          "bg-[#5865f2] shadow-[0_0_6px_rgba(88,101,242,0.55)] rounded-full",
+          // Discord blue color
+          "bg-[#5865f2]",
+          // Circles at endpoints using pseudo-elements
           "before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:-translate-x-[3px]",
           "before:w-[8px] before:h-[3px] before:rounded-full before:bg-[#5865f2]",
           "after:absolute after:right-0 after:top-1/2 after:-translate-y-1/2 after:translate-x-[3px]",
           "after:w-[8px] after:h-[3px] after:rounded-full after:bg-[#5865f2]",
+          // Position based on 'before' or 'after'
           position === "before" ? "top-0 -translate-y-1/2" : "bottom-0 translate-y-1/2",
-          DROP_INDICATOR_ANIM,
         )}
       />
     );
   },
 );
-DropIndicatorImpl.displayName = "DropIndicator";
-export const DropIndicator = memo(DropIndicatorImpl);
+DropIndicator.displayName = "DropIndicator";
 
 // ============================================
 // DRAG OVERLAY WRAPPER - Semi-transparent ghost
@@ -69,13 +69,19 @@ export interface DragOverlayItemProps {
   className?: string;
 }
 
-const DRAG_OVERLAY_BASE =
-  "opacity-95 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.45)] rounded-lg border border-[#5865f2]/40 bg-card/95 backdrop-blur-sm scale-[1.03] cursor-grabbing select-none will-change-transform transition-transform duration-100 ease-out";
-
-export const DragOverlayItem = memo(({ children, className }: DragOverlayItemProps) => {
-  return <div className={cn(DRAG_OVERLAY_BASE, className)}>{children}</div>;
-});
-DragOverlayItem.displayName = "DragOverlayItem";
+export const DragOverlayItem = ({ children, className }: DragOverlayItemProps) => {
+  return (
+    <div
+      className={cn(
+        "opacity-90 shadow-2xl rounded-lg border border-[#5865f2]/50 bg-card/95 backdrop-blur-sm",
+        "scale-105 cursor-grabbing",
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
+};
 
 // ============================================
 // SORTABLE WRAPPER - Generic sortable container
@@ -88,55 +94,35 @@ export interface SortableItemProps {
   disabled?: boolean;
 }
 
-const SORTABLE_BASE = "touch-none transition-[opacity,transform] duration-100 ease-out";
-const SORTABLE_DRAGGING_STYLE: React.CSSProperties = { willChange: "opacity, transform" };
-
-const SortableItemImpl = ({ id, children, className, data, disabled }: SortableItemProps) => {
-  const { attributes, listeners, setNodeRef, isDragging, isOver } = useSortable({
+export const SortableItem = ({ id, children, className, data, disabled }: SortableItemProps) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging, isOver } = useSortable({
     id,
     data,
     disabled,
   });
 
-  const composedClassName = useMemo(
-    () =>
-      cn(
-        SORTABLE_BASE,
-        isDragging && "opacity-40",
-        isOver && "outline outline-1 outline-[#5865f2]/40 rounded-md",
-        className,
-      ),
-    [isDragging, isOver, className],
-  );
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition: isDragging ? "opacity 100ms ease" : "transform 100ms cubic-bezier(0.25, 1, 0.5, 1), opacity 100ms ease",
+  };
 
   return (
     <div
       ref={setNodeRef}
+      style={style}
       {...attributes}
       {...listeners}
-      className={composedClassName}
-      style={isDragging ? SORTABLE_DRAGGING_STYLE : undefined}
+      className={cn(
+        "touch-none",
+        isDragging && "opacity-40 scale-[0.98]",
+        isOver && "ring-2 ring-[#5865f2]/30 rounded",
+        className,
+      )}
     >
       {children}
     </div>
   );
 };
-
-export const SortableItem = memo(SortableItemImpl, (prev, next) => {
-  // Treat `data` shallowly — consumers may pass new object refs each render.
-  if (prev.id !== next.id) return false;
-  if (prev.disabled !== next.disabled) return false;
-  if (prev.className !== next.className) return false;
-  if (prev.children !== next.children) return false;
-  const a = prev.data ?? {};
-  const b = next.data ?? {};
-  const aKeys = Object.keys(a);
-  const bKeys = Object.keys(b);
-  if (aKeys.length !== bKeys.length) return false;
-  for (const k of aKeys) if ((a as any)[k] !== (b as any)[k]) return false;
-  return true;
-});
-SortableItem.displayName = "SortableItem";
 
 // ============================================
 // PLACEHOLDER - Shows where item was during drag
@@ -146,17 +132,14 @@ export interface DragPlaceholderProps {
   className?: string;
 }
 
-const PLACEHOLDER_BASE =
-  "rounded-md border border-dashed border-[#5865f2]/40 bg-[#5865f2]/5 animate-[dnd-placeholder-pulse_1.4s_ease-in-out_infinite]";
-
-export const DragPlaceholder = memo(({ height = 40, className }: DragPlaceholderProps) => {
-  const style = useMemo(
-    () => ({ height: typeof height === "number" ? `${height}px` : height }),
-    [height],
+export const DragPlaceholder = ({ height = 40, className }: DragPlaceholderProps) => {
+  return (
+    <div
+      className={cn("rounded-md bg-muted/30 border-2 border-dashed border-muted-foreground/20", className)}
+      style={{ height: typeof height === "number" ? `${height}px` : height }}
+    />
   );
-  return <div aria-hidden className={cn(PLACEHOLDER_BASE, className)} style={style} />;
-});
-DragPlaceholder.displayName = "DragPlaceholder";
+};
 
 // ============================================
 // CATEGORY DRAG OVERLAY
@@ -166,7 +149,7 @@ export interface CategoryOverlayProps {
   channelCount: number;
 }
 
-export const CategoryDragOverlay = memo(({ name, channelCount }: CategoryOverlayProps) => {
+export const CategoryDragOverlay = ({ name, channelCount }: CategoryOverlayProps) => {
   return (
     <DragOverlayItem className="px-3 py-2 min-w-[200px]">
       <div className="flex items-center gap-2">
@@ -175,8 +158,7 @@ export const CategoryDragOverlay = memo(({ name, channelCount }: CategoryOverlay
       </div>
     </DragOverlayItem>
   );
-});
-CategoryDragOverlay.displayName = "CategoryDragOverlay";
+};
 
 // ============================================
 // CHANNEL DRAG OVERLAY
@@ -187,7 +169,7 @@ export interface ChannelOverlayProps {
   type?: string;
 }
 
-export const ChannelDragOverlay = memo(({ name, icon }: ChannelOverlayProps) => {
+export const ChannelDragOverlay = ({ name, icon, type }: ChannelOverlayProps) => {
   return (
     <DragOverlayItem className="px-3 py-2 min-w-[180px]">
       <div className="flex items-center gap-2">
@@ -196,8 +178,7 @@ export const ChannelDragOverlay = memo(({ name, icon }: ChannelOverlayProps) => 
       </div>
     </DragOverlayItem>
   );
-});
-ChannelDragOverlay.displayName = "ChannelDragOverlay";
+};
 
 // ============================================
 // ROLE DRAG OVERLAY
@@ -208,11 +189,7 @@ export interface RoleOverlayProps {
   iconUrl?: string | null;
 }
 
-export const RoleDragOverlay = memo(({ name, color, iconUrl }: RoleOverlayProps) => {
-  const swatchStyle = useMemo(
-    () => ({ backgroundColor: color || "#99AAB5" }),
-    [color],
-  );
+export const RoleDragOverlay = ({ name, color, iconUrl }: RoleOverlayProps) => {
   return (
     <DragOverlayItem className="px-3 py-2 min-w-[160px]">
       <div className="flex items-center gap-2">
@@ -221,14 +198,13 @@ export const RoleDragOverlay = memo(({ name, color, iconUrl }: RoleOverlayProps)
         ) : iconUrl ? (
           <img src={iconUrl} alt="" className="w-4 h-4 object-contain" />
         ) : (
-          <div className="w-3 h-3 rounded-full flex-shrink-0" style={swatchStyle} />
+          <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: color || "#99AAB5" }} />
         )}
         <span className="text-sm font-medium truncate">{name}</span>
       </div>
     </DragOverlayItem>
   );
-});
-RoleDragOverlay.displayName = "RoleDragOverlay";
+};
 
 // ============================================
 // DROPPABLE ZONE - For receiving items
@@ -241,26 +217,22 @@ export interface DroppableZoneProps {
   canDrop?: boolean;
 }
 
-const DROPPABLE_BASE = "transition-[background-color,box-shadow] duration-100 ease-out rounded-md";
-
-const DroppableZoneImpl = forwardRef<HTMLDivElement, DroppableZoneProps>(
+export const DroppableZone = forwardRef<HTMLDivElement, DroppableZoneProps>(
   ({ id, children, className, isOver, canDrop = true }, ref) => {
-    const composedClassName = useMemo(
-      () =>
-        cn(
-          DROPPABLE_BASE,
-          isOver && canDrop && "bg-[#5865f2]/10 shadow-[inset_0_0_0_1px_rgba(88,101,242,0.35)]",
-          isOver && !canDrop && "bg-destructive/10 shadow-[inset_0_0_0_1px_hsl(var(--destructive)/0.4)]",
-          className,
-        ),
-      [isOver, canDrop, className],
-    );
     return (
-      <div ref={ref} data-droppable-id={id} className={composedClassName}>
+      <div
+        ref={ref}
+        data-droppable-id={id}
+        className={cn(
+          "transition-all duration-150",
+          isOver && canDrop && "bg-[#5865f2]/5 ring-1 ring-[#5865f2]/30 rounded-md",
+          isOver && !canDrop && "bg-destructive/5 ring-1 ring-destructive/30 rounded-md",
+          className,
+        )}
+      >
         {children}
       </div>
     );
   },
 );
-DroppableZoneImpl.displayName = "DroppableZone";
-export const DroppableZone = memo(DroppableZoneImpl);
+DroppableZone.displayName = "DroppableZone";

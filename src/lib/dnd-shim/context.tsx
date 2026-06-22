@@ -64,9 +64,11 @@ export function purgeDndArtifacts({ removeOverlay = false } = {}) {
     document.querySelectorAll<HTMLElement>('body > div[style*="z-index: 9999"][style*="pointer-events: none"]').forEach((el) => el.remove());
   }
   document.querySelectorAll<HTMLElement>(".drag-previewer").forEach((el) => {
-    el.style.display = "none";
-    el.innerHTML = "";
-    requestAnimationFrame(() => el.remove());
+    el.querySelectorAll<HTMLElement>("foreignObject").forEach((foreignObject) => {
+      foreignObject.innerHTML = "";
+    });
+    el.style.visibility = "hidden";
+    el.style.pointerEvents = "none";
   });
   document.querySelectorAll<HTMLElement>(".dnd-item-dragging").forEach((el) => {
     el.classList.remove("dnd-item-dragging");
@@ -82,6 +84,13 @@ export function setDndActiveState(
   activeData: any,
   activatorEvent: ActivatorEventLike | null,
 ) {
+  if (typeof document !== "undefined") {
+    document.querySelectorAll<HTMLElement>(".drag-previewer").forEach((el) => {
+      el.style.display = "";
+      el.style.visibility = "";
+      el.style.pointerEvents = "none";
+    });
+  }
   state.activatorEvent = activatorEvent;
   state.lastOverId = null;
   state.activeId = activeId;

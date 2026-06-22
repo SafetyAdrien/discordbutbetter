@@ -1255,9 +1255,16 @@ export function ChannelList({
       const isOverCategoryHeader = overIdStr.startsWith("category-");
 
       if (isActiveChannel && isOverCategoryHeader) {
-        // 3-state zones for channel → category: top 15% = before, middle 70% = inside, bottom 15% = after
-        const topZone = overRect.top + overRect.height * 0.15;
-        const bottomZone = overRect.top + overRect.height * 0.85;
+        // Easier orphan drop: if hovering the FIRST visible category and there
+        // are no orphan channels yet, the top 50% becomes "before" (= orphan)
+        // so the user doesn't have to aim for a pixel-thin zone.
+        const overCatId = overIdStr.replace("category-", "");
+        const isFirstCategory = visibleCategories[0]?.id === overCatId;
+        const isOrphanShortcut = isFirstCategory && visibleOrphanChannels.length === 0;
+        const topRatio = isOrphanShortcut ? 0.5 : 0.15;
+        const bottomRatio = isOrphanShortcut ? 0.75 : 0.85;
+        const topZone = overRect.top + overRect.height * topRatio;
+        const bottomZone = overRect.top + overRect.height * bottomRatio;
         if (clientY < topZone) {
           dropPositionRef.current = "before";
           dropModeRef.current = "before";

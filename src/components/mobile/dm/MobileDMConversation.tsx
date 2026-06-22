@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { useDMConversations } from '@/hooks/useDMs';
 import { useDMMessages, useSendDMMessage, useEditDMMessage, useDeleteDMMessage, type DMMessage } from '@/hooks/useDMMessages';
 import { useUnreadCounts } from '@/hooks/useUnreadCounts';

@@ -155,11 +155,13 @@ export function RoleCheckboxItem({ role, serverId, memberId, userId, disabled }:
 
         // Rollback
         if (previousMembers) queryClient.setQueryData(["members", serverId], previousMembers);
+        clearRoleMutationPending(serverId, memberId, role.id);
       } finally {
         setIsPending(false);
         setTimeout(() => {
           membersMutationLockRef.current = false;
-        }, 350);
+          clearRoleMutationPending(serverId, memberId, role.id);
+        }, 800);
       }
     },
     [disabled, getHasRoleNow, isPending, memberId, queryClient, role, serverId, userId]

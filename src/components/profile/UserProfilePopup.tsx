@@ -294,6 +294,16 @@ export function UserProfilePopup({
     .filter(role => role.name !== '@everyone')
     .sort((a, b) => (b.position ?? 0) - (a.position ?? 0));
 
+  const toggleRolePanel = () => {
+    setShowRolePanel((prev) => {
+      const next = !prev;
+      if (next && rolesSectionRef.current) {
+        rolePanelTopRef.current = rolesSectionRef.current.offsetTop;
+      }
+      return next;
+    });
+  };
+
   const assignableRoles = allRoles
     .filter(role => !role.is_default)
     .sort((a, b) => (b.position ?? 0) - (a.position ?? 0));
@@ -564,7 +574,7 @@ export function UserProfilePopup({
               </h4>
               {displayRoles.length === 0 && canManageRoles && serverId && memberId && assignableRoles.length > 0 ? (
                 <button
-                  onClick={() => setShowRolePanel((prev) => !prev)}
+                  onClick={toggleRolePanel}
                   className="inline-flex items-center justify-center w-5 h-5 rounded text-muted-foreground hover:text-foreground transition-colors"
                   aria-label="Ajouter un rôle"
                 >
@@ -602,7 +612,7 @@ export function UserProfilePopup({
                   ))}
                   {canManageRoles && serverId && memberId && assignableRoles.length > 0 && (
                     <button
-                      onClick={() => setShowRolePanel((prev) => !prev)}
+                      onClick={toggleRolePanel}
                       className="inline-flex items-center justify-center w-5 h-5 rounded text-muted-foreground hover:text-foreground transition-colors"
                       aria-label="Ajouter un rôle"
                     >
@@ -707,11 +717,6 @@ export function UserProfilePopup({
 
   // Role Management Side Panel Component
   const RoleSidePanel = () => {
-    // Freeze the anchor while the panel is open so role updates never move it.
-    if (showRolePanel && rolesSectionRef.current) {
-      rolePanelTopRef.current = rolesSectionRef.current.offsetTop;
-    }
-
     return (
       <div 
         className="absolute right-full mr-2 w-64 bg-card border border-border rounded-lg shadow-2xl overflow-hidden"

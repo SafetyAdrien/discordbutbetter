@@ -12,6 +12,7 @@ import Auth from "./pages/Auth";
 import Invite from "./pages/Invite";
 import Install from "./pages/Install";
 import AdminBadges from "./pages/AdminBadges";
+import Trust from "./pages/Trust";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({

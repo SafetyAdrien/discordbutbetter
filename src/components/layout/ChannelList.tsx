@@ -156,23 +156,6 @@ const DropIndicator = React.forwardRef<
         )} />);
   });
 DropIndicator.displayName = "DropIndicator";
-
-// Invisible drop zone at the top of the channel list. Active only while a
-// channel is being dragged so the user can drop it out of its category, even
-// when the orphan area is empty. No visible UI per design.
-const ORPHAN_DROP_ID = "orphan-zone";
-function OrphanDropZone({ isDragging }: { isDragging: boolean }) {
-  const { setNodeRef } = useDroppable({ id: ORPHAN_DROP_ID });
-  if (!isDragging) return null;
-  return (
-    <div
-      ref={setNodeRef}
-      data-dnd-type="orphan-zone"
-      aria-hidden="true"
-      className="mx-2 mb-1 h-4"
-    />
-  );
-}
 interface Channel {
   id: string;
   name: string;

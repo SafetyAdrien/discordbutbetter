@@ -901,6 +901,7 @@ export function ChannelList({
   const [dropPosition, setDropPosition] = useState<"before" | "after">("after");
   const [dropMode, setDropMode] = useState<"before" | "after" | "inside">("after");
   const [optimisticCategoryOrder, setOptimisticCategoryOrder] = useState<string[] | null>(null);
+  const activeIdRef = useRef<string | null>(null);
   // Synchronous refs mirroring dropPosition/dropMode so handleDragEnd reads fresh values
   // (avoids stale closure when React batches setState between dragOver and dragEnd)
   const dropPositionRef = useRef<"before" | "after">("after");
@@ -1163,10 +1164,12 @@ export function ChannelList({
   const handleDragStart = (event: DragStartEvent) => {
     dropPositionRef.current = "after";
     dropModeRef.current = "after";
+    activeIdRef.current = event.active.id as string;
     setActiveId(event.active.id as string);
   };
 
   const handleDragCancel = () => {
+    activeIdRef.current = null;
     setActiveId(null);
     setOverId(null);
     dropPositionRef.current = "after";
@@ -1285,6 +1288,7 @@ export function ChannelList({
     // Snapshot ref values synchronously — handleDragOver writes them; state may be stale here
     const currentDropPosition = dropPositionRef.current;
     const currentDropMode = dropModeRef.current;
+    activeIdRef.current = null;
     setOverId(null);
     const { active, over } = event;
     setActiveId(null);
@@ -1451,6 +1455,24 @@ export function ChannelList({
       }
     }
   };
+
+  useEffect(() => {
+    const clearVisibleDragState = () => {
+      if (!activeIdRef.current) return;
+      activeIdRef.current = null;
+      dropPositionRef.current = "after";
+      dropModeRef.current = "after";
+      setActiveId(null);
+      setOverId(null);
+      setDropPosition("after");
+      setDropMode("after");
+    };
+    const events = ["pointerup", "mouseup", "touchend", "touchcancel", "drop", "dragend", "blur"] as const;
+    events.forEach((eventName) => window.addEventListener(eventName, clearVisibleDragState, { capture: true, passive: true }));
+    return () => {
+      events.forEach((eventName) => window.removeEventListener(eventName, clearVisibleDragState, { capture: true }));
+    };
+  }, []);
 
   // Helper to find a channel by ID for the DragOverlay
   const findChannelById = (id: string): Channel | undefined => {

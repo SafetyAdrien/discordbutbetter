@@ -1,17 +1,7 @@
-## Objectif
-Compresser légèrement la hauteur de la barre de profil en bas de l'écran, sans toucher au badge vocal au-dessus.
+Agrandir les icônes de la barre de profil de 25 % (scale-125) tout en conservant l'espacement actuel et en évitant tout débordement du conteneur.
 
-## Fichiers concernés
-- `src/pages/Index.tsx` : conteneur avec hauteur fixe (`h-[68px]`) pour `UserProfileCard`.
-- `src/components/profile/UserProfileCard.tsx` : padding vertical interne et disposition.
-
-## Ce qui ne sera PAS modifié
-- Le composant `VoiceStatusBadge` situé juste au-dessus de la barre de profil reste inchangé.
-
-## Modifications prévues
-1. Réduire la hauteur fixe du conteneur `UserProfileCard` dans `Index.tsx` (ligne 903) : `h-[68px]` → `h-[60px]`.
-2. Ajuster le padding vertical de la carte dans `UserProfileCard.tsx` (ligne 131) : `py-1.5` → `py-1` pour garder le contenu centré dans la nouvelle hauteur.
-
-## Vérification
-- Build TypeScript/Tailwind OK.
-- Rendu visuel compact : le badge vocal garde sa hauteur, la barre de profil en dessous est plus courte, et le contenu (avatar + nom + boutons vocaux) reste aligné et lisible.
+Étapes :
+1. Dans `src/components/profile/UserProfileCard.tsx`, appliquer `scale-125` aux icônes principales (micro, micro off, casque, casque off, paramètres) et aux chevrons des menus micro/casque.
+2. Conserver les gaps actuels (`gap-0.5` sur le conteneur, `flex items-center` sans gap interne) pour ne pas modifier l'espacement entre les groupes.
+3. Ajouter `overflow-hidden` sur les boutons d'icônes pour éviter que l'agrandissement par `scale` ne déborde visuellement du conteneur.
+4. Vérifier visuellement dans l'aperçu que les icônes restent bien centrées et que la hauteur de la barre de profil (60 px) n'est pas dépassée.

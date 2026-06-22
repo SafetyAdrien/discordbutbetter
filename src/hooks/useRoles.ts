@@ -5,7 +5,7 @@ import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
-import { membersMutationLockRef } from './useMembers';
+import { lockMembersMutation } from './useMembers';
 import { lockPermissionsMutation } from './usePermissionsRealtime';
 
 /** Refetch all active permission-related queries for immediate UI sync. */
@@ -478,7 +478,7 @@ export function useAssignRoleToMember() {
     },
     onMutate: async ({ memberId, roleId, serverId, role }) => {
       // Lock to prevent Realtime invalidations during mutation
-      membersMutationLockRef.current = true;
+      lockMembersMutation(500);
       lockPermissionsMutation(600);
       
       await queryClient.cancelQueries({ queryKey: ['members', serverId] });
@@ -522,10 +522,6 @@ export function useAssignRoleToMember() {
       toast.success('Rôle attribué !');
     },
     onSettled: (_, __, { serverId }) => {
-      // Release lock after a delay to let optimistic update settle
-      setTimeout(() => {
-        membersMutationLockRef.current = false;
-      }, 500);
       queryClient.invalidateQueries({ queryKey: ['role-member-counts', serverId] });
       // Role assignment changes effective permissions — refresh channel visibility
       refetchPermissionCaches(queryClient);
@@ -552,7 +548,7 @@ export function useRemoveRoleFromMember() {
     },
     onMutate: async ({ memberId, roleId, serverId }) => {
       // Lock to prevent Realtime invalidations during mutation
-      membersMutationLockRef.current = true;
+      lockMembersMutation(500);
       lockPermissionsMutation(600);
       
       await queryClient.cancelQueries({ queryKey: ['members', serverId] });
@@ -577,9 +573,6 @@ export function useRemoveRoleFromMember() {
       toast.success('Rôle retiré !');
     },
     onSettled: (_, __, { serverId }) => {
-      setTimeout(() => {
-        membersMutationLockRef.current = false;
-      }, 500);
       queryClient.invalidateQueries({ queryKey: ['role-member-counts', serverId] });
       // Role removal changes effective permissions — refresh channel visibility
       refetchPermissionCaches(queryClient);

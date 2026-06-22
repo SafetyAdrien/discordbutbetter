@@ -1,17 +1,16 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
-import { membersMutationLockRef, MemberWithProfile } from "@/hooks/useMembers";
+import { lockMembersMutation, MemberWithProfile } from "@/hooks/useMembers";
 import { lockPermissionsMutation } from "@/hooks/usePermissionsRealtime";
 import type { RoleWithPermissions } from "@/hooks/useRoles";
 import {
   setRoleMutationPending,
   clearRoleMutationPending,
-  ROLE_MUTATION_CLEARED_EVENT,
   getRoleMutationTarget,
 } from "@/lib/role-mutation-tracker";
 
@@ -48,31 +47,10 @@ interface RoleCheckboxItemProps {
 export function RoleCheckboxItem({ role, serverId, memberId, userId, disabled }: RoleCheckboxItemProps) {
   const queryClient = useQueryClient();
   const [isPending, setIsPending] = useState(false);
-  const safetyTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
-
-  // Listen for realtime confirmation: settle UI only when the event arrives.
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail as
-        | { serverId: string; memberId: string; roleId: string }
-        | undefined;
-      if (!detail) return;
-      if (
-        detail.serverId === serverId &&
-        detail.memberId === memberId &&
-        detail.roleId === role.id
-      ) {
-        clearTimeout(safetyTimeoutRef.current);
-        membersMutationLockRef.current = false;
-        setIsPending(false);
-      }
-    };
-    window.addEventListener(ROLE_MUTATION_CLEARED_EVENT, handler);
-    return () => {
-      window.removeEventListener(ROLE_MUTATION_CLEARED_EVENT, handler);
-      clearTimeout(safetyTimeoutRef.current);
-    };
-  }, [serverId, memberId, role.id]);
+  // Short grace period after the network request succeeds. Keeps the mutation
+  // target active so a stale background refetch cannot briefly revert the
+  // checkbox, while the UI itself is unlocked immediately.
+  const graceTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
   // Reactive subscription to the members cache — re-renders when cache changes
   const { data: isChecked = false } = useQuery<MemberWithProfile[], Error, boolean>({
@@ -106,8 +84,8 @@ export function RoleCheckboxItem({ role, serverId, memberId, userId, disabled }:
       const shouldRemove = hasRoleNow;
 
       setIsPending(true);
-      membersMutationLockRef.current = true;
-      lockPermissionsMutation(800);
+      lockMembersMutation(500);
+      lockPermissionsMutation(500);
       setRoleMutationPending(serverId, memberId, role.id, shouldRemove ? "remove" : "add");
 
       const previousMembers = queryClient.getQueryData(["members", serverId]);
@@ -183,20 +161,19 @@ export function RoleCheckboxItem({ role, serverId, memberId, userId, disabled }:
 
         // Rollback
         if (previousMembers) queryClient.setQueryData(["members", serverId], previousMembers);
+        clearTimeout(graceTimeoutRef.current);
         clearRoleMutationPending(serverId, memberId, role.id);
-        membersMutationLockRef.current = false;
         setIsPending(false);
         return;
       }
 
-      // Success: keep isPending/lock active until realtime confirms (handled by listener).
-      // Safety net: if realtime never fires, settle after 8s.
-      clearTimeout(safetyTimeoutRef.current);
-      safetyTimeoutRef.current = setTimeout(() => {
+      // Success: free the UI immediately, but keep the mutation target for a
+      // short grace period so a stale background refetch cannot cause a jump.
+      setIsPending(false);
+      clearTimeout(graceTimeoutRef.current);
+      graceTimeoutRef.current = setTimeout(() => {
         clearRoleMutationPending(serverId, memberId, role.id);
-        membersMutationLockRef.current = false;
-        setIsPending(false);
-      }, 8000);
+      }, 1500);
     },
     [disabled, getHasRoleNow, isPending, memberId, queryClient, role, serverId, userId]
   );

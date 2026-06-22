@@ -50,9 +50,11 @@ export function usePermissionsRealtime(serverId: string | null) {
       queryClient.refetchQueries({ queryKey: [k], type: 'active' });
     });
 
-    // Also ensure members cache is coherent (role changes affect computed permissions + badges)
-    queryClient.invalidateQueries({ queryKey: ['members'] });
-    queryClient.refetchQueries({ queryKey: ['members'], type: 'active' });
+    // Mark members cache stale so future reads are fresh, but DO NOT actively
+    // refetch — useMembers owns its own realtime subscription + targeted patching,
+    // and an aggressive refetch here can briefly overwrite an optimistic role
+    // toggle with a pre-write server snapshot (visible "jump" on click).
+    queryClient.invalidateQueries({ queryKey: ['members'], refetchType: 'none' });
   }, [queryClient]);
 
   const debouncedRefetch = useCallback((source: string) => {

@@ -141,6 +141,7 @@ export function RoleCheckboxItem({ role, serverId, memberId, userId, disabled }:
           'user-permissions', 'category-permissions', 'roles', 'role-permissions',
           'member-roles', 'server-channel-permissions',
         ].forEach(k => queryClient.invalidateQueries({ queryKey: [k] }));
+        clearRoleMutationPending(serverId, memberId, role.id);
       } catch (err: any) {
         console.error("[RoleCheckboxItem] Failed to toggle member role", {
           serverId, memberId, userId, roleId: role.id, roleName: role.name, shouldRemove, err,

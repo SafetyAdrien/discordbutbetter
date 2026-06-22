@@ -44,9 +44,8 @@ import { useCreateDMConversation } from '@/hooks/useDMs';
 import { useSendFriendRequest, useFriends } from '@/hooks/useFriends';
 import { useServerRoles, RoleWithPermissions } from '@/hooks/useRoles';
 import { useKickMember, useBanMember } from '@/hooks/useMemberActions';
-import { lockMembersMutation, MemberWithProfile } from '@/hooks/useMembers';
+import { MemberWithProfile } from '@/hooks/useMembers';
 import { RoleCheckboxItem } from '@/components/profile/RoleCheckboxItem';
-import { lockPermissionsMutation } from '@/hooks/usePermissionsRealtime';
 import { setRoleMutationPending, clearRoleMutationPending } from '@/lib/role-mutation-tracker';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -188,7 +187,6 @@ export function UserProfilePopup({
   const [localVolume, setLocalVolume] = useState<number | null>(null);
   const [fullBioOpen, setFullBioOpen] = useState(false);
   const [customStatusOpen, setCustomStatusOpen] = useState(false);
-  const [removingRoleId, setRemovingRoleId] = useState<string | null>(null);
   const rolePanelTopRef = useRef(ROLE_PANEL_TOP_FALLBACK);
 
   // Reactive roles from members cache — updates instantly on optimistic/realtime changes
@@ -333,10 +331,7 @@ export function UserProfilePopup({
   const effectivePronouns = (effectiveUser as any).pronouns ?? (user as any).pronouns;
 
   const handleRemoveRole = async (roleId: string, roleName: string) => {
-    if (!serverId || !memberId || removingRoleId) return;
-    setRemovingRoleId(roleId);
-    lockMembersMutation(500);
-    lockPermissionsMutation(500);
+    if (!serverId || !memberId) return;
     setRoleMutationPending(serverId, memberId, roleId, 'remove');
 
     const previousMembers = queryClient.getQueryData(['members', serverId]);
@@ -347,8 +342,6 @@ export function UserProfilePopup({
           : { ...m, roles: (m.roles ?? []).filter((r: any) => r.id !== roleId) }
       )
     );
-
-    let graceTimeout: ReturnType<typeof setTimeout> | undefined;
 
     try {
       const { error } = await supabase
@@ -366,16 +359,10 @@ export function UserProfilePopup({
         'member-roles', 'server-channel-permissions',
       ].forEach(k => queryClient.invalidateQueries({ queryKey: [k] }));
 
-      // UI is free immediately; keep the mutation target briefly for cache protection.
-      setRemovingRoleId(null);
-      graceTimeout = setTimeout(() => {
-        clearRoleMutationPending(serverId, memberId, roleId);
-      }, 1500);
+      clearRoleMutationPending(serverId, memberId, roleId);
     } catch (err: any) {
-      clearTimeout(graceTimeout);
       if (previousMembers) queryClient.setQueryData(['members', serverId], previousMembers);
       clearRoleMutationPending(serverId, memberId, roleId);
-      setRemovingRoleId(null);
       toast.error(`Impossible de retirer le rôle ${roleName}`, {
         description: err?.message,
       });
@@ -601,15 +588,10 @@ export function UserProfilePopup({
                       {canManageRoles && (
                         <button
                           onClick={() => handleRemoveRole(role.id, role.name)}
-                          disabled={removingRoleId === role.id}
                           className="ml-0.5 p-0.5 rounded opacity-0 group-hover/role:opacity-100 hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-opacity"
                           aria-label={`Retirer ${role.name}`}
                         >
-                          {removingRoleId === role.id ? (
-                            <Loader2 className="w-2.5 h-2.5 animate-spin" />
-                          ) : (
-                            <X className="w-2.5 h-2.5" />
-                          )}
+                          <X className="w-2.5 h-2.5" />
                         </button>
                       )}
                     </div>

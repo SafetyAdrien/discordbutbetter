@@ -403,19 +403,7 @@ export function MobileLayout({
             </button>
           </div>
           <div className="flex-1 flex flex-col items-center justify-center gap-3 px-6 text-center">
-            {!chatFallbackElapsed ? (
-              <div className="w-full max-w-sm space-y-3">
-                {[0, 1, 2, 3].map((i) => (
-                  <div key={i} className="flex items-start gap-3">
-                    <div className="w-9 h-9 rounded-full bg-muted/40 animate-pulse shrink-0" />
-                    <div className="flex-1 space-y-2">
-                      <div className="h-3 w-24 bg-muted/40 rounded animate-pulse" />
-                      <div className="h-3 w-full bg-muted/30 rounded animate-pulse" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
+            {chatFallbackElapsed && (
               <>
                 <p className="text-sm text-muted-foreground">Salon introuvable</p>
                 <button
@@ -423,6 +411,7 @@ export function MobileLayout({
                   className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm"
                 >
                   Retour
+
                 </button>
               </>
             )}

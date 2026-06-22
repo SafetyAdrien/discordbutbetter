@@ -79,7 +79,8 @@ export function RoleCheckboxItem({ role, serverId, memberId, userId, disabled }:
 
       setIsPending(true);
       membersMutationLockRef.current = true;
-      lockPermissionsMutation(600);
+      lockPermissionsMutation(800);
+      setRoleMutationPending(serverId, memberId, role.id, shouldRemove ? "remove" : "add");
 
       const previousMembers = queryClient.getQueryData(["members", serverId]);
 

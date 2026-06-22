@@ -1462,7 +1462,6 @@ export function ChannelList({
 
   useEffect(() => {
     const clearVisibleDragState = () => {
-      if (!activeIdRef.current) return;
       activeIdRef.current = null;
       setActiveId(null);
       setOverId(null);
@@ -1783,7 +1782,7 @@ export function ChannelList({
                     onCreateInvite={() => handleCreateInvite(channel.id)}
                     onDelete={() => handleDeleteChannel(channel.id, channel.name)}
                     onDuplicate={() => handleDuplicateChannel(channel.id)}
-                    showDropIndicator={overId === `channel-${channel.id}`}
+                    showDropIndicator={activeId != null && overId === `channel-${channel.id}`}
                     dropPosition={dropPosition}
 threads={threadsByChannel[channel.id] || []}
                     activeThreadId={activeThreadId}
@@ -1823,11 +1822,11 @@ threads={threadsByChannel[channel.id] || []}
                     })
                     }
                     onDelete={() => handleDeleteCategory(category.id)}
-                    showDropIndicator={overId === `category-${category.id}` && dropMode !== "inside"}
+                    showDropIndicator={activeId != null && overId === `category-${category.id}` && dropMode !== "inside"}
                     dropPosition={dropPosition}
                     canManageChannels={canManageChannels}
                     serverId={server.id}
-                    showInsideHighlight={overId === `category-${category.id}` && dropMode === "inside"}>
+                    showInsideHighlight={activeId != null && overId === `category-${category.id}` && dropMode === "inside"}>
 
                       <div className="mt-1 px-2 space-y-0.5">
                         <SortableContext
@@ -1851,7 +1850,7 @@ threads={threadsByChannel[channel.id] || []}
                           onCreateInvite={() => handleCreateInvite(channel.id)}
                           onDelete={() => handleDeleteChannel(channel.id, channel.name)}
                           onDuplicate={() => handleDuplicateChannel(channel.id)}
-                          showDropIndicator={overId === `channel-${channel.id}`}
+                          showDropIndicator={activeId != null && overId === `channel-${channel.id}`}
                           dropPosition={dropPosition}
                           threads={threadsByChannel[channel.id] || []}
                           activeThreadId={activeThreadId}

@@ -166,16 +166,15 @@ export function DndContext({
   useEffect(() => {
     let cleanupTimer: ReturnType<typeof setTimeout> | null = null;
     const scheduleStaleDragCleanup = () => {
-      hideDndOverlay(stateRef.current);
       if (cleanupTimer) clearTimeout(cleanupTimer);
       cleanupTimer = setTimeout(() => {
         cleanupTimer = null;
         const state = stateRef.current;
         if (state.activeId == null) return;
         const active = { id: state.activeId, data: { current: state.activeData } };
-        clearDndSharedState(state);
+        hideDndOverlay(state);
         handlersRef.current.onDragCancel?.({ active });
-      }, 90);
+      }, 120);
     };
 
     const cleanupEvents = ["pointerup", "pointercancel", "mouseup", "touchend", "touchcancel", "dragend", "drop", "blur"] as const;

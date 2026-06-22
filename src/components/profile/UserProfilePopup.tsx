@@ -370,7 +370,7 @@ export function UserProfilePopup({
       setRemovingRoleId(null);
       graceTimeout = setTimeout(() => {
         clearRoleMutationPending(serverId, memberId, roleId);
-      }, 500);
+      }, 1500);
     } catch (err: any) {
       clearTimeout(graceTimeout);
       if (previousMembers) queryClient.setQueryData(['members', serverId], previousMembers);

@@ -323,7 +323,8 @@ export function UserProfilePopup({
     if (!serverId || !memberId || removingRoleId) return;
     setRemovingRoleId(roleId);
     membersMutationLockRef.current = true;
-    lockPermissionsMutation(600);
+    lockPermissionsMutation(800);
+    setRoleMutationPending(serverId, memberId, roleId, 'remove');
 
     const previousMembers = queryClient.getQueryData(['members', serverId]);
     queryClient.setQueryData(['members', serverId], (old: MemberWithProfile[] | undefined) =>

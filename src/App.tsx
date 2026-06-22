@@ -31,7 +31,7 @@ const App = () => (
       <PresenceProvider>
         <VoiceProvider>
           <TooltipProvider delayDuration={0}>
-            <DndProvider backend={MultiBackend} options={dndMultiBackendPipeline}>
+            <DndProvider options={dndMultiBackendPipeline}>
               <BrowserRouter>
                 <Routes>
                   <Route path="/" element={<Index />} />

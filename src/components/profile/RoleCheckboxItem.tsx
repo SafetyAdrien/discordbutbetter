@@ -9,6 +9,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { membersMutationLockRef, MemberWithProfile } from "@/hooks/useMembers";
 import { lockPermissionsMutation } from "@/hooks/usePermissionsRealtime";
 import type { RoleWithPermissions } from "@/hooks/useRoles";
+import {
+  setRoleMutationPending,
+  clearRoleMutationPending,
+} from "@/lib/role-mutation-tracker";
 
 type RoleMini = Pick<RoleWithPermissions, "id" | "name" | "color" | "icon_url" | "position" | "description">;
 
@@ -75,7 +79,8 @@ export function RoleCheckboxItem({ role, serverId, memberId, userId, disabled }:
 
       setIsPending(true);
       membersMutationLockRef.current = true;
-      lockPermissionsMutation(600);
+      lockPermissionsMutation(800);
+      setRoleMutationPending(serverId, memberId, role.id, shouldRemove ? "remove" : "add");
 
       const previousMembers = queryClient.getQueryData(["members", serverId]);
 
@@ -150,11 +155,13 @@ export function RoleCheckboxItem({ role, serverId, memberId, userId, disabled }:
 
         // Rollback
         if (previousMembers) queryClient.setQueryData(["members", serverId], previousMembers);
+        clearRoleMutationPending(serverId, memberId, role.id);
       } finally {
         setIsPending(false);
         setTimeout(() => {
           membersMutationLockRef.current = false;
-        }, 350);
+          clearRoleMutationPending(serverId, memberId, role.id);
+        }, 800);
       }
     },
     [disabled, getHasRoleNow, isPending, memberId, queryClient, role, serverId, userId]

@@ -4,6 +4,11 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { useAuth } from '@/contexts/AuthContext';
+import {
+  getRoleMutationTarget,
+  getPendingForServer,
+  clearRoleMutationPending,
+} from '@/lib/role-mutation-tracker';
 
 // Mutation lock to prevent Realtime invalidations during local role mutations
 export const membersMutationLockRef = { current: false };
@@ -195,6 +200,46 @@ export function useMembers(serverId: string | null) {
   const debouncedRefetchRef = useRef<ReturnType<typeof setTimeout>>();
   const pendingPostLockRef = useRef(false);
 
+  // Re-apply pending optimistic targets on top of the freshly-fetched cache so a
+  // stale server snapshot (write not yet propagated) can never overwrite the UI.
+  const reconcilePending = useCallback(() => {
+    if (!serverId) return;
+    const pendingMutations = getPendingForServer(serverId);
+    if (pendingMutations.length === 0) return;
+
+    queryClient.setQueryData<MemberWithProfile[]>(['members', serverId], (old) => {
+      if (!old) return old;
+      // Fetch role metadata from any member that has it, for fallback inserts.
+      const roleCatalog = new Map<string, MemberWithProfile['roles'][number]>();
+      for (const m of old) for (const r of m.roles) roleCatalog.set(r.id, r);
+
+      return old.map((m) => {
+        const myPending = pendingMutations.filter((p) => p.memberId === m.id);
+        if (myPending.length === 0) return m;
+        let roles = m.roles;
+        for (const { roleId, target } of myPending) {
+          const has = roles.some((r) => r.id === roleId);
+          if (target === 'add' && !has) {
+            const meta = roleCatalog.get(roleId);
+            if (meta) {
+              roles = [...roles, meta].sort(
+                (a, b) => (b.position ?? 0) - (a.position ?? 0),
+              );
+            }
+          } else if (target === 'remove' && has) {
+            roles = roles.filter((r) => r.id !== roleId);
+          }
+        }
+        return roles === m.roles ? m : { ...m, roles };
+      });
+    });
+  }, [queryClient, serverId]);
+
+  const refetchAndReconcile = useCallback(async () => {
+    await queryClient.refetchQueries({ queryKey: ['members', serverId] });
+    reconcilePending();
+  }, [queryClient, serverId, reconcilePending]);
+
   const scheduleGuaranteedRefetch = useCallback(() => {
     // If mutation lock is active, schedule refetch for after lock releases
     if (membersMutationLockRef.current) {
@@ -203,20 +248,20 @@ export function useMembers(serverId: string | null) {
     }
     clearTimeout(debouncedRefetchRef.current);
     debouncedRefetchRef.current = setTimeout(() => {
-      queryClient.refetchQueries({ queryKey: ['members', serverId] });
+      refetchAndReconcile();
     }, 300);
-  }, [queryClient, serverId]);
+  }, [refetchAndReconcile]);
 
   // Check for pending post-lock refetch
   useEffect(() => {
     const interval = setInterval(() => {
       if (pendingPostLockRef.current && !membersMutationLockRef.current) {
         pendingPostLockRef.current = false;
-        queryClient.refetchQueries({ queryKey: ['members', serverId] });
+        refetchAndReconcile();
       }
     }, 200);
     return () => clearInterval(interval);
-  }, [queryClient, serverId]);
+  }, [refetchAndReconcile]);
 
   // Separate real-time subscription for member_roles changes
   useEffect(() => {
@@ -252,7 +297,15 @@ export function useMembers(serverId: string | null) {
 
           if (payload.eventType === 'INSERT') {
             const inserted = payload.new as { member_id: string; role_id: string };
-            
+
+            // If a local mutation is pending for this (member, role), only confirm
+            // events matching the target direction. Contradicting events are dropped.
+            if (serverId) {
+              const target = getRoleMutationTarget(serverId, inserted.member_id, inserted.role_id);
+              if (target === 'remove') return; // stale event, ignore
+              if (target === 'add') clearRoleMutationPending(serverId, inserted.member_id, inserted.role_id);
+            }
+
             const { data: roleData } = await supabase
               .from('roles')
               .select('id, name, color, icon_url, position, description')
@@ -278,6 +331,12 @@ export function useMembers(serverId: string | null) {
             }
           } else if (payload.eventType === 'DELETE') {
             const deleted = payload.old as { member_id: string; role_id: string };
+
+            if (serverId) {
+              const target = getRoleMutationTarget(serverId, deleted.member_id, deleted.role_id);
+              if (target === 'add') return; // stale event, ignore
+              if (target === 'remove') clearRoleMutationPending(serverId, deleted.member_id, deleted.role_id);
+            }
 
             queryClient.setQueryData<MemberWithProfile[]>(
               ['members', serverId],

@@ -47,6 +47,7 @@ import { useKickMember, useBanMember } from '@/hooks/useMemberActions';
 import { MemberWithProfile, membersMutationLockRef } from '@/hooks/useMembers';
 import { RoleCheckboxItem } from '@/components/profile/RoleCheckboxItem';
 import { lockPermissionsMutation } from '@/hooks/usePermissionsRealtime';
+import { setRoleMutationPending, clearRoleMutationPending } from '@/lib/role-mutation-tracker';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { parseMarkdown, setMarkdownContext, getMarkdownContext } from '@/lib/markdown';
@@ -322,7 +323,8 @@ export function UserProfilePopup({
     if (!serverId || !memberId || removingRoleId) return;
     setRemovingRoleId(roleId);
     membersMutationLockRef.current = true;
-    lockPermissionsMutation(600);
+    lockPermissionsMutation(800);
+    setRoleMutationPending(serverId, memberId, roleId, 'remove');
 
     const previousMembers = queryClient.getQueryData(['members', serverId]);
     queryClient.setQueryData(['members', serverId], (old: MemberWithProfile[] | undefined) =>
@@ -350,6 +352,7 @@ export function UserProfilePopup({
       ].forEach(k => queryClient.invalidateQueries({ queryKey: [k] }));
     } catch (err: any) {
       if (previousMembers) queryClient.setQueryData(['members', serverId], previousMembers);
+      clearRoleMutationPending(serverId, memberId, roleId);
       toast.error(`Impossible de retirer le rôle ${roleName}`, {
         description: err?.message,
       });
@@ -357,7 +360,8 @@ export function UserProfilePopup({
       setRemovingRoleId(null);
       setTimeout(() => {
         membersMutationLockRef.current = false;
-      }, 350);
+        clearRoleMutationPending(serverId, memberId, roleId);
+      }, 800);
     }
   };
 

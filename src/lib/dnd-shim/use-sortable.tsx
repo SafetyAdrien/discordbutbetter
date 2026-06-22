@@ -66,22 +66,30 @@ export function useSortable(opts: UseSortableOptions): SortableResult {
         const activatorEvent = ctx.state.activatorEvent;
         const didDrop = monitor.didDrop();
 
-        if (didDrop && overId != null) {
-          ctx.handlersRef.current.onDragEnd?.({
-            active: { id: item.id, data: { current: item.data } },
-            over: { id: overId, rect: overRect },
-            delta,
-            activatorEvent,
-          });
-        } else {
-          ctx.handlersRef.current.onDragCancel?.({
-            active: { id: item.id, data: { current: item.data } },
-          });
-        }
+        // Clear shared state FIRST so any re-render the handlers trigger sees a
+        // clean slate — prevents the DragOverlay from sticking around.
         ctx.state.activeId = null;
         ctx.state.activeData = null;
         ctx.state.lastOverId = null;
         ctx.state.activatorEvent = null;
+
+        try {
+          if (didDrop && overId != null) {
+            ctx.handlersRef.current.onDragEnd?.({
+              active: { id: item.id, data: { current: item.data } },
+              over: { id: overId, rect: overRect },
+              delta,
+              activatorEvent,
+            });
+          } else {
+            ctx.handlersRef.current.onDragCancel?.({
+              active: { id: item.id, data: { current: item.data } },
+            });
+          }
+        } catch (err) {
+          // Swallow handler errors so react-dnd's internal teardown still runs.
+          console.error("[dnd-shim] drag-end handler threw:", err);
+        }
       },
       collect: (monitor) => ({ isDragging: monitor.isDragging() }),
     }),

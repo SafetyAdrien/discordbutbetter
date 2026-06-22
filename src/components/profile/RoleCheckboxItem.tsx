@@ -173,7 +173,7 @@ export function RoleCheckboxItem({ role, serverId, memberId, userId, disabled }:
       clearTimeout(graceTimeoutRef.current);
       graceTimeoutRef.current = setTimeout(() => {
         clearRoleMutationPending(serverId, memberId, role.id);
-      }, 500);
+      }, 1500);
     },
     [disabled, getHasRoleNow, isPending, memberId, queryClient, role, serverId, userId]
   );

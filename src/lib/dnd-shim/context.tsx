@@ -57,6 +57,29 @@ function notifyDndState(state: DndSharedState) {
   state.listeners.forEach((listener) => listener());
 }
 
+export function purgeDndArtifacts() {
+  if (typeof document === "undefined") return;
+  document.querySelectorAll<HTMLElement>("[data-dnd-overlay-root]").forEach((el) => {
+    el.style.display = "none";
+    el.style.visibility = "hidden";
+  });
+  document.querySelectorAll<HTMLElement>('body > div[style*="z-index: 9999"][style*="pointer-events: none"]').forEach((el) => {
+    el.style.display = "none";
+    el.style.visibility = "hidden";
+  });
+  document.querySelectorAll<HTMLElement>(".drag-previewer").forEach((el) => {
+    el.style.display = "none";
+    el.innerHTML = "";
+    requestAnimationFrame(() => el.remove());
+  });
+  document.querySelectorAll<HTMLElement>(".dnd-item-dragging").forEach((el) => {
+    el.classList.remove("dnd-item-dragging");
+  });
+  document.querySelectorAll<HTMLElement>('.dnd-drop-indicator-line[data-visible="true"]').forEach((el) => {
+    el.setAttribute("data-visible", "false");
+  });
+}
+
 export function setDndActiveState(
   state: DndSharedState,
   activeId: UniqueIdentifier,
@@ -72,12 +95,16 @@ export function setDndActiveState(
 }
 
 export function hideDndOverlay(state: DndSharedState) {
-  if (state.overlayHidden || state.activeId == null) return;
+  purgeDndArtifacts();
+  const changed = !state.overlayHidden || state.activeId != null || state.activeData != null;
   state.overlayHidden = true;
-  notifyDndState(state);
+  state.activeId = null;
+  state.activeData = null;
+  if (changed) notifyDndState(state);
 }
 
 export function clearDndSharedState(state: DndSharedState) {
+  purgeDndArtifacts();
   const changed = state.activeId != null || state.activeData != null || state.lastOverId != null || state.activatorEvent != null || state.overlayHidden;
   state.activatorEvent = null;
   state.lastOverId = null;
@@ -159,7 +186,7 @@ export function DndContext({
       }, 90);
     };
 
-    const cleanupEvents = ["pointerup", "mouseup", "touchend", "touchcancel", "dragend", "drop", "blur"] as const;
+    const cleanupEvents = ["pointerup", "pointercancel", "mouseup", "touchend", "touchcancel", "dragend", "drop", "blur"] as const;
     cleanupEvents.forEach((eventName) => {
       window.addEventListener(eventName, scheduleStaleDragCleanup, { capture: true, passive: true });
     });

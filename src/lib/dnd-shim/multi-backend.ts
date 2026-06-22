@@ -87,7 +87,7 @@ if (typeof window !== "undefined") {
       });
     });
   };
-  const events = ["drop", "dragend", "pointerup", "mouseup", "touchend", "touchcancel", "blur"] as const;
+  const events = ["drop", "dragend", "pointerup", "pointercancel", "mouseup", "touchend", "touchcancel", "blur"] as const;
   events.forEach((eventName) =>
     window.addEventListener(eventName, purgeStrayPreviews, { capture: true, passive: true }),
   );

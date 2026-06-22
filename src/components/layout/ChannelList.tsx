@@ -1460,8 +1460,6 @@ export function ChannelList({
     const clearVisibleDragState = () => {
       if (!activeIdRef.current) return;
       activeIdRef.current = null;
-      dropPositionRef.current = "after";
-      dropModeRef.current = "after";
       setActiveId(null);
       setOverId(null);
       setDropPosition("after");

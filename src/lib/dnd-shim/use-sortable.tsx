@@ -88,6 +88,14 @@ export function useSortable(opts: UseSortableOptions): SortableResult {
     [id, disabled],
   );
 
+  // rAF-throttled hover dispatch — avoids spamming onDragOver on every mousemove
+  const hoverFrameRef = useRef<number | null>(null);
+  const pendingHoverRef = useRef<{ item: any; delta: { x: number; y: number } } | null>(null);
+
+  useEffect(() => () => {
+    if (hoverFrameRef.current != null) cancelAnimationFrame(hoverFrameRef.current);
+  }, []);
+
   const [{ isOver }, dropRef] = useDrop(
     () => ({
       accept: SORTABLE_TYPE,
@@ -95,14 +103,21 @@ export function useSortable(opts: UseSortableOptions): SortableResult {
         if (!monitor.isOver({ shallow: true })) return;
         if (item.id === id) return;
         ctx.state.lastOverId = id;
-        const overEl = domRef.current;
-        const overRect = overEl ? overEl.getBoundingClientRect() : null;
-        const delta = snapshotDelta(monitor);
-        ctx.handlersRef.current.onDragOver?.({
-          active: { id: item.id, data: { current: item.data } },
-          over: { id, rect: overRect },
-          delta,
-          activatorEvent: ctx.state.activatorEvent,
+        pendingHoverRef.current = { item, delta: snapshotDelta(monitor) };
+        if (hoverFrameRef.current != null) return;
+        hoverFrameRef.current = requestAnimationFrame(() => {
+          hoverFrameRef.current = null;
+          const pending = pendingHoverRef.current;
+          pendingHoverRef.current = null;
+          if (!pending) return;
+          const overEl = domRef.current;
+          const overRect = overEl ? overEl.getBoundingClientRect() : null;
+          ctx.handlersRef.current.onDragOver?.({
+            active: { id: pending.item.id, data: { current: pending.item.data } },
+            over: { id, rect: overRect },
+            delta: pending.delta,
+            activatorEvent: ctx.state.activatorEvent,
+          });
         });
       },
       drop: (item: any) => {

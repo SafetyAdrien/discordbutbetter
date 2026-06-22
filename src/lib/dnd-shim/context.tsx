@@ -92,9 +92,11 @@ export function setDndActiveState(
 
 export function hideDndOverlay(state: DndSharedState) {
   purgeDndArtifacts();
-  if (state.overlayHidden && state.activeId == null) return;
+  const changed = !state.overlayHidden || state.activeId != null || state.activeData != null;
   state.overlayHidden = true;
-  notifyDndState(state);
+  state.activeId = null;
+  state.activeData = null;
+  if (changed) notifyDndState(state);
 }
 
 export function clearDndSharedState(state: DndSharedState) {

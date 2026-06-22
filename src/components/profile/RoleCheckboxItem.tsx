@@ -1,12 +1,11 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Loader2 } from "lucide-react";
+import { Check } from "lucide-react";
 import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
-import { lockMembersMutation, MemberWithProfile } from "@/hooks/useMembers";
-import { lockPermissionsMutation } from "@/hooks/usePermissionsRealtime";
+import { MemberWithProfile } from "@/hooks/useMembers";
 import type { RoleWithPermissions } from "@/hooks/useRoles";
 import {
   setRoleMutationPending,
@@ -46,11 +45,6 @@ interface RoleCheckboxItemProps {
  */
 export function RoleCheckboxItem({ role, serverId, memberId, userId, disabled }: RoleCheckboxItemProps) {
   const queryClient = useQueryClient();
-  const [isPending, setIsPending] = useState(false);
-  // Short grace period after the network request succeeds. Keeps the mutation
-  // target active so a stale background refetch cannot briefly revert the
-  // checkbox, while the UI itself is unlocked immediately.
-  const graceTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
   // Reactive subscription to the members cache — re-renders when cache changes
   const { data: isChecked = false } = useQuery<MemberWithProfile[], Error, boolean>({
@@ -68,6 +62,8 @@ export function RoleCheckboxItem({ role, serverId, memberId, userId, disabled }:
 
   // Snapshot read for the click handler (needs immediate value, not stale render)
   const getHasRoleNow = useCallback(() => {
+    const target = getRoleMutationTarget(serverId, memberId, role.id);
+    if (target) return target === "add";
     const members = queryClient.getQueryData<MemberWithProfile[]>(["members", serverId]);
     const member = members?.find((m) => m.id === memberId);
     return member?.roles?.some((r: any) => r.id === role.id) ?? false;
@@ -78,14 +74,11 @@ export function RoleCheckboxItem({ role, serverId, memberId, userId, disabled }:
       e.stopPropagation();
       e.preventDefault();
 
-      if (disabled || isPending) return;
+      if (disabled) return;
 
       const hasRoleNow = getHasRoleNow();
       const shouldRemove = hasRoleNow;
 
-      setIsPending(true);
-      lockMembersMutation(500);
-      lockPermissionsMutation(500);
       setRoleMutationPending(serverId, memberId, role.id, shouldRemove ? "remove" : "add");
 
       const previousMembers = queryClient.getQueryData(["members", serverId]);
@@ -161,27 +154,17 @@ export function RoleCheckboxItem({ role, serverId, memberId, userId, disabled }:
 
         // Rollback
         if (previousMembers) queryClient.setQueryData(["members", serverId], previousMembers);
-        clearTimeout(graceTimeoutRef.current);
         clearRoleMutationPending(serverId, memberId, role.id);
-        setIsPending(false);
         return;
       }
-
-      // Success: free the UI immediately, but keep the mutation target for a
-      // short grace period so a stale background refetch cannot cause a jump.
-      setIsPending(false);
-      clearTimeout(graceTimeoutRef.current);
-      graceTimeoutRef.current = setTimeout(() => {
-        clearRoleMutationPending(serverId, memberId, role.id);
-      }, 1500);
     },
-    [disabled, getHasRoleNow, isPending, memberId, queryClient, role, serverId, userId]
+    [disabled, getHasRoleNow, memberId, queryClient, role, serverId, userId]
   );
 
   return (
     <div
       role="checkbox"
-      tabIndex={disabled || isPending ? -1 : 0}
+      tabIndex={disabled ? -1 : 0}
       onMouseDown={(e) => e.stopPropagation()}
       onClick={handleRoleToggle}
       onKeyDown={(e) => {
@@ -190,10 +173,10 @@ export function RoleCheckboxItem({ role, serverId, memberId, userId, disabled }:
       }}
       className={cn(
         "w-full flex items-center gap-2 p-1.5 rounded transition-colors",
-        !disabled && !isPending ? "hover:bg-muted/50" : "cursor-not-allowed",
+        !disabled ? "hover:bg-muted/50" : "cursor-not-allowed",
       )}
       aria-checked={isChecked}
-      aria-disabled={disabled || isPending}
+      aria-disabled={disabled}
     >
       <span
         aria-hidden="true"
@@ -209,9 +192,6 @@ export function RoleCheckboxItem({ role, serverId, memberId, userId, disabled }:
         <span style={{ color: role.color || undefined }} className="truncate">
           {role.name}
         </span>
-      </span>
-      <span className="flex h-3 w-3 shrink-0 items-center justify-center">
-        {isPending && <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />}
       </span>
     </div>
   );

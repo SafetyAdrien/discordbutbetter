@@ -100,6 +100,7 @@ export function useSortable(opts: UseSortableOptions): SortableResult {
     () => ({
       accept: SORTABLE_TYPE,
       hover: (item: any, monitor) => {
+        if (ctx.state.activeId == null) return;
         if (!monitor.isOver({ shallow: true })) return;
         if (item.id === id) return;
         ctx.state.lastOverId = id;
@@ -110,6 +111,8 @@ export function useSortable(opts: UseSortableOptions): SortableResult {
           const pending = pendingHoverRef.current;
           pendingHoverRef.current = null;
           if (!pending) return;
+          // Drag may have ended between scheduling and executing the frame.
+          if (ctx.state.activeId == null) return;
           const overEl = domRef.current;
           const overRect = overEl ? overEl.getBoundingClientRect() : null;
           ctx.handlersRef.current.onDragOver?.({

@@ -1,10 +1,11 @@
-Modifier le rendu du bouton "Ajouter un rôle" dans `UserProfilePopup.tsx` quand `displayRoles.length === 0` pour qu'il adopte le même style compact que le bouton affiché quand des rôles sont déjà équipés.
+Modifier le comportement des deux boutons "Ajouter un rôle" (icône `Plus`) dans `src/components/profile/UserProfilePopup.tsx` pour qu'ils fonctionnent en toggle :
+- Lors du premier clic, le petit conteneur latéral des rôles s'ouvre.
+- Lors d'un second clic sur le même bouton, le conteneur se ferme.
 
-Changements prévus :
-- Remplacer le bouton pleine largeur (`w-full`) avec texte par un bouton carré (`w-5 h-5`) contenant uniquement l'icône `Plus` (taille `w-3 h-3`).
-- Conserver l'accessibilité avec `aria-label="Ajouter un rôle"`.
-- Garder le gestionnaire `onClick={() => setShowRolePanel(true)}` et les classes de couleur/transition existantes du petit bouton (text-muted-foreground, hover:text-foreground).
-- Ne toucher à rien d'autre (le bouton d'ajout quand des rôles existent reste inchangé, ainsi que la liste des rôles).
-
-Fichier concerné :
-- `src/components/profile/UserProfilePopup.tsx` (lignes 559-565 environ)
+**Détail technique :**
+- Localiser les deux occurrences `onClick={() => setShowRolePanel(true)}` :
+  1. Ligne ~559 : quand aucun rôle n'est équipé.
+  2. Ligne ~597 : quand des rôles sont déjà équipés.
+- Remplacer par `onClick={() => setShowRolePanel((prev) => !prev)}` dans les deux cas.
+- Aucune modification de style ou de structure du panneau n'est nécessaire.
+- Vérifier que le reste de la logique (fermeture du profil, clic extérieur, Escape) continue de fonctionner normalement.

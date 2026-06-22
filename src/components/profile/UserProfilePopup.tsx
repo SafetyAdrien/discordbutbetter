@@ -557,7 +557,7 @@ export function UserProfilePopup({
               </h4>
               {displayRoles.length === 0 && canManageRoles && serverId && memberId && assignableRoles.length > 0 ? (
                 <button
-                  onClick={() => setShowRolePanel(true)}
+                  onClick={() => setShowRolePanel((prev) => !prev)}
                   className="inline-flex items-center justify-center w-5 h-5 rounded text-muted-foreground hover:text-foreground transition-colors"
                   aria-label="Ajouter un rôle"
                 >
@@ -595,7 +595,7 @@ export function UserProfilePopup({
                   ))}
                   {canManageRoles && serverId && memberId && assignableRoles.length > 0 && (
                     <button
-                      onClick={() => setShowRolePanel(true)}
+                      onClick={() => setShowRolePanel((prev) => !prev)}
                       className="inline-flex items-center justify-center w-5 h-5 rounded text-muted-foreground hover:text-foreground transition-colors"
                       aria-label="Ajouter un rôle"
                     >

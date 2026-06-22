@@ -478,7 +478,7 @@ export function useAssignRoleToMember() {
     },
     onMutate: async ({ memberId, roleId, serverId, role }) => {
       // Lock to prevent Realtime invalidations during mutation
-      membersMutationLockRef.current = true;
+      lockMembersMutation(500);
       lockPermissionsMutation(600);
       
       await queryClient.cancelQueries({ queryKey: ['members', serverId] });

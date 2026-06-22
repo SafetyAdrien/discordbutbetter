@@ -174,7 +174,7 @@ export function DndContext({
         const active = { id: state.activeId, data: { current: state.activeData } };
         hideDndOverlay(state);
         handlersRef.current.onDragCancel?.({ active });
-      }, 120);
+      }, 0);
     };
 
     const cleanupEvents = ["pointerup", "pointercancel", "mouseup", "touchend", "touchcancel", "dragend", "drop", "blur"] as const;

@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -12,6 +12,7 @@ import type { RoleWithPermissions } from "@/hooks/useRoles";
 import {
   setRoleMutationPending,
   clearRoleMutationPending,
+  ROLE_MUTATION_CLEARED_EVENT,
 } from "@/lib/role-mutation-tracker";
 
 type RoleMini = Pick<RoleWithPermissions, "id" | "name" | "color" | "icon_url" | "position" | "description">;

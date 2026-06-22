@@ -47,31 +47,10 @@ interface RoleCheckboxItemProps {
 export function RoleCheckboxItem({ role, serverId, memberId, userId, disabled }: RoleCheckboxItemProps) {
   const queryClient = useQueryClient();
   const [isPending, setIsPending] = useState(false);
-  const safetyTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
-
-  // Listen for realtime confirmation: settle UI only when the event arrives.
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail as
-        | { serverId: string; memberId: string; roleId: string }
-        | undefined;
-      if (!detail) return;
-      if (
-        detail.serverId === serverId &&
-        detail.memberId === memberId &&
-        detail.roleId === role.id
-      ) {
-        clearTimeout(safetyTimeoutRef.current);
-        membersMutationLockRef.current = false;
-        setIsPending(false);
-      }
-    };
-    window.addEventListener(ROLE_MUTATION_CLEARED_EVENT, handler);
-    return () => {
-      window.removeEventListener(ROLE_MUTATION_CLEARED_EVENT, handler);
-      clearTimeout(safetyTimeoutRef.current);
-    };
-  }, [serverId, memberId, role.id]);
+  // Short grace period after the network request succeeds. Keeps the mutation
+  // target active so a stale background refetch cannot briefly revert the
+  // checkbox, while the UI itself is unlocked immediately.
+  const graceTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
   // Reactive subscription to the members cache — re-renders when cache changes
   const { data: isChecked = false } = useQuery<MemberWithProfile[], Error, boolean>({

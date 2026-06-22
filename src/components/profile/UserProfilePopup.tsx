@@ -335,8 +335,8 @@ export function UserProfilePopup({
   const handleRemoveRole = async (roleId: string, roleName: string) => {
     if (!serverId || !memberId || removingRoleId) return;
     setRemovingRoleId(roleId);
-    membersMutationLockRef.current = true;
-    lockPermissionsMutation(800);
+    lockMembersMutation(500);
+    lockPermissionsMutation(500);
     setRoleMutationPending(serverId, memberId, roleId, 'remove');
 
     const previousMembers = queryClient.getQueryData(['members', serverId]);
@@ -347,6 +347,8 @@ export function UserProfilePopup({
           : { ...m, roles: (m.roles ?? []).filter((r: any) => r.id !== roleId) }
       )
     );
+
+    let graceTimeout: ReturnType<typeof setTimeout> | undefined;
 
     try {
       const { error } = await supabase
@@ -363,18 +365,20 @@ export function UserProfilePopup({
         'user-permissions', 'category-permissions', 'role-permissions',
         'member-roles', 'server-channel-permissions',
       ].forEach(k => queryClient.invalidateQueries({ queryKey: [k] }));
+
+      // UI is free immediately; keep the mutation target briefly for cache protection.
+      setRemovingRoleId(null);
+      graceTimeout = setTimeout(() => {
+        clearRoleMutationPending(serverId, memberId, roleId);
+      }, 500);
     } catch (err: any) {
+      clearTimeout(graceTimeout);
       if (previousMembers) queryClient.setQueryData(['members', serverId], previousMembers);
       clearRoleMutationPending(serverId, memberId, roleId);
+      setRemovingRoleId(null);
       toast.error(`Impossible de retirer le rôle ${roleName}`, {
         description: err?.message,
       });
-    } finally {
-      setRemovingRoleId(null);
-      setTimeout(() => {
-        membersMutationLockRef.current = false;
-        clearRoleMutationPending(serverId, memberId, roleId);
-      }, 800);
     }
   };
 

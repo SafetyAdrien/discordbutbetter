@@ -1,7 +1,6 @@
 import React, { forwardRef } from "react";
 import { cn } from "@/lib/utils";
-import { useSortable } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+import { useSortable, CSS } from "@/lib/dnd-react";
 
 // ============================================
 // DROP INDICATOR - Discord-style blue line with circles

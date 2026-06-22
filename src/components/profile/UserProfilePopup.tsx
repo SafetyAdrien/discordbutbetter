@@ -47,6 +47,7 @@ import { useKickMember, useBanMember } from '@/hooks/useMemberActions';
 import { MemberWithProfile, membersMutationLockRef } from '@/hooks/useMembers';
 import { RoleCheckboxItem } from '@/components/profile/RoleCheckboxItem';
 import { lockPermissionsMutation } from '@/hooks/usePermissionsRealtime';
+import { setRoleMutationPending, clearRoleMutationPending } from '@/lib/role-mutation-tracker';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { parseMarkdown, setMarkdownContext, getMarkdownContext } from '@/lib/markdown';

@@ -1,99 +1,73 @@
-# Migration drag-and-drop : @dnd-kit → react-dnd + react-dnd-accessible-backend
+# Migration DnD complète : @dnd-kit → react-dnd + accessible-backend (modèle Discord)
 
-Remplacement intégral du système DnD par la stack utilisée par Discord :
-- `react-dnd` (core)
-- `react-dnd-html5-backend` (souris/touch HTML5)
-- `react-dnd-accessible-backend` (clavier + lecteur d'écran, repo Discord)
-- `react-dnd-multi-backend` + `dnd-multi-backend` (pour combiner les backends souris + accessibilité simultanément, comme recommandé par Discord)
+Refonte intégrale de tout le glisser-déposer (Desktop + Mobile) sur le stack utilisé par Discord : `react-dnd` + `react-dnd-html5-backend` + `react-dnd-touch-backend` (via `react-dnd-multi-backend`) + `react-dnd-accessible-backend`.
 
-## Périmètre (tout le système DnD du projet)
+## 1. Dépendances
 
-Fichiers actuellement basés sur @dnd-kit qui seront réécrits :
+Installer : `react-dnd`, `react-dnd-html5-backend`, `react-dnd-touch-backend`, `react-dnd-multi-backend`, `rdndmb-html5-to-touch`, `react-dnd-accessible-backend`, `@react-aria/live-announcer`.
 
-1. `src/hooks/useDndSensors.ts` — supprimé (remplacé par configuration `MultiBackend`)
-2. `src/components/dnd/DndComponents.tsx` — réécrit en wrappers react-dnd (`DndProvider`, `useDrag`, `useDrop`, `Sortable`)
-3. `src/components/layout/ServerList.tsx` — réordonnancement vertical des serveurs (desktop)
-4. `src/components/layout/ChannelList.tsx` — réordonnancement salons + catégories
-5. `src/components/server-settings/RoleManager.tsx` — réordonnancement rôles
-6. `src/components/mobile/MobileServersView.tsx` — réordonnancement serveurs (mobile, long-press)
+Retirer : `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/modifiers`, `@dnd-kit/utilities`.
 
-Hooks dépendants à vérifier/ajuster : `useServerOrder`, persistance ordre salons/rôles (logique métier inchangée, seulement la couche DnD change).
+## 2. Provider racine (`src/App.tsx`)
 
-## Architecture cible
+Envelopper l'arbre dans un `DndProvider` configuré avec `MultiBackend` :
 
-```text
-main.tsx
-  └─ <DndProvider backend={MultiBackend} options={HTML5ToAccessibleBackendTransition}>
-        └─ <App />
+- `HTML5Backend` actif par défaut (souris desktop).
+- Transition vers `TouchBackend` (`delayTouchStart: 200`, `enableMouseEvents: false`) au premier `touchstart` — long-press identique à Discord mobile.
+- `AccessibleBackend` monté en parallèle dans le pipeline `MultiBackend` avec les annonces FR (focus, début, déplacement, dépose, annulation) diffusées via `@react-aria/live-announcer`.
+- Activation clavier : Espace = saisir/déposer, Flèches = naviguer entre cibles, Échap = annuler.
 
-HTML5ToAccessibleBackendTransition = {
-  backends: [
-    { id: 'html5',        backend: HTML5Backend,        transition: MouseTransition },
-    { id: 'accessible',   backend: AccessibleBackend,
-      preview: true,
-      transition: createTransition('keydown', e => e.key === 'Tab' || e.key === ' ') }
-  ]
-}
-```
+## 3. Refonte de `src/components/dnd/DndComponents.tsx`
 
-Chaque item draggable :
-```tsx
-const [{ isDragging }, drag] = useDrag({
-  type: 'SERVER',
-  item: { id, index },
-  collect: m => ({ isDragging: m.isDragging() }),
-});
-const [, drop] = useDrop({
-  accept: 'SERVER',
-  hover: (item, monitor) => reorder(item.index, index),
-});
-return <div ref={node => drag(drop(node))} aria-grabbed={isDragging} />;
-```
+API conservée pour limiter la casse côté consommateurs :
 
-## Accessibilité (modèle Discord)
+- `DropIndicator` / `DragPlaceholder` : inchangés (présentation pure).
+- `SortableItem` : nouveau wrapper combinant `useDrag` + `useDrop` (react-dnd), `type` passé en prop, calcul `before`/`after` via `monitor.getClientOffset()` + bounding rect.
+- `DroppableZone` : basé sur `useDrop`, `ref` forwardé, classes pilotées par `collect` (`isOver` / `canDrop`).
+- `DragOverlayItem`, `CategoryDragOverlay`, `ChannelDragOverlay`, `RoleDragOverlay` : rendus via un nouveau `<CustomDragLayer />` (basé sur `useDragLayer()`) monté une seule fois dans `App.tsx`, puisque react-dnd n'a pas d'équivalent direct du `<DragOverlay>` de dnd-kit.
 
-`react-dnd-accessible-backend` ajoute automatiquement :
-- `Tab` pour cibler un draggable, `Space` pour saisir/déposer, `Escape` pour annuler
-- Annonces ARIA live (`announceMessages` configurable, en français)
-- Focus visible sur la cible courante
+## 4. Refonte de `src/hooks/useDndSensors.ts`
 
-Messages personnalisés (FR) :
+Le concept de « sensors » disparaît (géré par les backends) — le fichier devient un module utilitaire :
+
+- Suppression de `useDndSensors`.
+- Conservation de `calculateDropPosition`, `stripDndPrefix`, `isDragTypeMatch`, `reorderItems`, `moveItemBetweenArrays` (logique pure réutilisée par les nouveaux drop targets).
+- Ajout des constantes : `DND_TYPES = { SERVER, CHANNEL, CATEGORY, ROLE }` (react-dnd exige un `type` par item).
+
+## 5. Consommateurs migrés
+
+Pour chacun, remplacement de `DndContext` / `SortableContext` / `useSortable` par `SortableItem` + `DroppableZone`. Les handlers métier, mutations Supabase, optimistic locks (`mutationLockRef`) et invalidations de cache restent strictement identiques :
+
+- `src/components/layout/ServerList.tsx` — serveurs (type `SERVER`).
+- `src/components/layout/ChannelList.tsx` — channels + catégories (`CHANNEL`, `CATEGORY`), déplacements inter-catégorie via `moveItemBetweenArrays`.
+- `src/components/server-settings/RoleManager.tsx` — rôles (`ROLE`).
+- `src/components/mobile/MobileServersView.tsx` — serveurs mobile, long-press 200 ms via `TouchBackend`.
+
+## 6. Accessibilité (parité Discord)
+
+- Annonces FR via `@react-aria/live-announcer` (`announce(msg, 'assertive')`).
+- Instructions au focus d'un item draggable : « Appuyez sur Espace pour déplacer cet élément. »
+- Focus restauré sur l'item après drop/cancel.
+- Respect de `prefers-reduced-motion` (déjà géré par `useReducedMotion`).
+
+## 7. Validation
+
+- `bun add` / `bun remove` des packages.
+- Build automatique : aucune référence résiduelle à `@dnd-kit`.
+- Test manuel : réorganisation serveurs desktop, channels desktop, rôles desktop, serveurs mobile (long-press), parcours clavier complet sur un channel.
+- Mise à jour de `mem://features/drag-and-drop-system-implementation` pour refléter la nouvelle stack.
+
+## Détails techniques
+
+Pipeline `MultiBackend` :
 ```ts
-announceMessages: {
-  pickedUpItem: (item) => `${item?.name} saisi`,
-  droppedItem:  (item, target) => `${item?.name} déposé sur ${target?.name}`,
-  hoveredTarget:(item, target) => `${item?.name} survole ${target?.name}`,
-  canceledDrag: (item) => `Déplacement de ${item?.name} annulé`,
-}
+const HTML5toTouch = {
+  backends: [
+    { id: 'html5', backend: HTML5Backend, transition: MouseTransition },
+    { id: 'touch', backend: TouchBackend, options: { delayTouchStart: 200, enableMouseEvents: false }, preview: true, transition: TouchTransition },
+    { id: 'a11y', backend: AccessibleBackend, context: { window, document }, options: { /* annonces FR style Discord */ } },
+  ],
+};
 ```
 
-## Mobile
-
-`react-dnd-html5-backend` ne gère pas le touch nativement. Pour préserver le long-press → drag actuel sur mobile :
-- Ajouter `react-dnd-touch-backend` dans le `MultiBackend` avec `TouchTransition` (`delayTouchStart: 400ms`, `enableMouseEvents: false`)
-- Configuration finale = 3 backends : Mouse (HTML5) + Touch + Accessible (clavier)
-
-## Étapes d'exécution
-
-1. **Install** : `bun add react-dnd react-dnd-html5-backend react-dnd-touch-backend react-dnd-multi-backend dnd-multi-backend react-dnd-accessible-backend`
-2. **Provider global** dans `src/main.tsx` (wrap `<App />` avec `DndProvider` configuré MultiBackend)
-3. **Nouveau `DndComponents.tsx`** : exports `Sortable`, `SortableItem`, `DragHandle`, hooks `useSortableList(items, onReorder, type)` — API compatible avec l'usage existant pour minimiser les diffs
-4. **Réécriture des 4 listes** (`ServerList`, `ChannelList`, `RoleManager`, `MobileServersView`) avec la nouvelle API
-5. **Suppression** : `useDndSensors.ts`, désinstallation des 4 packages `@dnd-kit/*`
-6. **Validation** :
-   - Desktop : drag souris serveurs/salons/rôles
-   - Mobile : long-press 400ms puis drag
-   - Clavier : Tab + Space + flèches + Escape sur chaque liste
-   - Annonces ARIA visibles via DevTools accessibility tree
-
-## Points techniques
-
-- `react-dnd-accessible-backend` est typé TypeScript ✓
-- L'optimistic lock `mutationLockRef` (mémoire projet) et la latence 800ms restent appliqués dans les callbacks `onReorder` — la migration ne touche pas la persistance
-- `dropAnimation` désactivé reste l'effet par défaut de react-dnd (pas d'animation native)
-- IDs serveurs gardent `rounded-full` (mémoire projet), préservé car ce sont les styles, pas le DnD
-
-## Hors périmètre
-
-- `usePendingAttachments` (drag externe HTML5 natif pour fichiers) : conservé tel quel, ce n'est pas du tri intra-liste
-- `useSwipeTabs` / `useSwipeToReply` : gestes tactiles indépendants du DnD, non concernés
+Aucun changement de schéma DB, aucune nouvelle policy RLS — uniquement présentation + interaction.

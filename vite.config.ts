@@ -44,6 +44,11 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      // @dnd-kit/* → local react-dnd compatibility shim (Discord-style)
+      "@dnd-kit/core": path.resolve(__dirname, "./src/lib/dnd-shim/core.tsx"),
+      "@dnd-kit/sortable": path.resolve(__dirname, "./src/lib/dnd-shim/sortable.tsx"),
+      "@dnd-kit/utilities": path.resolve(__dirname, "./src/lib/dnd-shim/utilities.ts"),
+      "@dnd-kit/modifiers": path.resolve(__dirname, "./src/lib/dnd-shim/modifiers.ts"),
     },
   },
 }));

@@ -20,7 +20,11 @@
     "paths": {
       "@/*": [
         "./src/*"
-      ]
+      ],
+      "@dnd-kit/core": ["./src/lib/dnd-shim/core.tsx"],
+      "@dnd-kit/sortable": ["./src/lib/dnd-shim/sortable.tsx"],
+      "@dnd-kit/utilities": ["./src/lib/dnd-shim/utilities.ts"],
+      "@dnd-kit/modifiers": ["./src/lib/dnd-shim/modifiers.ts"]
     },
     "skipLibCheck": true,
     "strict": false,

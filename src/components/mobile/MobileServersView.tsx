@@ -14,7 +14,6 @@ import { Separator } from '@/components/ui/separator';
 import type { Server } from '@/types/app';
 import { MentionBadge } from '@/components/ui/MentionBadge';
 
-// DnD imports — backed by react-dnd + react-dnd-accessible-backend (Discord) via shim
 import {
   DndContext,
   closestCenter,
@@ -25,15 +24,15 @@ import {
   type DragStartEvent,
   type DragEndEvent,
   type DragOverEvent,
-} from '@/lib/dnd-react';
+} from '@dnd-kit/core';
 import {
   SortableContext,
   verticalListSortingStrategy,
   useSortable,
   arrayMove,
-} from '@/lib/dnd-react';
-import { CSS } from '@/lib/dnd-react';
-import { restrictToVerticalAxis } from '@/lib/dnd-react';
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 
 interface MobileServersViewProps {
   servers: Server[];

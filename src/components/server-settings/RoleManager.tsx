@@ -8,11 +8,11 @@ import { RoleEditor } from './RoleEditor';
 import { Plus, Shield, Trash2, Loader2, Copy, Users, AlertTriangle, GripVertical } from 'lucide-react';
 import { toast } from 'sonner';
 
-// DnD imports — backed by react-dnd + react-dnd-accessible-backend (Discord) via shim
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragOverlay, DragStartEvent, DragOverEvent, UniqueIdentifier } from '@/lib/dnd-react';
-import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable, arrayMove } from '@/lib/dnd-react';
-import { CSS } from '@/lib/dnd-react';
-import { restrictToVerticalAxis } from '@/lib/dnd-react';
+// DnD Kit imports
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragOverlay, DragStartEvent, DragOverEvent, UniqueIdentifier } from '@dnd-kit/core';
+import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 
 interface RoleManagerProps {
   serverId: string;

@@ -44,12 +44,9 @@ export const dndMultiBackendPipeline = {
         window: typeof window !== "undefined" ? window : undefined,
         document: typeof document !== "undefined" ? document : undefined,
       },
-      // CRITICAL: disable the backend's internal SVG/DOM preview — we render our
-      // own React <DragOverlay>. Leaving it enabled creates a `.drag-previewer`
-      // node attached to <body> that can survive past the drop event.
-      preview: false,
+      preview: true,
       options: {
-        preview: false,
+        preview: true,
         isDragTrigger: (event: KeyboardEvent) => event.key === " ",
         announceItemFocus: (_item: any) =>
           `Élément sélectionnable. Appuyez sur Espace pour le déplacer.`,
@@ -79,12 +76,13 @@ if (typeof window !== "undefined") {
     if (typeof document === "undefined") return;
     const previews = document.querySelectorAll<HTMLElement>(".drag-previewer");
     previews.forEach((el) => {
-      // Empty contents synchronously; remove on the next frame so an in-flight
-      // drop animation cannot resurrect them.
-      el.innerHTML = "";
-      requestAnimationFrame(() => {
-        if (el.parentNode) el.parentNode.removeChild(el);
+      // Keep the backend-owned container/SVG attached so future drags can render,
+      // but clear any cloned content that got stuck after cancel/drop.
+      el.querySelectorAll<HTMLElement>("foreignObject").forEach((foreignObject) => {
+        foreignObject.innerHTML = "";
       });
+      el.style.visibility = "hidden";
+      el.style.pointerEvents = "none";
     });
   };
   const purgeOnEscape = (event: KeyboardEvent) => {

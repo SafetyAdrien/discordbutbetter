@@ -65,8 +65,17 @@ export function usePermissionsRealtime(serverId: string | null) {
       return;
     }
 
-    // Instant — no debounce
-    doRefetch(source);
+    // Trailing debounce: coalesce bursts of realtime events into a single refetch
+    // to prevent UI "jumps" when many member_roles events arrive in quick succession.
+    clearTimeout(debounceTimerRef.current);
+    debounceTimerRef.current = setTimeout(() => {
+      if (permissionsMutationLockRef.current) {
+        pendingPostLockRef.current = true;
+        pendingSourceRef.current = source;
+        return;
+      }
+      doRefetch(source);
+    }, 350);
   }, [doRefetch]);
 
   // Event-driven post-lock refetch (no polling)

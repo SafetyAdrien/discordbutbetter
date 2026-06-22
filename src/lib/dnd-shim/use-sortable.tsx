@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useDrag, useDrop } from "react-dnd";
 import { getEmptyImage } from "react-dnd-html5-backend";
-import { useDndShim, UniqueIdentifier } from "./context";
+import { clearDndSharedState, useDndShim, UniqueIdentifier } from "./context";
 
 const SORTABLE_TYPE = "sortable-item";
+
+const activeDragIds = new Set<UniqueIdentifier>();
 
 export interface UseSortableOptions {
   id: UniqueIdentifier;
@@ -53,6 +55,7 @@ export function useSortable(opts: UseSortableOptions): SortableResult {
         ctx.state.lastOverId = null;
         ctx.state.activeId = id;
         ctx.state.activeData = dataRef.current;
+        activeDragIds.add(id);
         ctx.handlersRef.current.onDragStart?.({
           active: { id, data: { current: dataRef.current } },
         });
@@ -68,10 +71,8 @@ export function useSortable(opts: UseSortableOptions): SortableResult {
 
         // Clear shared state FIRST so any re-render the handlers trigger sees a
         // clean slate — prevents the DragOverlay from sticking around.
-        ctx.state.activeId = null;
-        ctx.state.activeData = null;
-        ctx.state.lastOverId = null;
-        ctx.state.activatorEvent = null;
+        activeDragIds.delete(item?.id ?? id);
+        clearDndSharedState(ctx.state);
 
         try {
           if (didDrop && overId != null) {
@@ -91,10 +92,18 @@ export function useSortable(opts: UseSortableOptions): SortableResult {
           console.error("[dnd-shim] drag-end handler threw:", err);
         }
       },
-      collect: (monitor) => ({ isDragging: monitor.isDragging() }),
+      isDragging: (monitor) => monitor.getItem()?.id === id,
+      collect: (monitor) => ({
+        isDragging: monitor.isDragging() && activeDragIds.has(id) && monitor.getItem()?.id === id,
+      }),
     }),
     [id, disabled],
   );
+
+  useEffect(() => () => {
+    activeDragIds.delete(id);
+    if (ctx.state.activeId === id) clearDndSharedState(ctx.state);
+  }, [ctx.state, id]);
 
   // rAF-throttled hover dispatch — avoids spamming onDragOver on every mousemove
   const hoverFrameRef = useRef<number | null>(null);

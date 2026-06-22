@@ -19,19 +19,22 @@ export const DropIndicator = forwardRef<HTMLDivElement, DropIndicatorProps>(
   ({ isVisible, position, orientation = "horizontal", fullWidth = false }, ref) => {
     if (!isVisible) return null;
 
+    const sharedAnim = "animate-[dnd-indicator-in_120ms_cubic-bezier(0.22,1,0.36,1)_forwards] will-change-transform";
+
     if (orientation === "vertical") {
       return (
         <div
           ref={ref}
+          aria-hidden
           className={cn(
-            "absolute top-0 bottom-0 w-[2px] z-10 pointer-events-none",
-            "bg-[#5865f2]",
-            // Circles at endpoints
+            "absolute top-0 bottom-0 w-[2px] z-20 pointer-events-none origin-center",
+            "bg-[#5865f2] shadow-[0_0_6px_rgba(88,101,242,0.55)] rounded-full",
             "before:absolute before:top-0 before:left-1/2 before:-translate-x-1/2 before:-translate-y-[3px]",
             "before:w-[8px] before:h-[3px] before:rounded-full before:bg-[#5865f2]",
             "after:absolute after:bottom-0 after:left-1/2 after:-translate-x-1/2 after:translate-y-[3px]",
             "after:w-[8px] after:h-[3px] after:rounded-full after:bg-[#5865f2]",
             position === "before" ? "left-0 -translate-x-1/2" : "right-0 translate-x-1/2",
+            sharedAnim,
           )}
         />
       );
@@ -40,20 +43,17 @@ export const DropIndicator = forwardRef<HTMLDivElement, DropIndicatorProps>(
     return (
       <div
         ref={ref}
+        aria-hidden
         className={cn(
-          // Absolute positioning with z-index above everything
-          "absolute h-[2px] z-10 pointer-events-none",
-          // Full width, ignoring parent padding
+          "absolute h-[2px] z-20 pointer-events-none origin-center",
           fullWidth ? "-left-2 -right-2" : "left-0 right-0",
-          // Discord blue color
-          "bg-[#5865f2]",
-          // Circles at endpoints using pseudo-elements
+          "bg-[#5865f2] shadow-[0_0_6px_rgba(88,101,242,0.55)] rounded-full",
           "before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:-translate-x-[3px]",
           "before:w-[8px] before:h-[3px] before:rounded-full before:bg-[#5865f2]",
           "after:absolute after:right-0 after:top-1/2 after:-translate-y-1/2 after:translate-x-[3px]",
           "after:w-[8px] after:h-[3px] after:rounded-full after:bg-[#5865f2]",
-          // Position based on 'before' or 'after'
           position === "before" ? "top-0 -translate-y-1/2" : "bottom-0 translate-y-1/2",
+          sharedAnim,
         )}
       />
     );
@@ -73,8 +73,9 @@ export const DragOverlayItem = ({ children, className }: DragOverlayItemProps) =
   return (
     <div
       className={cn(
-        "opacity-90 shadow-2xl rounded-lg border border-[#5865f2]/50 bg-card/95 backdrop-blur-sm",
-        "scale-105 cursor-grabbing",
+        "opacity-95 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.45)] rounded-lg border border-[#5865f2]/40 bg-card/95 backdrop-blur-sm",
+        "scale-[1.03] cursor-grabbing select-none will-change-transform",
+        "transition-transform duration-100 ease-out",
         className,
       )}
     >
@@ -95,29 +96,24 @@ export interface SortableItemProps {
 }
 
 export const SortableItem = ({ id, children, className, data, disabled }: SortableItemProps) => {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging, isOver } = useSortable({
+  const { attributes, listeners, setNodeRef, isDragging, isOver } = useSortable({
     id,
     data,
     disabled,
   });
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition: isDragging ? "opacity 100ms ease" : "transform 100ms cubic-bezier(0.25, 1, 0.5, 1), opacity 100ms ease",
-  };
-
   return (
     <div
       ref={setNodeRef}
-      style={style}
       {...attributes}
       {...listeners}
       className={cn(
-        "touch-none",
-        isDragging && "opacity-40 scale-[0.98]",
-        isOver && "ring-2 ring-[#5865f2]/30 rounded",
+        "touch-none transition-[opacity,transform] duration-100 ease-out",
+        isDragging && "opacity-40",
+        isOver && "outline outline-1 outline-[#5865f2]/40 rounded-md",
         className,
       )}
+      style={isDragging ? { willChange: "opacity, transform" } : undefined}
     >
       {children}
     </div>
@@ -135,7 +131,12 @@ export interface DragPlaceholderProps {
 export const DragPlaceholder = ({ height = 40, className }: DragPlaceholderProps) => {
   return (
     <div
-      className={cn("rounded-md bg-muted/30 border-2 border-dashed border-muted-foreground/20", className)}
+      aria-hidden
+      className={cn(
+        "rounded-md border border-dashed border-[#5865f2]/40 bg-[#5865f2]/5",
+        "animate-[dnd-placeholder-pulse_1.4s_ease-in-out_infinite]",
+        className,
+      )}
       style={{ height: typeof height === "number" ? `${height}px` : height }}
     />
   );

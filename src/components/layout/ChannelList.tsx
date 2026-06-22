@@ -1280,22 +1280,6 @@ export function ChannelList({
           setDropMode("inside");
           setDropPosition("after");
         }
-        if (clientY < topZone) {
-          dropPositionRef.current = "before";
-          dropModeRef.current = "before";
-          setDropPosition("before");
-          setDropMode("before");
-        } else if (clientY > bottomZone) {
-          dropPositionRef.current = "after";
-          dropModeRef.current = "after";
-          setDropPosition("after");
-          setDropMode("after");
-        } else {
-          dropModeRef.current = "inside";
-          dropPositionRef.current = "after"; // fallback, not used visually
-          setDropMode("inside");
-          setDropPosition("after");
-        }
       } else {
         // Symmetric 50/50 zones for channels: works equally well dragging up or down
         const middleY = overRect.top + overRect.height * 0.5;

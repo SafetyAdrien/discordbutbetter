@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -12,6 +12,7 @@ import type { RoleWithPermissions } from "@/hooks/useRoles";
 import {
   setRoleMutationPending,
   clearRoleMutationPending,
+  ROLE_MUTATION_CLEARED_EVENT,
 } from "@/lib/role-mutation-tracker";
 
 type RoleMini = Pick<RoleWithPermissions, "id" | "name" | "color" | "icon_url" | "position" | "description">;
@@ -47,6 +48,31 @@ interface RoleCheckboxItemProps {
 export function RoleCheckboxItem({ role, serverId, memberId, userId, disabled }: RoleCheckboxItemProps) {
   const queryClient = useQueryClient();
   const [isPending, setIsPending] = useState(false);
+  const safetyTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // Listen for realtime confirmation: settle UI only when the event arrives.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as
+        | { serverId: string; memberId: string; roleId: string }
+        | undefined;
+      if (!detail) return;
+      if (
+        detail.serverId === serverId &&
+        detail.memberId === memberId &&
+        detail.roleId === role.id
+      ) {
+        clearTimeout(safetyTimeoutRef.current);
+        membersMutationLockRef.current = false;
+        setIsPending(false);
+      }
+    };
+    window.addEventListener(ROLE_MUTATION_CLEARED_EVENT, handler);
+    return () => {
+      window.removeEventListener(ROLE_MUTATION_CLEARED_EVENT, handler);
+      clearTimeout(safetyTimeoutRef.current);
+    };
+  }, [serverId, memberId, role.id]);
 
   // Reactive subscription to the members cache — re-renders when cache changes
   const { data: isChecked = false } = useQuery<MemberWithProfile[], Error, boolean>({
@@ -156,13 +182,19 @@ export function RoleCheckboxItem({ role, serverId, memberId, userId, disabled }:
         // Rollback
         if (previousMembers) queryClient.setQueryData(["members", serverId], previousMembers);
         clearRoleMutationPending(serverId, memberId, role.id);
-      } finally {
+        membersMutationLockRef.current = false;
         setIsPending(false);
-        setTimeout(() => {
-          membersMutationLockRef.current = false;
-          clearRoleMutationPending(serverId, memberId, role.id);
-        }, 800);
+        return;
       }
+
+      // Success: keep isPending/lock active until realtime confirms (handled by listener).
+      // Safety net: if realtime never fires, settle after 8s.
+      clearTimeout(safetyTimeoutRef.current);
+      safetyTimeoutRef.current = setTimeout(() => {
+        clearRoleMutationPending(serverId, memberId, role.id);
+        membersMutationLockRef.current = false;
+        setIsPending(false);
+      }, 8000);
     },
     [disabled, getHasRoleNow, isPending, memberId, queryClient, role, serverId, userId]
   );

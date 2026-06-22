@@ -573,9 +573,6 @@ export function useRemoveRoleFromMember() {
       toast.success('Rôle retiré !');
     },
     onSettled: (_, __, { serverId }) => {
-      setTimeout(() => {
-        membersMutationLockRef.current = false;
-      }, 500);
       queryClient.invalidateQueries({ queryKey: ['role-member-counts', serverId] });
       // Role removal changes effective permissions — refresh channel visibility
       refetchPermissionCaches(queryClient);

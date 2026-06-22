@@ -1,17 +1,16 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
-import { membersMutationLockRef, MemberWithProfile } from "@/hooks/useMembers";
+import { lockMembersMutation, MemberWithProfile } from "@/hooks/useMembers";
 import { lockPermissionsMutation } from "@/hooks/usePermissionsRealtime";
 import type { RoleWithPermissions } from "@/hooks/useRoles";
 import {
   setRoleMutationPending,
   clearRoleMutationPending,
-  ROLE_MUTATION_CLEARED_EVENT,
   getRoleMutationTarget,
 } from "@/lib/role-mutation-tracker";
 

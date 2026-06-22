@@ -169,7 +169,7 @@ export function DndContext({
 
   useEffect(() => {
     let cleanupTimer: ReturnType<typeof setTimeout> | null = null;
-    const scheduleStaleDragCleanup = () => {
+    const runCancelCleanup = () => {
       if (cleanupTimer) clearTimeout(cleanupTimer);
       cleanupTimer = setTimeout(() => {
         cleanupTimer = null;
@@ -180,16 +180,26 @@ export function DndContext({
         handlersRef.current.onDragCancel?.({ active });
       }, 0);
     };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") runCancelCleanup();
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") runCancelCleanup();
+    };
 
-    const cleanupEvents = ["pointerup", "pointercancel", "mouseup", "touchend", "touchcancel", "dragend", "drop", "blur"] as const;
+    const cleanupEvents = ["pointerup", "pointercancel", "mouseup", "touchend", "touchcancel", "dragend", "drop", "blur", "pagehide"] as const;
     cleanupEvents.forEach((eventName) => {
-      window.addEventListener(eventName, scheduleStaleDragCleanup, { capture: true, passive: true });
+      window.addEventListener(eventName, runCancelCleanup, { capture: true, passive: true });
     });
+    window.addEventListener("keydown", handleKeyDown, { capture: true });
+    document.addEventListener("visibilitychange", handleVisibilityChange, { capture: true });
     return () => {
       if (cleanupTimer) clearTimeout(cleanupTimer);
       cleanupEvents.forEach((eventName) => {
-        window.removeEventListener(eventName, scheduleStaleDragCleanup, { capture: true });
+        window.removeEventListener(eventName, runCancelCleanup, { capture: true });
       });
+      window.removeEventListener("keydown", handleKeyDown, { capture: true });
+      document.removeEventListener("visibilitychange", handleVisibilityChange, { capture: true });
     };
   }, []);
 

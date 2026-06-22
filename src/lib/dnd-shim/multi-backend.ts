@@ -2,7 +2,7 @@
 // Mirrors Discord's public configuration of react-dnd-accessible-backend.
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { TouchBackend } from "react-dnd-touch-backend";
-import { MouseTransition, TouchTransition } from "rdndmb-html5-to-touch";
+import { MouseTransition, TouchTransition } from "dnd-multi-backend";
 import { announce } from "@react-aria/live-announcer";
 import AccessibleBackend from "react-dnd-accessible-backend";
 

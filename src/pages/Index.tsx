@@ -900,7 +900,7 @@ const Index = () => {
               connectedToProfile
             />
           )}
-          <div className="h-[68px]">
+          <div className="h-[60px]">
             <UserProfileCard
               onOpenSettings={() => setShowAccountSettingsGlobal(true)}
               onOpenProfile={() => setShowAccountSettingsGlobal(true)}

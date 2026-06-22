@@ -128,7 +128,7 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers, 
   return (
     <div
       className={cn(
-        "h-full mx-2 mb-2 px-3 py-1.5 flex items-center gap-2.5 bg-[hsl(var(--surface-2))] border border-border/40",
+        "h-full mx-2 mb-2 px-3 py-1 flex items-center gap-2.5 bg-[hsl(var(--surface-2))] border border-border/40",
         connectedToVoice ? "rounded-b-2xl rounded-t-none border-t-0" : "rounded-2xl"
       )}
       style={{ boxShadow: connectedToVoice ? undefined : 'var(--shadow-elevation-2)' }}

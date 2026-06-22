@@ -9,14 +9,18 @@ export interface DragOverlayProps {
 }
 
 export function DragOverlay({ children }: DragOverlayProps) {
-  const { isDragging, currentOffset, initialOffset } = useDragLayer((m) => ({
+  const { isDragging, hasItem, currentOffset, initialOffset } = useDragLayer((m) => ({
     isDragging: m.isDragging(),
+    hasItem: m.getItem() != null,
     currentOffset: m.getSourceClientOffset(),
     initialOffset: m.getInitialSourceClientOffset(),
   }));
 
   if (typeof document === "undefined") return null;
-  if (!isDragging || !currentOffset || !initialOffset || !children) return null;
+  // Defensive: hide as soon as ANY drag-state signal clears, not just isDragging.
+  if (!isDragging || !hasItem || !currentOffset || !initialOffset || !children) {
+    return null;
+  }
 
   return createPortal(
     <div

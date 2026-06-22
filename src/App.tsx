@@ -40,6 +40,7 @@ const App = () => (
                   <Route path="/invite/:code" element={<Invite />} />
                   <Route path="/install" element={<Install />} />
                   <Route path="/admin/badges" element={<AdminBadges />} />
+                  <Route path="/trust" element={<Trust />} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>

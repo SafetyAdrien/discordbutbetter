@@ -297,7 +297,15 @@ export function useMembers(serverId: string | null) {
 
           if (payload.eventType === 'INSERT') {
             const inserted = payload.new as { member_id: string; role_id: string };
-            
+
+            // If a local mutation is pending for this (member, role), only confirm
+            // events matching the target direction. Contradicting events are dropped.
+            if (serverId) {
+              const target = getRoleMutationTarget(serverId, inserted.member_id, inserted.role_id);
+              if (target === 'remove') return; // stale event, ignore
+              if (target === 'add') clearRoleMutationPending(serverId, inserted.member_id, inserted.role_id);
+            }
+
             const { data: roleData } = await supabase
               .from('roles')
               .select('id, name, color, icon_url, position, description')
@@ -323,6 +331,12 @@ export function useMembers(serverId: string | null) {
             }
           } else if (payload.eventType === 'DELETE') {
             const deleted = payload.old as { member_id: string; role_id: string };
+
+            if (serverId) {
+              const target = getRoleMutationTarget(serverId, deleted.member_id, deleted.role_id);
+              if (target === 'add') return; // stale event, ignore
+              if (target === 'remove') clearRoleMutationPending(serverId, deleted.member_id, deleted.role_id);
+            }
 
             queryClient.setQueryData<MemberWithProfile[]>(
               ['members', serverId],

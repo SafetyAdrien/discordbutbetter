@@ -1,12 +1,16 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 
 export interface MutualServer {
   id: string;
   name: string;
   icon_url: string | null;
 }
+
+const mutualServersCacheKey = (me: string, other: string) =>
+  `mutual-servers:${me}:${other}`;
 
 export function useMutualServers(otherUserId: string | null) {
   const { user } = useAuth();
@@ -16,7 +20,6 @@ export function useMutualServers(otherUserId: string | null) {
     queryFn: async (): Promise<MutualServer[]> => {
       if (!user || !otherUserId) return [];
 
-      // Get servers where the current user is a member
       const { data: myServers, error: myError } = await supabase
         .from('server_members')
         .select('server_id')
@@ -24,11 +27,13 @@ export function useMutualServers(otherUserId: string | null) {
 
       if (myError) throw myError;
 
-      const myServerIds = myServers?.map(s => s.server_id) || [];
+      const myServerIds = myServers?.map((s) => s.server_id) || [];
 
-      if (myServerIds.length === 0) return [];
+      if (myServerIds.length === 0) {
+        cacheSetAsync(mutualServersCacheKey(user.id, otherUserId), []);
+        return [];
+      }
 
-      // Get servers where the other user is also a member
       const { data: mutualServers, error: mutualError } = await supabase
         .from('server_members')
         .select(`
@@ -43,8 +48,19 @@ export function useMutualServers(otherUserId: string | null) {
 
       if (mutualError) throw mutualError;
 
-      return (mutualServers?.map(s => s.server) || []).filter(Boolean) as MutualServer[];
+      const result = (mutualServers?.map((s) => s.server) || []).filter(
+        Boolean,
+      ) as MutualServer[];
+      cacheSetAsync(mutualServersCacheKey(user.id, otherUserId), result);
+      return result;
     },
     enabled: !!user && !!otherUserId,
+    placeholderData: () =>
+      user && otherUserId
+        ? cacheGetSync<MutualServer[]>(mutualServersCacheKey(user.id, otherUserId))
+        : undefined,
+    staleTime: 1000 * 60 * 5,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 }

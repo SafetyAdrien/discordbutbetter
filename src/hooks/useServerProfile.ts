@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 
 export interface ServerProfile {
   id: string;
@@ -16,6 +17,9 @@ export interface ServerProfile {
   updated_at: string;
 }
 
+const serverProfileCacheKey = (uid: string, sid: string) =>
+  `server-profile:${sid}:${uid}`;
+
 export function useServerProfile(userId: string | null, serverId: string | null) {
   return useQuery({
     queryKey: ['server-profile', userId, serverId],
@@ -28,9 +32,18 @@ export function useServerProfile(userId: string | null, serverId: string | null)
         .eq('server_id', serverId)
         .maybeSingle();
       if (error) throw error;
-      return data as ServerProfile | null;
+      const result = (data as ServerProfile | null) ?? null;
+      cacheSetAsync(serverProfileCacheKey(userId, serverId), result);
+      return result;
     },
     enabled: !!userId && !!serverId,
+    placeholderData: () =>
+      userId && serverId
+        ? cacheGetSync<ServerProfile | null>(serverProfileCacheKey(userId, serverId))
+        : undefined,
+    staleTime: 1000 * 60 * 5,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 }
 

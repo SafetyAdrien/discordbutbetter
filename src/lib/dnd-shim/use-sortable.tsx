@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useDrag, useDrop } from "react-dnd";
 import { getEmptyImage } from "react-dnd-html5-backend";
-import { clearDndSharedState, useDndShim, UniqueIdentifier } from "./context";
+import { clearDndSharedState, hideDndOverlay, setDndActiveState, useDndShim, UniqueIdentifier } from "./context";
 
 const SORTABLE_TYPE = "sortable-item";
 
@@ -48,20 +48,19 @@ export function useSortable(opts: UseSortableOptions): SortableResult {
       canDrag: () => !disabled,
       item: (monitor) => {
         const initial = monitor.getInitialClientOffset();
-        ctx.state.activatorEvent = {
+        const activatorEvent = {
           clientX: initial?.x ?? 0,
           clientY: initial?.y ?? 0,
         };
-        ctx.state.lastOverId = null;
-        ctx.state.activeId = id;
-        ctx.state.activeData = dataRef.current;
         activeDragIds.add(id);
+        setDndActiveState(ctx.state, id, dataRef.current, activatorEvent);
         ctx.handlersRef.current.onDragStart?.({
           active: { id, data: { current: dataRef.current } },
         });
         return { id, data: dataRef.current };
       },
       end: (item: any, monitor) => {
+        hideDndOverlay(ctx.state);
         const overId = ctx.state.lastOverId;
         const overEl = overId != null ? ctx.state.nodes.get(overId) : null;
         const overRect = overEl ? overEl.getBoundingClientRect() : null;

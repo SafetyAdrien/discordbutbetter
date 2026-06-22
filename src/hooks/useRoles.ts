@@ -5,7 +5,7 @@ import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
-import { membersMutationLockRef } from './useMembers';
+import { lockMembersMutation } from './useMembers';
 import { lockPermissionsMutation } from './usePermissionsRealtime';
 
 /** Refetch all active permission-related queries for immediate UI sync. */

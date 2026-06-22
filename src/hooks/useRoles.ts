@@ -5,8 +5,6 @@ import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
-import { lockMembersMutation } from './useMembers';
-import { lockPermissionsMutation } from './usePermissionsRealtime';
 
 /** Refetch all active permission-related queries for immediate UI sync. */
 function refetchPermissionCaches(queryClient: ReturnType<typeof useQueryClient>) {
@@ -477,10 +475,6 @@ export function useAssignRoleToMember() {
       if (error) throw error;
     },
     onMutate: async ({ memberId, roleId, serverId, role }) => {
-      // Lock to prevent Realtime invalidations during mutation
-      lockMembersMutation(500);
-      lockPermissionsMutation(600);
-      
       await queryClient.cancelQueries({ queryKey: ['members', serverId] });
       const previousMembers = queryClient.getQueryData(['members', serverId]);
       
@@ -547,10 +541,6 @@ export function useRemoveRoleFromMember() {
       if (error) throw error;
     },
     onMutate: async ({ memberId, roleId, serverId }) => {
-      // Lock to prevent Realtime invalidations during mutation
-      lockMembersMutation(500);
-      lockPermissionsMutation(600);
-      
       await queryClient.cancelQueries({ queryKey: ['members', serverId] });
       const previousMembers = queryClient.getQueryData(['members', serverId]);
       

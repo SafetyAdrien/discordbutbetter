@@ -1790,6 +1790,8 @@ export function ChannelList({
 
 
               {/* Orphan Channels - displayed BEFORE categories to allow insertion at top */}
+              <TopOrphanDropTarget activeId={activeId} overId={overId} />
+
               {visibleOrphanChannels.length > 0 &&
               <div className="px-2 space-y-0.5 mb-2">
                   <SortableContext

@@ -109,9 +109,11 @@ export function useSortable(opts: UseSortableOptions): SortableResult {
     const releaseStaleDrag = () => {
       window.setTimeout(() => {
         if (ctx.state.activeId !== id) return;
+        const active = { id, data: { current: ctx.state.activeData } };
         activeDragIds.delete(id);
         clearDndSharedState(ctx.state);
-      }, 80);
+        ctx.handlersRef.current.onDragCancel?.({ active });
+      }, 180);
     };
     const events = ["pointerup", "mouseup", "touchend", "touchcancel", "drop", "dragend", "blur"] as const;
     events.forEach((eventName) => window.addEventListener(eventName, releaseStaleDrag, { capture: true, passive: true }));

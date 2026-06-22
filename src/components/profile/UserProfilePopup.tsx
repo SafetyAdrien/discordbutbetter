@@ -715,14 +715,12 @@ export function UserProfilePopup({
   ));
   ProfileContent.displayName = 'ProfileContent';
 
-  // Role Management Side Panel Component
-  const RoleSidePanel = () => {
-    return (
-      <div 
-        className="absolute right-full mr-2 w-64 bg-card border border-border rounded-lg shadow-2xl overflow-hidden"
-        style={{ top: rolePanelTopRef.current }}
-        onClick={(e) => e.stopPropagation()}
-      >
+  const roleSidePanel = (
+    <div 
+      className="absolute right-full mr-2 w-64 bg-card border border-border rounded-lg shadow-2xl overflow-hidden"
+      style={{ top: rolePanelTopRef.current }}
+      onClick={(e) => e.stopPropagation()}
+    >
       <div className="p-3 border-b border-border flex items-center justify-between">
         <h4 className="font-semibold text-sm">Gérer les rôles</h4>
         <button 
@@ -747,7 +745,6 @@ export function UserProfilePopup({
       </ScrollArea>
     </div>
   );
-  };
 
   const serverProfileModal = (
     <ServerProfileEditModal
@@ -815,7 +812,7 @@ export function UserProfilePopup({
         cardPosition={cardPosition}
         onClose={() => { setShowRolePanel(false); onOpenChange(false); }}
         showRolePanel={showRolePanel && canManageRoles && !!serverId && !!memberId && assignableRoles.length > 0}
-        roleSidePanel={<RoleSidePanel />}
+        roleSidePanel={roleSidePanel}
       >
         <ProfileContent />
       </FloatingProfileCard>

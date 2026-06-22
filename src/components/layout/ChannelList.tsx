@@ -1224,15 +1224,8 @@ export function ChannelList({
     }
     const overIdStr = over.id.toString();
 
-    // Channel dragged onto the "no category" drop zone (top of list)
-    if (overIdStr === ORPHAN_DROP_ID && activeIdStr.startsWith("channel-")) {
-      dropPositionRef.current = "before";
-      dropModeRef.current = "inside";
-      setDropPosition("before");
-      setDropMode("inside");
-      setOverId(ORPHAN_DROP_ID);
-      return;
-    }
+
+
 
     // Strict type validation for drop indicator
     const isActiveCategory = activeIdStr.startsWith("category-");

@@ -44,7 +44,7 @@ import { useCreateDMConversation } from '@/hooks/useDMs';
 import { useSendFriendRequest, useFriends } from '@/hooks/useFriends';
 import { useServerRoles, RoleWithPermissions } from '@/hooks/useRoles';
 import { useKickMember, useBanMember } from '@/hooks/useMemberActions';
-import { MemberWithProfile, membersMutationLockRef } from '@/hooks/useMembers';
+import { lockMembersMutation, MemberWithProfile } from '@/hooks/useMembers';
 import { RoleCheckboxItem } from '@/components/profile/RoleCheckboxItem';
 import { lockPermissionsMutation } from '@/hooks/usePermissionsRealtime';
 import { setRoleMutationPending, clearRoleMutationPending } from '@/lib/role-mutation-tracker';

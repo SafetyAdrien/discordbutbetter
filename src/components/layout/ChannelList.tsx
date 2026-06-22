@@ -1187,12 +1187,7 @@ export function ChannelList({
       const collidedId = container.id.toString();
       if (collidedId === activeIdStr) return false;
       if (isCategory) return collidedId.startsWith("category-");
-      // Channels can target: other channels, category headers, and the orphan drop zone
-      return (
-        collidedId.startsWith("channel-") ||
-        collidedId.startsWith("category-") ||
-        collidedId === ORPHAN_DROP_ID
-      );
+      return collidedId.startsWith("channel-") || collidedId.startsWith("category-");
     });
 
     // Pointer-first detection is critical for opened categories: their rectangles are tall,

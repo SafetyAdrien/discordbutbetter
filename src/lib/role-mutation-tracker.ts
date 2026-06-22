@@ -22,12 +22,23 @@ export function setRoleMutationPending(
   pending.set(key(serverId, memberId, roleId), target);
 }
 
+export const ROLE_MUTATION_CLEARED_EVENT = "role-mutation:cleared";
+
 export function clearRoleMutationPending(
   serverId: string,
   memberId: string,
   roleId: string,
 ) {
-  pending.delete(key(serverId, memberId, roleId));
+  const k = key(serverId, memberId, roleId);
+  if (!pending.has(k)) return;
+  pending.delete(k);
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(
+      new CustomEvent(ROLE_MUTATION_CLEARED_EVENT, {
+        detail: { serverId, memberId, roleId },
+      }),
+    );
+  }
 }
 
 export function isRoleMutationPending(

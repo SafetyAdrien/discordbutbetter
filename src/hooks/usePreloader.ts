@@ -253,6 +253,15 @@ export function usePreloader(
           if (cachedMsgs) queryClient.setQueryData(['messages', cid], cachedMsgs);
         }
       } catch {}
+      // Seed DM messages for cached conversations (top 5 by recency)
+      try {
+        const dms = readCache<any[]>(`dm-conversations:${user.id}`) || [];
+        const topDmIds = dms.slice(0, 5).map((d: any) => d.id).filter(Boolean);
+        for (const cid of topDmIds) {
+          const cached = readCache<any>(`dm-messages:${cid}`);
+          if (cached) queryClient.setQueryData(['dm-messages', cid], cached);
+        }
+      } catch {}
       writeCache('preloader-done', '1');
       recordPerf('preloader:hydrate:emojis-stickers', performance.now() - t0);
     }, 500);

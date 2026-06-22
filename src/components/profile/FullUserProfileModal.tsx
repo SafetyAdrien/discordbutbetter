@@ -60,8 +60,8 @@ export function FullUserProfileModal({
   const [customStatusOpen, setCustomStatusOpen] = useState(false);
 
   const { user: currentUser } = useAuth();
-  const { data: mutualServers = [] } = useMutualServers(user?.id || null);
-  const { data: mutualFriends = [] } = useMutualFriends(user?.id || null);
+  const { data: mutualServers, isFetching: mutualServersFetching } = useMutualServers(user?.id || null);
+  const { data: mutualFriends, isFetching: mutualFriendsFetching } = useMutualFriends(user?.id || null);
   const { data: conversations = [] } = useDMConversations();
   const createDM = useCreateDMConversation();
   const { data: friends = [] } = useFriends();

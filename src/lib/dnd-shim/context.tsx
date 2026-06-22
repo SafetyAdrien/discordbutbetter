@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useRef } from "react";
+import React, { createContext, useContext, useEffect, useRef } from "react";
 
 // ============================================================================
 // dnd-kit → react-dnd compatibility shim
@@ -47,6 +47,13 @@ export interface DndSharedState {
   nodes: Map<UniqueIdentifier, HTMLElement>;
   activeId: UniqueIdentifier | null;
   activeData: any;
+}
+
+export function clearDndSharedState(state: DndSharedState) {
+  state.activatorEvent = null;
+  state.lastOverId = null;
+  state.activeId = null;
+  state.activeData = null;
 }
 
 interface DndShimContextValue {
@@ -99,6 +106,32 @@ export function DndContext({
     activeId: null,
     activeData: null,
   });
+
+  useEffect(() => {
+    let cleanupTimer: ReturnType<typeof setTimeout> | null = null;
+    const scheduleStaleDragCleanup = () => {
+      if (cleanupTimer) clearTimeout(cleanupTimer);
+      cleanupTimer = setTimeout(() => {
+        cleanupTimer = null;
+        const state = stateRef.current;
+        if (state.activeId == null) return;
+        const active = { id: state.activeId, data: { current: state.activeData } };
+        clearDndSharedState(state);
+        handlersRef.current.onDragCancel?.({ active });
+      }, 90);
+    };
+
+    const cleanupEvents = ["pointerup", "mouseup", "touchend", "touchcancel", "dragend", "drop", "blur"] as const;
+    cleanupEvents.forEach((eventName) => {
+      window.addEventListener(eventName, scheduleStaleDragCleanup, { capture: true, passive: true });
+    });
+    return () => {
+      if (cleanupTimer) clearTimeout(cleanupTimer);
+      cleanupEvents.forEach((eventName) => {
+        window.removeEventListener(eventName, scheduleStaleDragCleanup, { capture: true });
+      });
+    };
+  }, []);
 
   return (
     <DndShimContext.Provider value={{ handlersRef, state: stateRef.current }}>

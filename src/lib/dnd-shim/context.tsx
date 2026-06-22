@@ -59,14 +59,6 @@ function notifyDndState(state: DndSharedState) {
 
 export function purgeDndArtifacts() {
   if (typeof document === "undefined") return;
-  document.querySelectorAll<HTMLElement>("[data-dnd-overlay-root]").forEach((el) => {
-    el.style.display = "none";
-    el.style.visibility = "hidden";
-  });
-  document.querySelectorAll<HTMLElement>('body > div[style*="z-index: 9999"][style*="pointer-events: none"]').forEach((el) => {
-    el.style.display = "none";
-    el.style.visibility = "hidden";
-  });
   document.querySelectorAll<HTMLElement>(".drag-previewer").forEach((el) => {
     el.style.display = "none";
     el.innerHTML = "";
@@ -110,7 +102,7 @@ export function clearDndSharedState(state: DndSharedState) {
   state.lastOverId = null;
   state.activeId = null;
   state.activeData = null;
-  state.overlayHidden = false;
+  state.overlayHidden = true;
   if (changed) notifyDndState(state);
 }
 

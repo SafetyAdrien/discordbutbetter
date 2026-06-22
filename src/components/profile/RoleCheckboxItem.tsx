@@ -9,6 +9,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { membersMutationLockRef, MemberWithProfile } from "@/hooks/useMembers";
 import { lockPermissionsMutation } from "@/hooks/usePermissionsRealtime";
 import type { RoleWithPermissions } from "@/hooks/useRoles";
+import {
+  setRoleMutationPending,
+  clearRoleMutationPending,
+} from "@/lib/role-mutation-tracker";
 
 type RoleMini = Pick<RoleWithPermissions, "id" | "name" | "color" | "icon_url" | "position" | "description">;
 

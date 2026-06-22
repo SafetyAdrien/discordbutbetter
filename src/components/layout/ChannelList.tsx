@@ -174,10 +174,10 @@ function TopOrphanDropTarget({
       ref={setNodeRef}
       data-dnd-type="orphan-top"
       className={cn(
-        "relative mx-2 overflow-visible transition-[height] duration-100",
-        isChannelDrag ? "h-7 mb-0.5" : "h-0"
+        "absolute left-3 right-3 top-2 z-40 overflow-visible",
+        isChannelDrag ? "h-8 pointer-events-auto" : "hidden pointer-events-none"
       )}>
-      <DropIndicator isVisible={isChannelDrag && overId === TOP_ORPHAN_DROP_ID} position="after" variant="channel" />
+      <DropIndicator isVisible={isChannelDrag && overId === TOP_ORPHAN_DROP_ID} position="before" variant="channel" />
     </div>
   );
 }
@@ -1777,7 +1777,7 @@ export function ChannelList({
       {/* Channels with DnD */}
       <ContextMenu>
         <ContextMenuTrigger asChild>
-          <div className="flex-1 overflow-y-auto scrollbar-thin py-2 px-1" onScroll={handleChannelListScroll}>
+          <div className="flex-1 overflow-y-auto scrollbar-thin py-2 px-1 relative" onScroll={handleChannelListScroll}>
             <DndContext
               sensors={sensors}
               collisionDetection={customCollisionDetection}

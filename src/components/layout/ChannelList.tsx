@@ -115,8 +115,7 @@ import {
   DragStartEvent,
   DragOverEvent,
   DragOverlay,
-  CollisionDetection,
-  useDroppable } from
+  CollisionDetection } from
 "@dnd-kit/core";
 import {
   SortableContext,

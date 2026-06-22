@@ -116,10 +116,20 @@ export function useSortable(opts: UseSortableOptions): SortableResult {
         ctx.handlersRef.current.onDragCancel?.({ active });
       }, 0);
     };
-    const events = ["pointerup", "pointercancel", "mouseup", "touchend", "touchcancel", "drop", "dragend", "blur"] as const;
+    const releaseOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") releaseStaleDrag();
+    };
+    const releaseOnVisibilityChange = () => {
+      if (document.visibilityState === "hidden") releaseStaleDrag();
+    };
+    const events = ["pointerup", "pointercancel", "mouseup", "touchend", "touchcancel", "drop", "dragend", "blur", "pagehide"] as const;
     events.forEach((eventName) => window.addEventListener(eventName, releaseStaleDrag, { capture: true, passive: true }));
+    window.addEventListener("keydown", releaseOnEscape, { capture: true });
+    document.addEventListener("visibilitychange", releaseOnVisibilityChange, { capture: true });
     return () => {
       events.forEach((eventName) => window.removeEventListener(eventName, releaseStaleDrag, { capture: true }));
+      window.removeEventListener("keydown", releaseOnEscape, { capture: true });
+      document.removeEventListener("visibilitychange", releaseOnVisibilityChange, { capture: true });
     };
   }, [ctx.state, id]);
 

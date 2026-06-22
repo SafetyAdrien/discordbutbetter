@@ -1469,10 +1469,20 @@ export function ChannelList({
       setDropPosition("after");
       setDropMode("after");
     };
-    const events = ["pointerup", "pointercancel", "mouseup", "touchend", "touchcancel", "drop", "dragend", "blur"] as const;
+    const clearOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") clearVisibleDragState();
+    };
+    const clearOnVisibilityChange = () => {
+      if (document.visibilityState === "hidden") clearVisibleDragState();
+    };
+    const events = ["pointerup", "pointercancel", "mouseup", "touchend", "touchcancel", "drop", "dragend", "blur", "pagehide"] as const;
     events.forEach((eventName) => window.addEventListener(eventName, clearVisibleDragState, { capture: true, passive: true }));
+    window.addEventListener("keydown", clearOnEscape, { capture: true });
+    document.addEventListener("visibilitychange", clearOnVisibilityChange, { capture: true });
     return () => {
       events.forEach((eventName) => window.removeEventListener(eventName, clearVisibleDragState, { capture: true }));
+      window.removeEventListener("keydown", clearOnEscape, { capture: true });
+      document.removeEventListener("visibilitychange", clearOnVisibilityChange, { capture: true });
     };
   }, []);
 

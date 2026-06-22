@@ -35,10 +35,20 @@ export function DragOverlay({ children }: DragOverlayProps) {
 
   useEffect(() => {
     const hide = () => hideDndOverlay(ctx.state);
-    const hideEvents = ["pointerup", "pointercancel", "mouseup", "touchend", "touchcancel", "drop", "dragend", "blur"] as const;
+    const hideOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") hide();
+    };
+    const hideOnVisibilityChange = () => {
+      if (document.visibilityState === "hidden") hide();
+    };
+    const hideEvents = ["pointerup", "pointercancel", "mouseup", "touchend", "touchcancel", "drop", "dragend", "blur", "pagehide"] as const;
     hideEvents.forEach((eventName) => window.addEventListener(eventName, hide, { capture: true, passive: true }));
+    window.addEventListener("keydown", hideOnEscape, { capture: true });
+    document.addEventListener("visibilitychange", hideOnVisibilityChange, { capture: true });
     return () => {
       hideEvents.forEach((eventName) => window.removeEventListener(eventName, hide, { capture: true }));
+      window.removeEventListener("keydown", hideOnEscape, { capture: true });
+      document.removeEventListener("visibilitychange", hideOnVisibilityChange, { capture: true });
     };
   }, [ctx.state]);
 

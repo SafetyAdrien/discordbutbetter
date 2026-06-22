@@ -57,8 +57,12 @@ function notifyDndState(state: DndSharedState) {
   state.listeners.forEach((listener) => listener());
 }
 
-export function purgeDndArtifacts() {
+export function purgeDndArtifacts({ removeOverlay = false } = {}) {
   if (typeof document === "undefined") return;
+  if (removeOverlay) {
+    document.querySelectorAll<HTMLElement>("[data-dnd-overlay-root]").forEach((el) => el.remove());
+    document.querySelectorAll<HTMLElement>('body > div[style*="z-index: 9999"][style*="pointer-events: none"]').forEach((el) => el.remove());
+  }
   document.querySelectorAll<HTMLElement>(".drag-previewer").forEach((el) => {
     el.style.display = "none";
     el.innerHTML = "";
@@ -87,7 +91,7 @@ export function setDndActiveState(
 }
 
 export function hideDndOverlay(state: DndSharedState) {
-  purgeDndArtifacts();
+  purgeDndArtifacts({ removeOverlay: true });
   const changed = !state.overlayHidden || state.activeId != null || state.activeData != null;
   state.overlayHidden = true;
   state.activeId = null;
@@ -96,7 +100,7 @@ export function hideDndOverlay(state: DndSharedState) {
 }
 
 export function clearDndSharedState(state: DndSharedState) {
-  purgeDndArtifacts();
+  purgeDndArtifacts({ removeOverlay: state.activeId != null });
   const changed = state.activeId != null || state.activeData != null || state.lastOverId != null || state.activatorEvent != null || state.overlayHidden;
   state.activatorEvent = null;
   state.lastOverId = null;
@@ -165,7 +169,7 @@ export function DndContext({
 
   useEffect(() => {
     let cleanupTimer: ReturnType<typeof setTimeout> | null = null;
-    const scheduleStaleDragCleanup = () => {
+    const runCancelCleanup = () => {
       if (cleanupTimer) clearTimeout(cleanupTimer);
       cleanupTimer = setTimeout(() => {
         cleanupTimer = null;
@@ -176,16 +180,26 @@ export function DndContext({
         handlersRef.current.onDragCancel?.({ active });
       }, 0);
     };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") runCancelCleanup();
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") runCancelCleanup();
+    };
 
-    const cleanupEvents = ["pointerup", "pointercancel", "mouseup", "touchend", "touchcancel", "dragend", "drop", "blur"] as const;
+    const cleanupEvents = ["pointerup", "pointercancel", "mouseup", "touchend", "touchcancel", "dragend", "drop", "blur", "pagehide"] as const;
     cleanupEvents.forEach((eventName) => {
-      window.addEventListener(eventName, scheduleStaleDragCleanup, { capture: true, passive: true });
+      window.addEventListener(eventName, runCancelCleanup, { capture: true, passive: true });
     });
+    window.addEventListener("keydown", handleKeyDown, { capture: true });
+    document.addEventListener("visibilitychange", handleVisibilityChange, { capture: true });
     return () => {
       if (cleanupTimer) clearTimeout(cleanupTimer);
       cleanupEvents.forEach((eventName) => {
-        window.removeEventListener(eventName, scheduleStaleDragCleanup, { capture: true });
+        window.removeEventListener(eventName, runCancelCleanup, { capture: true });
       });
+      window.removeEventListener("keydown", handleKeyDown, { capture: true });
+      document.removeEventListener("visibilitychange", handleVisibilityChange, { capture: true });
     };
   }, []);
 

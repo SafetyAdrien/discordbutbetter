@@ -87,8 +87,16 @@ if (typeof window !== "undefined") {
       });
     });
   };
-  const events = ["drop", "dragend", "pointerup", "pointercancel", "mouseup", "touchend", "touchcancel", "blur"] as const;
+  const purgeOnEscape = (event: KeyboardEvent) => {
+    if (event.key === "Escape") purgeStrayPreviews();
+  };
+  const purgeOnVisibilityChange = () => {
+    if (document.visibilityState === "hidden") purgeStrayPreviews();
+  };
+  const events = ["drop", "dragend", "pointerup", "pointercancel", "mouseup", "touchend", "touchcancel", "blur", "pagehide"] as const;
   events.forEach((eventName) =>
     window.addEventListener(eventName, purgeStrayPreviews, { capture: true, passive: true }),
   );
+  window.addEventListener("keydown", purgeOnEscape, { capture: true });
+  document.addEventListener("visibilitychange", purgeOnVisibilityChange, { capture: true });
 }

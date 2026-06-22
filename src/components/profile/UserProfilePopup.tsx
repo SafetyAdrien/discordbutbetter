@@ -61,6 +61,8 @@ import { useVoiceUserSettings } from '@/hooks/useVoiceUserSettings';
 import { useServerProfile } from '@/hooks/useServerProfile';
 import { UserBadgeList } from '@/components/badges/UserBadgeList';
 
+const ROLE_PANEL_TOP_FALLBACK = 366;
+
 const BADGE_ICONS: Record<string, { icon: React.ElementType; label: string; color: string }> = {
   staff: { icon: Shield, label: 'Équipe', color: '#5865F2' },
   partner: { icon: Star, label: 'Partenaire', color: '#5865F2' },
@@ -187,6 +189,7 @@ export function UserProfilePopup({
   const [fullBioOpen, setFullBioOpen] = useState(false);
   const [customStatusOpen, setCustomStatusOpen] = useState(false);
   const [removingRoleId, setRemovingRoleId] = useState<string | null>(null);
+  const rolePanelTopRef = useRef(ROLE_PANEL_TOP_FALLBACK);
 
   // Reactive roles from members cache — updates instantly on optimistic/realtime changes
   const { data: reactiveRoles } = useQuery<MemberWithProfile[], Error, Role[]>({
@@ -704,13 +707,15 @@ export function UserProfilePopup({
 
   // Role Management Side Panel Component
   const RoleSidePanel = () => {
-    // Calculer l'offset vertical pour aligner avec la section Rôles
-    const topOffset = rolesSectionRef.current?.offsetTop ?? 0;
-    
+    // Freeze the anchor while the panel is open so role updates never move it.
+    if (showRolePanel && rolesSectionRef.current) {
+      rolePanelTopRef.current = rolesSectionRef.current.offsetTop;
+    }
+
     return (
       <div 
-        className="absolute right-full mr-2 w-64 bg-card border border-border rounded-lg shadow-2xl overflow-hidden animate-slide-in-left"
-        style={{ top: topOffset }}
+        className="absolute right-full mr-2 w-64 bg-card border border-border rounded-lg shadow-2xl overflow-hidden"
+        style={{ top: rolePanelTopRef.current }}
         onClick={(e) => e.stopPropagation()}
       >
       <div className="p-3 border-b border-border flex items-center justify-between">

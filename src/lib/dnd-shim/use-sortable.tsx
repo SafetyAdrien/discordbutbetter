@@ -58,7 +58,7 @@ export function useSortable(opts: UseSortableOptions): SortableResult {
         });
         return { id, data: dataRef.current };
       },
-      end: (item, monitor) => {
+      end: (item: any, monitor) => {
         const overId = ctx.state.lastOverId;
         const overEl = overId != null ? ctx.state.nodes.get(overId) : null;
         const overRect = overEl ? overEl.getBoundingClientRect() : null;

@@ -1771,6 +1771,13 @@ export function ChannelList({
               onDragEnd={handleDragEnd}
               onDragCancel={handleDragCancel}>
 
+              {/* "No category" drop zone — visible only while dragging a channel.
+                  Lets users drop a channel out of its category, even when the
+                  orphan area is empty. */}
+              <OrphanDropZone
+                isDragging={!!activeId && (activeId as string).startsWith("channel-")}
+              />
+
               {/* Orphan Channels - displayed BEFORE categories to allow insertion at top */}
               {visibleOrphanChannels.length > 0 &&
               <div className="px-2 space-y-0.5 mb-2">

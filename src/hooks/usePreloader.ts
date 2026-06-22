@@ -247,13 +247,10 @@ export function usePreloader(
       }
       // Seed messages for the N last visited channels so any salon opens instantly
       try {
-        const recentRaw = window.localStorage.getItem('discord_recent_channels');
-        if (recentRaw) {
-          const recent: string[] = JSON.parse(recentRaw);
-          for (const cid of recent.slice(0, 5)) {
-            const cachedMsgs = readCache<any>(`messages:${cid}`);
-            if (cachedMsgs) queryClient.setQueryData(['messages', cid], cachedMsgs);
-          }
+        const recent = readCache<string[]>('recent-channels') || [];
+        for (const cid of recent.slice(0, 5)) {
+          const cachedMsgs = readCache<any>(`messages:${cid}`);
+          if (cachedMsgs) queryClient.setQueryData(['messages', cid], cachedMsgs);
         }
       } catch {}
       writeCache('preloader-done', '1');

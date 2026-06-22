@@ -112,9 +112,9 @@ export function useSortable(opts: UseSortableOptions): SortableResult {
         if (!wasActive || !activeDragIds.has(id)) return;
         const active = { id, data: { current: activeData } };
         activeDragIds.delete(id);
-        clearDndSharedState(ctx.state);
+        hideDndOverlay(ctx.state);
         ctx.handlersRef.current.onDragCancel?.({ active });
-      }, 180);
+      }, 0);
     };
     const events = ["pointerup", "pointercancel", "mouseup", "touchend", "touchcancel", "drop", "dragend", "blur"] as const;
     events.forEach((eventName) => window.addEventListener(eventName, releaseStaleDrag, { capture: true, passive: true }));

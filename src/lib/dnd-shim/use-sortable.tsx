@@ -47,6 +47,7 @@ export function useSortable(opts: UseSortableOptions): SortableResult {
       type: SORTABLE_TYPE,
       canDrag: () => !disabled,
       item: (monitor) => {
+        clearDndSharedState(ctx.state);
         const initial = monitor.getInitialClientOffset();
         const activatorEvent = {
           clientX: initial?.x ?? 0,
@@ -60,7 +61,6 @@ export function useSortable(opts: UseSortableOptions): SortableResult {
         return { id, data: dataRef.current };
       },
       end: (item: any, monitor) => {
-        hideDndOverlay(ctx.state);
         const overId = ctx.state.lastOverId;
         const overEl = overId != null ? ctx.state.nodes.get(overId) : null;
         const overRect = overEl ? overEl.getBoundingClientRect() : null;
@@ -71,7 +71,7 @@ export function useSortable(opts: UseSortableOptions): SortableResult {
         // Clear shared state FIRST so any re-render the handlers trigger sees a
         // clean slate — prevents the DragOverlay from sticking around.
         activeDragIds.delete(item?.id ?? id);
-        clearDndSharedState(ctx.state);
+        hideDndOverlay(ctx.state);
 
         try {
           if (didDrop && overId != null) {

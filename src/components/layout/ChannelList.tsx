@@ -1440,8 +1440,26 @@ export function ChannelList({
         const targetCategoryId = overIdStr.replace("category-", "");
         const targetCategory = server.categories.find((c) => c.id === targetCategoryId);
         if (targetCategory) {
+          // "before" on the FIRST visible category header → move out of any
+          // category (becomes orphan, placed at the top of the list).
+          const firstVisibleCategoryId = visibleCategories[0]?.id;
+          if (
+            currentDropMode === "before" &&
+            visibleOrphanChannels.length === 0 &&
+            targetCategoryId === firstVisibleCategoryId
+          ) {
+            // Already orphan: nothing to do.
+            if (sourceCategoryId === null) return;
+            reorderChannels.mutate({
+              serverId: server.id,
+              categoryId: null,
+              orderedIds: [activeChannelId]
+            });
+            return;
+          }
+
           const existingIds = targetCategory.channels.filter((ch) => ch.id !== activeChannelId).map((ch) => ch.id);
-          
+
           if (currentDropMode === "inside" || currentDropMode === "after") {
             // "inside" or "after" category header → add at end of category
             reorderChannels.mutate({

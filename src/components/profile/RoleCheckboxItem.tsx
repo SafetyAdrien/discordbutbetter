@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { membersMutationLockRef, MemberWithProfile } from "@/hooks/useMembers";
@@ -13,6 +12,7 @@ import {
   setRoleMutationPending,
   clearRoleMutationPending,
   ROLE_MUTATION_CLEARED_EVENT,
+  getRoleMutationTarget,
 } from "@/lib/role-mutation-tracker";
 
 type RoleMini = Pick<RoleWithPermissions, "id" | "name" | "color" | "icon_url" | "position" | "description">;
@@ -79,6 +79,8 @@ export function RoleCheckboxItem({ role, serverId, memberId, userId, disabled }:
     queryKey: ["members", serverId],
     queryFn: () => Promise.resolve(queryClient.getQueryData<MemberWithProfile[]>(["members", serverId]) ?? []),
     select: (members) => {
+      const target = getRoleMutationTarget(serverId, memberId, role.id);
+      if (target) return target === "add";
       const member = members?.find((m) => m.id === memberId);
       return member?.roles?.some((r: any) => r.id === role.id) ?? false;
     },
@@ -94,7 +96,7 @@ export function RoleCheckboxItem({ role, serverId, memberId, userId, disabled }:
   }, [memberId, queryClient, role.id, serverId]);
 
   const handleRoleToggle = useCallback(
-    async (e: React.MouseEvent<HTMLButtonElement>) => {
+    async (e: React.MouseEvent<HTMLElement>) => {
       e.stopPropagation();
       e.preventDefault();
 
@@ -200,25 +202,40 @@ export function RoleCheckboxItem({ role, serverId, memberId, userId, disabled }:
   );
 
   return (
-    <button
-      type="button"
+    <div
+      role="checkbox"
+      tabIndex={disabled || isPending ? -1 : 0}
       onMouseDown={(e) => e.stopPropagation()}
       onClick={handleRoleToggle}
+      onKeyDown={(e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        handleRoleToggle(e as unknown as React.MouseEvent<HTMLElement>);
+      }}
       className={cn(
         "w-full flex items-center gap-2 p-1.5 rounded transition-colors",
-        !disabled && !isPending ? "hover:bg-muted/50" : "opacity-60 cursor-not-allowed",
+        !disabled && !isPending ? "hover:bg-muted/50" : "cursor-not-allowed",
       )}
-      aria-pressed={isChecked}
-      disabled={disabled || isPending}
+      aria-checked={isChecked}
+      aria-disabled={disabled || isPending}
     >
-      <Checkbox checked={isChecked} disabled={disabled || isPending} className="pointer-events-none" tabIndex={-1} />
+      <span
+        aria-hidden="true"
+        className={cn(
+          "flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border border-primary transition-colors duration-150",
+          isChecked ? "bg-primary text-primary-foreground" : "bg-transparent",
+        )}
+      >
+        <Check className={cn("h-3.5 w-3.5 transition-opacity duration-150", isChecked ? "opacity-100" : "opacity-0")} />
+      </span>
       <span className="flex items-center gap-1.5 flex-1 text-sm text-left">
         <RoleIconMini role={role} />
         <span style={{ color: role.color || undefined }} className="truncate">
           {role.name}
         </span>
       </span>
-      {isPending && <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />}
-    </button>
+      <span className="flex h-3 w-3 shrink-0 items-center justify-center">
+        {isPending && <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />}
+      </span>
+    </div>
   );
 }

@@ -61,6 +61,8 @@ import { useVoiceUserSettings } from '@/hooks/useVoiceUserSettings';
 import { useServerProfile } from '@/hooks/useServerProfile';
 import { UserBadgeList } from '@/components/badges/UserBadgeList';
 
+const ROLE_PANEL_TOP_FALLBACK = 366;
+
 const BADGE_ICONS: Record<string, { icon: React.ElementType; label: string; color: string }> = {
   staff: { icon: Shield, label: 'Équipe', color: '#5865F2' },
   partner: { icon: Star, label: 'Partenaire', color: '#5865F2' },
@@ -187,6 +189,7 @@ export function UserProfilePopup({
   const [fullBioOpen, setFullBioOpen] = useState(false);
   const [customStatusOpen, setCustomStatusOpen] = useState(false);
   const [removingRoleId, setRemovingRoleId] = useState<string | null>(null);
+  const rolePanelTopRef = useRef(ROLE_PANEL_TOP_FALLBACK);
 
   // Reactive roles from members cache — updates instantly on optimistic/realtime changes
   const { data: reactiveRoles } = useQuery<MemberWithProfile[], Error, Role[]>({
@@ -290,6 +293,16 @@ export function UserProfilePopup({
   const displayRoles = (reactiveRoles ?? roles ?? [])
     .filter(role => role.name !== '@everyone')
     .sort((a, b) => (b.position ?? 0) - (a.position ?? 0));
+
+  const toggleRolePanel = () => {
+    setShowRolePanel((prev) => {
+      const next = !prev;
+      if (next && rolesSectionRef.current) {
+        rolePanelTopRef.current = rolesSectionRef.current.offsetTop;
+      }
+      return next;
+    });
+  };
 
   const assignableRoles = allRoles
     .filter(role => !role.is_default)
@@ -561,7 +574,7 @@ export function UserProfilePopup({
               </h4>
               {displayRoles.length === 0 && canManageRoles && serverId && memberId && assignableRoles.length > 0 ? (
                 <button
-                  onClick={() => setShowRolePanel((prev) => !prev)}
+                  onClick={toggleRolePanel}
                   className="inline-flex items-center justify-center w-5 h-5 rounded text-muted-foreground hover:text-foreground transition-colors"
                   aria-label="Ajouter un rôle"
                 >
@@ -599,7 +612,7 @@ export function UserProfilePopup({
                   ))}
                   {canManageRoles && serverId && memberId && assignableRoles.length > 0 && (
                     <button
-                      onClick={() => setShowRolePanel((prev) => !prev)}
+                      onClick={toggleRolePanel}
                       className="inline-flex items-center justify-center w-5 h-5 rounded text-muted-foreground hover:text-foreground transition-colors"
                       aria-label="Ajouter un rôle"
                     >
@@ -702,17 +715,12 @@ export function UserProfilePopup({
   ));
   ProfileContent.displayName = 'ProfileContent';
 
-  // Role Management Side Panel Component
-  const RoleSidePanel = () => {
-    // Calculer l'offset vertical pour aligner avec la section Rôles
-    const topOffset = rolesSectionRef.current?.offsetTop ?? 0;
-    
-    return (
-      <div 
-        className="absolute right-full mr-2 w-64 bg-card border border-border rounded-lg shadow-2xl overflow-hidden animate-slide-in-left"
-        style={{ top: topOffset }}
-        onClick={(e) => e.stopPropagation()}
-      >
+  const roleSidePanel = (
+    <div 
+      className="absolute right-full mr-2 w-64 bg-card border border-border rounded-lg shadow-2xl overflow-hidden"
+      style={{ top: rolePanelTopRef.current }}
+      onClick={(e) => e.stopPropagation()}
+    >
       <div className="p-3 border-b border-border flex items-center justify-between">
         <h4 className="font-semibold text-sm">Gérer les rôles</h4>
         <button 
@@ -737,7 +745,6 @@ export function UserProfilePopup({
       </ScrollArea>
     </div>
   );
-  };
 
   const serverProfileModal = (
     <ServerProfileEditModal
@@ -805,7 +812,7 @@ export function UserProfilePopup({
         cardPosition={cardPosition}
         onClose={() => { setShowRolePanel(false); onOpenChange(false); }}
         showRolePanel={showRolePanel && canManageRoles && !!serverId && !!memberId && assignableRoles.length > 0}
-        roleSidePanel={<RoleSidePanel />}
+        roleSidePanel={roleSidePanel}
       >
         <ProfileContent />
       </FloatingProfileCard>

@@ -522,10 +522,6 @@ export function useAssignRoleToMember() {
       toast.success('Rôle attribué !');
     },
     onSettled: (_, __, { serverId }) => {
-      // Release lock after a delay to let optimistic update settle
-      setTimeout(() => {
-        membersMutationLockRef.current = false;
-      }, 500);
       queryClient.invalidateQueries({ queryKey: ['role-member-counts', serverId] });
       // Role assignment changes effective permissions — refresh channel visibility
       refetchPermissionCaches(queryClient);

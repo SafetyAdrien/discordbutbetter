@@ -47,13 +47,44 @@ export interface DndSharedState {
   nodes: Map<UniqueIdentifier, HTMLElement>;
   activeId: UniqueIdentifier | null;
   activeData: any;
+  overlayHidden: boolean;
+  version: number;
+  listeners: Set<() => void>;
+}
+
+function notifyDndState(state: DndSharedState) {
+  state.version += 1;
+  state.listeners.forEach((listener) => listener());
+}
+
+export function setDndActiveState(
+  state: DndSharedState,
+  activeId: UniqueIdentifier,
+  activeData: any,
+  activatorEvent: ActivatorEventLike | null,
+) {
+  state.activatorEvent = activatorEvent;
+  state.lastOverId = null;
+  state.activeId = activeId;
+  state.activeData = activeData;
+  state.overlayHidden = false;
+  notifyDndState(state);
+}
+
+export function hideDndOverlay(state: DndSharedState) {
+  if (state.overlayHidden || state.activeId == null) return;
+  state.overlayHidden = true;
+  notifyDndState(state);
 }
 
 export function clearDndSharedState(state: DndSharedState) {
+  const changed = state.activeId != null || state.activeData != null || state.lastOverId != null || state.activatorEvent != null || state.overlayHidden;
   state.activatorEvent = null;
   state.lastOverId = null;
   state.activeId = null;
   state.activeData = null;
+  state.overlayHidden = false;
+  if (changed) notifyDndState(state);
 }
 
 interface DndShimContextValue {
@@ -79,6 +110,9 @@ const GLOBAL_FALLBACK: DndShimContextValue = {
     nodes: new Map(),
     activeId: null,
     activeData: null,
+    overlayHidden: false,
+    version: 0,
+    listeners: new Set(),
   },
 };
 
@@ -105,11 +139,15 @@ export function DndContext({
     nodes: new Map(),
     activeId: null,
     activeData: null,
+    overlayHidden: false,
+    version: 0,
+    listeners: new Set(),
   });
 
   useEffect(() => {
     let cleanupTimer: ReturnType<typeof setTimeout> | null = null;
     const scheduleStaleDragCleanup = () => {
+      hideDndOverlay(stateRef.current);
       if (cleanupTimer) clearTimeout(cleanupTimer);
       cleanupTimer = setTimeout(() => {
         cleanupTimer = null;

@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { useDragLayer } from "react-dnd";
+import { hideDndOverlay, useDndShim } from "./context";
 
 export interface DragOverlayProps {
   children?: React.ReactNode;
@@ -9,7 +10,15 @@ export interface DragOverlayProps {
 }
 
 export function DragOverlay({ children }: DragOverlayProps) {
-  const [forceHidden, setForceHidden] = useState(false);
+  const ctx = useDndShim();
+  const dndVersion = useSyncExternalStore(
+    (listener) => {
+      ctx.state.listeners.add(listener);
+      return () => ctx.state.listeners.delete(listener);
+    },
+    () => ctx.state.version,
+    () => 0,
+  );
   const { isDragging, hasItem, currentOffset, initialOffset } = useDragLayer((m) => ({
     isDragging: m.isDragging(),
     hasItem: m.getItem() != null,
@@ -18,25 +27,17 @@ export function DragOverlay({ children }: DragOverlayProps) {
   }));
 
   useEffect(() => {
-    const hide = () => setForceHidden(true);
-    const armNextDrag = () => setForceHidden(false);
+    const hide = () => hideDndOverlay(ctx.state);
     const hideEvents = ["pointerup", "mouseup", "touchend", "touchcancel", "drop", "dragend", "blur"] as const;
-    const startEvents = ["pointerdown", "mousedown", "touchstart", "dragstart"] as const;
     hideEvents.forEach((eventName) => window.addEventListener(eventName, hide, { capture: true, passive: true }));
-    startEvents.forEach((eventName) => window.addEventListener(eventName, armNextDrag, { capture: true, passive: true }));
     return () => {
       hideEvents.forEach((eventName) => window.removeEventListener(eventName, hide, { capture: true }));
-      startEvents.forEach((eventName) => window.removeEventListener(eventName, armNextDrag, { capture: true }));
     };
-  }, []);
-
-  useEffect(() => {
-    if (!isDragging || !hasItem) setForceHidden(false);
-  }, [hasItem, isDragging]);
+  }, [ctx.state]);
 
   if (typeof document === "undefined") return null;
   // Defensive: hide as soon as ANY drag-state signal clears, not just isDragging.
-  if (forceHidden || !isDragging || !hasItem || !currentOffset || !initialOffset || !children) {
+  if (ctx.state.overlayHidden || ctx.state.activeId == null || !isDragging || !hasItem || !currentOffset || !initialOffset || !children) {
     return null;
   }
 

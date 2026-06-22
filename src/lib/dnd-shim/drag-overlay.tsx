@@ -1,4 +1,4 @@
-import React, { useEffect, useSyncExternalStore } from "react";
+import React, { useEffect, useLayoutEffect, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { useDragLayer } from "react-dnd";
 import { hideDndOverlay, useDndShim } from "./context";
@@ -26,6 +26,13 @@ export function DragOverlay({ children }: DragOverlayProps) {
     initialOffset: m.getInitialSourceClientOffset(),
   }));
 
+  const shouldRender = !ctx.state.overlayHidden && ctx.state.activeId != null && isDragging && hasItem && currentOffset && initialOffset && children;
+
+  useLayoutEffect(() => {
+    if (shouldRender || typeof document === "undefined") return;
+    document.querySelectorAll<HTMLElement>("[data-dnd-overlay-root]").forEach((el) => el.remove());
+  }, [shouldRender, dndVersion]);
+
   useEffect(() => {
     const hide = () => hideDndOverlay(ctx.state);
     const hideEvents = ["pointerup", "pointercancel", "mouseup", "touchend", "touchcancel", "drop", "dragend", "blur"] as const;
@@ -37,7 +44,7 @@ export function DragOverlay({ children }: DragOverlayProps) {
 
   if (typeof document === "undefined") return null;
   // Defensive: hide as soon as ANY drag-state signal clears, not just isDragging.
-  if (ctx.state.overlayHidden || ctx.state.activeId == null || !isDragging || !hasItem || !currentOffset || !initialOffset || !children) {
+  if (!shouldRender) {
     return null;
   }
 

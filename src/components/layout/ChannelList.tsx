@@ -1165,7 +1165,11 @@ export function ChannelList({
     dropPositionRef.current = "after";
     dropModeRef.current = "after";
     activeIdRef.current = event.active.id as string;
-    setActiveId(event.active.id as string);
+    requestAnimationFrame(() => {
+      if (activeIdRef.current === event.active.id) {
+        setActiveId(event.active.id as string);
+      }
+    });
   };
 
   const handleDragCancel = () => {

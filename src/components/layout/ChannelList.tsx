@@ -1465,7 +1465,7 @@ export function ChannelList({
       setDropPosition("after");
       setDropMode("after");
     };
-    const events = ["pointerup", "mouseup", "touchend", "touchcancel", "drop", "dragend", "blur"] as const;
+    const events = ["pointerup", "pointercancel", "mouseup", "touchend", "touchcancel", "drop", "dragend", "blur"] as const;
     events.forEach((eventName) => window.addEventListener(eventName, clearVisibleDragState, { capture: true, passive: true }));
     return () => {
       events.forEach((eventName) => window.removeEventListener(eventName, clearVisibleDragState, { capture: true }));

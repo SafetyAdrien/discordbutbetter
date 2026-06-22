@@ -1255,16 +1255,31 @@ export function ChannelList({
       const isOverCategoryHeader = overIdStr.startsWith("category-");
 
       if (isActiveChannel && isOverCategoryHeader) {
-        // Easier orphan drop: if hovering the FIRST visible category and there
-        // are no orphan channels yet, the top 50% becomes "before" (= orphan)
-        // so the user doesn't have to aim for a pixel-thin zone.
+        // Easier orphan drop: hovering the FIRST visible category enlarges the
+        // "before" zone to the top 50% so it's easy to move the channel out of
+        // its category (works whether or not orphans already exist).
         const overCatId = overIdStr.replace("category-", "");
         const isFirstCategory = visibleCategories[0]?.id === overCatId;
-        const isOrphanShortcut = isFirstCategory && visibleOrphanChannels.length === 0;
-        const topRatio = isOrphanShortcut ? 0.5 : 0.15;
-        const bottomRatio = isOrphanShortcut ? 0.75 : 0.85;
+        const topRatio = isFirstCategory ? 0.5 : 0.15;
+        const bottomRatio = isFirstCategory ? 0.75 : 0.85;
         const topZone = overRect.top + overRect.height * topRatio;
         const bottomZone = overRect.top + overRect.height * bottomRatio;
+        if (clientY < topZone) {
+          dropPositionRef.current = "before";
+          dropModeRef.current = "before";
+          setDropPosition("before");
+          setDropMode("before");
+        } else if (clientY > bottomZone) {
+          dropPositionRef.current = "after";
+          dropModeRef.current = "after";
+          setDropPosition("after");
+          setDropMode("after");
+        } else {
+          dropModeRef.current = "inside";
+          dropPositionRef.current = "after"; // fallback, not used visually
+          setDropMode("inside");
+          setDropPosition("after");
+        }
         if (clientY < topZone) {
           dropPositionRef.current = "before";
           dropModeRef.current = "before";

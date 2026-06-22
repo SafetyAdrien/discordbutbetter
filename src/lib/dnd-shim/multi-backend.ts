@@ -25,9 +25,14 @@ export const dndMultiBackendPipeline = {
       id: "touch",
       backend: TouchBackend,
       options: {
-        delayTouchStart: 200,
+        delayTouchStart: 120,
+        touchSlop: 8,
         enableMouseEvents: false,
         ignoreContextMenu: true,
+        scrollAngleRanges: [
+          { start: 30, end: 150 },
+          { start: 210, end: 330 },
+        ],
       },
       preview: true,
       transition: TouchTransition,

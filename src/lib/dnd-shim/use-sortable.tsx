@@ -157,6 +157,7 @@ export function useSortable(opts: UseSortableOptions): SortableResult {
       },
       drop: (item: any) => {
         ctx.state.lastOverId = id;
+        hideDndOverlay(ctx.state);
         return { id };
       },
       collect: (monitor) => {

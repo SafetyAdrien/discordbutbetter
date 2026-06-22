@@ -352,6 +352,7 @@ export function UserProfilePopup({
       ].forEach(k => queryClient.invalidateQueries({ queryKey: [k] }));
     } catch (err: any) {
       if (previousMembers) queryClient.setQueryData(['members', serverId], previousMembers);
+      clearRoleMutationPending(serverId, memberId, roleId);
       toast.error(`Impossible de retirer le rôle ${roleName}`, {
         description: err?.message,
       });
@@ -359,7 +360,8 @@ export function UserProfilePopup({
       setRemovingRoleId(null);
       setTimeout(() => {
         membersMutationLockRef.current = false;
-      }, 350);
+        clearRoleMutationPending(serverId, memberId, roleId);
+      }, 800);
     }
   };
 

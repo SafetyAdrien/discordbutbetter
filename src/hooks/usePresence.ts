@@ -95,7 +95,8 @@ export function usePresence() {
       updateStatus('online');
     }
 
-    // Reset timer idle (auto)
+    // Reset timer idle (auto) — Discord-like : on ne passe JAMAIS offline automatiquement.
+    // Seule la fermeture de l'onglet/navigateur (90 s sans heartbeat côté serveur) déclenche offline.
     if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
     idleTimerRef.current = setTimeout(() => {
       if (
@@ -106,18 +107,6 @@ export function usePresence() {
         currentStatusRef.current !== 'offline'
       ) {
         updateStatus('idle');
-        // Programmer la bascule idle -> offline (2 min)
-        clearOfflineTimer();
-        offlineTimerRef.current = setTimeout(() => {
-          if (
-            !isManualDndRef.current &&
-            !isManualIdleRef.current &&
-            !isManualOfflineRef.current &&
-            currentStatusRef.current === 'idle'
-          ) {
-            updateStatus('offline');
-          }
-        }, IDLE_TO_OFFLINE_TIMEOUT);
       }
     }, IDLE_TIMEOUT);
 
@@ -212,6 +201,9 @@ export function usePresence() {
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
+        // Onglet caché : on programme un passage en idle (jamais en offline).
+        // Offline n'est déclenché QUE par la fermeture réelle de la page (pagehide/beforeunload)
+        // ou par le watchdog serveur de 90 s sans heartbeat.
         if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
         idleTimerRef.current = setTimeout(() => {
           if (
@@ -222,17 +214,6 @@ export function usePresence() {
             currentStatusRef.current !== 'offline'
           ) {
             updateStatus('idle');
-            clearOfflineTimer();
-            offlineTimerRef.current = setTimeout(() => {
-              if (
-                !isManualDndRef.current &&
-                !isManualIdleRef.current &&
-                !isManualOfflineRef.current &&
-                currentStatusRef.current === 'idle'
-              ) {
-                updateStatus('offline');
-              }
-            }, IDLE_TO_OFFLINE_TIMEOUT);
           }
         }, HIDDEN_TAB_IDLE_TIMEOUT);
       } else {
@@ -253,7 +234,6 @@ export function usePresence() {
           if (!data || !data.tabId || data.tabId === tabIdRef.current) return;
           if (data.type === 'ping' || data.type === 'hello') {
             otherTabsRef.current.set(data.tabId, Date.now());
-            // Répondre au "hello" pour que le nouvel onglet nous connaisse
             if (data.type === 'hello') {
               try { bc?.postMessage({ type: 'ping', tabId: tabIdRef.current }); } catch { /* ignore */ }
             }
@@ -261,7 +241,6 @@ export function usePresence() {
             otherTabsRef.current.delete(data.tabId);
           }
         };
-        // Annoncer notre présence et pinger périodiquement
         try { bc.postMessage({ type: 'hello', tabId: tabIdRef.current }); } catch { /* ignore */ }
         tabPingInterval = setInterval(() => {
           try { bc?.postMessage({ type: 'ping', tabId: tabIdRef.current }); } catch { /* ignore */ }
@@ -269,16 +248,12 @@ export function usePresence() {
       }
     } catch { /* ignore */ }
 
-    // Heartbeat: keep last_seen_at fresh so the server can auto-mark us offline if we vanish.
-    // When the tab is hidden we STOP heartbeating → server's 90s last_seen_at watchdog
-    // will mark the user offline, matching the idle/offline server-side logic.
-    // Si un autre onglet est encore vivant, on heartbeat quand même (pour éviter les faux offline).
+    // Heartbeat : on continue TOUJOURS d'envoyer le heartbeat, même onglet caché,
+    // pour rafraîchir last_seen_at (sinon le watchdog 90 s nous passerait offline à tort).
+    // Le flag _active=false quand inactif > 60 s permet au serveur de basculer en idle après 5 min.
     const sendHeartbeat = () => {
-      const hidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
-      if (hidden && !hasOtherAliveTab()) {
-        return;
-      }
-      const active = Date.now() - lastActivityRef.current < 60_000;
+      const active = Date.now() - lastActivityRef.current < 60_000
+        && (typeof document === 'undefined' || document.visibilityState === 'visible');
       supabase.rpc('heartbeat_presence', { _active: active }).then(() => {}, () => {});
     };
     sendHeartbeat();

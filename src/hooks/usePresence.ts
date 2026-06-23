@@ -227,9 +227,13 @@ export function usePresence() {
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // Heartbeat: keep last_seen_at fresh so the server can auto-mark us offline if we vanish
+    // Heartbeat: keep last_seen_at fresh so the server can auto-mark us offline if we vanish.
+    // When the tab is hidden we STOP heartbeating → server's 90s last_seen_at watchdog
+    // will mark the user offline, matching the idle/offline server-side logic.
     const sendHeartbeat = () => {
-      // Si l'utilisateur a bougé dans les 60 dernières secondes, on signale "actif"
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+        return;
+      }
       const active = Date.now() - lastActivityRef.current < 60_000;
       supabase.rpc('heartbeat_presence', { _active: active }).then(() => {}, () => {});
     };

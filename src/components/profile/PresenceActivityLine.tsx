@@ -20,11 +20,11 @@ interface PresenceActivityLineProps {
   className?: string;
 }
 
-const statusColor: Record<string, string> = {
-  online: 'text-status-online',
-  idle: 'text-status-idle',
-  dnd: 'text-status-dnd',
-  offline: 'text-muted-foreground',
+const STATUS_DOT: Record<string, string> = {
+  online: '#23A559',
+  idle: '#F0B232',
+  dnd: '#F23F43',
+  offline: '#80848E',
 };
 
 function formatRelative(iso: string | null): string {

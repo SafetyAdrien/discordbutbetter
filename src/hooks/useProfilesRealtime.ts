@@ -27,46 +27,68 @@ export function useProfilesRealtime() {
         { event: 'UPDATE', schema: 'public', table: 'profiles' },
         (payload) => {
           const updated = payload.new as ProfileRow;
+          const previous = payload.old as Partial<ProfileRow> | undefined;
           const uid = updated.id;
+          if (!uid) return;
 
-          // Champs synchronisés sur tous les caches
-          const patch = {
-            status: updated.status,
-            custom_status: updated.custom_status,
-            display_name: updated.display_name,
-            avatar_url: updated.avatar_url,
-            banner_url: updated.banner_url,
-            activity_type: updated.activity_type,
-            activity_text: updated.activity_text,
-            pronouns: updated.pronouns,
-            bio: updated.bio,
+          // Construire un patch minimal : uniquement les champs qui ont réellement changé.
+          // Si payload.old est vide (REPLICA IDENTITY DEFAULT), on patche tous les champs suivis.
+          const TRACKED = [
+            'status',
+            'custom_status',
+            'display_name',
+            'avatar_url',
+            'banner_url',
+            'activity_type',
+            'activity_text',
+            'pronouns',
+            'bio',
+          ] as const;
+
+          const hasOld = previous && Object.keys(previous).length > 1;
+          const patch: Partial<Record<(typeof TRACKED)[number], unknown>> = {};
+          for (const key of TRACKED) {
+            const nextVal = (updated as any)[key];
+            if (!hasOld || (previous as any)[key] !== nextVal) {
+              patch[key] = nextVal;
+            }
+          }
+          const patchKeys = Object.keys(patch) as (typeof TRACKED)[number][];
+          if (patchKeys.length === 0) return;
+
+          // Vrai si toutes les valeurs du patch sont déjà présentes sur la cible.
+          const isNoop = (target: any) => {
+            for (const k of patchKeys) {
+              if (target?.[k] !== patch[k]) return false;
+            }
+            return true;
           };
 
-          // 1. Members serveur (['members', serverId])
+          // 1. Members serveur
           queryClient.setQueriesData({ queryKey: ['members'] }, (old) => {
             if (!Array.isArray(old)) return old;
             let changed = false;
             const next = (old as MemberWithProfile[]).map((member) => {
-              if (member.user.id !== uid) return member;
+              if (member.user.id !== uid || isNoop(member.user)) return member;
               changed = true;
               return { ...member, user: { ...member.user, ...patch } };
             });
             return changed ? next : old;
           });
 
-          // 2. Amis (['friends', userId])
+          // 2. Amis
           queryClient.setQueriesData({ queryKey: ['friends'] }, (old) => {
             if (!Array.isArray(old)) return old;
             let changed = false;
             const next = (old as any[]).map((f) => {
-              if (!f?.profile || f.profile.id !== uid) return f;
+              if (!f?.profile || f.profile.id !== uid || isNoop(f.profile)) return f;
               changed = true;
               return { ...f, profile: { ...f.profile, ...patch } };
             });
             return changed ? next : old;
           });
 
-          // 3. Conversations DM (['dm-conversations', userId])
+          // 3. Conversations DM
           queryClient.setQueriesData({ queryKey: ['dm-conversations'] }, (old) => {
             if (!Array.isArray(old)) return old;
             let changed = false;
@@ -74,7 +96,7 @@ export function useProfilesRealtime() {
               if (!Array.isArray(conv?.participants)) return conv;
               let convChanged = false;
               const participants = conv.participants.map((p: any) => {
-                if (p?.id !== uid) return p;
+                if (p?.id !== uid || isNoop(p)) return p;
                 convChanged = true;
                 return { ...p, ...patch };
               });
@@ -85,18 +107,18 @@ export function useProfilesRealtime() {
             return changed ? next : old;
           });
 
-          // 4. Profil individuel (['profile', userId])
+          // 4. Profil individuel
           queryClient.setQueriesData({ queryKey: ['profile', uid] }, (old: any) => {
-            if (!old || typeof old !== 'object') return old;
+            if (!old || typeof old !== 'object' || isNoop(old)) return old;
             return { ...old, ...patch };
           });
 
-          // 5. Amis communs (['mutual-friends', me, other])
+          // 5. Amis communs
           queryClient.setQueriesData({ queryKey: ['mutual-friends'] }, (old) => {
             if (!Array.isArray(old)) return old;
             let changed = false;
             const next = (old as any[]).map((f) => {
-              if (f?.id !== uid) return f;
+              if (f?.id !== uid || isNoop(f)) return f;
               changed = true;
               return { ...f, ...patch };
             });

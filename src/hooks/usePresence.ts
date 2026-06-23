@@ -205,6 +205,14 @@ export function usePresence() {
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
+    // Heartbeat: keep last_seen_at fresh so the server can auto-mark us offline if we vanish
+    const sendHeartbeat = () => {
+      supabase.rpc('heartbeat_presence').then(() => {}, () => {});
+    };
+    sendHeartbeat();
+    const heartbeatInterval = setInterval(sendHeartbeat, 30_000);
+
+
     return () => {
       ACTIVITY_EVENTS.forEach(event => {
         window.removeEventListener(event, handleActivity);

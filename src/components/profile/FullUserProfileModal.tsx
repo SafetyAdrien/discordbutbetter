@@ -21,6 +21,7 @@ import { ProfileCalendar } from '@/components/profile/calendar/ProfileCalendar';
 import { EventListBelow } from '@/components/profile/calendar/EventListBelow';
 import { StatusIndicator } from '@/components/ui/StatusIndicator';
 import { UserBadgeList } from '@/components/badges/UserBadgeList';
+import { PresenceActivityLine } from '@/components/profile/PresenceActivityLine';
 
 const statusColors: Record<string, string> = {
   online: 'bg-green-500',

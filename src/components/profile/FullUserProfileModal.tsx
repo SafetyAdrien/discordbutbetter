@@ -21,6 +21,7 @@ import { ProfileCalendar } from '@/components/profile/calendar/ProfileCalendar';
 import { EventListBelow } from '@/components/profile/calendar/EventListBelow';
 import { StatusIndicator } from '@/components/ui/StatusIndicator';
 import { UserBadgeList } from '@/components/badges/UserBadgeList';
+import { PresenceActivityLine } from '@/components/profile/PresenceActivityLine';
 
 const statusColors: Record<string, string> = {
   online: 'bg-green-500',
@@ -210,6 +211,9 @@ export function FullUserProfileModal({
           <section className="rounded-2xl bg-card border border-border/50 p-4">
             <h2 className="text-xl font-bold leading-tight">{user.display_name}</h2>
             <p className="text-sm text-muted-foreground">@{user.username.toLowerCase()}</p>
+            <div className="mt-1.5">
+              <PresenceActivityLine userId={user.id} fallbackStatus={user.status} />
+            </div>
             {user.pronouns && (
               <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
                 <span className="rounded-full bg-muted px-2 py-0.5 text-muted-foreground">{user.pronouns}</span>

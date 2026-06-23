@@ -496,6 +496,9 @@ export function UserProfilePopup({
                 </>
               )}
             </div>
+            <div className="mt-1">
+              <PresenceActivityLine userId={user.id} fallbackStatus={user.status} />
+            </div>
           </div>
 
           {/* Badges row (from DB) */}

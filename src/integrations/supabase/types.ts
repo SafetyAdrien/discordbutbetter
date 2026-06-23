@@ -1681,6 +1681,7 @@ export type Database = {
           custom_status: string | null
           display_name: string
           id: string
+          last_activity_at: string
           last_seen_at: string
           pronouns: string | null
           server_order: string[] | null
@@ -1701,6 +1702,7 @@ export type Database = {
           custom_status?: string | null
           display_name: string
           id: string
+          last_activity_at?: string
           last_seen_at?: string
           pronouns?: string | null
           server_order?: string[] | null
@@ -1721,6 +1723,7 @@ export type Database = {
           custom_status?: string | null
           display_name?: string
           id?: string
+          last_activity_at?: string
           last_seen_at?: string
           pronouns?: string | null
           server_order?: string[] | null
@@ -3462,7 +3465,9 @@ export type Database = {
         }
         Returns: boolean
       }
-      heartbeat_presence: { Args: never; Returns: undefined }
+      heartbeat_presence:
+        | { Args: never; Returns: undefined }
+        | { Args: { _active?: boolean }; Returns: undefined }
       insert_audit_log: {
         Args: {
           _action_type: string

@@ -75,8 +75,14 @@ export function usePresence() {
     }, DND_TO_OFFLINE_TIMEOUT);
   }, [updateStatus]);
 
+  const lastActivityHeartbeatRef = useRef<number>(0);
   const handleActivity = useCallback(() => {
     lastActivityRef.current = Date.now();
+    // Heartbeat "actif" throttlé à 30 s pour bumper last_activity_at côté serveur
+    if (Date.now() - lastActivityHeartbeatRef.current > 30_000) {
+      lastActivityHeartbeatRef.current = Date.now();
+      supabase.rpc('heartbeat_presence', { _active: true }).then(() => {}, () => {});
+    }
 
     // Réveil depuis offline/idle automatique -> online
     if (
@@ -207,7 +213,9 @@ export function usePresence() {
 
     // Heartbeat: keep last_seen_at fresh so the server can auto-mark us offline if we vanish
     const sendHeartbeat = () => {
-      supabase.rpc('heartbeat_presence').then(() => {}, () => {});
+      // Si l'utilisateur a bougé dans les 60 dernières secondes, on signale "actif"
+      const active = Date.now() - lastActivityRef.current < 60_000;
+      supabase.rpc('heartbeat_presence', { _active: active }).then(() => {}, () => {});
     };
     sendHeartbeat();
     const heartbeatInterval = setInterval(sendHeartbeat, 30_000);

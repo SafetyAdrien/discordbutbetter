@@ -54,7 +54,6 @@ import { toast } from 'sonner';
 import { createPortal } from 'react-dom';
 import { ServerProfileEditModal } from '@/components/profile/ServerProfileEditModal';
 import { FullUserProfileModal } from '@/components/profile/FullUserProfileModal';
-import { PresenceActivityLine } from '@/components/profile/PresenceActivityLine';
 import { CustomStatusModal } from '@/components/profile/CustomStatusModal';
 import { useVoice } from '@/contexts/VoiceContext';
 import { useVoiceUserSettings } from '@/hooks/useVoiceUserSettings';
@@ -496,9 +495,6 @@ export function UserProfilePopup({
                   <span className="uppercase">{language}</span>
                 </>
               )}
-            </div>
-            <div className="mt-1">
-              <PresenceActivityLine userId={user.id} fallbackStatus={user.status} />
             </div>
           </div>
 

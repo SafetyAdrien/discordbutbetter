@@ -241,11 +241,41 @@ export function usePresence() {
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
+    // ===== BroadcastChannel inter-onglets =====
+    let bc: BroadcastChannel | null = null;
+    let tabPingInterval: ReturnType<typeof setInterval> | null = null;
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        bc = new BroadcastChannel(`presence:${user.id}`);
+        broadcastRef.current = bc;
+        bc.onmessage = (ev) => {
+          const data = ev.data as { type: string; tabId: string } | null;
+          if (!data || !data.tabId || data.tabId === tabIdRef.current) return;
+          if (data.type === 'ping' || data.type === 'hello') {
+            otherTabsRef.current.set(data.tabId, Date.now());
+            // Répondre au "hello" pour que le nouvel onglet nous connaisse
+            if (data.type === 'hello') {
+              try { bc?.postMessage({ type: 'ping', tabId: tabIdRef.current }); } catch { /* ignore */ }
+            }
+          } else if (data.type === 'bye') {
+            otherTabsRef.current.delete(data.tabId);
+          }
+        };
+        // Annoncer notre présence et pinger périodiquement
+        try { bc.postMessage({ type: 'hello', tabId: tabIdRef.current }); } catch { /* ignore */ }
+        tabPingInterval = setInterval(() => {
+          try { bc?.postMessage({ type: 'ping', tabId: tabIdRef.current }); } catch { /* ignore */ }
+        }, 3_000);
+      }
+    } catch { /* ignore */ }
+
     // Heartbeat: keep last_seen_at fresh so the server can auto-mark us offline if we vanish.
     // When the tab is hidden we STOP heartbeating → server's 90s last_seen_at watchdog
     // will mark the user offline, matching the idle/offline server-side logic.
+    // Si un autre onglet est encore vivant, on heartbeat quand même (pour éviter les faux offline).
     const sendHeartbeat = () => {
-      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+      const hidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
+      if (hidden && !hasOtherAliveTab()) {
         return;
       }
       const active = Date.now() - lastActivityRef.current < 60_000;
@@ -265,6 +295,12 @@ export function usePresence() {
       window.removeEventListener('pagehide', handleBeforeUnload);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       clearInterval(heartbeatInterval);
+      if (tabPingInterval) clearInterval(tabPingInterval);
+      try {
+        bc?.postMessage({ type: 'bye', tabId: tabIdRef.current });
+        bc?.close();
+      } catch { /* ignore */ }
+      broadcastRef.current = null;
       if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
       clearOfflineTimer();
       clearDndOfflineTimer();

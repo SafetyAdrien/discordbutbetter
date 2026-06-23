@@ -1681,6 +1681,7 @@ export type Database = {
           custom_status: string | null
           display_name: string
           id: string
+          last_seen_at: string
           pronouns: string | null
           server_order: string[] | null
           status: Database["public"]["Enums"]["user_status"] | null
@@ -1700,6 +1701,7 @@ export type Database = {
           custom_status?: string | null
           display_name: string
           id: string
+          last_seen_at?: string
           pronouns?: string | null
           server_order?: string[] | null
           status?: Database["public"]["Enums"]["user_status"] | null
@@ -1719,6 +1721,7 @@ export type Database = {
           custom_status?: string | null
           display_name?: string
           id?: string
+          last_seen_at?: string
           pronouns?: string | null
           server_order?: string[] | null
           status?: Database["public"]["Enums"]["user_status"] | null
@@ -3459,6 +3462,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      heartbeat_presence: { Args: never; Returns: undefined }
       insert_audit_log: {
         Args: {
           _action_type: string
@@ -3493,6 +3497,7 @@ export type Database = {
         Args: { _server_id: string; _user_id: string }
         Returns: undefined
       }
+      mark_stale_users_offline: { Args: never; Returns: undefined }
       remove_secondary_owner: {
         Args: { _server_id: string }
         Returns: undefined

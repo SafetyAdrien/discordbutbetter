@@ -127,7 +127,29 @@ export function usePresence() {
     }
   }, [updateStatus, scheduleDndOffline]);
 
+  // ===== Multi-tab coordination =====
+  // Chaque onglet s'enregistre via BroadcastChannel pour éviter qu'une fermeture
+  // marque l'utilisateur offline alors qu'un autre onglet/fenêtre est encore ouvert.
+  const tabIdRef = useRef<string>(
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2)
+  );
+  const otherTabsRef = useRef<Map<string, number>>(new Map()); // tabId -> lastSeen ms
+  const broadcastRef = useRef<BroadcastChannel | null>(null);
+
+  const hasOtherAliveTab = useCallback(() => {
+    const now = Date.now();
+    for (const [id, ts] of otherTabsRef.current) {
+      if (now - ts < 8_000) return true;
+      otherTabsRef.current.delete(id);
+    }
+    return false;
+  }, []);
+
   const markOfflineBeacon = useCallback(() => {
+    // Ne pas marquer offline si un autre onglet est encore vivant
+    if (hasOtherAliveTab()) return;
     const userId = userIdRef.current;
     const accessToken = accessTokenRef.current;
     if (!userId || !accessToken) return;
@@ -139,24 +161,16 @@ export function usePresence() {
       'Prefer': 'return=minimal',
     };
     const body = JSON.stringify({ status: 'offline' });
-    // Try sendBeacon first (most reliable on tab close), fallback to fetch keepalive
-    let sent = false;
     try {
-      if (typeof navigator !== 'undefined' && 'sendBeacon' in navigator) {
-        const blob = new Blob([body], { type: 'application/json' });
-        // sendBeacon can't set auth headers; use fetch keepalive when auth is required.
-        // Keeping this here only as a no-op probe; real call below.
-        void blob;
-      }
+      fetch(url, { method: 'PATCH', headers, body, keepalive: true }).catch(() => {});
     } catch { /* ignore */ }
-    if (!sent) {
-      try {
-        fetch(url, { method: 'PATCH', headers, body, keepalive: true }).catch(() => {});
-      } catch { /* ignore */ }
-    }
-  }, []);
+  }, [hasOtherAliveTab]);
 
   const handleBeforeUnload = useCallback(() => {
+    // Annoncer la fermeture de cet onglet aux autres
+    try {
+      broadcastRef.current?.postMessage({ type: 'bye', tabId: tabIdRef.current });
+    } catch { /* ignore */ }
     markOfflineBeacon();
   }, [markOfflineBeacon]);
 

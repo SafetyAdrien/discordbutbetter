@@ -5,8 +5,8 @@ import type { Database } from '@/integrations/supabase/types';
 type UserStatus = Database['public']['Enums']['user_status'];
 
 const IDLE_TIMEOUT = 5 * 60 * 1000; // 5 min inactivité avant idle (auto)
-const HIDDEN_TAB_IDLE_TIMEOUT = 60 * 1000; // 1 min quand onglet caché
-const IDLE_TO_OFFLINE_TIMEOUT = 2 * 60 * 1000; // 2 min en idle auto -> offline
+const HIDDEN_TAB_IDLE_TIMEOUT = 5 * 60 * 1000; // 5 min quand onglet caché
+const IDLE_TO_OFFLINE_TIMEOUT = 5 * 60 * 1000; // 5 min en idle auto -> offline
 const DND_TO_OFFLINE_TIMEOUT = 5 * 60 * 1000; // 5 min sans activité en dnd -> offline
 
 const ACTIVITY_EVENTS = [

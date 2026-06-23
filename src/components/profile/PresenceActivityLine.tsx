@@ -126,22 +126,17 @@ export function PresenceActivityLine({ userId, fallbackStatus, className }: Pres
 
   const tooltipText = formatAbsolute(tooltipIso);
 
+  const dotColor = STATUS_DOT[status] ?? STATUS_DOT.offline;
   const content = (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 text-[11px] leading-tight',
-        statusColor[status] ?? 'text-muted-foreground',
+        'inline-flex items-center gap-1.5 text-[11px] leading-tight text-muted-foreground',
         className,
       )}
     >
       <span
-        className={cn(
-          'w-1.5 h-1.5 rounded-full',
-          status === 'online' && 'bg-status-online',
-          status === 'idle' && 'bg-status-idle',
-          status === 'dnd' && 'bg-status-dnd',
-          status === 'offline' && 'bg-status-offline',
-        )}
+        className="w-1.5 h-1.5 rounded-full shrink-0"
+        style={{ backgroundColor: dotColor }}
       />
       <span className="truncate">{label}</span>
     </span>

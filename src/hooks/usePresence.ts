@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 
 type UserStatus = Database['public']['Enums']['user_status'];
@@ -204,6 +205,14 @@ export function usePresence() {
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
+    // Heartbeat: keep last_seen_at fresh so the server can auto-mark us offline if we vanish
+    const sendHeartbeat = () => {
+      supabase.rpc('heartbeat_presence').then(() => {}, () => {});
+    };
+    sendHeartbeat();
+    const heartbeatInterval = setInterval(sendHeartbeat, 30_000);
+
+
     return () => {
       ACTIVITY_EVENTS.forEach(event => {
         window.removeEventListener(event, handleActivity);
@@ -213,6 +222,7 @@ export function usePresence() {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('pagehide', handleBeforeUnload);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearInterval(heartbeatInterval);
       if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
       clearOfflineTimer();
       clearDndOfflineTimer();

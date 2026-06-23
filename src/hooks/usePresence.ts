@@ -213,7 +213,9 @@ export function usePresence() {
 
     // Heartbeat: keep last_seen_at fresh so the server can auto-mark us offline if we vanish
     const sendHeartbeat = () => {
-      supabase.rpc('heartbeat_presence').then(() => {}, () => {});
+      // Si l'utilisateur a bougé dans les 60 dernières secondes, on signale "actif"
+      const active = Date.now() - lastActivityRef.current < 60_000;
+      supabase.rpc('heartbeat_presence', { _active: active }).then(() => {}, () => {});
     };
     sendHeartbeat();
     const heartbeatInterval = setInterval(sendHeartbeat, 30_000);

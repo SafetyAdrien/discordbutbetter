@@ -95,7 +95,8 @@ export function usePresence() {
       updateStatus('online');
     }
 
-    // Reset timer idle (auto)
+    // Reset timer idle (auto) — Discord-like : on ne passe JAMAIS offline automatiquement.
+    // Seule la fermeture de l'onglet/navigateur (90 s sans heartbeat côté serveur) déclenche offline.
     if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
     idleTimerRef.current = setTimeout(() => {
       if (
@@ -106,18 +107,6 @@ export function usePresence() {
         currentStatusRef.current !== 'offline'
       ) {
         updateStatus('idle');
-        // Programmer la bascule idle -> offline (2 min)
-        clearOfflineTimer();
-        offlineTimerRef.current = setTimeout(() => {
-          if (
-            !isManualDndRef.current &&
-            !isManualIdleRef.current &&
-            !isManualOfflineRef.current &&
-            currentStatusRef.current === 'idle'
-          ) {
-            updateStatus('offline');
-          }
-        }, IDLE_TO_OFFLINE_TIMEOUT);
       }
     }, IDLE_TIMEOUT);
 

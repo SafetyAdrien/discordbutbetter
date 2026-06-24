@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Loader2, Check, X } from 'lucide-react';
-import { cropCanvasToOpaqueBounds, sourceMayHaveTransparency } from './thumbnailAlpha';
+import { sourceMayHaveTransparency } from './thumbnailAlpha';
 
 interface Props {
   file: File;

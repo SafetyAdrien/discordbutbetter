@@ -455,6 +455,18 @@ export function ThumbnailCanvasEditor({
           <Button
             variant="ghost"
             size="sm"
+            onClick={centerTransform}
+            disabled={!img}
+            title="Centrer l'image dans le cadre"
+            aria-label="Centrer l'image dans le cadre"
+            className="text-xs"
+          >
+            <AlignCenter className="w-4 h-4 mr-1.5" />
+            Centrer
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={resetTransform}
             disabled={!img}
             title="Réinitialiser le cadrage"

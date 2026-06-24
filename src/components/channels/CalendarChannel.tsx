@@ -224,31 +224,64 @@ export function CalendarChannel({ channel, onToggleMembers, showMembers }: Calen
                 const dayEvents = eventsForDate(day);
                 const isToday = isSameDay(day, new Date());
                 const isSelected = selectedDate && isSameDay(day, selectedDate);
+                const thumbEvent = dayEvents.find((e) => !!e.thumbnail_url) ?? null;
+                const featured = dayEvents[0] ?? null;
 
                 return (
                   <ContextMenu key={day.toISOString()}>
                     <ContextMenuTrigger asChild>
                       <button
                         onClick={() => setSelectedDate(day)}
-                        onDoubleClick={() => canCreate && openCreate(day)}
+                        onDoubleClick={() => canCreate && featured && openEdit(featured)}
                         className={cn(
-                          'aspect-square p-1 rounded-lg transition-colors flex flex-col text-left overflow-hidden',
-                          isToday && 'bg-primary/10',
+                          'relative aspect-square rounded-lg transition-colors flex flex-col text-left overflow-hidden',
+                          isToday && !thumbEvent && 'bg-primary/10',
                           isSelected && 'ring-2 ring-primary',
                           !isSameMonth(day, currentMonth) && 'opacity-30',
-                          'hover:bg-muted'
+                          !thumbEvent && 'hover:bg-muted'
                         )}
                       >
-                        <span className={cn('text-sm font-medium', isToday && 'text-primary')}>{format(day, 'd')}</span>
-                        {dayEvents.length > 0 && (
-                          <div className="flex-1 space-y-0.5 overflow-hidden w-full mt-0.5">
-                            {dayEvents.slice(0, 2).map((event) => (
-                              <DayCellEvent key={event.id} event={event} day={day} onClick={() => openEdit(event)} />
-                            ))}
-                            {dayEvents.length > 2 && (
-                              <div className="text-[10px] text-muted-foreground px-1">+{dayEvents.length - 2}</div>
+                        {thumbEvent && (
+                          <>
+                            <img
+                              src={thumbEvent.thumbnail_url!}
+                              alt=""
+                              className="absolute inset-0 w-full h-full object-cover"
+                            />
+                            {/* Shadow gradient from bottom — at least half the card */}
+                            <div className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/85 via-black/50 to-transparent pointer-events-none" />
+                          </>
+                        )}
+                        <span
+                          className={cn(
+                            'relative z-10 text-sm font-medium px-1 pt-0.5',
+                            thumbEvent ? 'text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]' : isToday && 'text-primary'
+                          )}
+                        >
+                          {format(day, 'd')}
+                        </span>
+                        {thumbEvent ? (
+                          <div className="relative z-10 mt-auto w-full px-1 pb-1 text-center">
+                            <div className="text-[11px] font-semibold text-white truncate drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
+                              {thumbEvent.title}
+                            </div>
+                            {dayEvents.length > 1 && (
+                              <div className="text-[10px] text-white/80 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+                                +{dayEvents.length - 1}
+                              </div>
                             )}
                           </div>
+                        ) : (
+                          dayEvents.length > 0 && (
+                            <div className="flex-1 space-y-0.5 overflow-hidden w-full mt-0.5 px-1">
+                              {dayEvents.slice(0, 2).map((event) => (
+                                <DayCellEvent key={event.id} event={event} onClick={() => openEdit(event)} />
+                              ))}
+                              {dayEvents.length > 2 && (
+                                <div className="text-[10px] text-muted-foreground px-1">+{dayEvents.length - 2}</div>
+                              )}
+                            </div>
+                          )
                         )}
                       </button>
                     </ContextMenuTrigger>
@@ -314,28 +347,17 @@ export function CalendarChannel({ channel, onToggleMembers, showMembers }: Calen
 }
 
 /**
- * Day cell event chip. Renders the thumbnail spanning the cell width when it's
- * the start day or the first column of a week for multi-day events.
+ * Day cell event chip (fallback when no thumbnail).
  */
-function DayCellEvent({ event, day, onClick }: { event: ChannelCalendarEvent; day: Date; onClick: () => void }) {
-  const start = new Date(event.starts_at);
-  const end = new Date(event.ends_at);
-  const isFirstDay = isSameDay(day, start);
-  const isWeekStart = (day.getDay() + 6) % 7 === 0;
-  const showThumb = !!event.thumbnail_url && (isFirstDay || isWeekStart);
-
+function DayCellEvent({ event, onClick }: { event: ChannelCalendarEvent; onClick: () => void }) {
   return (
     <div
       onClick={(e) => { e.stopPropagation(); onClick(); }}
-      className="rounded overflow-hidden cursor-pointer"
-      style={{ backgroundColor: event.color + '30' }}
+      className="rounded overflow-hidden cursor-pointer bg-primary/15"
       role="button"
       tabIndex={0}
     >
-      {showThumb && (
-        <img src={event.thumbnail_url!} alt="" className="w-full h-6 object-cover" />
-      )}
-      <div className="text-[10px] truncate px-1" style={{ color: event.color }}>
+      <div className="text-[10px] truncate px-1 text-primary">
         {event.title}
       </div>
     </div>

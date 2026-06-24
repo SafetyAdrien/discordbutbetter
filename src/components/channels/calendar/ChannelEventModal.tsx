@@ -191,10 +191,11 @@ export function ChannelEventModal({ open, onOpenChange, channelId, serverId, ini
       open={open}
       onOpenChange={onOpenChange}
       title={editing ? 'Modifier l’événement' : 'Nouvel événement'}
-      className="w-[95vw] max-w-5xl max-h-[90vh] h-[90vh] flex flex-col p-0 gap-0"
+      className="w-[95vw] max-w-5xl max-h-[90vh] h-[90vh] flex flex-col"
       fullscreenOnMobile
     >
-      <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
+      <div className="flex-1 min-h-0 overflow-y-auto -mx-6 px-6">
+
         <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] gap-6">
           {/* Left: Thumbnail */}
           <div className="flex flex-col">

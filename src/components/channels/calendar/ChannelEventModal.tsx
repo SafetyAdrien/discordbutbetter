@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { ResponsiveModal } from '@/components/ui/responsive-modal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Image as ImageIcon, Trash2, Loader2, Pencil } from 'lucide-react';
+import { Image as ImageIcon, Trash2, Loader2, Pencil, Scaling } from 'lucide-react';
 import { useChannelCalendarEvents, uploadEventThumbnail, type ChannelCalendarEvent } from '@/hooks/useChannelCalendarEvents';
 import { useChannels } from '@/hooks/useChannels';
 import { ThumbnailCanvasEditor } from '@/components/channels/calendar/ThumbnailCanvasEditor';

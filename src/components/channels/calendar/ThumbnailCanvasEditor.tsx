@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Loader2, Check, X, Lock, Unlock, RotateCcw } from 'lucide-react';
+import { Loader2, Check, X, Lock, Unlock, RotateCcw, AlignCenter } from 'lucide-react';
 import { findOpaqueBounds, sourceMayHaveTransparency, type OpaqueBounds } from './thumbnailAlpha';
 
 interface Props {
@@ -194,6 +194,19 @@ export function ThumbnailCanvasEditor({
     );
     const w = sourceBounds.width * coverScale;
     const h = sourceBounds.height * coverScale;
+    applyTransform({ tx: (frameSize.w - w) / 2, ty: (frameSize.h - h) / 2, tw: w, th: h }, true);
+  }, [img, sourceBounds, frameSize.w, frameSize.h, applyTransform]);
+
+  const centerTransform = useCallback(() => {
+    if (!img || !sourceBounds || !frameSize.w) return;
+    // Default center option: fit the entire image inside the frame (contain)
+    // so it is fully visible and perfectly centered, like a centered preview.
+    const containScale = Math.min(
+      frameSize.w / sourceBounds.width,
+      frameSize.h / sourceBounds.height
+    );
+    const w = sourceBounds.width * containScale;
+    const h = sourceBounds.height * containScale;
     applyTransform({ tx: (frameSize.w - w) / 2, ty: (frameSize.h - h) / 2, tw: w, th: h }, true);
   }, [img, sourceBounds, frameSize.w, frameSize.h, applyTransform]);
 
@@ -438,6 +451,18 @@ export function ThumbnailCanvasEditor({
           >
             {locked ? <Lock className="w-4 h-4 mr-1.5" /> : <Unlock className="w-4 h-4 mr-1.5" />}
             {locked ? 'Proportions verrouillées' : 'Proportions libres'}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={centerTransform}
+            disabled={!img}
+            title="Centrer l'image dans le cadre"
+            aria-label="Centrer l'image dans le cadre"
+            className="text-xs"
+          >
+            <AlignCenter className="w-4 h-4 mr-1.5" />
+            Centrer
           </Button>
           <Button
             variant="ghost"

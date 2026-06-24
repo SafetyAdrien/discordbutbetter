@@ -20,6 +20,8 @@ type Handle =
   | 'ne' | 'nw' | 'se' | 'sw'
   | null;
 
+type Transform = { tx: number; ty: number; tw: number; th: number };
+
 /**
  * Canvas-based thumbnail editor: drag to move, drag handles around the image
  * to resize. The image moves/scales inside a fixed aspect-ratio frame; the
@@ -104,6 +106,62 @@ export function ThumbnailCanvasEditor({
     return () => ro.disconnect();
   }, [aspect]);
 
+  const constrainTransform = useCallback((next: Transform, keepRatio = locked): Transform => {
+    if (!sourceBounds || !visibleBounds || !frameSize.w || !frameSize.h) return next;
+
+    const sourceOffsetX = visibleBounds.x - sourceBounds.x;
+    const sourceOffsetY = visibleBounds.y - sourceBounds.y;
+    const centerSourceX = sourceOffsetX + visibleBounds.width / 2;
+    const centerSourceY = sourceOffsetY + visibleBounds.height / 2;
+    const originalScaleX = next.tw / sourceBounds.width;
+    const originalScaleY = next.th / sourceBounds.height;
+    const originalCenterX = next.tx + centerSourceX * originalScaleX;
+    const originalCenterY = next.ty + centerSourceY * originalScaleY;
+
+    let scaleX = originalScaleX;
+    let scaleY = originalScaleY;
+
+    if (keepRatio) {
+      const visibleW = visibleBounds.width * scaleX;
+      const visibleH = visibleBounds.height * scaleY;
+      const fitScale = Math.min(
+        visibleW > 0 ? frameSize.w / visibleW : 1,
+        visibleH > 0 ? frameSize.h / visibleH : 1,
+        1
+      );
+      scaleX *= fitScale;
+      scaleY *= fitScale;
+    } else {
+      scaleX = Math.min(scaleX, frameSize.w / visibleBounds.width);
+      scaleY = Math.min(scaleY, frameSize.h / visibleBounds.height);
+    }
+
+    const boundedTw = sourceBounds.width * scaleX;
+    const boundedTh = sourceBounds.height * scaleY;
+    let boundedTx = originalCenterX - centerSourceX * scaleX;
+    let boundedTy = originalCenterY - centerSourceY * scaleY;
+
+    const visibleW = visibleBounds.width * scaleX;
+    const visibleH = visibleBounds.height * scaleY;
+    const visibleLeft = boundedTx + sourceOffsetX * scaleX;
+    const visibleTop = boundedTy + sourceOffsetY * scaleY;
+    const clampedLeft = Math.min(Math.max(visibleLeft, 0), Math.max(0, frameSize.w - visibleW));
+    const clampedTop = Math.min(Math.max(visibleTop, 0), Math.max(0, frameSize.h - visibleH));
+
+    boundedTx += clampedLeft - visibleLeft;
+    boundedTy += clampedTop - visibleTop;
+
+    return { tx: boundedTx, ty: boundedTy, tw: boundedTw, th: boundedTh };
+  }, [sourceBounds, visibleBounds, frameSize.w, frameSize.h, locked]);
+
+  const applyTransform = useCallback((next: Transform, keepRatio = locked) => {
+    const constrained = constrainTransform(next, keepRatio);
+    setTx(constrained.tx);
+    setTy(constrained.ty);
+    setTw(constrained.tw);
+    setTh(constrained.th);
+  }, [constrainTransform, locked]);
+
   const resetTransform = useCallback(() => {
     if (!img || !sourceBounds || !frameSize.w) return;
     const coverScale = Math.max(
@@ -112,11 +170,8 @@ export function ThumbnailCanvasEditor({
     );
     const w = sourceBounds.width * coverScale;
     const h = sourceBounds.height * coverScale;
-    setTw(w);
-    setTh(h);
-    setTx((frameSize.w - w) / 2);
-    setTy((frameSize.h - h) / 2);
-  }, [img, sourceBounds, frameSize.w, frameSize.h]);
+    applyTransform({ tx: (frameSize.w - w) / 2, ty: (frameSize.h - h) / 2, tw: w, th: h }, true);
+  }, [img, sourceBounds, frameSize.w, frameSize.h, applyTransform]);
 
   // Initialize transform to match the day card rendering: the active source
   // rectangle covers the frame entirely (object-cover, centered). When editing
@@ -163,35 +218,11 @@ export function ThumbnailCanvasEditor({
     const realMaxW = Math.max(initialVisible.w, (visibleBounds.width * frameSize.w) / exportWidth);
     const realMaxH = Math.max(initialVisible.h, (visibleBounds.height * frameSize.w) / exportWidth);
     // Also cap so the symmetric resize keeps the visible rect inside the frame.
-    const frameMaxW = 2 * Math.min(visibleCx, frameSize.w - visibleCx);
-    const frameMaxH = 2 * Math.min(visibleCy, frameSize.h - visibleCy);
-    const maxVisibleW = Math.max(40, Math.min(realMaxW, frameMaxW));
-    const maxVisibleH = Math.max(40, Math.min(realMaxH, frameMaxH));
-
-    const clampMove = (nx: number, ny: number) => {
-      const sx = d.initial.tw / sourceBounds.width;
-      const sy = d.initial.th / sourceBounds.height;
-      const visLeft = nx + sourceOffsetX * sx;
-      const visTop = ny + sourceOffsetY * sy;
-      const visW = visibleBounds.width * sx;
-      const visH = visibleBounds.height * sy;
-      let cx = nx;
-      let cy = ny;
-      if (visW <= frameSize.w) {
-        if (visLeft < 0) cx -= visLeft;
-        else if (visLeft + visW > frameSize.w) cx -= (visLeft + visW - frameSize.w);
-      }
-      if (visH <= frameSize.h) {
-        if (visTop < 0) cy -= visTop;
-        else if (visTop + visH > frameSize.h) cy -= (visTop + visH - frameSize.h);
-      }
-      return { x: cx, y: cy };
-    };
+    const maxVisibleW = Math.max(1, Math.min(realMaxW, frameSize.w));
+    const maxVisibleH = Math.max(1, Math.min(realMaxH, frameSize.h));
 
     if (d.mode === 'move') {
-      const { x, y } = clampMove(d.initial.tx + dx, d.initial.ty + dy);
-      setTx(x);
-      setTy(y);
+      applyTransform({ ...d.initial, tx: d.initial.tx + dx, ty: d.initial.ty + dy }, locked);
       return;
     }
 
@@ -217,10 +248,12 @@ export function ThumbnailCanvasEditor({
       const nextScaleY = visibleH / visibleBounds.height;
       const nw = sourceBounds.width * nextScaleX;
       const nh = sourceBounds.height * nextScaleY;
-      setTx(visibleCx - (sourceOffsetX + visibleBounds.width / 2) * nextScaleX);
-      setTy(visibleCy - (sourceOffsetY + visibleBounds.height / 2) * nextScaleY);
-      setTw(nw);
-      setTh(nh);
+      applyTransform({
+        tx: visibleCx - (sourceOffsetX + visibleBounds.width / 2) * nextScaleX,
+        ty: visibleCy - (sourceOffsetY + visibleBounds.height / 2) * nextScaleY,
+        tw: nw,
+        th: nh,
+      }, true);
     } else {
       // Unlocked: resize the real visible image freely, capped at real size.
       const visibleW = Math.min(Math.max(40, initialVisible.w + deltaW * 2), maxVisibleW);
@@ -229,15 +262,17 @@ export function ThumbnailCanvasEditor({
       const nextScaleY = visibleH / visibleBounds.height;
       const nw = sourceBounds.width * nextScaleX;
       const nh = sourceBounds.height * nextScaleY;
-      setTx(visibleCx - (sourceOffsetX + visibleBounds.width / 2) * nextScaleX);
-      setTy(visibleCy - (sourceOffsetY + visibleBounds.height / 2) * nextScaleY);
-      setTw(nw);
-      setTh(nh);
+      applyTransform({
+        tx: visibleCx - (sourceOffsetX + visibleBounds.width / 2) * nextScaleX,
+        ty: visibleCy - (sourceOffsetY + visibleBounds.height / 2) * nextScaleY,
+        tw: nw,
+        th: nh,
+      }, false);
     }
-  }, [img, sourceBounds, visibleBounds, locked, frameSize.w, exportWidth]);
+  }, [img, sourceBounds, visibleBounds, locked, frameSize.w, frameSize.h, exportWidth, applyTransform]);
 
   const onPointerUp = (e: React.PointerEvent) => {
-    try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch {}
+    try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* pointer capture may already be released */ }
     dragRef.current = null;
   };
 
@@ -284,14 +319,14 @@ export function ThumbnailCanvasEditor({
   };
 
   const handles: { key: Exclude<Handle, null>; cls: string; cursor: string }[] = [
-    { key: 'nw', cls: '-top-1.5 -left-1.5', cursor: 'cursor-nwse-resize' },
-    { key: 'ne', cls: '-top-1.5 -right-1.5', cursor: 'cursor-nesw-resize' },
-    { key: 'sw', cls: '-bottom-1.5 -left-1.5', cursor: 'cursor-nesw-resize' },
-    { key: 'se', cls: '-bottom-1.5 -right-1.5', cursor: 'cursor-nwse-resize' },
-    { key: 'n',  cls: '-top-1.5 left-1/2 -translate-x-1/2', cursor: 'cursor-ns-resize' },
-    { key: 's',  cls: '-bottom-1.5 left-1/2 -translate-x-1/2', cursor: 'cursor-ns-resize' },
-    { key: 'w',  cls: '-left-1.5 top-1/2 -translate-y-1/2', cursor: 'cursor-ew-resize' },
-    { key: 'e',  cls: '-right-1.5 top-1/2 -translate-y-1/2', cursor: 'cursor-ew-resize' },
+    { key: 'nw', cls: 'top-0 left-0', cursor: 'cursor-nwse-resize' },
+    { key: 'ne', cls: 'top-0 right-0', cursor: 'cursor-nesw-resize' },
+    { key: 'sw', cls: 'bottom-0 left-0', cursor: 'cursor-nesw-resize' },
+    { key: 'se', cls: 'bottom-0 right-0', cursor: 'cursor-nwse-resize' },
+    { key: 'n',  cls: 'top-0 left-1/2 -translate-x-1/2', cursor: 'cursor-ns-resize' },
+    { key: 's',  cls: 'bottom-0 left-1/2 -translate-x-1/2', cursor: 'cursor-ns-resize' },
+    { key: 'w',  cls: 'left-0 top-1/2 -translate-y-1/2', cursor: 'cursor-ew-resize' },
+    { key: 'e',  cls: 'right-0 top-1/2 -translate-y-1/2', cursor: 'cursor-ew-resize' },
   ];
 
   const visibleRect = img && sourceBounds && visibleBounds && frameSize.w > 0 ? (() => {
@@ -345,7 +380,7 @@ export function ThumbnailCanvasEditor({
             onPointerCancel={onPointerUp}
           >
             {/* Outline */}
-            <div className="absolute inset-0 ring-2 ring-primary/70 pointer-events-none" />
+            <div className="absolute inset-0 ring-2 ring-inset ring-primary/70 pointer-events-none" />
             {/* Handles */}
             {handles.map((h) => (
               <button

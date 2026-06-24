@@ -226,6 +226,31 @@ export function usePresence() {
     sendHeartbeat(false);
     const keepaliveInterval = setInterval(() => sendHeartbeat(false), HEARTBEAT_INTERVAL);
 
+    // Reconnexion réseau : restaurer le statut + re-pinger dès le retour en ligne
+    const handleOnline = () => {
+      lastActiveHeartbeatRef.current = 0; // force un heartbeat actif immédiat
+      sendHeartbeat(true);
+      // Restaure le statut courant (online ou dnd manuel) qui a pu être écrasé en offline par le watchdog serveur
+      if (isManualDndRef.current) {
+        updateStatus('dnd', true);
+        scheduleDndOffline();
+      } else if (!isManualIdleRef.current && !isManualOfflineRef.current) {
+        // Considère le retour réseau comme une activité
+        handleActivity();
+        updateStatus('online', true);
+      }
+    };
+    const handleOffline = () => {
+      // Onglet toujours ouvert mais pas de réseau : on arrête juste les pings, le watchdog 90s passera l'utilisateur offline côté serveur
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+      clearOfflineTimer();
+      clearDndOfflineTimer();
+    };
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+
+
 
     return () => {
       ACTIVITY_EVENTS.forEach(event => {
@@ -236,6 +261,8 @@ export function usePresence() {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('pagehide', handleBeforeUnload);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
       clearInterval(keepaliveInterval);
       if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
       clearOfflineTimer();

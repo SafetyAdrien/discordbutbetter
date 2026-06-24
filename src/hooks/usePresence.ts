@@ -85,7 +85,15 @@ export function usePresence() {
   }, [updateStatus]);
 
   const handleActivity = useCallback(() => {
-    lastActivityRef.current = Date.now();
+    const now = Date.now();
+    lastActivityRef.current = now;
+
+    // Heartbeat actif throttlé (met à jour last_activity_at côté serveur)
+    if (now - lastActiveHeartbeatRef.current >= ACTIVE_HEARTBEAT_THROTTLE) {
+      lastActiveHeartbeatRef.current = now;
+      sendHeartbeat(true);
+    }
+
 
     // Réveil depuis offline/idle automatique -> online
     if (

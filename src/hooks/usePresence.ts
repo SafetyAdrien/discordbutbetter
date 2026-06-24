@@ -1,6 +1,10 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
+
+const HEARTBEAT_INTERVAL = 30 * 1000; // 30s keepalive ping
+const ACTIVE_HEARTBEAT_THROTTLE = 30 * 1000; // throttle activity-based heartbeats
 
 type UserStatus = Database['public']['Enums']['user_status'];
 

@@ -6,10 +6,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ModernColorPicker } from '@/components/profile/calendar/ModernColorPicker';
-import { Image as ImageIcon, Trash2, Loader2 } from 'lucide-react';
+import { Image as ImageIcon, Trash2, Loader2, Pencil } from 'lucide-react';
 import { useChannelCalendarEvents, uploadEventThumbnail, type ChannelCalendarEvent } from '@/hooks/useChannelCalendarEvents';
 import { useChannels } from '@/hooks/useChannels';
+import { ThumbnailCanvasEditor } from '@/components/channels/calendar/ThumbnailCanvasEditor';
 import { toast } from 'sonner';
 
 interface Props {
@@ -21,7 +21,6 @@ interface Props {
   editing?: ChannelCalendarEvent | null;
 }
 
-const PRESET_COLORS = ['#5865F2', '#22C55E', '#F59E0B', '#EF4444', '#EC4899', '#06B6D4'];
 const REMINDER_OPTIONS: { value: string; label: string }[] = [
   { value: 'none', label: 'Aucun rappel' },
   { value: '5', label: '5 minutes avant' },
@@ -56,9 +55,8 @@ export function ChannelEventModal({ open, onOpenChange, channelId, serverId, ini
   const [endTime, setEndTime] = useState('10:00');
   const [reminder, setReminder] = useState<string>('none');
   const [locationChannelId, setLocationChannelId] = useState<string>('none');
-  const [color, setColor] = useState(PRESET_COLORS[0]);
-  const [showColorPicker, setShowColorPicker] = useState(false);
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -76,7 +74,6 @@ export function ChannelEventModal({ open, onOpenChange, channelId, serverId, ini
       setEndTime(toLocalTimeInput(e));
       setReminder(editing.reminder_minutes != null ? String(editing.reminder_minutes) : 'none');
       setLocationChannelId(editing.location_channel_id ?? 'none');
-      setColor(editing.color);
       setThumbnailUrl(editing.thumbnail_url);
     } else {
       const base = initialDate ?? new Date();
@@ -89,12 +86,12 @@ export function ChannelEventModal({ open, onOpenChange, channelId, serverId, ini
       setEndTime('10:00');
       setReminder('none');
       setLocationChannelId('none');
-      setColor(PRESET_COLORS[0]);
       setThumbnailUrl(null);
     }
+    setPendingFile(null);
   }, [open, editing, initialDate]);
 
-  const handleFile = async (file: File) => {
+  const handlePickFile = (file: File) => {
     if (!file.type.startsWith('image/')) {
       toast.error('Image uniquement');
       return;
@@ -103,10 +100,15 @@ export function ChannelEventModal({ open, onOpenChange, channelId, serverId, ini
       toast.error('Image trop lourde (max 8 Mo)');
       return;
     }
+    setPendingFile(file);
+  };
+
+  const handleApplyCrop = async (blob: Blob) => {
     try {
       setUploading(true);
-      const url = await uploadEventThumbnail(channelId, file);
+      const url = await uploadEventThumbnail(channelId, blob, 'thumb.jpg');
       setThumbnailUrl(url);
+      setPendingFile(null);
     } catch (e: any) {
       toast.error(e?.message ?? 'Échec de l’envoi');
     } finally {
@@ -140,21 +142,28 @@ export function ChannelEventModal({ open, onOpenChange, channelId, serverId, ini
       reminder_minutes: reminder === 'none' ? null : Number(reminder),
       location_channel_id: locationChannelId === 'none' ? null : locationChannelId,
       thumbnail_url: thumbnailUrl,
-      color,
     };
 
-    if (editing) {
-      await update.mutateAsync({ id: editing.id, patch: payload });
-    } else {
-      await create.mutateAsync(payload);
+    try {
+      if (editing) {
+        await update.mutateAsync({ id: editing.id, patch: payload });
+      } else {
+        await create.mutateAsync(payload);
+      }
+      onOpenChange(false);
+    } catch (e: any) {
+      // toast is also handled in the hook; surface code if available
+      const msg = [e?.message, e?.code].filter(Boolean).join(' • ');
+      if (msg) toast.error(msg);
     }
-    onOpenChange(false);
   };
 
   const handleDelete = async () => {
     if (!editing) return;
-    await remove.mutateAsync(editing.id);
-    onOpenChange(false);
+    try {
+      await remove.mutateAsync(editing.id);
+      onOpenChange(false);
+    } catch {}
   };
 
   const isPending = create.isPending || update.isPending || remove.isPending;
@@ -170,42 +179,62 @@ export function ChannelEventModal({ open, onOpenChange, channelId, serverId, ini
         {/* Thumbnail */}
         <div>
           <Label>Miniature</Label>
-          <div className="mt-2 relative aspect-[21/9] rounded-lg border border-dashed border-border bg-muted/30 overflow-hidden flex items-center justify-center">
-            {thumbnailUrl ? (
-              <>
-                <img src={thumbnailUrl} alt="Miniature de l'événement" className="w-full h-full object-cover" />
+          {pendingFile ? (
+            <div className="mt-2">
+              <ThumbnailCanvasEditor
+                file={pendingFile}
+                onCancel={() => setPendingFile(null)}
+                onConfirm={handleApplyCrop}
+              />
+            </div>
+          ) : (
+            <div className="mt-2 relative aspect-[21/9] rounded-lg border border-dashed border-border bg-muted/30 overflow-hidden flex items-center justify-center">
+              {thumbnailUrl ? (
+                <>
+                  <img src={thumbnailUrl} alt="Miniature de l'événement" className="w-full h-full object-cover" />
+                  <div className="absolute top-2 right-2 flex gap-1">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="p-1.5 rounded-md bg-background/80 hover:bg-background"
+                      aria-label="Re-éditer la miniature"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setThumbnailUrl(null)}
+                      className="p-1.5 rounded-md bg-background/80 hover:bg-background"
+                      aria-label="Supprimer la miniature"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </>
+              ) : (
                 <button
                   type="button"
-                  onClick={() => setThumbnailUrl(null)}
-                  className="absolute top-2 right-2 p-1.5 rounded-md bg-background/80 hover:bg-background"
-                  aria-label="Supprimer la miniature"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex flex-col items-center gap-2 text-muted-foreground hover:text-foreground transition-colors py-6"
+                  disabled={uploading}
                 >
-                  <Trash2 className="w-4 h-4" />
+                  {uploading ? <Loader2 className="w-6 h-6 animate-spin" /> : <ImageIcon className="w-6 h-6" />}
+                  <span className="text-sm">{uploading ? 'Envoi…' : 'Ajouter une image'}</span>
                 </button>
-              </>
-            ) : (
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="flex flex-col items-center gap-2 text-muted-foreground hover:text-foreground transition-colors py-6"
-                disabled={uploading}
-              >
-                {uploading ? <Loader2 className="w-6 h-6 animate-spin" /> : <ImageIcon className="w-6 h-6" />}
-                <span className="text-sm">{uploading ? 'Envoi…' : 'Ajouter une image'}</span>
-              </button>
-            )}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) handleFile(f);
-                e.target.value = '';
-              }}
-            />
-          </div>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) handlePickFile(f);
+                  e.target.value = '';
+                }}
+              />
+            </div>
+          )}
         </div>
 
         <div>
@@ -223,22 +252,36 @@ export function ChannelEventModal({ open, onOpenChange, channelId, serverId, ini
           <Switch id="evt-allday" checked={allDay} onCheckedChange={setAllDay} />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label>Début</Label>
-            <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-            {!allDay && (
+        {allDay ? (
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Du</Label>
+              <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+            </div>
+            <div>
+              <Label>Au</Label>
+              <Input
+                type="date"
+                value={endDate || startDate}
+                min={startDate}
+                onChange={(e) => setEndDate(e.target.value)}
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Début</Label>
+              <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
               <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="mt-2" />
-            )}
-          </div>
-          <div>
-            <Label>Fin</Label>
-            <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-            {!allDay && (
+            </div>
+            <div>
+              <Label>Fin</Label>
+              <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
               <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="mt-2" />
-            )}
+            </div>
           </div>
-        </div>
+        )}
 
         <div>
           <Label>Lieu (salon)</Label>
@@ -265,31 +308,6 @@ export function ChannelEventModal({ open, onOpenChange, channelId, serverId, ini
           </Select>
         </div>
 
-        <div>
-          <Label>Couleur</Label>
-          <div className="flex items-center gap-2 mt-2">
-            {PRESET_COLORS.map((c) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => setColor(c)}
-                className="w-8 h-8 rounded-full border-2 transition-transform hover:scale-110"
-                style={{ backgroundColor: c, borderColor: color === c ? 'hsl(var(--foreground))' : 'transparent' }}
-                aria-label={`Couleur ${c}`}
-              />
-            ))}
-            <button
-              type="button"
-              onClick={() => setShowColorPicker((v) => !v)}
-              className="w-8 h-8 rounded-full border-2 border-dashed border-border text-xs"
-              aria-label="Couleur personnalisée"
-            >+</button>
-          </div>
-          {showColorPicker && (
-            <div className="mt-2"><ModernColorPicker value={color} onChange={setColor} /></div>
-          )}
-        </div>
-
         <div className="flex justify-between items-center pt-2">
           {editing ? (
             <Button variant="destructive" onClick={handleDelete} disabled={isPending}>
@@ -298,7 +316,7 @@ export function ChannelEventModal({ open, onOpenChange, channelId, serverId, ini
           ) : <div />}
           <div className="flex gap-2">
             <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isPending}>Annuler</Button>
-            <Button onClick={handleSubmit} disabled={isPending}>
+            <Button onClick={handleSubmit} disabled={isPending || !!pendingFile}>
               {isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
               {editing ? 'Enregistrer' : 'Créer'}
             </Button>

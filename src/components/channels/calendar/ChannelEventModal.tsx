@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { ResponsiveModal } from '@/components/ui/responsive-modal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Image as ImageIcon, Trash2, Loader2, Pencil } from 'lucide-react';
+import { Image as ImageIcon, Trash2, Loader2, Pencil, Scaling } from 'lucide-react';
 import { useChannelCalendarEvents, uploadEventThumbnail, type ChannelCalendarEvent } from '@/hooks/useChannelCalendarEvents';
 import { useChannels } from '@/hooks/useChannels';
 import { ThumbnailCanvasEditor } from '@/components/channels/calendar/ThumbnailCanvasEditor';
@@ -103,6 +103,23 @@ export function ChannelEventModal({ open, onOpenChange, channelId, serverId, ini
     setPendingFile(file);
   };
 
+  const startResizingExisting = useCallback(async () => {
+    if (!thumbnailUrl) return;
+    setUploading(true);
+    try {
+      const response = await fetch(thumbnailUrl, { mode: 'cors' });
+      if (!response.ok) throw new Error('Impossible de charger l’image');
+      const blob = await response.blob();
+      const ext = blob.type === 'image/png' ? 'png' : blob.type === 'image/webp' ? 'webp' : blob.type === 'image/avif' ? 'avif' : 'jpg';
+      const file = new File([blob], `existing-thumb.${ext}`, { type: blob.type || 'image/jpeg' });
+      setPendingFile(file);
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Échec du chargement de l’image');
+    } finally {
+      setUploading(false);
+    }
+  }, [thumbnailUrl]);
+
   const handleApplyCrop = async (blob: Blob) => {
     try {
       setUploading(true);
@@ -194,6 +211,15 @@ export function ChannelEventModal({ open, onOpenChange, channelId, serverId, ini
                 <>
                   <img src={thumbnailUrl} alt="Miniature de l'événement" className="w-full h-full object-cover" />
                   <div className="absolute top-2 right-2 flex gap-1">
+                    <button
+                      type="button"
+                      onClick={() => startResizingExisting()}
+                      disabled={uploading}
+                      className="p-1.5 rounded-md bg-background/80 hover:bg-background disabled:opacity-50"
+                      aria-label="Redimensionner la miniature"
+                    >
+                      <Scaling className="w-4 h-4" />
+                    </button>
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}

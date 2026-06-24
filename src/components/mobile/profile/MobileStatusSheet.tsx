@@ -68,7 +68,7 @@ export function MobileStatusSheet({ open, onOpenChange }: Props) {
     if (!user) return;
     haptics.light();
     updateProfile(
-      { status } as any,
+      { status, manual_status: status },
       {
         onSuccess: () => onOpenChange(false),
       }

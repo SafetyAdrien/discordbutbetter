@@ -57,7 +57,7 @@ interface UserProfileCardProps {
 }
 
 export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers, connectedToVoice }: UserProfileCardProps) {
-  const { profile, updateStatus } = useAuth();
+  const { profile } = useAuth();
   const { setManualStatus } = usePresenceContext();
   const voiceCtx = useVoice();
   const [showStatusMenu, setShowStatusMenu] = useState(false);
@@ -120,8 +120,6 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers, 
   const handleStatusChange = (status: "online" | "idle" | "dnd" | "offline") => {
     // Informer le système de présence que c'est un changement manuel
     setManualStatus(status);
-    // Mettre à jour le profil
-    updateStatus(status);
     setShowStatusMenu(false);
   };
 

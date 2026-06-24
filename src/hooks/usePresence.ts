@@ -33,6 +33,13 @@ export function usePresence() {
   }, []);
 
   useEffect(() => {
+    if (userIdRef.current !== (user?.id || null)) {
+      hasInitializedRef.current = false;
+      currentStatusRef.current = null;
+      manualStatusRef.current = null;
+      lastActiveHeartbeatRef.current = 0;
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    }
     userIdRef.current = user?.id || null;
   }, [user?.id]);
 
@@ -98,7 +105,8 @@ export function usePresence() {
       const manual = (profile as any).manual_status as UserStatus | null | undefined;
       manualStatusRef.current = manual ?? null;
 
-      // Au démarrage : si statut auto (idle/offline) → restaurer le statut manuel
+      // Au démarrage : si statut auto (idle/offline) → restaurer le statut manuel.
+      // Si l'utilisateur a choisi lui-même idle/offline, on respecte ce choix.
       if (profile.status === 'idle' || profile.status === 'offline') {
         if (manual && manual !== 'idle' && manual !== 'offline') {
           updateStatus(manual, true);
@@ -156,7 +164,7 @@ export function usePresence() {
       clearInterval(keepaliveInterval);
       if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
     };
-  }, [user?.id]);
+  }, [user?.id, Boolean(profile)]);
 
   const setManualStatus = useCallback((status: UserStatus) => {
     manualStatusRef.current = status;

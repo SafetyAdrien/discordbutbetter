@@ -1,35 +1,30 @@
-## Plan — Fond uniforme sur toutes les cartes du calendrier
+## Objectif
 
-### Objectif
-Donner à chaque case « jour » du calendrier un fond par défaut légèrement plus clair que la zone du calendrier, et faire en sorte que les images à fond transparent s'intègrent visuellement sur ce même fond (sans bord noir résiduel).
+1. Le canvas d'édition de la miniature doit être **parfaitement carré** (1:1), pour correspondre exactement aux cartes de jour du calendrier (`aspect-square`).
+2. Au chargement, le rectangle de redimensionnement doit épouser la **forme réelle** de l'image importée (mode "contain" et non "cover"), pour que les poignées entourent l'image telle qu'elle est, sans la rogner d'office.
 
-### Changements dans `src/components/channels/CalendarChannel.tsx`
+## Changements
 
-1. **Fond par défaut des cartes** (boucle `paddedDays.map`) :
-   - Ajouter une classe de fond systématique `bg-[hsl(var(--surface-1))]` (ou `bg-surface-1`) sur le `<button>` de chaque case — y compris les cases vides et les cases avec événement.
-   - Supprimer la condition `!thumbEvent && 'hover:bg-muted'` → garder un hover uniforme (`hover:bg-[hsl(var(--surface-2))]`) pour toutes les cases.
-   - Garder `bg-primary/10` pour la case « aujourd'hui » en superposition légère (via ring ou via overlay) afin de ne pas écraser le fond uniforme.
+### `src/components/channels/calendar/ThumbnailCanvasEditor.tsx`
 
-2. **Cases padding (mois précédent/suivant vides)** : remplacer `<div className="aspect-square" />` par une case également stylée avec le fond, pour une grille visuellement cohérente. Option : laisser ces cellules vides sans fond — à confirmer (cf. question ci-dessous, choix par défaut = avec fond plus discret `bg-[hsl(var(--surface-1))]/40`).
+- Passer `aspect` par défaut de `21 / 9` à `1` (cadre carré).
+- Réduire `exportWidth` par défaut (ex. `1024`) puisque la sortie est désormais carrée.
+- Remplacer l'initialisation "cover" par un **"contain"** :
+  - si `imgRatio > frameRatio` → `w = frameSize.w; h = w / imgRatio`
+  - sinon → `h = frameSize.h; w = h * imgRatio`
+  - centrer `(tx, ty)` dans le cadre.
+- Conséquence : le rectangle initial (et donc les poignées) reflète exactement la forme de l'image, sans débordement. La logique de resize symétrique + verrou de proportions reste inchangée et continue d'utiliser `img.naturalWidth / img.naturalHeight`.
 
-3. **Composant `DayThumbnail`** :
-   - Aujourd'hui, quand l'image a un alpha, on rend `object-contain` sur fond transparent → le PNG montrait son propre fond noir d'origine (cas Minecraft) car l'image elle-même est noire dans ses coins.
-   - Le fond noir visible sur la capture provient en réalité de l'image (icône Minecraft sur fond noir), pas d'un overlay applicatif.
-   - Conserver la détection d'alpha existante, mais s'assurer qu'aucun fond noir ne soit ajouté côté carte : la case ayant désormais `bg-surface-1`, le PNG transparent reposera automatiquement sur ce fond clair.
-   - Ne plus rendre l'overlay sombre quand `hasAlpha = true` (déjà le cas).
+### `src/components/channels/calendar/ChannelEventModal.tsx`
 
-### Tokens / couleurs
-- Réutiliser le token sémantique existant `--surface-1` (déjà utilisé ailleurs, ex. `EventAgendaCard`).
-- Le hover passe à `--surface-2`.
-- Aucun nouveau token requis ; aucun hex en dur.
+- L'aperçu de la miniature posée (ligne ~209) passe de `aspect-[21/9]` à `aspect-square` pour rester cohérent avec le rendu réel dans les cartes du calendrier.
 
-### Test à mettre à jour / ajouter
-- Mettre à jour `DayThumbnail.transparency.test.tsx` : vérifier que la case (button) porte bien la classe de fond `bg-[hsl(var(--surface-1))]` même en présence d'une miniature transparente. (Optionnel — uniquement si le test couvre le button parent ; sinon, ajouter un petit test sur le rendu de la grille avec un mock minimal.)
+### `src/components/channels/CalendarChannel.tsx`
 
-### Question (1)
-Pour les cases du mois précédent/suivant (les jours « vides » de padding), souhaites-tu :
-- **A** — même fond `surface-1` que les autres cases (grille uniforme, plein),
-- **B** — fond `surface-1` mais opacité réduite (40 %) pour les distinguer,
-- **C** — laisser sans fond (vides comme actuellement).
+- L'aperçu dans le panneau de détails (ligne 459) passe de `aspect-[21/9]` à `aspect-square` afin que ce que l'utilisateur voit dans l'éditeur, dans la carte du jour et dans le détail soient strictement identiques.
 
-Par défaut, je partirai sur **B** si tu ne précises pas.
+## Hors-scope
+
+- Logique de transparence (`sourceMayHaveTransparency`, PNG vs JPEG) inchangée.
+- Verrou de proportions, resize symétrique, drag-to-move inchangés.
+- Pas de changement backend / schéma.

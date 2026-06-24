@@ -25,8 +25,8 @@ type Handle =
  */
 export function ThumbnailCanvasEditor({
   file,
-  aspect = 21 / 9,
-  exportWidth = 1680,
+  aspect = 1,
+  exportWidth = 1024,
   onCancel,
   onConfirm,
 }: Props) {
@@ -73,19 +73,20 @@ export function ThumbnailCanvasEditor({
     return () => ro.disconnect();
   }, [aspect]);
 
-  // Initialize transform: cover the frame
+  // Initialize transform: "contain" — the resize box hugs the real image
+  // shape so handles wrap exactly around the imported image.
   useEffect(() => {
     if (!img || !frameSize.w) return;
     const imgRatio = img.naturalWidth / img.naturalHeight;
     const frameRatio = frameSize.w / frameSize.h;
     let w: number, h: number;
     if (imgRatio > frameRatio) {
-      // image wider — match height
-      h = frameSize.h;
-      w = h * imgRatio;
-    } else {
+      // image wider than frame — fit to width
       w = frameSize.w;
       h = w / imgRatio;
+    } else {
+      h = frameSize.h;
+      w = h * imgRatio;
     }
     setTw(w);
     setTh(h);

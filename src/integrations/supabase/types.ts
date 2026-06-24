@@ -1749,6 +1749,7 @@ export type Database = {
           id: string
           last_activity_at: string
           last_seen_at: string
+          manual_status: Database["public"]["Enums"]["user_status"] | null
           pronouns: string | null
           server_order: string[] | null
           status: Database["public"]["Enums"]["user_status"] | null
@@ -1770,6 +1771,7 @@ export type Database = {
           id: string
           last_activity_at?: string
           last_seen_at?: string
+          manual_status?: Database["public"]["Enums"]["user_status"] | null
           pronouns?: string | null
           server_order?: string[] | null
           status?: Database["public"]["Enums"]["user_status"] | null
@@ -1791,6 +1793,7 @@ export type Database = {
           id?: string
           last_activity_at?: string
           last_seen_at?: string
+          manual_status?: Database["public"]["Enums"]["user_status"] | null
           pronouns?: string | null
           server_order?: string[] | null
           status?: Database["public"]["Enums"]["user_status"] | null

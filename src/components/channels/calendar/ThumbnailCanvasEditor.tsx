@@ -34,6 +34,7 @@ export function ThumbnailCanvasEditor({
   const [img, setImg] = useState<HTMLImageElement | null>(null);
   const [frameSize, setFrameSize] = useState({ w: 0, h: 0 });
   const [busy, setBusy] = useState(false);
+  const [locked, setLocked] = useState(true);
 
   // Image transform (in frame px)
   const [tx, setTx] = useState(0);

@@ -109,32 +109,54 @@ export function ThumbnailCanvasEditor({
   const constrainTransform = useCallback((next: Transform, keepRatio = locked): Transform => {
     if (!sourceBounds || !visibleBounds || !frameSize.w || !frameSize.h) return next;
 
+    // Guard against degenerate dimensions (tiny / heavily-transparent sources).
+    const safeVisibleW = Math.max(1, visibleBounds.width);
+    const safeVisibleH = Math.max(1, visibleBounds.height);
+    const safeSourceW = Math.max(1, sourceBounds.width);
+    const safeSourceH = Math.max(1, sourceBounds.height);
+
     const sourceOffsetX = visibleBounds.x - sourceBounds.x;
     const sourceOffsetY = visibleBounds.y - sourceBounds.y;
     const centerSourceX = sourceOffsetX + visibleBounds.width / 2;
     const centerSourceY = sourceOffsetY + visibleBounds.height / 2;
-    const originalScaleX = next.tw / sourceBounds.width;
-    const originalScaleY = next.th / sourceBounds.height;
+    const originalScaleX = next.tw / safeSourceW;
+    const originalScaleY = next.th / safeSourceH;
     const originalCenterX = next.tx + centerSourceX * originalScaleX;
     const originalCenterY = next.ty + centerSourceY * originalScaleY;
 
-    let scaleX = originalScaleX;
-    let scaleY = originalScaleY;
+    // Hard caps: the visible rect must always fit fully inside the frame.
+    const maxScaleX = frameSize.w / safeVisibleW;
+    const maxScaleY = frameSize.h / safeVisibleH;
+    // Minimum displayed visible size = 40px (matches the resize lower-bound).
+    const minScaleX = 40 / safeVisibleW;
+    const minScaleY = 40 / safeVisibleH;
+
+    let scaleX = Math.max(minScaleX, Math.min(originalScaleX, maxScaleX));
+    let scaleY = Math.max(minScaleY, Math.min(originalScaleY, maxScaleY));
 
     if (keepRatio) {
-      const visibleW = visibleBounds.width * scaleX;
-      const visibleH = visibleBounds.height * scaleY;
-      const fitScale = Math.min(
-        visibleW > 0 ? frameSize.w / visibleW : 1,
-        visibleH > 0 ? frameSize.h / visibleH : 1,
-        1
+      // Snap both axes to the same fit factor relative to the original,
+      // so the locked ratio cannot push either dimension out of the frame.
+      const fitFactor = Math.min(
+        scaleX / originalScaleX || 1,
+        scaleY / originalScaleY || 1
       );
-      scaleX *= fitScale;
-      scaleY *= fitScale;
-    } else {
-      scaleX = Math.min(scaleX, frameSize.w / visibleBounds.width);
-      scaleY = Math.min(scaleY, frameSize.h / visibleBounds.height);
+      scaleX = originalScaleX * fitFactor;
+      scaleY = originalScaleY * fitFactor;
+      // Re-clamp after ratio sync (in case rounding pushed us over).
+      if (visibleBounds.width * scaleX > frameSize.w) {
+        const k = frameSize.w / (visibleBounds.width * scaleX);
+        scaleX *= k; scaleY *= k;
+      }
+      if (visibleBounds.height * scaleY > frameSize.h) {
+        const k = frameSize.h / (visibleBounds.height * scaleY);
+        scaleX *= k; scaleY *= k;
+      }
     }
+
+    // Final safety net: never exceed frame on either axis.
+    if (visibleBounds.width * scaleX > frameSize.w) scaleX = maxScaleX;
+    if (visibleBounds.height * scaleY > frameSize.h) scaleY = maxScaleY;
 
     const boundedTw = sourceBounds.width * scaleX;
     const boundedTh = sourceBounds.height * scaleY;
@@ -145,8 +167,10 @@ export function ThumbnailCanvasEditor({
     const visibleH = visibleBounds.height * scaleY;
     const visibleLeft = boundedTx + sourceOffsetX * scaleX;
     const visibleTop = boundedTy + sourceOffsetY * scaleY;
-    const clampedLeft = Math.min(Math.max(visibleLeft, 0), Math.max(0, frameSize.w - visibleW));
-    const clampedTop = Math.min(Math.max(visibleTop, 0), Math.max(0, frameSize.h - visibleH));
+    const maxLeft = Math.max(0, frameSize.w - visibleW);
+    const maxTop = Math.max(0, frameSize.h - visibleH);
+    const clampedLeft = Math.min(Math.max(visibleLeft, 0), maxLeft);
+    const clampedTop = Math.min(Math.max(visibleTop, 0), maxTop);
 
     boundedTx += clampedLeft - visibleLeft;
     boundedTy += clampedTop - visibleTop;

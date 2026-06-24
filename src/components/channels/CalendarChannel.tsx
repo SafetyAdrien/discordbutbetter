@@ -242,15 +242,7 @@ export function CalendarChannel({ channel, onToggleMembers, showMembers }: Calen
                         )}
                       >
                         {thumbEvent && (
-                          <>
-                            <img
-                              src={thumbEvent.thumbnail_url!}
-                              alt=""
-                              className="absolute inset-0 w-full h-full object-cover"
-                            />
-                            {/* Shadow gradient from bottom — at least half the card */}
-                            <div className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/85 via-black/50 to-transparent pointer-events-none" />
-                          </>
+                          <DayThumbnail url={thumbEvent.thumbnail_url!} />
                         )}
                         <span
                           className={cn(

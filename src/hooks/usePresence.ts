@@ -1,6 +1,10 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
+
+const HEARTBEAT_INTERVAL = 30 * 1000; // 30s keepalive ping
+const ACTIVE_HEARTBEAT_THROTTLE = 30 * 1000; // throttle activity-based heartbeats
 
 type UserStatus = Database['public']['Enums']['user_status'];
 
@@ -28,6 +32,12 @@ export function usePresence() {
   const userIdRef = useRef<string | null>(null);
   const accessTokenRef = useRef<string | null>(null);
   const hasInitializedRef = useRef<boolean>(false);
+  const lastActiveHeartbeatRef = useRef<number>(0);
+
+  const sendHeartbeat = useCallback((active: boolean) => {
+    if (!userIdRef.current) return;
+    supabase.rpc('heartbeat_presence', { _active: active }).then(() => {}, () => {});
+  }, []);
 
   useEffect(() => {
     userIdRef.current = user?.id || null;
@@ -75,7 +85,15 @@ export function usePresence() {
   }, [updateStatus]);
 
   const handleActivity = useCallback(() => {
-    lastActivityRef.current = Date.now();
+    const now = Date.now();
+    lastActivityRef.current = now;
+
+    // Heartbeat actif throttlé (met à jour last_activity_at côté serveur)
+    if (now - lastActiveHeartbeatRef.current >= ACTIVE_HEARTBEAT_THROTTLE) {
+      lastActiveHeartbeatRef.current = now;
+      sendHeartbeat(true);
+    }
+
 
     // Réveil depuis offline/idle automatique -> online
     if (
@@ -118,7 +136,7 @@ export function usePresence() {
     if (isManualDndRef.current) {
       scheduleDndOffline();
     }
-  }, [updateStatus, scheduleDndOffline]);
+  }, [updateStatus, scheduleDndOffline, sendHeartbeat]);
 
   const handleBeforeUnload = useCallback(() => {
     const userId = userIdRef.current;
@@ -204,6 +222,11 @@ export function usePresence() {
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
+    // Keepalive : ping passif toutes les 30s pour garder last_seen_at frais (évite le watchdog 90s)
+    sendHeartbeat(false);
+    const keepaliveInterval = setInterval(() => sendHeartbeat(false), HEARTBEAT_INTERVAL);
+
+
     return () => {
       ACTIVITY_EVENTS.forEach(event => {
         window.removeEventListener(event, handleActivity);
@@ -213,6 +236,7 @@ export function usePresence() {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('pagehide', handleBeforeUnload);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearInterval(keepaliveInterval);
       if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
       clearOfflineTimer();
       clearDndOfflineTimer();

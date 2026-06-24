@@ -34,6 +34,7 @@ function makeAlphaData(w: number, h: number) {
 
 beforeEach(() => {
   (globalThis as any).Image = FakeImage;
+  HTMLCanvasElement.prototype.toDataURL = vi.fn(() => 'data:image/png;base64,cropped') as any;
   HTMLCanvasElement.prototype.getContext = vi.fn(() => ({
     drawImage: vi.fn(),
     getImageData: (_x: number, _y: number, w: number, h: number) => ({

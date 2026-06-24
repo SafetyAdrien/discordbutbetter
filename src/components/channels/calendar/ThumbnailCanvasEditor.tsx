@@ -272,7 +272,7 @@ export function ThumbnailCanvasEditor({
   }, [img, sourceBounds, visibleBounds, locked, frameSize.w, frameSize.h, exportWidth, applyTransform]);
 
   const onPointerUp = (e: React.PointerEvent) => {
-    try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch {}
+    try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* pointer capture may already be released */ }
     dragRef.current = null;
   };
 

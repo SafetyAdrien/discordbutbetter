@@ -103,6 +103,23 @@ export function ChannelEventModal({ open, onOpenChange, channelId, serverId, ini
     setPendingFile(file);
   };
 
+  const startResizingExisting = useCallback(async () => {
+    if (!thumbnailUrl) return;
+    setUploading(true);
+    try {
+      const response = await fetch(thumbnailUrl, { mode: 'cors' });
+      if (!response.ok) throw new Error('Impossible de charger l’image');
+      const blob = await response.blob();
+      const ext = blob.type === 'image/png' ? 'png' : blob.type === 'image/webp' ? 'webp' : blob.type === 'image/avif' ? 'avif' : 'jpg';
+      const file = new File([blob], `existing-thumb.${ext}`, { type: blob.type || 'image/jpeg' });
+      setPendingFile(file);
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Échec du chargement de l’image');
+    } finally {
+      setUploading(false);
+    }
+  }, [thumbnailUrl]);
+
   const handleApplyCrop = async (blob: Blob) => {
     try {
       setUploading(true);

@@ -368,17 +368,31 @@ export function ThumbnailCanvasEditor({
         Déplacez l'image et utilisez les poignées pour la redimensionner. Le cadre représente la miniature finale. Activez le verrou pour conserver le ratio d'origine.
       </p>
       <div className="flex justify-between items-center">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setLocked((v) => !v)}
-          title={locked ? 'Déverrouiller les proportions' : 'Verrouiller les proportions'}
-          aria-label={locked ? 'Déverrouiller les proportions' : 'Verrouiller les proportions'}
-          className="text-xs"
-        >
-          {locked ? <Lock className="w-4 h-4 mr-1.5" /> : <Unlock className="w-4 h-4 mr-1.5" />}
-          {locked ? 'Proportions verrouillées' : 'Proportions libres'}
-        </Button>
+        <div className="flex gap-1 items-center">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setLocked((v) => !v)}
+            title={locked ? 'Déverrouiller les proportions' : 'Verrouiller les proportions'}
+            aria-label={locked ? 'Déverrouiller les proportions' : 'Verrouiller les proportions'}
+            className="text-xs"
+          >
+            {locked ? <Lock className="w-4 h-4 mr-1.5" /> : <Unlock className="w-4 h-4 mr-1.5" />}
+            {locked ? 'Proportions verrouillées' : 'Proportions libres'}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={resetTransform}
+            disabled={!img}
+            title="Réinitialiser le cadrage"
+            aria-label="Réinitialiser le cadrage"
+            className="text-xs"
+          >
+            <RotateCcw className="w-4 h-4 mr-1.5" />
+            Réinitialiser
+          </Button>
+        </div>
         <div className="flex gap-2">
           <Button variant="ghost" onClick={onCancel} disabled={busy}>
             <X className="w-4 h-4 mr-1" /> Annuler

@@ -116,24 +116,24 @@ export function ThumbnailCanvasEditor({
       setTy(d.initial.ty + dy);
       return;
     }
-    // Resize — keep aspect ratio of the image
-    let { tx: nx, ty: ny, tw: nw, th: nh } = d.initial;
+    // Resize — keep aspect ratio AND scale around the image center so the
+    // subject stays centered regardless of which handle is dragged.
     const h = d.handle!;
-    // Use dx as primary delta for horizontal handles, dy for vertical
     let deltaW = 0, deltaH = 0;
     if (h.includes('e')) deltaW = dx;
     if (h.includes('w')) deltaW = -dx;
     if (h.includes('s')) deltaH = dy;
     if (h.includes('n')) deltaH = -dy;
-    // Choose dominant axis to preserve ratio
-    const projW = deltaW || deltaH * ratio;
-    const projH = projW / ratio;
-    nw = Math.max(40, d.initial.tw + projW);
-    nh = Math.max(40 / ratio, nw / ratio);
-    // Anchor opposite side
-    if (h.includes('w')) nx = d.initial.tx + (d.initial.tw - nw);
-    if (h.includes('n')) ny = d.initial.ty + (d.initial.th - nh);
-    setTx(nx); setTy(ny); setTw(nw); setTh(nh);
+    // Symmetric resize: each side grows/shrinks by the same delta.
+    const projW = (deltaW || deltaH * ratio) * 2;
+    const nw = Math.max(40, d.initial.tw + projW);
+    const nh = Math.max(40 / ratio, nw / ratio);
+    const cx = d.initial.tx + d.initial.tw / 2;
+    const cy = d.initial.ty + d.initial.th / 2;
+    setTx(cx - nw / 2);
+    setTy(cy - nh / 2);
+    setTw(nw);
+    setTh(nh);
   }, [img]);
 
   const onPointerUp = (e: React.PointerEvent) => {

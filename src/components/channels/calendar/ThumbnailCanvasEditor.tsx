@@ -160,12 +160,38 @@ export function ThumbnailCanvasEditor({
 
     // Maximum displayed size in frame coordinates: never upscale the visible
     // imported image area beyond its real resolution (transparent padding is ignored).
-    const maxVisibleW = Math.max(initialVisible.w, (visibleBounds.width * frameSize.w) / exportWidth);
-    const maxVisibleH = Math.max(initialVisible.h, (visibleBounds.height * frameSize.w) / exportWidth);
+    const realMaxW = Math.max(initialVisible.w, (visibleBounds.width * frameSize.w) / exportWidth);
+    const realMaxH = Math.max(initialVisible.h, (visibleBounds.height * frameSize.w) / exportWidth);
+    // Also cap so the symmetric resize keeps the visible rect inside the frame.
+    const frameMaxW = 2 * Math.min(visibleCx, frameSize.w - visibleCx);
+    const frameMaxH = 2 * Math.min(visibleCy, frameSize.h - visibleCy);
+    const maxVisibleW = Math.max(40, Math.min(realMaxW, frameMaxW));
+    const maxVisibleH = Math.max(40, Math.min(realMaxH, frameMaxH));
+
+    const clampMove = (nx: number, ny: number) => {
+      const sx = d.initial.tw / sourceBounds.width;
+      const sy = d.initial.th / sourceBounds.height;
+      const visLeft = nx + sourceOffsetX * sx;
+      const visTop = ny + sourceOffsetY * sy;
+      const visW = visibleBounds.width * sx;
+      const visH = visibleBounds.height * sy;
+      let cx = nx;
+      let cy = ny;
+      if (visW <= frameSize.w) {
+        if (visLeft < 0) cx -= visLeft;
+        else if (visLeft + visW > frameSize.w) cx -= (visLeft + visW - frameSize.w);
+      }
+      if (visH <= frameSize.h) {
+        if (visTop < 0) cy -= visTop;
+        else if (visTop + visH > frameSize.h) cy -= (visTop + visH - frameSize.h);
+      }
+      return { x: cx, y: cy };
+    };
 
     if (d.mode === 'move') {
-      setTx(d.initial.tx + dx);
-      setTy(d.initial.ty + dy);
+      const { x, y } = clampMove(d.initial.tx + dx, d.initial.ty + dy);
+      setTx(x);
+      setTy(y);
       return;
     }
 

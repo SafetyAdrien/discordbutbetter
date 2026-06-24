@@ -341,7 +341,7 @@ export function ChannelEventModal({ open, onOpenChange, channelId, serverId, ini
         </div>
       </div>
 
-      <div className="flex justify-between items-center gap-2 px-6 py-3 border-t border-border bg-background">
+      <div className="flex justify-between items-center gap-2 -mx-6 -mb-6 px-6 py-3 border-t border-border bg-background">
         {editing ? (
           <Button variant="destructive" onClick={handleDelete} disabled={isPending}>
             <Trash2 className="w-4 h-4 mr-2" /> Supprimer

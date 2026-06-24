@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Loader2, Check, X, Lock, Unlock } from 'lucide-react';
-import { sourceMayHaveTransparency } from './thumbnailAlpha';
+import { findOpaqueBounds, sourceMayHaveTransparency, type OpaqueBounds } from './thumbnailAlpha';
 
 interface Props {
   file: File;
@@ -32,6 +32,7 @@ export function ThumbnailCanvasEditor({
 }: Props) {
   const frameRef = useRef<HTMLDivElement>(null);
   const [img, setImg] = useState<HTMLImageElement | null>(null);
+  const [sourceBounds, setSourceBounds] = useState<OpaqueBounds | null>(null);
   const [frameSize, setFrameSize] = useState({ w: 0, h: 0 });
   const [busy, setBusy] = useState(false);
   const [locked, setLocked] = useState(true);
@@ -53,9 +54,32 @@ export function ThumbnailCanvasEditor({
 
   // Load image
   useEffect(() => {
+    setImg(null);
+    setSourceBounds(null);
     const url = URL.createObjectURL(file);
     const im = new Image();
-    im.onload = () => setImg(im);
+    im.onload = () => {
+      let bounds: OpaqueBounds = { x: 0, y: 0, width: im.naturalWidth, height: im.naturalHeight };
+
+      if (sourceMayHaveTransparency(file)) {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = im.naturalWidth;
+          canvas.height = im.naturalHeight;
+          const ctx = canvas.getContext('2d', { willReadFrequently: true });
+          if (ctx) {
+            ctx.drawImage(im, 0, 0);
+            const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            bounds = findOpaqueBounds(data.data, canvas.width, canvas.height, 1) ?? bounds;
+          }
+        } catch {
+          bounds = { x: 0, y: 0, width: im.naturalWidth, height: im.naturalHeight };
+        }
+      }
+
+      setSourceBounds(bounds);
+      setImg(im);
+    };
     im.src = url;
     return () => URL.revokeObjectURL(url);
   }, [file]);
@@ -73,26 +97,22 @@ export function ThumbnailCanvasEditor({
     return () => ro.disconnect();
   }, [aspect]);
 
-  // Initialize transform: "contain" — the resize box hugs the real image
-  // shape so handles wrap exactly around the imported image.
+  // Initialize transform without upscaling: the resize box wraps the visible
+  // imported content, ignoring transparent padding around PNG/WebP assets.
   useEffect(() => {
-    if (!img || !frameSize.w) return;
-    const imgRatio = img.naturalWidth / img.naturalHeight;
-    const frameRatio = frameSize.w / frameSize.h;
-    let w: number, h: number;
-    if (imgRatio > frameRatio) {
-      // image wider than frame — fit to width
-      w = frameSize.w;
-      h = w / imgRatio;
-    } else {
-      h = frameSize.h;
-      w = h * imgRatio;
-    }
+    if (!img || !sourceBounds || !frameSize.w) return;
+    const containScale = Math.min(frameSize.w / img.naturalWidth, frameSize.h / img.naturalHeight);
+    const realScale = frameSize.w / exportWidth;
+    const scale = Math.min(containScale, realScale);
+    const fullW = img.naturalWidth * scale;
+    const fullH = img.naturalHeight * scale;
+    const w = sourceBounds.width * scale;
+    const h = sourceBounds.height * scale;
     setTw(w);
     setTh(h);
-    setTx((frameSize.w - w) / 2);
-    setTy((frameSize.h - h) / 2);
-  }, [img, frameSize.w, frameSize.h]);
+    setTx((frameSize.w - fullW) / 2 + sourceBounds.x * scale);
+    setTy((frameSize.h - fullH) / 2 + sourceBounds.y * scale);
+  }, [img, sourceBounds, frameSize.w, frameSize.h, exportWidth]);
 
   const onPointerDown = (e: React.PointerEvent, mode: 'move' | 'resize', handle: Handle = null) => {
     e.stopPropagation();
@@ -108,15 +128,15 @@ export function ThumbnailCanvasEditor({
 
   const onPointerMove = useCallback((e: React.PointerEvent) => {
     const d = dragRef.current;
-    if (!d || !img || !frameSize.w) return;
+    if (!d || !img || !sourceBounds || !frameSize.w) return;
     const dx = e.clientX - d.startX;
     const dy = e.clientY - d.startY;
-    const ratio = img.naturalWidth / img.naturalHeight;
+    const ratio = sourceBounds.width / sourceBounds.height;
 
-    // Maximum displayed size in frame coordinates: never upscale the image
-    // beyond its real imported resolution (100% scale).
-    const maxTw = (img.naturalWidth * frameSize.w) / exportWidth;
-    const maxTh = (img.naturalHeight * frameSize.w) / exportWidth;
+    // Maximum displayed size in frame coordinates: never upscale the visible
+    // imported image area beyond its real resolution (transparent padding is ignored).
+    const maxTw = (sourceBounds.width * frameSize.w) / exportWidth;
+    const maxTh = (sourceBounds.height * frameSize.w) / exportWidth;
 
     if (d.mode === 'move') {
       setTx(d.initial.tx + dx);
@@ -155,7 +175,7 @@ export function ThumbnailCanvasEditor({
       setTw(nw);
       setTh(nh);
     }
-  }, [img, locked, frameSize.w, exportWidth]);
+  }, [img, sourceBounds, locked, frameSize.w, exportWidth]);
 
   const onPointerUp = (e: React.PointerEvent) => {
     try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch {}
@@ -163,7 +183,7 @@ export function ThumbnailCanvasEditor({
   };
 
   const handleConfirm = async () => {
-    if (!img || !frameSize.w) return;
+    if (!img || !sourceBounds || !frameSize.w) return;
     setBusy(true);
     try {
       const scale = exportWidth / frameSize.w;
@@ -184,6 +204,10 @@ export function ThumbnailCanvasEditor({
       }
       ctx.drawImage(
         img,
+        sourceBounds.x,
+        sourceBounds.y,
+        sourceBounds.width,
+        sourceBounds.height,
         Math.round(tx * scale),
         Math.round(ty * scale),
         Math.round(tw * scale),
@@ -218,23 +242,32 @@ export function ThumbnailCanvasEditor({
         className="relative w-full overflow-hidden rounded-lg border border-border bg-[hsl(var(--surface-1))] select-none"
         style={{ aspectRatio: String(aspect) }}
       >
-        {img && frameSize.w > 0 && (
+        {img && sourceBounds && frameSize.w > 0 && (
           <div
-            className="absolute touch-none cursor-move"
+            className="absolute touch-none cursor-move overflow-hidden"
             style={{
               left: tx,
               top: ty,
               width: tw,
               height: th,
-              backgroundImage: `url(${img.src})`,
-              backgroundSize: '100% 100%',
-              backgroundRepeat: 'no-repeat',
             }}
             onPointerDown={(e) => onPointerDown(e, 'move')}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
             onPointerCancel={onPointerUp}
           >
+            <img
+              src={img.src}
+              alt=""
+              draggable={false}
+              className="absolute max-w-none select-none pointer-events-none"
+              style={{
+                left: -(sourceBounds.x * (tw / sourceBounds.width)),
+                top: -(sourceBounds.y * (th / sourceBounds.height)),
+                width: img.naturalWidth * (tw / sourceBounds.width),
+                height: img.naturalHeight * (th / sourceBounds.height),
+              }}
+            />
             {/* Outline */}
             <div className="absolute inset-0 ring-2 ring-primary/70 pointer-events-none" />
             {/* Handles */}

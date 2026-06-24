@@ -72,7 +72,7 @@ export function CustomStatusModal({ open, onOpenChange }: CustomStatusModalProps
   const handleSetStatus = (status: 'online' | 'idle' | 'dnd' | 'offline') => {
     if (!user) return;
     updateProfile(
-      { status } as any,
+      { status, manual_status: status },
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: ['profile'] });

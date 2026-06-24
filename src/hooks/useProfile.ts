@@ -8,6 +8,8 @@ interface ProfileData {
   bio?: string;
   pronouns?: string | null;
   custom_status?: string | null;
+  status?: 'online' | 'idle' | 'dnd' | 'offline';
+  manual_status?: 'online' | 'idle' | 'dnd' | 'offline' | null;
   activity_type?: string | null;
   activity_text?: string | null;
   theme_color?: string | null;

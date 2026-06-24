@@ -36,13 +36,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (error) throw error;
 
-      const shouldGoOnline = data.status !== 'dnd';
-      const nextProfile = (shouldGoOnline ? { ...data, status: 'online' } : data) as Profile;
+      const manualStatus = data.manual_status as Database['public']['Enums']['user_status'] | null;
+      const restoredStatus = manualStatus ?? (data.status === 'dnd' ? 'dnd' : 'online');
+      const shouldRestoreStatus = data.status !== restoredStatus;
+      const nextProfile = (shouldRestoreStatus ? { ...data, status: restoredStatus } : data) as Profile;
       setProfile(nextProfile);
       cacheSetAsync(`profile:${userId}`, nextProfile);
 
-      if (shouldGoOnline) {
-        await supabase.from('profiles').update({ status: 'online' }).eq('id', userId);
+      if (shouldRestoreStatus) {
+        await supabase.from('profiles').update({ status: restoredStatus }).eq('id', userId);
       }
     } catch (error) {
       console.error('Error fetching profile:', error);
@@ -189,13 +191,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const { error } = await supabase
       .from('profiles')
-      .update({ status })
+      .update({ status, manual_status: status })
       .eq('id', user.id);
 
     if (error) throw error;
 
     setProfile(prev => {
-      const next = prev ? { ...prev, status } : null;
+      const next = prev ? { ...prev, status, manual_status: status } : null;
       if (next) cacheSetAsync(`profile:${user.id}`, next);
       return next;
     });

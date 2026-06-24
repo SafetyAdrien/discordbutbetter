@@ -213,6 +213,15 @@ export function ChannelEventModal({ open, onOpenChange, channelId, serverId, ini
                   <div className="absolute top-2 right-2 flex gap-1">
                     <button
                       type="button"
+                      onClick={() => startResizingExisting()}
+                      disabled={uploading}
+                      className="p-1.5 rounded-md bg-background/80 hover:bg-background disabled:opacity-50"
+                      aria-label="Redimensionner la miniature"
+                    >
+                      <Scaling className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => fileInputRef.current?.click()}
                       className="p-1.5 rounded-md bg-background/80 hover:bg-background"
                       aria-label="Re-éditer la miniature"

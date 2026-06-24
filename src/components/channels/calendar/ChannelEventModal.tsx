@@ -206,7 +206,7 @@ export function ChannelEventModal({ open, onOpenChange, channelId, serverId, ini
               />
             </div>
           ) : (
-            <div className="mt-2 relative aspect-[21/9] rounded-lg border border-dashed border-border bg-muted/30 overflow-hidden flex items-center justify-center">
+            <div className="mt-2 relative aspect-square rounded-lg border border-dashed border-border bg-muted/30 overflow-hidden flex items-center justify-center">
               {thumbnailUrl ? (
                 <>
                   <img src={thumbnailUrl} alt="Miniature de l'événement" className="w-full h-full object-cover" />

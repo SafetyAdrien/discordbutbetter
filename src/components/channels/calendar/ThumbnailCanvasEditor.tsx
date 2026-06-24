@@ -97,22 +97,21 @@ export function ThumbnailCanvasEditor({
     return () => ro.disconnect();
   }, [aspect]);
 
-  // Initialize transform without upscaling: the resize box wraps the visible
-  // imported content, ignoring transparent padding around PNG/WebP assets.
+  // Initialize transform to match the day card rendering: the visible content
+  // (opaque bounds) covers the frame entirely (object-cover, centered).
   useEffect(() => {
     if (!img || !sourceBounds || !frameSize.w) return;
-    const containScale = Math.min(frameSize.w / img.naturalWidth, frameSize.h / img.naturalHeight);
-    const realScale = frameSize.w / exportWidth;
-    const scale = Math.min(containScale, realScale);
-    const fullW = img.naturalWidth * scale;
-    const fullH = img.naturalHeight * scale;
-    const w = sourceBounds.width * scale;
-    const h = sourceBounds.height * scale;
+    const coverScale = Math.max(
+      frameSize.w / sourceBounds.width,
+      frameSize.h / sourceBounds.height
+    );
+    const w = sourceBounds.width * coverScale;
+    const h = sourceBounds.height * coverScale;
     setTw(w);
     setTh(h);
-    setTx((frameSize.w - fullW) / 2 + sourceBounds.x * scale);
-    setTy((frameSize.h - fullH) / 2 + sourceBounds.y * scale);
-  }, [img, sourceBounds, frameSize.w, frameSize.h, exportWidth]);
+    setTx((frameSize.w - w) / 2);
+    setTy((frameSize.h - h) / 2);
+  }, [img, sourceBounds, frameSize.w, frameSize.h]);
 
   const onPointerDown = (e: React.PointerEvent, mode: 'move' | 'resize', handle: Handle = null) => {
     e.stopPropagation();

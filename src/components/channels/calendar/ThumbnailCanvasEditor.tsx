@@ -55,31 +55,19 @@ export function ThumbnailCanvasEditor({
     initial: { tx: number; ty: number; tw: number; th: number };
   } | null>(null);
 
-  // Load image
+  // Load image. We always derive opaque bounds using the same sampled
+  // algorithm as DayThumbnail so the editor frames the image exactly like the
+  // day card does. `preserveFrame` is kept for API compatibility but no longer
+  // alters the cropping strategy: identical input always yields identical bounds.
   useEffect(() => {
     setImg(null);
     setSourceBounds(null);
     const url = URL.createObjectURL(file);
     const im = new Image();
     im.onload = () => {
-      let bounds: OpaqueBounds = { x: 0, y: 0, width: im.naturalWidth, height: im.naturalHeight };
-
-      if (!preserveFrame && sourceMayHaveTransparency(file)) {
-        try {
-          const canvas = document.createElement('canvas');
-          canvas.width = im.naturalWidth;
-          canvas.height = im.naturalHeight;
-          const ctx = canvas.getContext('2d', { willReadFrequently: true });
-          if (ctx) {
-            ctx.drawImage(im, 0, 0);
-            const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            bounds = findOpaqueBounds(data.data, canvas.width, canvas.height, 1) ?? bounds;
-          }
-        } catch {
-          bounds = { x: 0, y: 0, width: im.naturalWidth, height: im.naturalHeight };
-        }
-      }
-
+      const bounds: OpaqueBounds = sourceMayHaveTransparency(file)
+        ? computeDisplayedOpaqueBounds(im)
+        : { x: 0, y: 0, width: im.naturalWidth, height: im.naturalHeight };
       setSourceBounds(bounds);
       setImg(im);
     };

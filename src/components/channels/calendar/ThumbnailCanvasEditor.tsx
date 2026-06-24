@@ -54,6 +54,8 @@ export function ThumbnailCanvasEditor({
 
   // Load image
   useEffect(() => {
+    setImg(null);
+    setSourceBounds(null);
     const url = URL.createObjectURL(file);
     const im = new Image();
     im.onload = () => {
@@ -95,26 +97,22 @@ export function ThumbnailCanvasEditor({
     return () => ro.disconnect();
   }, [aspect]);
 
-  // Initialize transform: "contain" — the resize box hugs the real image
-  // shape so handles wrap exactly around the imported image.
+  // Initialize transform without upscaling: the resize box wraps the visible
+  // imported content, ignoring transparent padding around PNG/WebP assets.
   useEffect(() => {
     if (!img || !sourceBounds || !frameSize.w) return;
-    const imgRatio = sourceBounds.width / sourceBounds.height;
-    const frameRatio = frameSize.w / frameSize.h;
-    let w: number, h: number;
-    if (imgRatio > frameRatio) {
-      // image wider than frame — fit to width
-      w = frameSize.w;
-      h = w / imgRatio;
-    } else {
-      h = frameSize.h;
-      w = h * imgRatio;
-    }
+    const containScale = Math.min(frameSize.w / img.naturalWidth, frameSize.h / img.naturalHeight);
+    const realScale = frameSize.w / exportWidth;
+    const scale = Math.min(containScale, realScale);
+    const fullW = img.naturalWidth * scale;
+    const fullH = img.naturalHeight * scale;
+    const w = sourceBounds.width * scale;
+    const h = sourceBounds.height * scale;
     setTw(w);
     setTh(h);
-    setTx((frameSize.w - w) / 2);
-    setTy((frameSize.h - h) / 2);
-  }, [img, sourceBounds, frameSize.w, frameSize.h]);
+    setTx((frameSize.w - fullW) / 2 + sourceBounds.x * scale);
+    setTy((frameSize.h - fullH) / 2 + sourceBounds.y * scale);
+  }, [img, sourceBounds, frameSize.w, frameSize.h, exportWidth]);
 
   const onPointerDown = (e: React.PointerEvent, mode: 'move' | 'resize', handle: Handle = null) => {
     e.stopPropagation();

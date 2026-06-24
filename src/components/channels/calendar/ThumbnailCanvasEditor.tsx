@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Loader2, Check, X, Lock, Unlock } from 'lucide-react';
+import { Loader2, Check, X, Lock, Unlock, RotateCcw } from 'lucide-react';
 import { findOpaqueBounds, sourceMayHaveTransparency, type OpaqueBounds } from './thumbnailAlpha';
 
 interface Props {
@@ -104,11 +104,7 @@ export function ThumbnailCanvasEditor({
     return () => ro.disconnect();
   }, [aspect]);
 
-  // Initialize transform to match the day card rendering: the active source
-  // rectangle covers the frame entirely (object-cover, centered). When editing
-  // an already-saved thumbnail, the saved frame is preserved so reopening it
-  // does not zoom/crop it differently from the calendar card.
-  useEffect(() => {
+  const resetTransform = useCallback(() => {
     if (!img || !sourceBounds || !frameSize.w) return;
     const coverScale = Math.max(
       frameSize.w / sourceBounds.width,
@@ -121,6 +117,14 @@ export function ThumbnailCanvasEditor({
     setTx((frameSize.w - w) / 2);
     setTy((frameSize.h - h) / 2);
   }, [img, sourceBounds, frameSize.w, frameSize.h]);
+
+  // Initialize transform to match the day card rendering: the active source
+  // rectangle covers the frame entirely (object-cover, centered). When editing
+  // an already-saved thumbnail, the saved frame is preserved so reopening it
+  // does not zoom/crop it differently from the calendar card.
+  useEffect(() => {
+    resetTransform();
+  }, [resetTransform]);
 
   const onPointerDown = (e: React.PointerEvent, mode: 'move' | 'resize', handle: Handle = null) => {
     e.stopPropagation();
@@ -156,12 +160,38 @@ export function ThumbnailCanvasEditor({
 
     // Maximum displayed size in frame coordinates: never upscale the visible
     // imported image area beyond its real resolution (transparent padding is ignored).
-    const maxVisibleW = Math.max(initialVisible.w, (visibleBounds.width * frameSize.w) / exportWidth);
-    const maxVisibleH = Math.max(initialVisible.h, (visibleBounds.height * frameSize.w) / exportWidth);
+    const realMaxW = Math.max(initialVisible.w, (visibleBounds.width * frameSize.w) / exportWidth);
+    const realMaxH = Math.max(initialVisible.h, (visibleBounds.height * frameSize.w) / exportWidth);
+    // Also cap so the symmetric resize keeps the visible rect inside the frame.
+    const frameMaxW = 2 * Math.min(visibleCx, frameSize.w - visibleCx);
+    const frameMaxH = 2 * Math.min(visibleCy, frameSize.h - visibleCy);
+    const maxVisibleW = Math.max(40, Math.min(realMaxW, frameMaxW));
+    const maxVisibleH = Math.max(40, Math.min(realMaxH, frameMaxH));
+
+    const clampMove = (nx: number, ny: number) => {
+      const sx = d.initial.tw / sourceBounds.width;
+      const sy = d.initial.th / sourceBounds.height;
+      const visLeft = nx + sourceOffsetX * sx;
+      const visTop = ny + sourceOffsetY * sy;
+      const visW = visibleBounds.width * sx;
+      const visH = visibleBounds.height * sy;
+      let cx = nx;
+      let cy = ny;
+      if (visW <= frameSize.w) {
+        if (visLeft < 0) cx -= visLeft;
+        else if (visLeft + visW > frameSize.w) cx -= (visLeft + visW - frameSize.w);
+      }
+      if (visH <= frameSize.h) {
+        if (visTop < 0) cy -= visTop;
+        else if (visTop + visH > frameSize.h) cy -= (visTop + visH - frameSize.h);
+      }
+      return { x: cx, y: cy };
+    };
 
     if (d.mode === 'move') {
-      setTx(d.initial.tx + dx);
-      setTy(d.initial.ty + dy);
+      const { x, y } = clampMove(d.initial.tx + dx, d.initial.ty + dy);
+      setTx(x);
+      setTy(y);
       return;
     }
 
@@ -338,17 +368,31 @@ export function ThumbnailCanvasEditor({
         Déplacez l'image et utilisez les poignées pour la redimensionner. Le cadre représente la miniature finale. Activez le verrou pour conserver le ratio d'origine.
       </p>
       <div className="flex justify-between items-center">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setLocked((v) => !v)}
-          title={locked ? 'Déverrouiller les proportions' : 'Verrouiller les proportions'}
-          aria-label={locked ? 'Déverrouiller les proportions' : 'Verrouiller les proportions'}
-          className="text-xs"
-        >
-          {locked ? <Lock className="w-4 h-4 mr-1.5" /> : <Unlock className="w-4 h-4 mr-1.5" />}
-          {locked ? 'Proportions verrouillées' : 'Proportions libres'}
-        </Button>
+        <div className="flex gap-1 items-center">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setLocked((v) => !v)}
+            title={locked ? 'Déverrouiller les proportions' : 'Verrouiller les proportions'}
+            aria-label={locked ? 'Déverrouiller les proportions' : 'Verrouiller les proportions'}
+            className="text-xs"
+          >
+            {locked ? <Lock className="w-4 h-4 mr-1.5" /> : <Unlock className="w-4 h-4 mr-1.5" />}
+            {locked ? 'Proportions verrouillées' : 'Proportions libres'}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={resetTransform}
+            disabled={!img}
+            title="Réinitialiser le cadrage"
+            aria-label="Réinitialiser le cadrage"
+            className="text-xs"
+          >
+            <RotateCcw className="w-4 h-4 mr-1.5" />
+            Réinitialiser
+          </Button>
+        </div>
         <div className="flex gap-2">
           <Button variant="ghost" onClick={onCancel} disabled={busy}>
             <X className="w-4 h-4 mr-1" /> Annuler

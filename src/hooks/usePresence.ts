@@ -164,7 +164,7 @@ export function usePresence() {
       clearInterval(keepaliveInterval);
       if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
     };
-  }, [user?.id, profile?.id, handleActivity, goIdleFromInactivity, sendHeartbeat, profile?.status, (profile as any)?.manual_status, updateStatus]);
+  }, [user?.id, Boolean(profile)]);
 
   const setManualStatus = useCallback((status: UserStatus) => {
     manualStatusRef.current = status;

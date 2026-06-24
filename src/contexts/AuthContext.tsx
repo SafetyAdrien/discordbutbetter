@@ -157,11 +157,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     if (user) {
-      await supabase
-        .from('profiles')
-        .update({ status: 'offline' })
-        .eq('id', user.id);
-
       cacheDelete(`profile:${user.id}`);
     }
 

@@ -261,6 +261,8 @@ export function usePresence() {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('pagehide', handleBeforeUnload);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
       clearInterval(keepaliveInterval);
       if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
       clearOfflineTimer();

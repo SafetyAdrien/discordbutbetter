@@ -1,40 +1,79 @@
+## Objectif
 
-# Sync temps réel du statut — audit global
+Appliquer les transitions de statut à **tous les utilisateurs** (pas seulement le client local) en faisant tourner les règles côté serveur, en plus du client déjà à 5 min.
 
-Le fix actuel (`useProfilesRealtime`) écoute `postgres_changes` UPDATE sur `public.profiles`, mais ne patche **que** le cache `['members']` (MemberList serveur). Tous les autres affichages de statut consomment des caches différents qui restent figés tant qu'il n'y a pas refetch.
+Règles cibles (client + serveur) :
+- `online` → `idle` : 5 min sans activité
+- `idle` → `offline` : 5 min de plus (10 min cumulés sans activité)
+- `dnd` → `offline` : 5 min sans activité
 
-## Caches non patchés actuellement
+## État actuel
 
-| Vue | Cache React Query | Champ statut |
-|---|---|---|
-| FriendsPanel / MobileFriendCard | `['friends', userId]` | `profile.status`, `profile.custom_status` |
-| DMList / DMUserInfoPanel / MobileDMListItem / MobileDMHeader | `['dm-conversations', userId]` | `participants[].status` |
-| UserProfilePopup / UserProfileCard / FullUserProfileModal / MobileFullProfileView / MobileProfileView | `['profile', userId]` | `status`, `custom_status`, `display_name`, etc. |
-| Favoris d'amis | `['friend-favorites', userId]` (jointure profile) | `profile.status` |
+Côté client (`src/hooks/usePresence.ts`) : timers déjà à 5 min, OK.
+
+Côté serveur (déjà en place) :
+- Colonnes `profiles.last_activity_at` et `last_seen_at`.
+- RPC `heartbeat_presence(_active boolean)` qui met à jour `last_seen_at` (toujours) et `last_activity_at` (si `_active=true`).
+- Cron `mark-stale-users-offline` toutes les minutes qui fait :
+  - `status <> offline` + `last_seen_at < now - 90s` → `offline` (watchdog onglet fermé)
+  - `online` + `last_activity_at < now - 5min` → `idle`
+  - **manque** : `idle` → `offline` (+5 min) et `dnd` → `offline` (+5 min).
+
+Problème bloquant : le client **n'appelle jamais** `heartbeat_presence`, donc `last_seen_at` ne bouge pas et le watchdog 90 s passerait tout le monde offline.
 
 ## Plan
 
-Étendre **un seul** fichier : `src/hooks/useProfilesRealtime.ts`. À chaque event UPDATE sur `public.profiles`, en plus de patcher `['members']`, patcher en place :
+### 1. Brancher le heartbeat côté client
 
-1. **`['friends']`** (toutes variantes) — map sur `f.profile.id === updated.id` et merger `status`, `custom_status`, `display_name`, `avatar_url`.
-2. **`['dm-conversations']`** — map sur `conv.participants` et merger les mêmes champs sur le participant correspondant.
-3. **`['profile', updated.id]`** — `setQueryData` direct avec merge superficiel (préserve les champs non renvoyés par le payload).
-4. **`['friend-favorites']`** — même approche que friends si la shape contient un sous-objet `profile`.
-5. **`['mutual-friends']`** — idem si applicable.
+Dans `src/hooks/usePresence.ts` :
+- À chaque `handleActivity` réelle (souris/clavier/touch), appeler `supabase.rpc('heartbeat_presence', { _active: true })` **throttlé à 1×/30 s**.
+- Un `setInterval` de 30 s envoie `heartbeat_presence({ _active: false })` tant que l'onglet existe (même caché) → garde `last_seen_at` frais sans toucher `last_activity_at`.
+- `beforeunload`/`pagehide` : conserver le PATCH `status=offline` existant.
 
-Tous les patchs utilisent `setQueriesData` avec un prédicat sur la queryKey racine (pas d'invalidate → zéro refetch, instantané). Aucun nouvel abonnement Supabase n'est ajouté : on réutilise le canal `public:profiles` déjà actif.
+Résultat : `last_activity_at` reflète la vraie activité de chaque user, `last_seen_at` prouve juste que l'onglet vit.
 
-## Détails techniques
+### 2. Étendre le sweeper SQL
 
-- Garder le pattern existant : flag `changed` pour éviter de réécrire la référence si rien ne change (préserve les renders).
-- Champs synchronisés : `status`, `custom_status`, `display_name`, `avatar_url`, `banner_url`, `pronouns`, `activity_type`, `activity_text`, `bio` (seulement là où le champ existe dans la shape du cache cible).
-- Cache `['profile', id]` : merge partiel `{ ...old, ...updatedFields }` pour ne pas écraser d'éventuels champs joints (badges, etc.).
-- Aucun changement de DB, de RLS, ou de composant UI : les composants relisent leurs caches respectifs et re-rendent automatiquement via React Query.
+Migration mettant à jour `public.mark_stale_users_offline()` :
 
-## Fichier modifié
+```sql
+CREATE OR REPLACE FUNCTION public.mark_stale_users_offline()
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  -- Watchdog : onglet fermé / crash
+  UPDATE profiles SET status='offline'
+   WHERE status <> 'offline'
+     AND last_seen_at < now() - interval '90 seconds';
 
-- `src/hooks/useProfilesRealtime.ts` — ajout des 4-5 patchs supplémentaires dans le handler UPDATE existant.
+  -- online -> idle (5 min sans activité)
+  UPDATE profiles SET status='idle'
+   WHERE status='online'
+     AND last_activity_at < now() - interval '5 minutes'
+     AND last_seen_at >= now() - interval '90 seconds';
 
-## Résultat attendu
+  -- idle -> offline (5 min de plus = 10 min cumulés)
+  UPDATE profiles SET status='offline'
+   WHERE status='idle'
+     AND last_activity_at < now() - interval '10 minutes';
 
-Quand un utilisateur change son statut (online/idle/dnd/offline) ou son statut personnalisé, **tous** les viewers connectés voient le changement instantanément, partout : liste d'amis, DMs (liste + en-tête + panneau info), popups profil, vue mobile profil, favoris. Pas de F5, pas de délai, pas de refetch réseau.
+  -- dnd -> offline (5 min sans activité)
+  UPDATE profiles SET status='offline'
+   WHERE status='dnd'
+     AND last_activity_at < now() - interval '5 minutes';
+END;
+$$;
+```
+
+Le cron existant `* * * * *` reste inchangé → vérification chaque minute pour tous les utilisateurs.
+
+### 3. Cohérence client / serveur
+
+- Les timeouts client restent à 5 min (déjà fait) → l'utilisateur local voit la transition immédiatement sans attendre le cron.
+- Pour les autres utilisateurs, la propagation Realtime sur `profiles.status` (déjà en place via `useProfilesRealtime`) diffuse instantanément le changement dès que le cron met à jour la DB.
+
+### Fichiers touchés
+
+- `src/hooks/usePresence.ts` — ajout heartbeat RPC (activité throttlée + interval 30 s).
+- Nouvelle migration SQL — remplace `mark_stale_users_offline()` avec les 2 règles supplémentaires.
+
+Pas de changement de schéma, pas de nouvelle table, pas de modif RLS.

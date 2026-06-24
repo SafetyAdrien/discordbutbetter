@@ -197,6 +197,19 @@ export function ThumbnailCanvasEditor({
     applyTransform({ tx: (frameSize.w - w) / 2, ty: (frameSize.h - h) / 2, tw: w, th: h }, true);
   }, [img, sourceBounds, frameSize.w, frameSize.h, applyTransform]);
 
+  const centerTransform = useCallback(() => {
+    if (!img || !sourceBounds || !frameSize.w) return;
+    // Default center option: fit the entire image inside the frame (contain)
+    // so it is fully visible and perfectly centered, like a centered preview.
+    const containScale = Math.min(
+      frameSize.w / sourceBounds.width,
+      frameSize.h / sourceBounds.height
+    );
+    const w = sourceBounds.width * containScale;
+    const h = sourceBounds.height * containScale;
+    applyTransform({ tx: (frameSize.w - w) / 2, ty: (frameSize.h - h) / 2, tw: w, th: h }, true);
+  }, [img, sourceBounds, frameSize.w, frameSize.h, applyTransform]);
+
   // Initialize transform to match the day card rendering: the active source
   // rectangle covers the frame entirely (object-cover, centered). When editing
   // an already-saved thumbnail, the saved frame is preserved so reopening it

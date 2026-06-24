@@ -344,34 +344,72 @@ export function CalendarChannel({ channel, onToggleMembers, showMembers }: Calen
 }
 
 /**
- * Day cell thumbnail. Detects whether the image has a transparent background
- * (by sampling its corners on a canvas) and only renders the dark gradient
- * overlay for opaque images, so transparent PNGs stay fully transparent.
+ * Day cell thumbnail. Detects transparent PNGs and crops them to the bounding
+ * box of their opaque pixels so the shape itself fills the card without gaps.
+ * Opaque images keep the dark bottom gradient for the title legibility.
  */
 export function DayThumbnail({ url }: { url: string }) {
   const [hasAlpha, setHasAlpha] = useState(false);
+  const [croppedUrl, setCroppedUrl] = useState<string | null>(null);
 
   useEffect(() => {
     let cancel = false;
+    setCroppedUrl(null);
+    setHasAlpha(false);
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
       try {
-        const c = document.createElement('canvas');
-        const w = (c.width = Math.min(32, img.naturalWidth));
-        const h = (c.height = Math.min(32, img.naturalHeight));
-        const ctx = c.getContext('2d');
-        if (!ctx) return;
-        ctx.drawImage(img, 0, 0, w, h);
-        const data = ctx.getImageData(0, 0, w, h).data;
-        // Look at the 4 corners — if any is transparent the image has alpha.
-        const corners = [
-          [0, 0], [w - 1, 0], [0, h - 1], [w - 1, h - 1],
-        ];
-        const transparent = corners.some(([x, y]) => data[(y * w + x) * 4 + 3] < 16);
-        if (!cancel) setHasAlpha(transparent);
+        const sampleSize = 64;
+        const scale = Math.min(1, sampleSize / Math.max(img.naturalWidth, img.naturalHeight));
+        const sw = Math.max(1, Math.round(img.naturalWidth * scale));
+        const sh = Math.max(1, Math.round(img.naturalHeight * scale));
+        const sample = document.createElement('canvas');
+        sample.width = sw;
+        sample.height = sh;
+        const sctx = sample.getContext('2d');
+        if (!sctx) return;
+        sctx.drawImage(img, 0, 0, sw, sh);
+        const data = sctx.getImageData(0, 0, sw, sh).data;
+        const corners = [[0, 0], [sw - 1, 0], [0, sh - 1], [sw - 1, sh - 1]];
+        const transparent = corners.some(([x, y]) => data[(y * sw + x) * 4 + 3] < 16);
+        if (cancel) return;
+        setHasAlpha(transparent);
+        if (!transparent) return;
+
+        // Compute opaque-pixel bounding box on the sample.
+        let minX = sw, minY = sh, maxX = -1, maxY = -1;
+        const threshold = 16;
+        for (let y = 0; y < sh; y++) {
+          for (let x = 0; x < sw; x++) {
+            if (data[(y * sw + x) * 4 + 3] > threshold) {
+              if (x < minX) minX = x;
+              if (y < minY) minY = y;
+              if (x > maxX) maxX = x;
+              if (y > maxY) maxY = y;
+            }
+          }
+        }
+        if (maxX < 0) return; // Fully transparent image — keep as-is.
+
+        // Map sample bbox back to original coordinates with a 1px safety pad.
+        const pad = 1;
+        const ox = Math.max(0, Math.floor(minX / scale) - pad);
+        const oy = Math.max(0, Math.floor(minY / scale) - pad);
+        const ow = Math.min(img.naturalWidth - ox, Math.ceil((maxX - minX + 1) / scale) + pad * 2);
+        const oh = Math.min(img.naturalHeight - oy, Math.ceil((maxY - minY + 1) / scale) + pad * 2);
+        if (ow <= 0 || oh <= 0) return;
+
+        const out = document.createElement('canvas');
+        out.width = ow;
+        out.height = oh;
+        const octx = out.getContext('2d');
+        if (!octx) return;
+        octx.drawImage(img, ox, oy, ow, oh, 0, 0, ow, oh);
+        const cropped = out.toDataURL('image/png');
+        if (!cancel) setCroppedUrl(cropped);
       } catch {
-        // CORS-tainted canvas — assume opaque (default)
+        // CORS-tainted canvas — fall back to original image, treated as opaque.
       }
     };
     img.src = url;
@@ -381,11 +419,11 @@ export function DayThumbnail({ url }: { url: string }) {
   return (
     <>
       <img
-        src={url}
+        src={croppedUrl ?? url}
         alt=""
         className={cn(
           'absolute inset-0 w-full h-full',
-          hasAlpha ? 'object-contain' : 'object-cover'
+          hasAlpha ? 'object-cover' : 'object-cover'
         )}
       />
       {!hasAlpha && (

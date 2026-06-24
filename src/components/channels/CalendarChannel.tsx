@@ -219,7 +219,12 @@ export function CalendarChannel({ channel, onToggleMembers, showMembers }: Calen
 
             <div className="grid grid-cols-7 gap-1">
               {paddedDays.map((day, index) => {
-                if (!day) return <div key={`pad-${index}`} className="aspect-square" />;
+                if (!day) return (
+                  <div
+                    key={`pad-${index}`}
+                    className="aspect-square rounded-lg bg-[hsl(var(--surface-1))]/40"
+                  />
+                );
 
                 const dayEvents = eventsForDate(day);
                 const isToday = isSameDay(day, new Date());
@@ -235,10 +240,10 @@ export function CalendarChannel({ channel, onToggleMembers, showMembers }: Calen
                         onDoubleClick={() => canCreate && featured && openEdit(featured)}
                         className={cn(
                           'relative aspect-square rounded-lg transition-colors flex flex-col text-left overflow-hidden',
+                          'bg-[hsl(var(--surface-1))] hover:bg-[hsl(var(--surface-2))]',
                           isToday && !thumbEvent && 'bg-primary/10',
                           isSelected && 'ring-2 ring-primary',
-                          !isSameMonth(day, currentMonth) && 'opacity-30',
-                          !thumbEvent && 'hover:bg-muted'
+                          !isSameMonth(day, currentMonth) && 'opacity-60'
                         )}
                       >
                         {thumbEvent && (

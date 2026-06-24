@@ -152,8 +152,13 @@ export function ThumbnailCanvasEditor({
       canvas.height = outH;
       const ctx = canvas.getContext('2d')!;
       ctx.imageSmoothingQuality = 'high';
-      ctx.fillStyle = '#000000';
-      ctx.fillRect(0, 0, outW, outH);
+      // Preserve transparency: export PNG when the source is PNG/WebP/AVIF/SVG.
+      // For opaque sources (jpeg) we export jpeg to keep file sizes small.
+      const isTransparentSource = /png|webp|avif|svg/i.test(file.type) || /\.(png|webp|avif|svg)$/i.test(file.name);
+      if (!isTransparentSource) {
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, outW, outH);
+      }
       ctx.drawImage(
         img,
         Math.round(tx * scale),
@@ -161,8 +166,10 @@ export function ThumbnailCanvasEditor({
         Math.round(tw * scale),
         Math.round(th * scale)
       );
+      const mime = isTransparentSource ? 'image/png' : 'image/jpeg';
+      const quality = isTransparentSource ? undefined : 0.9;
       const blob: Blob = await new Promise((res, rej) =>
-        canvas.toBlob((b) => (b ? res(b) : rej(new Error('Canvas export failed'))), 'image/jpeg', 0.9)
+        canvas.toBlob((b) => (b ? res(b) : rej(new Error('Canvas export failed'))), mime, quality)
       );
       await onConfirm(blob);
     } finally {

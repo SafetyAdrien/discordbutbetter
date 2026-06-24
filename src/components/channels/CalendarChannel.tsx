@@ -379,7 +379,7 @@ function EventAgendaCard({
           onClick={() => onEdit(event)}
         >
           {event.thumbnail_url && (
-            <div className="w-full aspect-[21/9] overflow-hidden bg-muted/40">
+            <div className="w-full aspect-[21/9] overflow-hidden">
               <img src={event.thumbnail_url} alt="" className="w-full h-full object-cover" />
             </div>
           )}

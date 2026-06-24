@@ -89,36 +89,3 @@ export function cropCanvasToOpaqueBounds(canvas: HTMLCanvasElement, alphaThresho
   );
   return cropped;
 }
-
-/**
- * Computes opaque bounds in the source image coordinates using the same
- * sampled approach as DayThumbnail, so the canvas editor and the day card
- * derive an identical visible-rectangle from the same image.
- */
-export function computeDisplayedOpaqueBounds(img: HTMLImageElement): OpaqueBounds {
-  const fallback: OpaqueBounds = { x: 0, y: 0, width: img.naturalWidth, height: img.naturalHeight };
-  try {
-    const sampleSize = 64;
-    const scale = Math.min(1, sampleSize / Math.max(img.naturalWidth, img.naturalHeight));
-    const sw = Math.max(1, Math.round(img.naturalWidth * scale));
-    const sh = Math.max(1, Math.round(img.naturalHeight * scale));
-    const sample = document.createElement('canvas');
-    sample.width = sw;
-    sample.height = sh;
-    const sctx = sample.getContext('2d');
-    if (!sctx) return fallback;
-    sctx.drawImage(img, 0, 0, sw, sh);
-    const data = sctx.getImageData(0, 0, sw, sh).data;
-    if (!canvasHasTransparentPixels(data)) return fallback;
-    const bounds = findOpaqueBounds(data, sw, sh);
-    if (!bounds) return fallback;
-    const ox = Math.max(0, Math.floor(bounds.x / scale));
-    const oy = Math.max(0, Math.floor(bounds.y / scale));
-    const ow = Math.min(img.naturalWidth - ox, Math.ceil(bounds.width / scale));
-    const oh = Math.min(img.naturalHeight - oy, Math.ceil(bounds.height / scale));
-    if (ow <= 0 || oh <= 0) return fallback;
-    return { x: ox, y: oy, width: ow, height: oh };
-  } catch {
-    return fallback;
-  }
-}

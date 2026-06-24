@@ -153,9 +153,9 @@ export function ThumbnailCanvasEditor({
       canvas.height = outH;
       const ctx = canvas.getContext('2d')!;
       ctx.imageSmoothingQuality = 'high';
-      // Preserve transparency: export PNG when the source can contain alpha.
-      // Transparent exports are cropped to the opaque pixels so the actual shape,
-      // not its empty canvas, fills the calendar day card.
+      // Preserve transparency: export PNG when the source can contain alpha,
+      // keeping the user's exact framing (no auto-crop) so what they see in
+      // the preview matches the saved thumbnail pixel-for-pixel.
       const isTransparentSource = sourceMayHaveTransparency(file);
       if (!isTransparentSource) {
         ctx.fillStyle = '#000000';
@@ -168,11 +168,10 @@ export function ThumbnailCanvasEditor({
         Math.round(tw * scale),
         Math.round(th * scale)
       );
-      const exportCanvas = isTransparentSource ? cropCanvasToOpaqueBounds(canvas) : canvas;
       const mime = isTransparentSource ? 'image/png' : 'image/jpeg';
       const quality = isTransparentSource ? undefined : 0.9;
       const blob: Blob = await new Promise((res, rej) =>
-        exportCanvas.toBlob((b) => (b ? res(b) : rej(new Error('Canvas export failed'))), mime, quality)
+        canvas.toBlob((b) => (b ? res(b) : rej(new Error('Canvas export failed'))), mime, quality)
       );
       await onConfirm(blob);
     } finally {

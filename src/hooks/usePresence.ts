@@ -222,6 +222,11 @@ export function usePresence() {
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
+    // Keepalive : ping passif toutes les 30s pour garder last_seen_at frais (évite le watchdog 90s)
+    sendHeartbeat(false);
+    const keepaliveInterval = setInterval(() => sendHeartbeat(false), HEARTBEAT_INTERVAL);
+
+
     return () => {
       ACTIVITY_EVENTS.forEach(event => {
         window.removeEventListener(event, handleActivity);

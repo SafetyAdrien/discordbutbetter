@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Loader2, Check, X } from 'lucide-react';
+import { Loader2, Check, X, Lock, Unlock } from 'lucide-react';
 import { sourceMayHaveTransparency } from './thumbnailAlpha';
 
 interface Props {
@@ -34,6 +34,7 @@ export function ThumbnailCanvasEditor({
   const [img, setImg] = useState<HTMLImageElement | null>(null);
   const [frameSize, setFrameSize] = useState({ w: 0, h: 0 });
   const [busy, setBusy] = useState(false);
+  const [locked, setLocked] = useState(true);
 
   // Image transform (in frame px)
   const [tx, setTx] = useState(0);
@@ -116,25 +117,39 @@ export function ThumbnailCanvasEditor({
       setTy(d.initial.ty + dy);
       return;
     }
-    // Resize — keep aspect ratio AND scale around the image center so the
-    // subject stays centered regardless of which handle is dragged.
+
     const h = d.handle!;
     let deltaW = 0, deltaH = 0;
     if (h.includes('e')) deltaW = dx;
     if (h.includes('w')) deltaW = -dx;
     if (h.includes('s')) deltaH = dy;
     if (h.includes('n')) deltaH = -dy;
-    // Symmetric resize: each side grows/shrinks by the same delta.
-    const projW = (deltaW || deltaH * ratio) * 2;
-    const nw = Math.max(40, d.initial.tw + projW);
-    const nh = Math.max(40 / ratio, nw / ratio);
-    const cx = d.initial.tx + d.initial.tw / 2;
-    const cy = d.initial.ty + d.initial.th / 2;
-    setTx(cx - nw / 2);
-    setTy(cy - nh / 2);
-    setTw(nw);
-    setTh(nh);
-  }, [img]);
+
+    // Symmetric resize around the image center so the subject stays centered
+    // regardless of which handle is dragged.
+    if (locked) {
+      // Locked: preserve the original image aspect ratio.
+      const projW = (deltaW || deltaH * ratio) * 2;
+      const nw = Math.max(40, d.initial.tw + projW);
+      const nh = Math.max(40 / ratio, nw / ratio);
+      const cx = d.initial.tx + d.initial.tw / 2;
+      const cy = d.initial.ty + d.initial.th / 2;
+      setTx(cx - nw / 2);
+      setTy(cy - nh / 2);
+      setTw(nw);
+      setTh(nh);
+    } else {
+      // Unlocked: resize freely along the dragged axes.
+      const nw = Math.max(40, d.initial.tw + deltaW * 2);
+      const nh = Math.max(40, d.initial.th + deltaH * 2);
+      const cx = d.initial.tx + d.initial.tw / 2;
+      const cy = d.initial.ty + d.initial.th / 2;
+      setTx(cx - nw / 2);
+      setTy(cy - nh / 2);
+      setTw(nw);
+      setTh(nh);
+    }
+  }, [img, locked]);
 
   const onPointerUp = (e: React.PointerEvent) => {
     try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch {}
@@ -234,16 +249,29 @@ export function ThumbnailCanvasEditor({
         <div className="absolute inset-0 pointer-events-none ring-1 ring-border" />
       </div>
       <p className="text-xs text-muted-foreground">
-        Déplacez l'image et utilisez les poignées pour la redimensionner. Le cadre représente la miniature finale.
+        Déplacez l'image et utilisez les poignées pour la redimensionner. Le cadre représente la miniature finale. Activez le verrou pour conserver le ratio d'origine.
       </p>
-      <div className="flex justify-end gap-2">
-        <Button variant="ghost" onClick={onCancel} disabled={busy}>
-          <X className="w-4 h-4 mr-1" /> Annuler
+      <div className="flex justify-between items-center">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setLocked((v) => !v)}
+          title={locked ? 'Déverrouiller les proportions' : 'Verrouiller les proportions'}
+          aria-label={locked ? 'Déverrouiller les proportions' : 'Verrouiller les proportions'}
+          className="text-xs"
+        >
+          {locked ? <Lock className="w-4 h-4 mr-1.5" /> : <Unlock className="w-4 h-4 mr-1.5" />}
+          {locked ? 'Proportions verrouillées' : 'Proportions libres'}
         </Button>
-        <Button onClick={handleConfirm} disabled={busy || !img}>
-          {busy ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Check className="w-4 h-4 mr-1" />}
-          Appliquer
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="ghost" onClick={onCancel} disabled={busy}>
+            <X className="w-4 h-4 mr-1" /> Annuler
+          </Button>
+          <Button onClick={handleConfirm} disabled={busy || !img}>
+            {busy ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Check className="w-4 h-4 mr-1" />}
+            Appliquer
+          </Button>
+        </div>
       </div>
     </div>
   );

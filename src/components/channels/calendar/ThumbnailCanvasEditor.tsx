@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Loader2, Check, X } from 'lucide-react';
+import { cropCanvasToOpaqueBounds, sourceMayHaveTransparency } from './thumbnailAlpha';
 
 interface Props {
   file: File;
@@ -152,9 +153,10 @@ export function ThumbnailCanvasEditor({
       canvas.height = outH;
       const ctx = canvas.getContext('2d')!;
       ctx.imageSmoothingQuality = 'high';
-      // Preserve transparency: export PNG when the source is PNG/WebP/AVIF/SVG.
-      // For opaque sources (jpeg) we export jpeg to keep file sizes small.
-      const isTransparentSource = /png|webp|avif|svg/i.test(file.type) || /\.(png|webp|avif|svg)$/i.test(file.name);
+      // Preserve transparency: export PNG when the source can contain alpha.
+      // Transparent exports are cropped to the opaque pixels so the actual shape,
+      // not its empty canvas, fills the calendar day card.
+      const isTransparentSource = sourceMayHaveTransparency(file);
       if (!isTransparentSource) {
         ctx.fillStyle = '#000000';
         ctx.fillRect(0, 0, outW, outH);
@@ -166,10 +168,11 @@ export function ThumbnailCanvasEditor({
         Math.round(tw * scale),
         Math.round(th * scale)
       );
+      const exportCanvas = isTransparentSource ? cropCanvasToOpaqueBounds(canvas) : canvas;
       const mime = isTransparentSource ? 'image/png' : 'image/jpeg';
       const quality = isTransparentSource ? undefined : 0.9;
       const blob: Blob = await new Promise((res, rej) =>
-        canvas.toBlob((b) => (b ? res(b) : rej(new Error('Canvas export failed'))), mime, quality)
+        exportCanvas.toBlob((b) => (b ? res(b) : rej(new Error('Canvas export failed'))), mime, quality)
       );
       await onConfirm(blob);
     } finally {
@@ -192,7 +195,7 @@ export function ThumbnailCanvasEditor({
     <div className="space-y-3">
       <div
         ref={frameRef}
-        className="relative w-full overflow-hidden rounded-lg border border-border bg-black/40 select-none"
+        className="relative w-full overflow-hidden rounded-lg border border-border bg-[hsl(var(--surface-1))] select-none"
         style={{ aspectRatio: String(aspect) }}
       >
         {img && frameSize.w > 0 && (

@@ -53,7 +53,7 @@ describe('DayThumbnail — transparence', () => {
 
     // Attendre la détection d'alpha
     await waitFor(() => {
-      expect(img!.className).toContain('object-contain');
+      expect(img!.className).toContain('object-cover');
     });
 
     // Aucun overlay sombre (gradient noir) ne doit être rendu

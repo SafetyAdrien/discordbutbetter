@@ -14,6 +14,7 @@ import { useHasChannelPermission } from '@/hooks/useUserChannelPermissions';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { useChannelCalendarEvents, type ChannelCalendarEvent } from '@/hooks/useChannelCalendarEvents';
 import { ChannelEventModal } from '@/components/channels/calendar/ChannelEventModal';
+import { canvasHasTransparentPixels, findOpaqueBounds, sourceMayHaveTransparency } from '@/components/channels/calendar/thumbnailAlpha';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { copyToClipboard } from '@/lib/clipboard';
@@ -349,13 +350,14 @@ export function CalendarChannel({ channel, onToggleMembers, showMembers }: Calen
  * Opaque images keep the dark bottom gradient for the title legibility.
  */
 export function DayThumbnail({ url }: { url: string }) {
-  const [hasAlpha, setHasAlpha] = useState(false);
+  const [hasAlpha, setHasAlpha] = useState(() => sourceMayHaveTransparency(url));
   const [croppedUrl, setCroppedUrl] = useState<string | null>(null);
 
   useEffect(() => {
     let cancel = false;
+    const mayHaveAlpha = sourceMayHaveTransparency(url);
     setCroppedUrl(null);
-    setHasAlpha(false);
+    setHasAlpha(mayHaveAlpha);
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
@@ -371,33 +373,21 @@ export function DayThumbnail({ url }: { url: string }) {
         if (!sctx) return;
         sctx.drawImage(img, 0, 0, sw, sh);
         const data = sctx.getImageData(0, 0, sw, sh).data;
-        const corners = [[0, 0], [sw - 1, 0], [0, sh - 1], [sw - 1, sh - 1]];
-        const transparent = corners.some(([x, y]) => data[(y * sw + x) * 4 + 3] < 16);
+        const transparent = canvasHasTransparentPixels(data);
         if (cancel) return;
         setHasAlpha(transparent);
         if (!transparent) return;
 
         // Compute opaque-pixel bounding box on the sample.
-        let minX = sw, minY = sh, maxX = -1, maxY = -1;
-        const threshold = 16;
-        for (let y = 0; y < sh; y++) {
-          for (let x = 0; x < sw; x++) {
-            if (data[(y * sw + x) * 4 + 3] > threshold) {
-              if (x < minX) minX = x;
-              if (y < minY) minY = y;
-              if (x > maxX) maxX = x;
-              if (y > maxY) maxY = y;
-            }
-          }
-        }
-        if (maxX < 0) return; // Fully transparent image — keep as-is.
+        const bounds = findOpaqueBounds(data, sw, sh);
+        if (!bounds) return; // Fully transparent image — keep as-is.
 
-        // Map sample bbox back to original coordinates with a 1px safety pad.
-        const pad = 1;
-        const ox = Math.max(0, Math.floor(minX / scale) - pad);
-        const oy = Math.max(0, Math.floor(minY / scale) - pad);
-        const ow = Math.min(img.naturalWidth - ox, Math.ceil((maxX - minX + 1) / scale) + pad * 2);
-        const oh = Math.min(img.naturalHeight - oy, Math.ceil((maxY - minY + 1) / scale) + pad * 2);
+        // Map sample bbox back to original coordinates without padding: the goal
+        // is to remove every transparent gap around the extracted shape.
+        const ox = Math.max(0, Math.floor(bounds.x / scale));
+        const oy = Math.max(0, Math.floor(bounds.y / scale));
+        const ow = Math.min(img.naturalWidth - ox, Math.ceil(bounds.width / scale));
+        const oh = Math.min(img.naturalHeight - oy, Math.ceil(bounds.height / scale));
         if (ow <= 0 || oh <= 0) return;
 
         const out = document.createElement('canvas');
@@ -409,7 +399,9 @@ export function DayThumbnail({ url }: { url: string }) {
         const cropped = out.toDataURL('image/png');
         if (!cancel) setCroppedUrl(cropped);
       } catch {
-        // CORS-tainted canvas — fall back to original image, treated as opaque.
+        // CORS-tainted canvas — keep PNG/WebP/SVG treated as transparent-capable,
+        // avoiding any dark overlay even when client-side cropping is blocked.
+        if (!cancel) setHasAlpha(mayHaveAlpha);
       }
     };
     img.src = url;
@@ -421,10 +413,7 @@ export function DayThumbnail({ url }: { url: string }) {
       <img
         src={croppedUrl ?? url}
         alt=""
-        className={cn(
-          'absolute inset-0 w-full h-full',
-          hasAlpha ? 'object-cover' : 'object-cover'
-        )}
+        className="absolute inset-0 w-full h-full object-cover object-center"
       />
       {!hasAlpha && (
         <div className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/85 via-black/50 to-transparent pointer-events-none" />

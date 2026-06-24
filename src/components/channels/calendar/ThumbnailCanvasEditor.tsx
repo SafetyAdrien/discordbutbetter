@@ -25,8 +25,8 @@ type Handle =
  */
 export function ThumbnailCanvasEditor({
   file,
-  aspect = 21 / 9,
-  exportWidth = 1680,
+  aspect = 1,
+  exportWidth = 1024,
   onCancel,
   onConfirm,
 }: Props) {

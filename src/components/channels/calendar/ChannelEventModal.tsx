@@ -57,6 +57,7 @@ export function ChannelEventModal({ open, onOpenChange, channelId, serverId, ini
   const [locationChannelId, setLocationChannelId] = useState<string>('none');
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [pendingFilePreserveFrame, setPendingFilePreserveFrame] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -89,6 +90,7 @@ export function ChannelEventModal({ open, onOpenChange, channelId, serverId, ini
       setThumbnailUrl(null);
     }
     setPendingFile(null);
+    setPendingFilePreserveFrame(false);
   }, [open, editing, initialDate]);
 
   const handlePickFile = (file: File) => {
@@ -100,6 +102,7 @@ export function ChannelEventModal({ open, onOpenChange, channelId, serverId, ini
       toast.error('Image trop lourde (max 8 Mo)');
       return;
     }
+    setPendingFilePreserveFrame(false);
     setPendingFile(file);
   };
 
@@ -112,6 +115,7 @@ export function ChannelEventModal({ open, onOpenChange, channelId, serverId, ini
       const blob = await response.blob();
       const ext = blob.type === 'image/png' ? 'png' : blob.type === 'image/webp' ? 'webp' : blob.type === 'image/avif' ? 'avif' : 'jpg';
       const file = new File([blob], `existing-thumb.${ext}`, { type: blob.type || 'image/jpeg' });
+      setPendingFilePreserveFrame(true);
       setPendingFile(file);
     } catch (e: any) {
       toast.error(e?.message ?? 'Échec du chargement de l’image');
@@ -127,6 +131,7 @@ export function ChannelEventModal({ open, onOpenChange, channelId, serverId, ini
       const url = await uploadEventThumbnail(channelId, blob, isPng ? 'thumb.png' : 'thumb.jpg');
       setThumbnailUrl(url);
       setPendingFile(null);
+      setPendingFilePreserveFrame(false);
     } catch (e: any) {
       toast.error(e?.message ?? 'Échec de l’envoi');
     } finally {
@@ -204,7 +209,11 @@ export function ChannelEventModal({ open, onOpenChange, channelId, serverId, ini
               <div className="mt-2">
                 <ThumbnailCanvasEditor
                   file={pendingFile}
-                  onCancel={() => setPendingFile(null)}
+                  preserveFrame={pendingFilePreserveFrame}
+                  onCancel={() => {
+                    setPendingFile(null);
+                    setPendingFilePreserveFrame(false);
+                  }}
                   onConfirm={handleApplyCrop}
                 />
               </div>

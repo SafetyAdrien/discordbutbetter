@@ -242,15 +242,7 @@ export function CalendarChannel({ channel, onToggleMembers, showMembers }: Calen
                         )}
                       >
                         {thumbEvent && (
-                          <>
-                            <img
-                              src={thumbEvent.thumbnail_url!}
-                              alt=""
-                              className="absolute inset-0 w-full h-full object-cover"
-                            />
-                            {/* Shadow gradient from bottom — at least half the card */}
-                            <div className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/85 via-black/50 to-transparent pointer-events-none" />
-                          </>
+                          <DayThumbnail url={thumbEvent.thumbnail_url!} />
                         )}
                         <span
                           className={cn(
@@ -345,6 +337,59 @@ export function CalendarChannel({ channel, onToggleMembers, showMembers }: Calen
     </div>
   );
 }
+
+/**
+ * Day cell thumbnail. Detects whether the image has a transparent background
+ * (by sampling its corners on a canvas) and only renders the dark gradient
+ * overlay for opaque images, so transparent PNGs stay fully transparent.
+ */
+function DayThumbnail({ url }: { url: string }) {
+  const [hasAlpha, setHasAlpha] = useState(false);
+
+  useEffect(() => {
+    let cancel = false;
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const c = document.createElement('canvas');
+        const w = (c.width = Math.min(32, img.naturalWidth));
+        const h = (c.height = Math.min(32, img.naturalHeight));
+        const ctx = c.getContext('2d');
+        if (!ctx) return;
+        ctx.drawImage(img, 0, 0, w, h);
+        const data = ctx.getImageData(0, 0, w, h).data;
+        // Look at the 4 corners — if any is transparent the image has alpha.
+        const corners = [
+          [0, 0], [w - 1, 0], [0, h - 1], [w - 1, h - 1],
+        ];
+        const transparent = corners.some(([x, y]) => data[(y * w + x) * 4 + 3] < 16);
+        if (!cancel) setHasAlpha(transparent);
+      } catch {
+        // CORS-tainted canvas — assume opaque (default)
+      }
+    };
+    img.src = url;
+    return () => { cancel = true; };
+  }, [url]);
+
+  return (
+    <>
+      <img
+        src={url}
+        alt=""
+        className={cn(
+          'absolute inset-0 w-full h-full',
+          hasAlpha ? 'object-contain' : 'object-cover'
+        )}
+      />
+      {!hasAlpha && (
+        <div className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/85 via-black/50 to-transparent pointer-events-none" />
+      )}
+    </>
+  );
+}
+
 
 /**
  * Day cell event chip (fallback when no thumbnail).

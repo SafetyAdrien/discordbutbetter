@@ -108,10 +108,15 @@ export function ThumbnailCanvasEditor({
 
   const onPointerMove = useCallback((e: React.PointerEvent) => {
     const d = dragRef.current;
-    if (!d || !img) return;
+    if (!d || !img || !frameSize.w) return;
     const dx = e.clientX - d.startX;
     const dy = e.clientY - d.startY;
     const ratio = img.naturalWidth / img.naturalHeight;
+
+    // Maximum displayed size in frame coordinates: never upscale the image
+    // beyond its real imported resolution (100% scale).
+    const maxTw = (img.naturalWidth * frameSize.w) / exportWidth;
+    const maxTh = (img.naturalHeight * frameSize.w) / exportWidth;
 
     if (d.mode === 'move') {
       setTx(d.initial.tx + dx);
@@ -131,8 +136,8 @@ export function ThumbnailCanvasEditor({
     if (locked) {
       // Locked: preserve the original image aspect ratio.
       const projW = (deltaW || deltaH * ratio) * 2;
-      const nw = Math.max(40, d.initial.tw + projW);
-      const nh = Math.max(40 / ratio, nw / ratio);
+      const nw = Math.min(Math.max(40, d.initial.tw + projW), maxTw);
+      const nh = Math.min(nw / ratio, maxTh);
       const cx = d.initial.tx + d.initial.tw / 2;
       const cy = d.initial.ty + d.initial.th / 2;
       setTx(cx - nw / 2);
@@ -140,9 +145,9 @@ export function ThumbnailCanvasEditor({
       setTw(nw);
       setTh(nh);
     } else {
-      // Unlocked: resize freely along the dragged axes.
-      const nw = Math.max(40, d.initial.tw + deltaW * 2);
-      const nh = Math.max(40, d.initial.th + deltaH * 2);
+      // Unlocked: resize freely along the dragged axes, capped at real size.
+      const nw = Math.min(Math.max(40, d.initial.tw + deltaW * 2), maxTw);
+      const nh = Math.min(Math.max(40, d.initial.th + deltaH * 2), maxTh);
       const cx = d.initial.tx + d.initial.tw / 2;
       const cy = d.initial.ty + d.initial.th / 2;
       setTx(cx - nw / 2);
@@ -150,7 +155,7 @@ export function ThumbnailCanvasEditor({
       setTw(nw);
       setTh(nh);
     }
-  }, [img, locked]);
+  }, [img, locked, frameSize.w, exportWidth]);
 
   const onPointerUp = (e: React.PointerEvent) => {
     try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch {}

@@ -10,8 +10,6 @@ type UserStatus = Database['public']['Enums']['user_status'];
 
 const IDLE_TIMEOUT = 5 * 60 * 1000; // 5 min inactivité avant idle (auto)
 const HIDDEN_TAB_IDLE_TIMEOUT = 5 * 60 * 1000; // 5 min quand onglet caché
-const IDLE_TO_OFFLINE_TIMEOUT = 5 * 60 * 1000; // 5 min en idle auto -> offline
-const DND_TO_OFFLINE_TIMEOUT = 5 * 60 * 1000; // 5 min sans activité en dnd -> offline
 
 const ACTIVITY_EVENTS = [
   'mousedown', 'mousemove', 'keydown', 'scroll', 'click',
@@ -23,8 +21,6 @@ export function usePresence() {
   const { user, profile, session, updateProfile } = useAuth();
   const lastActivityRef = useRef<number>(Date.now());
   const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const offlineTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const dndOfflineTimerRef = useRef<NodeJS.Timeout | null>(null);
   const currentStatusRef = useRef<UserStatus | null>(null);
   const isManualDndRef = useRef<boolean>(false);
   const isManualIdleRef = useRef<boolean>(false);
@@ -44,23 +40,10 @@ export function usePresence() {
     accessTokenRef.current = session?.access_token || null;
   }, [user?.id, session?.access_token]);
 
-  const clearOfflineTimer = () => {
-    if (offlineTimerRef.current) {
-      clearTimeout(offlineTimerRef.current);
-      offlineTimerRef.current = null;
-    }
-  };
-  const clearDndOfflineTimer = () => {
-    if (dndOfflineTimerRef.current) {
-      clearTimeout(dndOfflineTimerRef.current);
-      dndOfflineTimerRef.current = null;
-    }
-  };
-
   const updateStatus = useCallback(async (status: UserStatus, forceUpdate = false) => {
     if (!user) return;
-    // Ne pas écraser un statut manuel (dnd/idle/offline) sauf forceUpdate
-    if (!forceUpdate && (isManualDndRef.current || isManualIdleRef.current || isManualOfflineRef.current)) {
+    // Respecter le statut manuel offline/idle — sauf forceUpdate
+    if (!forceUpdate && (isManualIdleRef.current || isManualOfflineRef.current)) {
       return;
     }
     if (currentStatusRef.current === status && !forceUpdate) return;
@@ -73,15 +56,16 @@ export function usePresence() {
     }
   }, [user, updateProfile]);
 
-  const scheduleDndOffline = useCallback(() => {
-    clearDndOfflineTimer();
-    if (currentStatusRef.current !== 'dnd') return;
-    dndOfflineTimerRef.current = setTimeout(() => {
-      // Force offline (override manual dnd)
-      if (currentStatusRef.current === 'dnd') {
-        updateStatus('offline', true);
-      }
-    }, DND_TO_OFFLINE_TIMEOUT);
+  // Bascule auto vers idle après IDLE_TIMEOUT — fonctionne aussi depuis `dnd`.
+  // Page ouverte = jamais d'offline auto.
+  const goIdleFromInactivity = useCallback(() => {
+    if (isManualIdleRef.current || isManualOfflineRef.current) return;
+    const cur = currentStatusRef.current;
+    if (cur !== 'online' && cur !== 'dnd') return;
+    // L'inactivité prime sur le dnd manuel : on désactive le flag pour qu'une
+    // activité ultérieure ramène vers `online`.
+    isManualDndRef.current = false;
+    updateStatus('idle', true);
   }, [updateStatus]);
 
   const handleActivity = useCallback(() => {
@@ -94,49 +78,20 @@ export function usePresence() {
       sendHeartbeat(true);
     }
 
-
-    // Réveil depuis offline/idle automatique -> online
+    // Réveil depuis idle automatique -> online
     if (
       !isManualDndRef.current &&
       !isManualIdleRef.current &&
       !isManualOfflineRef.current &&
       (currentStatusRef.current === 'idle' || currentStatusRef.current === 'offline')
     ) {
-      clearOfflineTimer();
       updateStatus('online');
     }
 
-    // Reset timer idle (auto)
+    // Reset timer idle (auto) — depuis n'importe quel statut éligible (online/dnd)
     if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-    idleTimerRef.current = setTimeout(() => {
-      if (
-        !isManualDndRef.current &&
-        !isManualIdleRef.current &&
-        !isManualOfflineRef.current &&
-        currentStatusRef.current !== 'idle' &&
-        currentStatusRef.current !== 'offline'
-      ) {
-        updateStatus('idle');
-        // Programmer la bascule idle -> offline (2 min)
-        clearOfflineTimer();
-        offlineTimerRef.current = setTimeout(() => {
-          if (
-            !isManualDndRef.current &&
-            !isManualIdleRef.current &&
-            !isManualOfflineRef.current &&
-            currentStatusRef.current === 'idle'
-          ) {
-            updateStatus('offline');
-          }
-        }, IDLE_TO_OFFLINE_TIMEOUT);
-      }
-    }, IDLE_TIMEOUT);
-
-    // Reset timer dnd -> offline si en dnd manuel
-    if (isManualDndRef.current) {
-      scheduleDndOffline();
-    }
-  }, [updateStatus, scheduleDndOffline, sendHeartbeat]);
+    idleTimerRef.current = setTimeout(goIdleFromInactivity, IDLE_TIMEOUT);
+  }, [updateStatus, sendHeartbeat, goIdleFromInactivity]);
 
   const handleBeforeUnload = useCallback(() => {
     const userId = userIdRef.current;
@@ -160,15 +115,8 @@ export function usePresence() {
     if (profile) {
       currentStatusRef.current = profile.status;
       isManualDndRef.current = profile.status === 'dnd';
-      // idle/offline manuels : on ne peut pas distinguer ici, on les considère non-manuels par défaut
-      // (setManualStatus les marque comme manuels quand l'utilisateur les choisit)
-      if (profile.status === 'dnd') {
-        scheduleDndOffline();
-      } else {
-        clearDndOfflineTimer();
-      }
     }
-  }, [profile?.status, scheduleDndOffline]);
+  }, [profile?.status]);
 
   useEffect(() => {
     if (!user || !profile) return;
@@ -194,63 +142,33 @@ export function usePresence() {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
         if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-        idleTimerRef.current = setTimeout(() => {
-          if (
-            !isManualDndRef.current &&
-            !isManualIdleRef.current &&
-            !isManualOfflineRef.current &&
-            currentStatusRef.current !== 'idle' &&
-            currentStatusRef.current !== 'offline'
-          ) {
-            updateStatus('idle');
-            clearOfflineTimer();
-            offlineTimerRef.current = setTimeout(() => {
-              if (
-                !isManualDndRef.current &&
-                !isManualIdleRef.current &&
-                !isManualOfflineRef.current &&
-                currentStatusRef.current === 'idle'
-              ) {
-                updateStatus('offline');
-              }
-            }, IDLE_TO_OFFLINE_TIMEOUT);
-          }
-        }, HIDDEN_TAB_IDLE_TIMEOUT);
+        idleTimerRef.current = setTimeout(goIdleFromInactivity, HIDDEN_TAB_IDLE_TIMEOUT);
       } else {
         handleActivity();
       }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // Keepalive : ping passif toutes les 30s pour garder last_seen_at frais (évite le watchdog 90s)
+    // Keepalive : ping passif toutes les 30s pour signaler que la page est ouverte
     sendHeartbeat(false);
     const keepaliveInterval = setInterval(() => sendHeartbeat(false), HEARTBEAT_INTERVAL);
 
     // Reconnexion réseau : restaurer le statut + re-pinger dès le retour en ligne
     const handleOnline = () => {
-      lastActiveHeartbeatRef.current = 0; // force un heartbeat actif immédiat
+      lastActiveHeartbeatRef.current = 0;
       sendHeartbeat(true);
-      // Restaure le statut courant (online ou dnd manuel) qui a pu être écrasé en offline par le watchdog serveur
       if (isManualDndRef.current) {
         updateStatus('dnd', true);
-        scheduleDndOffline();
       } else if (!isManualIdleRef.current && !isManualOfflineRef.current) {
-        // Considère le retour réseau comme une activité
         handleActivity();
         updateStatus('online', true);
       }
     };
     const handleOffline = () => {
-      // Onglet toujours ouvert mais pas de réseau : on arrête juste les pings, le watchdog 90s passera l'utilisateur offline côté serveur
       if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-      clearOfflineTimer();
-      clearDndOfflineTimer();
     };
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
-
-
-
 
     return () => {
       ACTIVITY_EVENTS.forEach(event => {
@@ -265,8 +183,6 @@ export function usePresence() {
       window.removeEventListener('offline', handleOffline);
       clearInterval(keepaliveInterval);
       if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-      clearOfflineTimer();
-      clearDndOfflineTimer();
     };
   }, [user?.id]);
 
@@ -275,12 +191,7 @@ export function usePresence() {
     isManualIdleRef.current = status === 'idle';
     isManualOfflineRef.current = status === 'offline';
     currentStatusRef.current = status;
-    clearOfflineTimer();
-    clearDndOfflineTimer();
-    if (status === 'dnd') {
-      scheduleDndOffline();
-    }
-  }, [scheduleDndOffline]);
+  }, []);
 
   return { setManualStatus };
 }

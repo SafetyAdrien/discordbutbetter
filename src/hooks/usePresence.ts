@@ -32,6 +32,12 @@ export function usePresence() {
   const userIdRef = useRef<string | null>(null);
   const accessTokenRef = useRef<string | null>(null);
   const hasInitializedRef = useRef<boolean>(false);
+  const lastActiveHeartbeatRef = useRef<number>(0);
+
+  const sendHeartbeat = useCallback((active: boolean) => {
+    if (!userIdRef.current) return;
+    supabase.rpc('heartbeat_presence', { _active: active }).then(() => {}, () => {});
+  }, []);
 
   useEffect(() => {
     userIdRef.current = user?.id || null;

@@ -104,11 +104,7 @@ export function ThumbnailCanvasEditor({
     return () => ro.disconnect();
   }, [aspect]);
 
-  // Initialize transform to match the day card rendering: the active source
-  // rectangle covers the frame entirely (object-cover, centered). When editing
-  // an already-saved thumbnail, the saved frame is preserved so reopening it
-  // does not zoom/crop it differently from the calendar card.
-  useEffect(() => {
+  const resetTransform = useCallback(() => {
     if (!img || !sourceBounds || !frameSize.w) return;
     const coverScale = Math.max(
       frameSize.w / sourceBounds.width,
@@ -121,6 +117,14 @@ export function ThumbnailCanvasEditor({
     setTx((frameSize.w - w) / 2);
     setTy((frameSize.h - h) / 2);
   }, [img, sourceBounds, frameSize.w, frameSize.h]);
+
+  // Initialize transform to match the day card rendering: the active source
+  // rectangle covers the frame entirely (object-cover, centered). When editing
+  // an already-saved thumbnail, the saved frame is preserved so reopening it
+  // does not zoom/crop it differently from the calendar card.
+  useEffect(() => {
+    resetTransform();
+  }, [resetTransform]);
 
   const onPointerDown = (e: React.PointerEvent, mode: 'move' | 'resize', handle: Handle = null) => {
     e.stopPropagation();

@@ -136,7 +136,7 @@ export function usePresence() {
     if (isManualDndRef.current) {
       scheduleDndOffline();
     }
-  }, [updateStatus, scheduleDndOffline]);
+  }, [updateStatus, scheduleDndOffline, sendHeartbeat]);
 
   const handleBeforeUnload = useCallback(() => {
     const userId = userIdRef.current;

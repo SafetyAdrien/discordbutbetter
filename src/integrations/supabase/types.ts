@@ -432,6 +432,72 @@ export type Database = {
           },
         ]
       }
+      channel_calendar_events: {
+        Row: {
+          all_day: boolean
+          channel_id: string
+          color: string
+          created_at: string
+          created_by: string
+          description: string | null
+          ends_at: string
+          id: string
+          location_channel_id: string | null
+          reminder_minutes: number | null
+          starts_at: string
+          thumbnail_url: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          all_day?: boolean
+          channel_id: string
+          color?: string
+          created_at?: string
+          created_by: string
+          description?: string | null
+          ends_at: string
+          id?: string
+          location_channel_id?: string | null
+          reminder_minutes?: number | null
+          starts_at: string
+          thumbnail_url?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          all_day?: boolean
+          channel_id?: string
+          color?: string
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          ends_at?: string
+          id?: string
+          location_channel_id?: string | null
+          reminder_minutes?: number | null
+          starts_at?: string
+          thumbnail_url?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channel_calendar_events_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channel_calendar_events_location_channel_id_fkey"
+            columns: ["location_channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       channel_followers: {
         Row: {
           created_at: string

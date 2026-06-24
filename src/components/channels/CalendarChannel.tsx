@@ -47,6 +47,25 @@ export function CalendarChannel({ channel, onToggleMembers, showMembers }: Calen
 
   const { events, remove } = useChannelCalendarEvents(channel.id);
 
+  // In-app reminders: schedule a toast for each event with a reminder set.
+  useEffect(() => {
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    const now = Date.now();
+    events.forEach((e) => {
+      if (e.reminder_minutes == null) return;
+      const fireAt = new Date(e.starts_at).getTime() - e.reminder_minutes * 60_000;
+      const delay = fireAt - now;
+      if (delay > 0 && delay < 24 * 60 * 60 * 1000) {
+        timers.push(setTimeout(() => {
+          toast.message(`⏰ ${e.title}`, {
+            description: `Commence dans ${e.reminder_minutes} minute(s)`,
+          });
+        }, delay));
+      }
+    });
+    return () => { timers.forEach(clearTimeout); };
+  }, [events]);
+
   // Resolve server_id for the channels dropdown in modal
   useEffect(() => {
     let cancel = false;

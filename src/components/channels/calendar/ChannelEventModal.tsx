@@ -253,20 +253,16 @@ export function ChannelEventModal({ open, onOpenChange, channelId, serverId, ini
         </div>
 
         {allDay ? (
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>Du</Label>
-              <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-            </div>
-            <div>
-              <Label>Au</Label>
-              <Input
-                type="date"
-                value={endDate || startDate}
-                min={startDate}
-                onChange={(e) => setEndDate(e.target.value)}
-              />
-            </div>
+          <div>
+            <Label>Date</Label>
+            <Input
+              type="date"
+              value={startDate}
+              onChange={(e) => {
+                setStartDate(e.target.value);
+                setEndDate(e.target.value);
+              }}
+            />
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-3">

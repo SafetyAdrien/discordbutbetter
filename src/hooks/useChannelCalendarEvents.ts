@@ -129,12 +129,14 @@ export function useChannelCalendarEvents(channelId: string | null) {
  * Upload a thumbnail to the `channel-event-thumbnails` bucket under the channel folder.
  * Returns a signed URL (1 year) suitable for storage as `thumbnail_url`.
  */
-export async function uploadEventThumbnail(channelId: string, file: File): Promise<string> {
-  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+export async function uploadEventThumbnail(channelId: string, file: Blob, filename?: string): Promise<string> {
+  const guessedExt = filename?.split('.').pop()?.toLowerCase()
+    || (file.type.split('/')[1] || 'jpg').toLowerCase();
+  const ext = guessedExt === 'jpeg' ? 'jpg' : guessedExt;
   const path = `${channelId}/${crypto.randomUUID()}.${ext}`;
   const { error: upErr } = await supabase.storage
     .from('channel-event-thumbnails')
-    .upload(path, file, { upsert: false, contentType: file.type || undefined });
+    .upload(path, file, { upsert: false, contentType: file.type || 'image/jpeg' });
   if (upErr) throw upErr;
   const { data, error } = await supabase.storage
     .from('channel-event-thumbnails')

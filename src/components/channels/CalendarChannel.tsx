@@ -7,7 +7,7 @@ import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator,
 import { cn } from '@/lib/utils';
 import {
   format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay,
-  addMonths, subMonths, isAfter, isToday as isDateToday, differenceInCalendarDays, startOfDay, endOfDay, max as dateMax, min as dateMin,
+  addMonths, subMonths, isAfter, isToday as isDateToday, differenceInCalendarDays, startOfDay, endOfDay,
 } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useHasChannelPermission } from '@/hooks/useUserChannelPermissions';

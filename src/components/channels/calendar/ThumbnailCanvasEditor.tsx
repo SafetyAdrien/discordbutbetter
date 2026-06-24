@@ -36,6 +36,7 @@ export function ThumbnailCanvasEditor({
   const frameRef = useRef<HTMLDivElement>(null);
   const [img, setImg] = useState<HTMLImageElement | null>(null);
   const [sourceBounds, setSourceBounds] = useState<OpaqueBounds | null>(null);
+  const [visibleBounds, setVisibleBounds] = useState<OpaqueBounds | null>(null);
   const [frameSize, setFrameSize] = useState({ w: 0, h: 0 });
   const [busy, setBusy] = useState(false);
   const [locked, setLocked] = useState(true);
@@ -59,12 +60,14 @@ export function ThumbnailCanvasEditor({
   useEffect(() => {
     setImg(null);
     setSourceBounds(null);
+    setVisibleBounds(null);
     const url = URL.createObjectURL(file);
     const im = new Image();
     im.onload = () => {
-      let bounds: OpaqueBounds = { x: 0, y: 0, width: im.naturalWidth, height: im.naturalHeight };
+      const fullBounds: OpaqueBounds = { x: 0, y: 0, width: im.naturalWidth, height: im.naturalHeight };
+      let realBounds: OpaqueBounds = fullBounds;
 
-      if (!preserveFrame && sourceMayHaveTransparency(file)) {
+      if (sourceMayHaveTransparency(file)) {
         try {
           const canvas = document.createElement('canvas');
           canvas.width = im.naturalWidth;
@@ -73,14 +76,15 @@ export function ThumbnailCanvasEditor({
           if (ctx) {
             ctx.drawImage(im, 0, 0);
             const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            bounds = findOpaqueBounds(data.data, canvas.width, canvas.height, 1) ?? bounds;
+            realBounds = findOpaqueBounds(data.data, canvas.width, canvas.height, 1) ?? fullBounds;
           }
         } catch {
-          bounds = { x: 0, y: 0, width: im.naturalWidth, height: im.naturalHeight };
+          realBounds = fullBounds;
         }
       }
 
-      setSourceBounds(bounds);
+      setSourceBounds(preserveFrame ? fullBounds : realBounds);
+      setVisibleBounds(realBounds);
       setImg(im);
     };
     im.src = url;
@@ -132,15 +136,28 @@ export function ThumbnailCanvasEditor({
 
   const onPointerMove = useCallback((e: React.PointerEvent) => {
     const d = dragRef.current;
-    if (!d || !img || !sourceBounds || !frameSize.w) return;
+    if (!d || !img || !sourceBounds || !visibleBounds || !frameSize.w) return;
     const dx = e.clientX - d.startX;
     const dy = e.clientY - d.startY;
-    const ratio = sourceBounds.width / sourceBounds.height;
+    const ratio = visibleBounds.width / visibleBounds.height;
+
+    const initialScaleX = d.initial.tw / sourceBounds.width;
+    const initialScaleY = d.initial.th / sourceBounds.height;
+    const sourceOffsetX = visibleBounds.x - sourceBounds.x;
+    const sourceOffsetY = visibleBounds.y - sourceBounds.y;
+    const initialVisible = {
+      x: d.initial.tx + sourceOffsetX * initialScaleX,
+      y: d.initial.ty + sourceOffsetY * initialScaleY,
+      w: visibleBounds.width * initialScaleX,
+      h: visibleBounds.height * initialScaleY,
+    };
+    const visibleCx = initialVisible.x + initialVisible.w / 2;
+    const visibleCy = initialVisible.y + initialVisible.h / 2;
 
     // Maximum displayed size in frame coordinates: never upscale the visible
     // imported image area beyond its real resolution (transparent padding is ignored).
-    const maxTw = (sourceBounds.width * frameSize.w) / exportWidth;
-    const maxTh = (sourceBounds.height * frameSize.w) / exportWidth;
+    const maxVisibleW = Math.max(initialVisible.w, (visibleBounds.width * frameSize.w) / exportWidth);
+    const maxVisibleH = Math.max(initialVisible.h, (visibleBounds.height * frameSize.w) / exportWidth);
 
     if (d.mode === 'move') {
       setTx(d.initial.tx + dx);
@@ -158,28 +175,36 @@ export function ThumbnailCanvasEditor({
     // Symmetric resize around the image center so the subject stays centered
     // regardless of which handle is dragged.
     if (locked) {
-      // Locked: preserve the original image aspect ratio.
+      // Locked: preserve the real visible image aspect ratio.
       const projW = (deltaW || deltaH * ratio) * 2;
-      const nw = Math.min(Math.max(40, d.initial.tw + projW), maxTw);
-      const nh = Math.min(nw / ratio, maxTh);
-      const cx = d.initial.tx + d.initial.tw / 2;
-      const cy = d.initial.ty + d.initial.th / 2;
-      setTx(cx - nw / 2);
-      setTy(cy - nh / 2);
+      let visibleW = Math.min(Math.max(40, initialVisible.w + projW), maxVisibleW);
+      let visibleH = visibleW / ratio;
+      if (visibleH > maxVisibleH) {
+        visibleH = maxVisibleH;
+        visibleW = visibleH * ratio;
+      }
+      const nextScaleX = visibleW / visibleBounds.width;
+      const nextScaleY = visibleH / visibleBounds.height;
+      const nw = sourceBounds.width * nextScaleX;
+      const nh = sourceBounds.height * nextScaleY;
+      setTx(visibleCx - (sourceOffsetX + visibleBounds.width / 2) * nextScaleX);
+      setTy(visibleCy - (sourceOffsetY + visibleBounds.height / 2) * nextScaleY);
       setTw(nw);
       setTh(nh);
     } else {
-      // Unlocked: resize freely along the dragged axes, capped at real size.
-      const nw = Math.min(Math.max(40, d.initial.tw + deltaW * 2), maxTw);
-      const nh = Math.min(Math.max(40, d.initial.th + deltaH * 2), maxTh);
-      const cx = d.initial.tx + d.initial.tw / 2;
-      const cy = d.initial.ty + d.initial.th / 2;
-      setTx(cx - nw / 2);
-      setTy(cy - nh / 2);
+      // Unlocked: resize the real visible image freely, capped at real size.
+      const visibleW = Math.min(Math.max(40, initialVisible.w + deltaW * 2), maxVisibleW);
+      const visibleH = Math.min(Math.max(40, initialVisible.h + deltaH * 2), maxVisibleH);
+      const nextScaleX = visibleW / visibleBounds.width;
+      const nextScaleY = visibleH / visibleBounds.height;
+      const nw = sourceBounds.width * nextScaleX;
+      const nh = sourceBounds.height * nextScaleY;
+      setTx(visibleCx - (sourceOffsetX + visibleBounds.width / 2) * nextScaleX);
+      setTy(visibleCy - (sourceOffsetY + visibleBounds.height / 2) * nextScaleY);
       setTw(nw);
       setTh(nh);
     }
-  }, [img, sourceBounds, locked, frameSize.w, exportWidth]);
+  }, [img, sourceBounds, visibleBounds, locked, frameSize.w, exportWidth]);
 
   const onPointerUp = (e: React.PointerEvent) => {
     try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch {}
@@ -239,6 +264,17 @@ export function ThumbnailCanvasEditor({
     { key: 'e',  cls: '-right-1.5 top-1/2 -translate-y-1/2', cursor: 'cursor-ew-resize' },
   ];
 
+  const visibleRect = img && sourceBounds && visibleBounds && frameSize.w > 0 ? (() => {
+    const scaleX = tw / sourceBounds.width;
+    const scaleY = th / sourceBounds.height;
+    return {
+      left: tx + (visibleBounds.x - sourceBounds.x) * scaleX,
+      top: ty + (visibleBounds.y - sourceBounds.y) * scaleY,
+      width: visibleBounds.width * scaleX,
+      height: visibleBounds.height * scaleY,
+    };
+  })() : null;
+
   return (
     <div className="space-y-3">
       <div
@@ -246,19 +282,16 @@ export function ThumbnailCanvasEditor({
         className="relative w-full overflow-hidden rounded-lg border border-border bg-[hsl(var(--surface-1))] select-none"
         style={{ aspectRatio: String(aspect) }}
       >
-        {img && sourceBounds && frameSize.w > 0 && (
+        {img && sourceBounds && visibleRect && frameSize.w > 0 && (
+          <>
           <div
-            className="absolute touch-none cursor-move overflow-hidden"
+            className="absolute overflow-hidden pointer-events-none"
             style={{
               left: tx,
               top: ty,
               width: tw,
               height: th,
             }}
-            onPointerDown={(e) => onPointerDown(e, 'move')}
-            onPointerMove={onPointerMove}
-            onPointerUp={onPointerUp}
-            onPointerCancel={onPointerUp}
           >
             <img
               src={img.src}
@@ -272,6 +305,15 @@ export function ThumbnailCanvasEditor({
                 height: img.naturalHeight * (th / sourceBounds.height),
               }}
             />
+          </div>
+          <div
+            className="absolute touch-none cursor-move"
+            style={visibleRect}
+            onPointerDown={(e) => onPointerDown(e, 'move')}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerCancel={onPointerUp}
+          >
             {/* Outline */}
             <div className="absolute inset-0 ring-2 ring-primary/70 pointer-events-none" />
             {/* Handles */}
@@ -288,6 +330,7 @@ export function ThumbnailCanvasEditor({
               />
             ))}
           </div>
+          </>
         )}
         <div className="absolute inset-0 pointer-events-none ring-1 ring-border" />
       </div>

@@ -106,7 +106,8 @@ export function ChannelEventModal({ open, onOpenChange, channelId, serverId, ini
   const handleApplyCrop = async (blob: Blob) => {
     try {
       setUploading(true);
-      const url = await uploadEventThumbnail(channelId, blob, 'thumb.jpg');
+      const isPng = blob.type === 'image/png';
+      const url = await uploadEventThumbnail(channelId, blob, isPng ? 'thumb.png' : 'thumb.jpg');
       setThumbnailUrl(url);
       setPendingFile(null);
     } catch (e: any) {

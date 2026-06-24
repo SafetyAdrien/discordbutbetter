@@ -9,6 +9,8 @@ interface Props {
   aspect?: number;
   /** Target export size in px (width). */
   exportWidth?: number;
+  /** Keep the source frame intact instead of re-cropping transparent pixels. */
+  preserveFrame?: boolean;
   onCancel: () => void;
   onConfirm: (blob: Blob) => void | Promise<void>;
 }
@@ -27,6 +29,7 @@ export function ThumbnailCanvasEditor({
   file,
   aspect = 1,
   exportWidth = 1024,
+  preserveFrame = false,
   onCancel,
   onConfirm,
 }: Props) {
@@ -61,7 +64,7 @@ export function ThumbnailCanvasEditor({
     im.onload = () => {
       let bounds: OpaqueBounds = { x: 0, y: 0, width: im.naturalWidth, height: im.naturalHeight };
 
-      if (sourceMayHaveTransparency(file)) {
+      if (!preserveFrame && sourceMayHaveTransparency(file)) {
         try {
           const canvas = document.createElement('canvas');
           canvas.width = im.naturalWidth;
@@ -82,7 +85,7 @@ export function ThumbnailCanvasEditor({
     };
     im.src = url;
     return () => URL.revokeObjectURL(url);
-  }, [file]);
+  }, [file, preserveFrame]);
 
   // Measure frame
   useEffect(() => {
@@ -97,8 +100,10 @@ export function ThumbnailCanvasEditor({
     return () => ro.disconnect();
   }, [aspect]);
 
-  // Initialize transform to match the day card rendering: the visible content
-  // (opaque bounds) covers the frame entirely (object-cover, centered).
+  // Initialize transform to match the day card rendering: the active source
+  // rectangle covers the frame entirely (object-cover, centered). When editing
+  // an already-saved thumbnail, the saved frame is preserved so reopening it
+  // does not zoom/crop it differently from the calendar card.
   useEffect(() => {
     if (!img || !sourceBounds || !frameSize.w) return;
     const coverScale = Math.max(

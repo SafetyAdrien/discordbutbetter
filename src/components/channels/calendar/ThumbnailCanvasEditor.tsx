@@ -117,25 +117,39 @@ export function ThumbnailCanvasEditor({
       setTy(d.initial.ty + dy);
       return;
     }
-    // Resize — keep aspect ratio AND scale around the image center so the
-    // subject stays centered regardless of which handle is dragged.
+
     const h = d.handle!;
     let deltaW = 0, deltaH = 0;
     if (h.includes('e')) deltaW = dx;
     if (h.includes('w')) deltaW = -dx;
     if (h.includes('s')) deltaH = dy;
     if (h.includes('n')) deltaH = -dy;
-    // Symmetric resize: each side grows/shrinks by the same delta.
-    const projW = (deltaW || deltaH * ratio) * 2;
-    const nw = Math.max(40, d.initial.tw + projW);
-    const nh = Math.max(40 / ratio, nw / ratio);
-    const cx = d.initial.tx + d.initial.tw / 2;
-    const cy = d.initial.ty + d.initial.th / 2;
-    setTx(cx - nw / 2);
-    setTy(cy - nh / 2);
-    setTw(nw);
-    setTh(nh);
-  }, [img]);
+
+    // Symmetric resize around the image center so the subject stays centered
+    // regardless of which handle is dragged.
+    if (locked) {
+      // Locked: preserve the original image aspect ratio.
+      const projW = (deltaW || deltaH * ratio) * 2;
+      const nw = Math.max(40, d.initial.tw + projW);
+      const nh = Math.max(40 / ratio, nw / ratio);
+      const cx = d.initial.tx + d.initial.tw / 2;
+      const cy = d.initial.ty + d.initial.th / 2;
+      setTx(cx - nw / 2);
+      setTy(cy - nh / 2);
+      setTw(nw);
+      setTh(nh);
+    } else {
+      // Unlocked: resize freely along the dragged axes.
+      const nw = Math.max(40, d.initial.tw + deltaW * 2);
+      const nh = Math.max(40, d.initial.th + deltaH * 2);
+      const cx = d.initial.tx + d.initial.tw / 2;
+      const cy = d.initial.ty + d.initial.th / 2;
+      setTx(cx - nw / 2);
+      setTy(cy - nh / 2);
+      setTw(nw);
+      setTh(nh);
+    }
+  }, [img, locked]);
 
   const onPointerUp = (e: React.PointerEvent) => {
     try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch {}

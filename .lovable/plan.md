@@ -1,66 +1,35 @@
-# Correctifs Calendrier
+## Plan — Fond uniforme sur toutes les cartes du calendrier
 
-## 1. Modal — Configuration de date « Journée entière »
-Dans `src/components/channels/calendar/ChannelEventModal.tsx` :
-- Quand `allDay = true` :
-  - Masquer/désactiver complètement les inputs `date` de début **et** de fin.
-  - Afficher à la place un sélecteur unique « Date » (une seule journée), ou un range simple « Du / Au » uniquement en `date` si l'utilisateur veut plusieurs jours — mais sans heures.
-- Quand `allDay = false` : comportement actuel (date + time pour début et fin).
-- Recalibrer `handleSubmit` : en mode journée entière → `starts_at = 00:00:00`, `ends_at = 23:59:59` du jour choisi (ou du dernier jour si plusieurs).
+### Objectif
+Donner à chaque case « jour » du calendrier un fond par défaut légèrement plus clair que la zone du calendrier, et faire en sorte que les images à fond transparent s'intègrent visuellement sur ce même fond (sans bord noir résiduel).
 
-## 2. Suppression de la sélection de couleur
-- Retirer le bloc « Couleur » du modal (preset + ModernColorPicker + state `color`/`showColorPicker`).
-- Garder la colonne `color` côté DB pour compat (default `#5865F2`), simplement ne plus l'envoyer depuis le client.
-- Retirer l'affichage des pastilles de couleur dans `CalendarChannel.tsx` (ou forcer une couleur neutre tirée du token `--primary`).
+### Changements dans `src/components/channels/CalendarChannel.tsx`
 
-## 3. Canvas de redimensionnement de la miniature
-Nouveau composant `src/components/channels/calendar/ThumbnailCanvasEditor.tsx` :
-- Après upload local d'une image, l'afficher dans un canvas (ratio 21/9 comme la carte).
-- L'utilisateur peut :
-  - Déplacer l'image dans le cadre (drag).
-  - Redimensionner via 4 poignées coin (flèches diagonales) + 4 poignées milieu (flèches axiales) qui suivent l'échelle de l'image.
-  - Wheel/pinch pour zoom (bonus).
-- Sur validation : rendre le canvas à la taille cible (ex. 1680×720), exporter en `Blob` JPEG/PNG, puis appeler `uploadEventThumbnail` avec ce blob (au lieu du fichier brut).
-- Intégrer dans le modal : après sélection de fichier → afficher l'éditeur ; bouton « Appliquer » → upload du blob recadré ; bouton « Annuler » → revenir.
+1. **Fond par défaut des cartes** (boucle `paddedDays.map`) :
+   - Ajouter une classe de fond systématique `bg-[hsl(var(--surface-1))]` (ou `bg-surface-1`) sur le `<button>` de chaque case — y compris les cases vides et les cases avec événement.
+   - Supprimer la condition `!thumbEvent && 'hover:bg-muted'` → garder un hover uniforme (`hover:bg-[hsl(var(--surface-2))]`) pour toutes les cases.
+   - Garder `bg-primary/10` pour la case « aujourd'hui » en superposition légère (via ring ou via overlay) afin de ne pas écraser le fond uniforme.
 
-Aucune lib externe (canvas natif + pointer events), aligné sur l'approche existante de `AvatarUploadEditor`.
+2. **Cases padding (mois précédent/suivant vides)** : remplacer `<div className="aspect-square" />` par une case également stylée avec le fond, pour une grille visuellement cohérente. Option : laisser ces cellules vides sans fond — à confirmer (cf. question ci-dessous, choix par défaut = avec fond plus discret `bg-[hsl(var(--surface-1))]/40`).
 
-## 4. Fix « l'événement ne se publie pas »
-Cause probable : la policy INSERT exige la permission `create_events` (ou `manage_events`), que les membres standards n'ont pas par défaut → l'insert échoue silencieusement (toast d'erreur peut être masqué par le close du modal).
+3. **Composant `DayThumbnail`** :
+   - Aujourd'hui, quand l'image a un alpha, on rend `object-contain` sur fond transparent → le PNG montrait son propre fond noir d'origine (cas Minecraft) car l'image elle-même est noire dans ses coins.
+   - Le fond noir visible sur la capture provient en réalité de l'image (icône Minecraft sur fond noir), pas d'un overlay applicatif.
+   - Conserver la détection d'alpha existante, mais s'assurer qu'aucun fond noir ne soit ajouté côté carte : la case ayant désormais `bg-surface-1`, le PNG transparent reposera automatiquement sur ce fond clair.
+   - Ne plus rendre l'overlay sombre quand `hasAlpha = true` (déjà le cas).
 
-Actions :
-- **DB (migration)** : assouplir la policy d'insert pour autoriser tout membre disposant de `view_channel` sur le salon calendrier à créer un événement (aligné avec le besoin produit — la gate « manage » reste pour update/delete des événements d'autrui via `manage_events`). Update/Delete restent en l'état (créateur OU `manage_events`).
-- **Client** : dans `handleSubmit`, attendre la mutation **avant** `onOpenChange(false)`, et n'appeler `onOpenChange(false)` que dans le `then` réussi pour que les erreurs s'affichent. Logger `error.message` + `error.code` dans le toast pour debug futur.
-- **Storage RLS** : aligner la policy d'upload du bucket `channel-event-thumbnails` sur `view_channel` également (sinon le upload échoue avant l'insert).
+### Tokens / couleurs
+- Réutiliser le token sémantique existant `--surface-1` (déjà utilisé ailleurs, ex. `EventAgendaCard`).
+- Le hover passe à `--surface-2`.
+- Aucun nouveau token requis ; aucun hex en dur.
 
-## Détails techniques
+### Test à mettre à jour / ajouter
+- Mettre à jour `DayThumbnail.transparency.test.tsx` : vérifier que la case (button) porte bien la classe de fond `bg-[hsl(var(--surface-1))]` même en présence d'une miniature transparente. (Optionnel — uniquement si le test couvre le button parent ; sinon, ajouter un petit test sur le rendu de la grille avec un mock minimal.)
 
-```text
-ChannelEventModal
- ├─ allDay ? <DateOnlyRange/>  : <DateTimeRange/>
- ├─ Thumbnail
- │    ├─ pas d'image  → bouton « Ajouter »
- │    ├─ image brute  → ThumbnailCanvasEditor (drag + 8 handles)
- │    └─ image validée → preview + bouton « Re-éditer » / Trash
- └─ (couleur retirée)
-```
+### Question (1)
+Pour les cases du mois précédent/suivant (les jours « vides » de padding), souhaites-tu :
+- **A** — même fond `surface-1` que les autres cases (grille uniforme, plein),
+- **B** — fond `surface-1` mais opacité réduite (40 %) pour les distinguer,
+- **C** — laisser sans fond (vides comme actuellement).
 
-Migration SQL (résumé) :
-
-```sql
-DROP POLICY "Members with create_events can insert" ON public.channel_calendar_events;
-CREATE POLICY "Members can insert events" ON public.channel_calendar_events
-FOR INSERT TO authenticated
-WITH CHECK (
-  auth.uid() = created_by
-  AND public.has_channel_permission(auth.uid(), channel_id, 'view_channel'::server_permission)
-);
--- même bascule sur storage.objects (upload thumbnails) → view_channel
-```
-
-## Fichiers touchés
-- `src/components/channels/calendar/ChannelEventModal.tsx` (refonte date + suppression couleur + intégration éditeur)
-- `src/components/channels/calendar/ThumbnailCanvasEditor.tsx` (nouveau)
-- `src/components/channels/CalendarChannel.tsx` (retirer affichage couleur)
-- `src/hooks/useChannelCalendarEvents.ts` (signature `uploadEventThumbnail` accepte Blob)
-- 1 nouvelle migration (RLS insert + storage)
+Par défaut, je partirai sur **B** si tu ne précises pas.

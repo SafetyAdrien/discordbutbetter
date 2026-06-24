@@ -343,7 +343,7 @@ export function CalendarChannel({ channel, onToggleMembers, showMembers }: Calen
  * (by sampling its corners on a canvas) and only renders the dark gradient
  * overlay for opaque images, so transparent PNGs stay fully transparent.
  */
-function DayThumbnail({ url }: { url: string }) {
+export function DayThumbnail({ url }: { url: string }) {
   const [hasAlpha, setHasAlpha] = useState(false);
 
   useEffect(() => {

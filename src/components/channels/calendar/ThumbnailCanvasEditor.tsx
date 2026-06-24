@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Loader2, Check, X } from 'lucide-react';
-import { cropCanvasToOpaqueBounds, sourceMayHaveTransparency } from './thumbnailAlpha';
+import { sourceMayHaveTransparency } from './thumbnailAlpha';
 
 interface Props {
   file: File;
@@ -116,24 +116,24 @@ export function ThumbnailCanvasEditor({
       setTy(d.initial.ty + dy);
       return;
     }
-    // Resize — keep aspect ratio of the image
-    let { tx: nx, ty: ny, tw: nw, th: nh } = d.initial;
+    // Resize — keep aspect ratio AND scale around the image center so the
+    // subject stays centered regardless of which handle is dragged.
     const h = d.handle!;
-    // Use dx as primary delta for horizontal handles, dy for vertical
     let deltaW = 0, deltaH = 0;
     if (h.includes('e')) deltaW = dx;
     if (h.includes('w')) deltaW = -dx;
     if (h.includes('s')) deltaH = dy;
     if (h.includes('n')) deltaH = -dy;
-    // Choose dominant axis to preserve ratio
-    const projW = deltaW || deltaH * ratio;
-    const projH = projW / ratio;
-    nw = Math.max(40, d.initial.tw + projW);
-    nh = Math.max(40 / ratio, nw / ratio);
-    // Anchor opposite side
-    if (h.includes('w')) nx = d.initial.tx + (d.initial.tw - nw);
-    if (h.includes('n')) ny = d.initial.ty + (d.initial.th - nh);
-    setTx(nx); setTy(ny); setTw(nw); setTh(nh);
+    // Symmetric resize: each side grows/shrinks by the same delta.
+    const projW = (deltaW || deltaH * ratio) * 2;
+    const nw = Math.max(40, d.initial.tw + projW);
+    const nh = Math.max(40 / ratio, nw / ratio);
+    const cx = d.initial.tx + d.initial.tw / 2;
+    const cy = d.initial.ty + d.initial.th / 2;
+    setTx(cx - nw / 2);
+    setTy(cy - nh / 2);
+    setTw(nw);
+    setTh(nh);
   }, [img]);
 
   const onPointerUp = (e: React.PointerEvent) => {
@@ -153,9 +153,9 @@ export function ThumbnailCanvasEditor({
       canvas.height = outH;
       const ctx = canvas.getContext('2d')!;
       ctx.imageSmoothingQuality = 'high';
-      // Preserve transparency: export PNG when the source can contain alpha.
-      // Transparent exports are cropped to the opaque pixels so the actual shape,
-      // not its empty canvas, fills the calendar day card.
+      // Preserve transparency: export PNG when the source can contain alpha,
+      // keeping the user's exact framing (no auto-crop) so what they see in
+      // the preview matches the saved thumbnail pixel-for-pixel.
       const isTransparentSource = sourceMayHaveTransparency(file);
       if (!isTransparentSource) {
         ctx.fillStyle = '#000000';
@@ -168,11 +168,10 @@ export function ThumbnailCanvasEditor({
         Math.round(tw * scale),
         Math.round(th * scale)
       );
-      const exportCanvas = isTransparentSource ? cropCanvasToOpaqueBounds(canvas) : canvas;
       const mime = isTransparentSource ? 'image/png' : 'image/jpeg';
       const quality = isTransparentSource ? undefined : 0.9;
       const blob: Blob = await new Promise((res, rej) =>
-        exportCanvas.toBlob((b) => (b ? res(b) : rej(new Error('Canvas export failed'))), mime, quality)
+        canvas.toBlob((b) => (b ? res(b) : rej(new Error('Canvas export failed'))), mime, quality)
       );
       await onConfirm(blob);
     } finally {

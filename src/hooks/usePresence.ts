@@ -83,10 +83,9 @@ export function usePresence() {
   useEffect(() => {
     if (profile) {
       currentStatusRef.current = profile.status;
-      // @ts-expect-error manual_status présent en BDD
-      if (profile.manual_status !== undefined) {
-        // @ts-expect-error
-        manualStatusRef.current = profile.manual_status ?? null;
+      const manual = (profile as any).manual_status as UserStatus | null | undefined;
+      if (manual !== undefined) {
+        manualStatusRef.current = manual ?? null;
       }
     }
   }, [profile?.status, (profile as any)?.manual_status]);

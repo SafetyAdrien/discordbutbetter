@@ -286,7 +286,7 @@ export function ChannelEventModal({ open, onOpenChange, channelId, serverId, ini
             >+</button>
           </div>
           {showColorPicker && (
-            <div className="mt-2"><ModernColorPicker color={color} onChange={setColor} /></div>
+            <div className="mt-2"><ModernColorPicker value={color} onChange={setColor} /></div>
           )}
         </div>
 

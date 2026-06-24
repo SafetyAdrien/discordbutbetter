@@ -249,16 +249,29 @@ export function ThumbnailCanvasEditor({
         <div className="absolute inset-0 pointer-events-none ring-1 ring-border" />
       </div>
       <p className="text-xs text-muted-foreground">
-        Déplacez l'image et utilisez les poignées pour la redimensionner. Le cadre représente la miniature finale.
+        Déplacez l'image et utilisez les poignées pour la redimensionner. Le cadre représente la miniature finale. Activez le verrou pour conserver le ratio d'origine.
       </p>
-      <div className="flex justify-end gap-2">
-        <Button variant="ghost" onClick={onCancel} disabled={busy}>
-          <X className="w-4 h-4 mr-1" /> Annuler
+      <div className="flex justify-between items-center">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setLocked((v) => !v)}
+          title={locked ? 'Déverrouiller les proportions' : 'Verrouiller les proportions'}
+          aria-label={locked ? 'Déverrouiller les proportions' : 'Verrouiller les proportions'}
+          className="text-xs"
+        >
+          {locked ? <Lock className="w-4 h-4 mr-1.5" /> : <Unlock className="w-4 h-4 mr-1.5" />}
+          {locked ? 'Proportions verrouillées' : 'Proportions libres'}
         </Button>
-        <Button onClick={handleConfirm} disabled={busy || !img}>
-          {busy ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Check className="w-4 h-4 mr-1" />}
-          Appliquer
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="ghost" onClick={onCancel} disabled={busy}>
+            <X className="w-4 h-4 mr-1" /> Annuler
+          </Button>
+          <Button onClick={handleConfirm} disabled={busy || !img}>
+            {busy ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Check className="w-4 h-4 mr-1" />}
+            Appliquer
+          </Button>
+        </div>
       </div>
     </div>
   );

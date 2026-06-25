@@ -7,7 +7,20 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { useProfile } from '@/hooks/useProfiles';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+
+function useProfile(userId: string | undefined) {
+  return useQuery({
+    queryKey: ['profile-lite', userId],
+    enabled: !!userId,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data } = await supabase.from('profiles').select('id, display_name, avatar_url').eq('id', userId!).maybeSingle();
+      return data as { id: string; display_name: string | null; avatar_url: string | null } | null;
+    },
+  });
+}
 import { useAuth } from '@/contexts/AuthContext';
 import { useForumComments, useCreateForumComment, useDeleteForumComment } from '@/hooks/useForumComments';
 import { useDeleteForumPost, useToggleForumVote, type ForumPost } from '@/hooks/useForumPosts';

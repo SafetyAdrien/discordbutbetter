@@ -11,7 +11,9 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Upload, Save, Trash2, ArrowLeft, Award } from 'lucide-react';
+import { Loader2, Upload, Save, Trash2, ArrowLeft, Award, Palette } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ModernColorPicker } from '@/components/profile/calendar/ModernColorPicker';
 import { toast } from 'sonner';
 
 interface ProfileSearchResult {

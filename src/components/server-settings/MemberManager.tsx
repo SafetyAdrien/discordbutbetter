@@ -56,6 +56,7 @@ export function MemberManager({ serverId }: MemberManagerProps) {
   const [banTarget, setBanTarget] = useState<{ id: string; name: string } | null>(null);
   const [banReason, setBanReason] = useState('');
   const [secondOwnerTarget, setSecondOwnerTarget] = useState<{ id: string; name: string } | null>(null);
+  const [removeSecondOwnerTarget, setRemoveSecondOwnerTarget] = useState<{ id: string; name: string } | null>(null);
   const [transferTarget, setTransferTarget] = useState<{ id: string; name: string } | null>(null);
 
   const { isGod, hasPermission } = usePermissions(serverId);

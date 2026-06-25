@@ -1,44 +1,39 @@
 ## Objectif
-Appliquer la même architecture cache-first (zéro latence) aux **threads** (liste + vue ouverte) et aux **aperçus de liens** : tout doit s'afficher instantanément depuis le cache local au premier frame, puis se rafraîchir silencieusement en arrière-plan.
+Liste des serveurs et liste des salons rendues au premier frame, sans flash vide, en s'appuyant sur l'architecture cache-first (IndexedDB + React Query) déjà en place pour les messages/threads.
 
-## 1) Fils (Threads)
+## Constat actuel
+- `useServers` lit déjà `cacheGetSync('servers:<userId>')` via `initialData`. ✅
+- `useChannels` lit déjà `cacheGetSync('channels:<serverId>')` via `initialData`. ✅
+- Mais au tout premier render après un cold start, `warmCache()` hydrate IDB → mémoire **en arrière-plan** : `cacheGetSync` peut donc retourner `undefined` au mount initial, et la liste reste vide jusqu'au retour réseau.
+- Le pont `useCacheRehydrate` couvre déjà `messages:*`, `dm-messages:*`, `thread-messages:*`, `threads:*`, `thread:*`, `url-meta:*` — mais **pas** `servers:*` ni `channels:*`. Conséquence : quand IDB finit d'hydrater, rien ne pousse la donnée dans React Query → on attend la requête réseau.
 
-État actuel :
-- `useThreads(channelId)` lit déjà via `placeholderData: cacheGetSync('threads:…')`, mais le **bridge IDB→React Query** (`useCacheRehydrate`) n'écoute QUE `messages:* / dm-messages:* / thread-messages:*` — les listes de threads ne sont jamais réinjectées si la mémoire n'est pas encore hydratée au moment du premier render.
-- `useThread(threadId)` (vue détail) n'a **ni placeholderData, ni cache persistant** → chaque ouverture attend le réseau (~300–800 ms de latence visible).
-- `ThreadsPopover` affiche un skeleton tant que `isLoading` est vrai, ce qui flashe sur cold-cache.
-- `useThreadMessages` est déjà OK (cache + bridge + placeholderData).
+## Plan
 
-Changements :
-- **`src/hooks/useCacheRehydrate.ts`** : ajouter le routage des clés `threads:<channelId>` → `['threads', channelId]` et `thread:<threadId>` → `['thread', threadId]`, en gardant la garantie "ne pas écraser de données fraîches".
-- **`src/hooks/useThreads.ts`** :
-  - `useThread(threadId)` : ajouter `placeholderData: () => cacheGetSync('thread:'+threadId)`, `staleTime: 30_000`, `refetchOnMount` conditionnel, et persister via `cacheSetAsync` quand la donnée vient du réseau.
-  - `useThreads` : conserver le comportement actuel ; assouplir `refetchOnMount` pour ne pas rejouer la requête n+1 lourde si du cache est dispo.
-- **`src/components/threads/ThreadsPopover.tsx`** : ne plus afficher le skeleton quand on a déjà des données (`threads.length > 0` ou `data !== undefined`) — uniquement quand le cache est réellement vide ET qu'on charge pour la toute première fois.
+### 1. Étendre le pont `useCacheRehydrate`
+Fichier : `src/hooks/useCacheRehydrate.ts`
+- Ajouter le routage des clés :
+  - `servers:<userId>` → `['servers']` (la queryKey n'inclut pas l'userId côté React Query, mais on n'écrit que si la query est vide, sans risque de cross-user puisque la clé IDB est scopée user).
+  - `channels:<serverId>` → `['channels', serverId]`.
+- Garder la garde existante "ne pas écraser une donnée fraîche déjà présente".
 
-## 2) Aperçus de liens (Link previews)
+### 2. Élargir la condition de seed (anti-flash)
+Toujours dans `useCacheRehydrate` : pour ces deux clés, autoriser le seed si `existing.data === undefined` **ou** si la donnée actuelle est vide (`[]` pour servers, `{ categories: [], orphanChannels: [] }` pour channels). Cela couvre le cas où `useServers`/`useChannels` ont initialisé avec un fallback vide avant la fin de l'hydratation IDB.
 
-État actuel :
-- `useUrlMetadata` n'a qu'un `Map` mémoire : tout reload / changement de salon = nouveau fetch via l'edge function `fetch-url-metadata` (latence visible + skeleton qui flashe).
-- Aucune persistance IDB, aucun seed synchrone au premier render.
+### 3. Précharger les salons de tous les serveurs connus
+Aujourd'hui `channels:<serverId>` n'est persisté que lorsque l'utilisateur ouvre le serveur. Pour que le premier clic sur n'importe quel serveur soit instantané :
+- Dans `src/hooks/useServers.ts`, après réception de `query.data`, déclencher en arrière-plan un `queryClient.prefetchQuery({ queryKey: ['channels', s.id], queryFn: ... })` pour chaque serveur, **uniquement** si le cache local pour ce serveur est absent ou vide. Throttle simple (max 3 en parallèle) pour ne pas saturer.
+- Effet : à chaque ouverture d'app, les salons de tous les serveurs sont en cache mémoire + IDB ; n'importe quelle navigation entre serveurs est rendue synchrone.
 
-Changements :
-- **`src/hooks/useUrlMetadata.ts`** :
-  - Au démarrage du hook, lire `cacheGetSync('url-meta:'+url)` pour initialiser `data` ET passer `isLoading=false` si un cache existe (TTL 7 jours, vérifié sur le timestamp stocké).
-  - Après un fetch réussi, écrire `cacheSetAsync('url-meta:'+url, { meta, fetchedAt })`.
-  - Cache négatif (null) persisté aussi pour éviter de re-tenter en boucle (TTL plus court, 1h).
-  - Conserver la dédup `pendingRequests`.
-- **`src/hooks/useCacheRehydrate.ts`** : ajouter la route `url-meta:*` pour réinjecter en mémoire dès que IDB hydrate (utile quand le composant LinkEmbed se monte avant que `warmCache` ait terminé).
-- **`src/components/chat/LinkEmbed.tsx`** : ne plus afficher le squelette quand `data` est déjà défini (déjà le cas) ; supprimer le `setTimedOut(10s)` qui peut faire reflasher l'embed à vide — remplacer par un simple `if (isLoading && !data) skeleton`.
+### 4. Vérifications
+- Confirmer que `warmCache()` notifie bien `servers:*` et `channels:*` (déjà le cas — il itère sur toutes les clés IDB et émet `notifyHydrate`).
+- Aucun changement de schéma → pas d'incrément de `CACHE_SCHEMA_VERSION` requis.
+- Aucun changement aux mutations/optimistic updates existantes.
+
+## Fichiers modifiés
+- `src/hooks/useCacheRehydrate.ts` — ajout du routage `servers:` / `channels:`.
+- `src/hooks/useServers.ts` — préchargement des salons en arrière-plan après hydratation de la liste des serveurs.
 
 ## Résultat attendu
-- Ouverture d'un fil déjà visité : affiché au même frame (titre, créateur, messages) sans skeleton.
-- Liste de threads d'un salon déjà visité : visible instantanément à l'ouverture du popover.
-- Aperçu d'un lien déjà vu (même URL n'importe où) : rendu complet (titre, image, description, couleur) sans flash skeleton, même après reload F5.
-- Premiers chargements (cold) : skeleton uniquement pendant la VRAIE absence de cache, puis remplissage live.
-
-## Détails techniques
-- Réutilisation stricte de l'infra existante (`cacheGetSync`, `cacheSetAsync`, `subscribeCacheHydrate`, schema version `CACHE_SCHEMA_VERSION`).
-- Aucun changement de schéma DB.
-- Aucune modification d'edge function.
-- Aucune modification des mutations existantes (create/update/delete thread) — leurs invalidations restent compatibles.
+- Cold start : la liste des serveurs et celle des salons du serveur actif s'affichent au premier frame dès la 2ᵉ visite (cache IDB primé).
+- Navigation entre serveurs : zéro latence — la liste des salons est déjà en mémoire grâce au préchargement.
+- Aucune régression sur les mutations (drag & drop, création/suppression) qui restent optimistes.

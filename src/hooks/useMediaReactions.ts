@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
@@ -43,8 +44,9 @@ export function useMediaPostReactions(postIds: string[]) {
     };
   }, [idsKey, user?.id, queryClient]);
 
-  return useQuery({
+  const query = useQuery({
     queryKey: ['media-reactions', postIds],
+    placeholderData: () => (postIds.length > 0 ? cacheGetSync(`media-reactions:${idsKey}`) : undefined),
     queryFn: async () => {
       if (postIds.length === 0) return {};
       const { data, error } = await (supabase
@@ -61,6 +63,14 @@ export function useMediaPostReactions(postIds: string[]) {
     },
     enabled: postIds.length > 0,
   });
+
+  useEffect(() => {
+    if (query.data && postIds.length > 0 && !query.isPlaceholderData) {
+      cacheSetAsync(`media-reactions:${idsKey}`, query.data);
+    }
+  }, [query.data, idsKey, postIds.length, query.isPlaceholderData]);
+
+  return query;
 }
 
 export function useToggleMediaReaction() {

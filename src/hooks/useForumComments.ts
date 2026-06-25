@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
@@ -20,6 +21,7 @@ export function useForumComments(postId: string | null) {
   const query = useQuery<ForumComment[]>({
     queryKey: ['forum-comments', postId],
     enabled: !!postId,
+    placeholderData: () => (postId ? cacheGetSync(`forum-comments:${postId}`) : undefined),
     queryFn: async () => {
       const { data, error } = await (supabase.from('forum_post_comments' as any) as any)
         .select('*')
@@ -43,6 +45,12 @@ export function useForumComments(postId: string | null) {
     return () => { supabase.removeChannel(ch); };
   }, [postId, queryClient]);
 
+  useEffect(() => {
+    if (query.data && postId && !query.isPlaceholderData) {
+      cacheSetAsync(`forum-comments:${postId}`, query.data);
+    }
+  }, [query.data, postId, query.isPlaceholderData]);
+
   return query;
 }
 
@@ -60,10 +68,29 @@ export function useCreateForumComment(postId: string) {
       if (error) throw error;
       return data as ForumComment;
     },
-    onSuccess: () => {
+    onMutate: async (content: string) => {
+      if (!user) return;
+      await queryClient.cancelQueries({ queryKey: ['forum-comments', postId] });
+      const previous = queryClient.getQueryData<ForumComment[]>(['forum-comments', postId]);
+      const optimistic: ForumComment = {
+        id: `temp-${Date.now()}`,
+        post_id: postId,
+        author_id: user.id,
+        content: content.trim(),
+        parent_comment_id: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      queryClient.setQueryData<ForumComment[]>(['forum-comments', postId], (old = []) => [...old, optimistic]);
+      return { previous };
+    },
+    onError: (e: any, _v, ctx) => {
+      if (ctx?.previous) queryClient.setQueryData(['forum-comments', postId], ctx.previous);
+      toast.error(e?.message ?? 'Erreur lors de l\'envoi');
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['forum-comments', postId] });
     },
-    onError: (e: any) => toast.error(e?.message ?? 'Erreur lors de l\'envoi'),
   });
 }
 

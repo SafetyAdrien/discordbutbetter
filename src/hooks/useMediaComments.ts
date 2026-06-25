@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
@@ -53,8 +54,9 @@ export function useMediaComments(postId: string) {
     };
   }, [postId, queryClient]);
 
-  return useQuery({
+  const query = useQuery({
     queryKey: ['media-comments', postId],
+    placeholderData: () => (postId ? cacheGetSync(`media-comments:${postId}`) : undefined),
     queryFn: async () => {
       const { data, error } = await (supabase
         .from('media_post_comments') as any)
@@ -120,6 +122,14 @@ export function useMediaComments(postId: string) {
     },
     enabled: !!postId,
   });
+
+  useEffect(() => {
+    if (query.data && postId && !query.isPlaceholderData) {
+      cacheSetAsync(`media-comments:${postId}`, query.data);
+    }
+  }, [query.data, postId, query.isPlaceholderData]);
+
+  return query;
 }
 
 export function useAddMediaComment() {

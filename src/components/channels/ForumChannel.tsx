@@ -200,7 +200,12 @@ export function ForumChannel({ channel, serverId, onToggleMembers, showMembers }
         onClose={() => setCreateOpen(false)}
         isPending={createPost.isPending}
         onSubmit={(data) => {
-          createPost.mutate(data, { onSuccess: () => setCreateOpen(false) });
+          createPost.mutate(data, {
+            onSuccess: (created) => {
+              setCreateOpen(false);
+              if (created) setActivePost(created as ForumPost);
+            },
+          });
         }}
       />
 

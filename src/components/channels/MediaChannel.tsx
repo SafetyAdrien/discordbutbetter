@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { UploadDropOverlay } from '@/components/chat/upload/UploadDropOverlay';
 import { useHasChannelPermission } from '@/hooks/useUserChannelPermissions';
 import { CreateMediaPostModal } from '@/components/channels/media/CreateMediaPostModal';
-import { MediaPostDetailModal } from '@/components/channels/media/MediaPostDetailModal';
+import { MediaPostSidePanel } from '@/components/channels/media/MediaPostSidePanel';
 import { useMediaPosts, useCreateMediaPost, type MediaPost } from '@/hooks/useMediaPosts';
 import { useMediaPostReactions, useToggleMediaReaction } from '@/hooks/useMediaReactions';
 import { ReactionBar } from '@/components/chat/ReactionBar';
@@ -107,13 +107,15 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
   };
 
   return (
+    <div className="flex-1 flex min-w-0 w-full overflow-hidden">
     <div
-      className="flex-1 flex flex-col bg-[hsl(var(--surface-2)/0.3)] min-w-0 w-full overflow-x-hidden relative"
+      className={cn('flex flex-col bg-[hsl(var(--surface-2)/0.3)] min-w-0 overflow-x-hidden relative', activePost ? 'flex-1 hidden md:flex' : 'flex-1 w-full')}
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
     >
+
       <AnimatePresence>
         {isDragging && <UploadDropOverlay channelName={channel.name} />}
       </AnimatePresence>
@@ -284,13 +286,18 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
         />
       )}
 
-      {activePost && (
-        <MediaPostDetailModal
+    </div>
+
+    {activePost && (
+      <div className="w-full md:w-[440px] lg:w-[520px] flex-shrink-0 h-full">
+        <MediaPostSidePanel
           post={activePost}
           channelId={channel.id}
           onClose={() => setActivePost(null)}
         />
-      )}
+      </div>
+    )}
     </div>
   );
 }
+

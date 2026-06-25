@@ -3,6 +3,8 @@ import { cn } from '@/lib/utils';
 
 interface CustomStatusBubbleProps {
   customStatus?: string | null;
+  /** User presence status. When 'offline', the bubble never renders (global rule). */
+  status?: string | null;
   onClick?: () => void;
   size?: 'sm' | 'md' | 'lg';
   /** Show "Quoi de neuf ?" placeholder when there is no status (own profile). */
@@ -17,11 +19,14 @@ interface CustomStatusBubbleProps {
  */
 export function CustomStatusBubble({
   customStatus,
+  status,
   onClick,
   size = 'md',
   showPlaceholder = false,
   className,
 }: CustomStatusBubbleProps) {
+  // Global rule: never show a custom status (nor placeholder) when offline.
+  if (status === 'offline') return null;
   if (!customStatus && !showPlaceholder) return null;
 
   // Unified visual identity across all profile views.

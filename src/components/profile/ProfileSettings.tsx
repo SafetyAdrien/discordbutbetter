@@ -327,3 +327,23 @@ export function ProfileSettings({ onClose }: ProfileSettingsProps) {
     </div>
   );
 }
+
+function ColorSwatchPopover({ color, onChange }: { color: string; onChange: (v: string) => void }) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="w-11 h-11 rounded-xl border border-border flex items-center justify-center hover:ring-2 hover:ring-primary/40 transition relative overflow-hidden"
+          style={{ backgroundColor: color }}
+          aria-label="Choisir une couleur"
+        >
+          <Palette className="w-4 h-4 text-white mix-blend-difference" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-[340px] p-0 border-none bg-transparent shadow-none">
+        <ModernColorPicker value={color} onChange={onChange} />
+      </PopoverContent>
+    </Popover>
+  );
+}

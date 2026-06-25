@@ -766,10 +766,11 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     prevChannelIdRef.current = channel.id;
   }, [channel.id]);
 
-  // Permission denied: show denied message only when permissions are resolved (not loading)
-  // During loading or channel transition, show nothing (neutral state) to avoid flash
+  // Permission denied: shown immediately based on cached/resolved verdict.
+  // We no longer wait for `permissionsLoading` because that caused a 1s flash
+  // of the writable input for users who actually don't have send_messages.
   const permissionDeniedMessage =
-    isChannelTransitioning || permissionsLoading || isAdminOrOwner || canSendMessages
+    isAdminOrOwner || canSendMessages
       ? undefined
       : "Vous n'avez pas la permission d'envoyer des messages dans ce salon.";
 

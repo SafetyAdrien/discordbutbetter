@@ -82,13 +82,115 @@ function readSyncMirror<T = any>(key: string): T | undefined {
   }
 }
 
+/**
+ * "Hot" prefixes that we aggressively keep in the synchronous localStorage
+ * mirror so that `cacheGetSync` returns instantly on cold boot — before
+ * IndexedDB hydration has finished.
+ */
+const HOT_PREFIXES = [
+  'messages:',
+  'thread-messages:',
+  'dm-messages:',
+  'threads:',
+  'thread:',
+  'channels:',
+  'servers:',
+  'categories:',
+];
+
+const SLIM_PREFIXES = ['messages:', 'thread-messages:', 'dm-messages:'];
+const SLIM_TAIL = 30;
+const MIRROR_MAX_BYTES = 80 * 1024;
+const LRU_KEY = `${DB_NAME}:lru`;
+
+function isHotKey(key: string): boolean {
+  return HOT_PREFIXES.some((p) => key.startsWith(p));
+}
+
+function isSlimKey(key: string): boolean {
+  return SLIM_PREFIXES.some((p) => key.startsWith(p));
+}
+
+function readLru(): Record<string, number> {
+  if (!canUseLocalStorage()) return {};
+  try {
+    const raw = window.localStorage.getItem(LRU_KEY);
+    return raw ? (JSON.parse(raw) as Record<string, number>) : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeLru(lru: Record<string, number>): void {
+  if (!canUseLocalStorage()) return;
+  try {
+    window.localStorage.setItem(LRU_KEY, JSON.stringify(lru));
+  } catch {}
+}
+
+function touchLru(key: string): void {
+  const lru = readLru();
+  lru[key] = Date.now();
+  writeLru(lru);
+}
+
+function evictOldestMirrors(): boolean {
+  if (!canUseLocalStorage()) return false;
+  const lru = readLru();
+  const entries = Object.entries(lru).sort((a, b) => a[1] - b[1]);
+  if (entries.length === 0) return false;
+  const removeCount = Math.max(1, Math.floor(entries.length * 0.25));
+  for (let i = 0; i < removeCount; i += 1) {
+    const [key] = entries[i];
+    delete lru[key];
+    try { window.localStorage.removeItem(getSyncStorageKey(key)); } catch {}
+  }
+  writeLru(lru);
+  return true;
+}
+
+function trySerialise(value: any): string | null {
+  try { return JSON.stringify(value); } catch { return null; }
+}
+
+function buildMirrorPayload(key: string, value: any): string | null {
+  let payload = trySerialise(value);
+  if (payload === null) return null;
+
+  if (payload.length > MIRROR_MAX_BYTES && isSlimKey(key) && Array.isArray(value)) {
+    const slim = value.slice(-SLIM_TAIL);
+    const slimPayload = trySerialise(slim);
+    if (slimPayload && slimPayload.length <= MIRROR_MAX_BYTES) return slimPayload;
+    return null;
+  }
+
+  if (payload.length > MIRROR_MAX_BYTES) return null;
+  return payload;
+}
+
 function writeSyncMirror(key: string, value: any): void {
   if (!canUseLocalStorage()) return;
 
-  try {
-    window.localStorage.setItem(getSyncStorageKey(key), JSON.stringify(value));
-  } catch {
-    // Ignore quota or serialization errors — memory/IDB still work
+  const payload = buildMirrorPayload(key, value);
+  if (payload === null) {
+    try { window.localStorage.removeItem(getSyncStorageKey(key)); } catch {}
+    return;
+  }
+
+  const fullKey = getSyncStorageKey(key);
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    try {
+      window.localStorage.setItem(fullKey, payload);
+      if (isHotKey(key)) touchLru(key);
+      return;
+    } catch (err: any) {
+      const name = err?.name || '';
+      if (name === 'QuotaExceededError' || name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+        if (!evictOldestMirrors()) return;
+        continue;
+      }
+      return;
+    }
   }
 }
 

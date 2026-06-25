@@ -116,6 +116,9 @@ export const useThreads = (channelId: string | undefined) => {
     },
     enabled: !!channelId,
     placeholderData: () => cacheGetSync(`threads:${channelId}`),
+    staleTime: 30_000,
+    refetchOnMount: (q) => (q.state.data ? false : 'always'),
+    refetchOnWindowFocus: false,
   });
 
   // Persist to sessionStorage

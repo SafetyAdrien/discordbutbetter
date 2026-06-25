@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 
@@ -23,6 +23,15 @@ const NEGATIVE_TTL_MS = 60 * 60 * 1000; // 1 hour
 const metadataCache = new Map<string, UrlMetadata | null>();
 const pendingRequests = new Map<string, Promise<UrlMetadata | null>>();
 
+// Observers notified when metadata for a url changes locally (fetch / realtime).
+type Listener = (url: string, meta: UrlMetadata | null) => void;
+const listeners = new Set<Listener>();
+function notify(url: string, meta: UrlMetadata | null) {
+  listeners.forEach((l) => {
+    try { l(url, meta); } catch { /* noop */ }
+  });
+}
+
 function cacheKey(url: string) {
   return `url-meta:${url}`;
 }
@@ -46,6 +55,47 @@ function primeFromPersisted(url: string): UrlMetadata | null | undefined {
   return undefined;
 }
 
+// Realtime broadcast — every client publishes successful lookups so others
+// hydrate instantly without re-fetching the edge function.
+let broadcastChannel: ReturnType<typeof supabase.channel> | null = null;
+let broadcastChannelRefs = 0;
+function ensureBroadcastChannel() {
+  if (broadcastChannel) return broadcastChannel;
+  broadcastChannel = supabase.channel('url-meta-broadcast', {
+    config: { broadcast: { self: false } },
+  });
+  broadcastChannel
+    .on('broadcast', { event: 'meta' }, ({ payload }) => {
+      if (!payload || typeof payload.url !== 'string') return;
+      const meta = (payload.meta ?? null) as UrlMetadata | null;
+      metadataCache.set(payload.url, meta);
+      cacheSetAsync(cacheKey(payload.url), { meta, fetchedAt: Date.now() });
+      notify(payload.url, meta);
+    })
+    .subscribe();
+  return broadcastChannel;
+}
+
+function broadcastMeta(url: string, meta: UrlMetadata | null) {
+  if (!broadcastChannel) return;
+  broadcastChannel.send({ type: 'broadcast', event: 'meta', payload: { url, meta } });
+}
+
+export function useUrlMetadataRealtime(): void {
+  useEffect(() => {
+    ensureBroadcastChannel();
+    broadcastChannelRefs += 1;
+    return () => {
+      broadcastChannelRefs -= 1;
+      if (broadcastChannelRefs <= 0 && broadcastChannel) {
+        supabase.removeChannel(broadcastChannel);
+        broadcastChannel = null;
+        broadcastChannelRefs = 0;
+      }
+    };
+  }, []);
+}
+
 export async function fetchMetadata(url: string): Promise<UrlMetadata | null> {
   const primed = primeFromPersisted(url);
   if (primed !== undefined) return primed;
@@ -60,21 +110,26 @@ export async function fetchMetadata(url: string): Promise<UrlMetadata | null> {
       if (error) {
         metadataCache.set(url, null);
         cacheSetAsync(cacheKey(url), { meta: null, fetchedAt: Date.now() });
+        notify(url, null);
         return null;
       }
       const payload = data?.title !== undefined ? data : data?.data;
       if (!payload || payload.error) {
         metadataCache.set(url, null);
         cacheSetAsync(cacheKey(url), { meta: null, fetchedAt: Date.now() });
+        notify(url, null);
         return null;
       }
       const metadata = payload as UrlMetadata;
       metadataCache.set(url, metadata);
       cacheSetAsync(cacheKey(url), { meta: metadata, fetchedAt: Date.now() });
+      notify(url, metadata);
+      broadcastMeta(url, metadata);
       return metadata;
     } catch {
       metadataCache.set(url, null);
       cacheSetAsync(cacheKey(url), { meta: null, fetchedAt: Date.now() });
+      notify(url, null);
       return null;
     } finally {
       pendingRequests.delete(url);
@@ -83,6 +138,17 @@ export async function fetchMetadata(url: string): Promise<UrlMetadata | null> {
 
   pendingRequests.set(url, promise);
   return promise;
+}
+
+// Background bulk preload — used on channel/server open to warm the cache so
+// LinkEmbed renders synchronously when the user scrolls into view.
+export function prefetchUrls(urls: Iterable<string>): void {
+  for (const url of urls) {
+    if (!url) continue;
+    if (primeFromPersisted(url) !== undefined) continue;
+    if (pendingRequests.has(url)) continue;
+    fetchMetadata(url);
+  }
 }
 
 export function useUrlMetadata(url: string | null) {
@@ -101,17 +167,19 @@ export function useUrlMetadata(url: string | null) {
     if (primed !== undefined) {
       setData(primed);
       setIsLoading(false);
-      return;
+    } else {
+      setIsLoading(true);
+      fetchMetadata(url);
     }
 
-    setIsLoading(true);
-    let cancelled = false;
-    fetchMetadata(url).then((result) => {
-      if (cancelled) return;
-      setData(result);
+    // Subscribe to local + realtime updates for this url.
+    const listener: Listener = (u, meta) => {
+      if (u !== url) return;
+      setData(meta);
       setIsLoading(false);
-    });
-    return () => { cancelled = true; };
+    };
+    listeners.add(listener);
+    return () => { listeners.delete(listener); };
   }, [url]);
 
   return { data, isLoading };

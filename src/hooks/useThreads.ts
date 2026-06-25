@@ -132,6 +132,32 @@ export const useThreads = (channelId: string | undefined) => {
 };
 
 export const useThread = (threadId: string | undefined) => {
+  const queryClient = useQueryClient();
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // Realtime: any server change to this specific thread (rename, archive, lock,
+  // close, last_message_at) is reflected instantly across every client.
+  useEffect(() => {
+    if (!threadId) return;
+    const channel = supabase
+      .channel(`thread-rt-${threadId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'threads', filter: `id=eq.${threadId}` },
+        () => {
+          clearTimeout(debounceRef.current);
+          debounceRef.current = setTimeout(() => {
+            queryClient.invalidateQueries({ queryKey: ['thread', threadId] });
+          }, 150);
+        }
+      )
+      .subscribe();
+    return () => {
+      clearTimeout(debounceRef.current);
+      supabase.removeChannel(channel);
+    };
+  }, [threadId, queryClient]);
+
   const query = useQuery({
     queryKey: ['thread', threadId],
     queryFn: async () => {
@@ -163,6 +189,56 @@ export const useThread = (threadId: string | undefined) => {
   }, [query.data, threadId, query.isPlaceholderData]);
 
   return query;
+};
+
+// Background prefetch: warms `['threads', channelId]` + IDB so the thread
+// popover and embeds render synchronously the first time they mount.
+export const usePrefetchThreadsForChannels = (channelIds: string[]) => {
+  const queryClient = useQueryClient();
+  const key = channelIds.join(',');
+
+  useEffect(() => {
+    if (!channelIds.length) return;
+    let cancelled = false;
+
+    (async () => {
+      for (const channelId of channelIds) {
+        if (cancelled) return;
+        const existing = queryClient.getQueryState(['threads', channelId]);
+        if (existing?.data) continue;
+
+        const { data, error } = await supabase
+          .from('threads')
+          .select(`
+            *,
+            creator:profiles!threads_created_by_fkey(id, username, display_name, avatar_url)
+          `)
+          .eq('channel_id', channelId)
+          .eq('archived', false)
+          .order('last_message_at', { ascending: false });
+
+        if (cancelled || error || !data) continue;
+
+        // Lightweight shape: no per-thread counts/last message — those load
+        // lazily when the popover opens. Goal here is instant first paint.
+        const lightweight = data.map((t) => ({ ...t, message_count: 0, participants: [], participant_count: 0 } as Thread));
+        queryClient.setQueryData(['threads', channelId], lightweight);
+        cacheSetAsync(`threads:${channelId}`, lightweight);
+
+        // Also seed each detail cache for instant open.
+        for (const t of data) {
+          const existingDetail = queryClient.getQueryState(['thread', t.id]);
+          if (!existingDetail?.data) {
+            queryClient.setQueryData(['thread', t.id], t);
+            cacheSetAsync(`thread:${t.id}`, t);
+          }
+        }
+      }
+    })();
+
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
 };
 
 export const useCreateThread = () => {
@@ -250,8 +326,14 @@ export const useCreateThread = () => {
       }
       toast.error('Erreur lors de la création du thread');
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast.success('Thread créé');
+      // Cache-first: prime the detail cache + IDB so opening the newly created
+      // thread renders instantly without a server round-trip.
+      if (data?.id) {
+        queryClient.setQueryData(['thread', data.id], data);
+        cacheSetAsync(`thread:${data.id}`, data);
+      }
     },
     onSettled: (data) => {
       if (data?.channel_id) {

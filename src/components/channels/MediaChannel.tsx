@@ -102,7 +102,11 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
     altTexts: string[];
     isSpoiler: boolean;
   }) => {
-    createPost.mutate(data);
+    createPost.mutate(data, {
+      onSuccess: (created) => {
+        if (created) setActivePost(created as MediaPost);
+      },
+    });
     setSelectedFiles(null);
   };
 

@@ -14,6 +14,7 @@ import Install from "./pages/Install";
 import AdminBadges from "./pages/AdminBadges";
 import Trust from "./pages/Trust";
 import NotFound from "./pages/NotFound";
+import { useCacheRehydrate } from "@/hooks/useCacheRehydrate";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -26,8 +27,14 @@ const queryClient = new QueryClient({
   },
 });
 
+const CacheRehydrateBridge = () => {
+  useCacheRehydrate();
+  return null;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
+    <CacheRehydrateBridge />
     <AuthProvider>
       <PresenceProvider>
         <VoiceProvider>
@@ -53,5 +60,6 @@ const App = () => (
     </AuthProvider>
   </QueryClientProvider>
 );
+
 
 export default App;

@@ -215,7 +215,21 @@ export function useCreateMediaPost(channelId: string) {
         .insert(itemRows);
       if (itemsError) throw itemsError;
 
-      return post as unknown as MediaPost;
+      // Fetch the complete post WITH items so the cache has the authoritative
+      // record. Without this, a subsequent refetch may race with optimistic
+      // state and the just-published post can briefly vanish from the grid.
+      const { data: full, error: fullErr } = await (supabase
+        .from('media_posts') as any)
+        .select('*, items:media_post_items(*)')
+        .eq('id', post.id)
+        .single();
+      if (fullErr) throw fullErr;
+
+      const sortedItems: MediaPostItem[] = ((full.items ?? []) as MediaPostItem[])
+        .slice()
+        .sort((a, b) => a.position - b.position);
+
+      return { ...full, items: sortedItems } as MediaPost;
     },
 
     onMutate: async (input) => {
@@ -261,24 +275,18 @@ export function useCreateMediaPost(channelId: string) {
     },
 
     onSuccess: (data, _input, context) => {
-      // Replace optimistic with the authoritative server row so the post stays
-      // visible even if Realtime is slow / RLS filters it out for the author.
+      // Atomically swap optimistic with the fully-loaded server post (with
+      // items). Do NOT invalidate — that re-fetches the whole channel and
+      // can briefly drop the just-inserted row if Realtime hasn't propagated.
       queryClient.setQueryData<MediaPost[]>(
         ['media-posts', channelId],
         (old = []) => {
-          const withoutOptimistic = old.filter((p) => p.id !== context?.optimisticId);
-          if (withoutOptimistic.some((p) => p.id === (data as any).id)) return withoutOptimistic;
-          const items = (data as any).items ?? [];
-          const finalPost: MediaPost = {
-            ...(data as any),
-            items: items.length > 0 ? items : (context?.optimisticId
-              ? (old.find((p) => p.id === context.optimisticId)?.items ?? [])
-              : []),
-          };
-          return [finalPost, ...withoutOptimistic];
+          const withoutOptimistic = old.filter(
+            (p) => p.id !== context?.optimisticId && p.id !== data.id
+          );
+          return [data, ...withoutOptimistic];
         }
       );
-      queryClient.invalidateQueries({ queryKey: ['media-posts', channelId] });
     },
 
     onError: (_err, _input, context) => {

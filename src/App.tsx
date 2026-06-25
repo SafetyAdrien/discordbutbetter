@@ -15,6 +15,7 @@ import AdminBadges from "./pages/AdminBadges";
 import Trust from "./pages/Trust";
 import NotFound from "./pages/NotFound";
 import { useCacheRehydrate } from "@/hooks/useCacheRehydrate";
+import { useUrlMetadataRealtime } from "@/hooks/useUrlMetadata";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -29,6 +30,7 @@ const queryClient = new QueryClient({
 
 const CacheRehydrateBridge = () => {
   useCacheRehydrate();
+  useUrlMetadataRealtime();
   return null;
 };
 

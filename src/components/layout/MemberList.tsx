@@ -705,6 +705,27 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
               </ContextMenuSub>
             </>
           )}
+          {currentUser?.id === ownerId && !isOwner && (
+            <>
+              <ContextMenuSeparator />
+              {!isSecondaryOwner ? (
+                <ContextMenuItem
+                  onClick={() => setAddSecondOwnerTarget({ id: member.id, name: member.displayName })}
+                >
+                  <StreamlineCrown size={14} className="mr-2 text-yellow-500" />
+                  Ajouter second propriétaire
+                </ContextMenuItem>
+              ) : (
+                <ContextMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onClick={() => setRemoveSecondOwnerTarget({ id: member.id, name: member.displayName })}
+                >
+                  <StreamlineCrown size={14} className="mr-2" />
+                  Retirer second propriétaire
+                </ContextMenuItem>
+              )}
+            </>
+          )}
           <ContextMenuSeparator />
           <ContextMenuItem>
             <VolumeX className="w-4 h-4 mr-2" />

@@ -113,7 +113,7 @@ export const useThreadMessages = (threadId: string | undefined) => {
         };
       });
     },
-    enabled: !!threadId && cacheReady,
+    enabled: !!threadId,
     placeholderData: () => cacheGetSync(`thread-messages:${threadId}`),
     staleTime: 30_000,
     refetchOnMount: (q) => (q.state.data ? false : 'always'),

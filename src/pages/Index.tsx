@@ -32,6 +32,8 @@ import { useMembers, MemberWithProfile } from '@/hooks/useMembers';
 import { useProfilesRealtime } from '@/hooks/useProfilesRealtime';
 import { usePermissionsRealtime, useGlobalPermissionsRealtime } from '@/hooks/usePermissionsRealtime';
 import { useServerAssetsRealtime } from '@/hooks/useServerAssets';
+import { usePrefetchThreadsForChannels } from '@/hooks/useThreads';
+import { prefetchUrls, extractUrls } from '@/hooks/useUrlMetadata';
 
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useVoice } from '@/contexts/VoiceContext';

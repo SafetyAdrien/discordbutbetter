@@ -7,7 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { X, Camera, Loader2, Pencil, CalendarDays } from 'lucide-react';
+import { X, Camera, Loader2, Pencil, CalendarDays, Palette } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ModernColorPicker } from '@/components/profile/calendar/ModernColorPicker';
 import { MarkdownLiveTextarea } from '@/components/profile/MarkdownLiveTextarea';
 import { ProfileCalendar } from '@/components/profile/calendar/ProfileCalendar';
 import { EventListBelow } from '@/components/profile/calendar/EventListBelow';
@@ -273,17 +275,17 @@ export function ProfileSettings({ onClose }: ProfileSettingsProps) {
             </div>
             {!useGradient ? (
               <div className="flex gap-2">
-                <input type="color" value={themeColor} onChange={(e) => setThemeColor(e.target.value)} className="w-11 h-11 rounded cursor-pointer" />
+                <ColorSwatchPopover color={themeColor} onChange={setThemeColor} />
                 <Input value={themeColor} onChange={(e) => setThemeColor(e.target.value)} className="flex-1 h-11 rounded-xl" placeholder="#00D4FF" />
               </div>
             ) : (
               <div className="grid sm:grid-cols-2 gap-3">
                 <div className="flex gap-2">
-                  <input type="color" value={gradientStart} onChange={(e) => setGradientStart(e.target.value)} className="w-11 h-11 rounded cursor-pointer" />
+                  <ColorSwatchPopover color={gradientStart} onChange={setGradientStart} />
                   <Input value={gradientStart} onChange={(e) => setGradientStart(e.target.value)} placeholder="Début" className="h-11 rounded-xl" />
                 </div>
                 <div className="flex gap-2">
-                  <input type="color" value={gradientEnd} onChange={(e) => setGradientEnd(e.target.value)} className="w-11 h-11 rounded cursor-pointer" />
+                  <ColorSwatchPopover color={gradientEnd} onChange={setGradientEnd} />
                   <Input value={gradientEnd} onChange={(e) => setGradientEnd(e.target.value)} placeholder="Fin" className="h-11 rounded-xl" />
                 </div>
               </div>
@@ -323,5 +325,25 @@ export function ProfileSettings({ onClose }: ProfileSettingsProps) {
         />
       </div>
     </div>
+  );
+}
+
+function ColorSwatchPopover({ color, onChange }: { color: string; onChange: (v: string) => void }) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="w-11 h-11 rounded-xl border border-border flex items-center justify-center hover:ring-2 hover:ring-primary/40 transition relative overflow-hidden"
+          style={{ backgroundColor: color }}
+          aria-label="Choisir une couleur"
+        >
+          <Palette className="w-4 h-4 text-white mix-blend-difference" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-[340px] p-0 border-none bg-transparent shadow-none">
+        <ModernColorPicker value={color} onChange={onChange} />
+      </PopoverContent>
+    </Popover>
   );
 }

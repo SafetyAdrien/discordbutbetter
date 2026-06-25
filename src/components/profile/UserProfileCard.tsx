@@ -187,6 +187,7 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers, 
             <div className="absolute left-[84px] top-[54px] z-20 max-w-[172px]">
               <CustomStatusBubble
                 customStatus={profile?.custom_status}
+                status={currentStatus}
                 onClick={() => setShowCustomStatusModal(true)}
                 size="sm"
                 showPlaceholder

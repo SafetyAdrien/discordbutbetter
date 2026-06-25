@@ -59,6 +59,17 @@ import { Shield, Pencil } from "lucide-react";
 import { useMembers } from "@/hooks/useMembers";
 import { useAuth } from "@/contexts/AuthContext";
 import { useServers } from "@/hooks/useServers";
+import { useSetSecondaryOwner, useRemoveSecondaryOwner } from "@/hooks/useSecondaryOwner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { ServerProfileEditModal } from "@/components/profile/ServerProfileEditModal";
 import {
   useMemberRoleFilterListener,
@@ -286,6 +297,10 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
   };
   const [filterSelectedIndex, setFilterSelectedIndex] = useState(0);
   const searchRef = useRef<HTMLInputElement>(null);
+  const [addSecondOwnerTarget, setAddSecondOwnerTarget] = useState<{ id: string; name: string } | null>(null);
+  const [removeSecondOwnerTarget, setRemoveSecondOwnerTarget] = useState<{ id: string; name: string } | null>(null);
+  const setSecondaryOwner = useSetSecondaryOwner();
+  const removeSecondaryOwner = useRemoveSecondaryOwner();
 
   // Calculate available filters based on search query
   const availableFilters = useMemo(() => {
@@ -621,7 +636,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
                   </span>
                   <span className="text-muted-foreground truncate">{member.activity_text}</span>
                 </div>
-              ) : member.customStatus ? (
+              ) : member.customStatus && member.status !== 'offline' ? (
                 <p className="text-xs text-muted-foreground truncate">{member.customStatus}</p>
               ) : null}
             </div>
@@ -688,6 +703,27 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
                   </ScrollArea>
                 </ContextMenuSubContent>
               </ContextMenuSub>
+            </>
+          )}
+          {currentUser?.id === ownerId && !isOwner && (
+            <>
+              <ContextMenuSeparator />
+              {!isSecondaryOwner ? (
+                <ContextMenuItem
+                  onClick={() => setAddSecondOwnerTarget({ id: member.id, name: member.displayName })}
+                >
+                  <StreamlineCrown size={14} className="mr-2 text-yellow-500" />
+                  Ajouter second propriétaire
+                </ContextMenuItem>
+              ) : (
+                <ContextMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onClick={() => setRemoveSecondOwnerTarget({ id: member.id, name: member.displayName })}
+                >
+                  <StreamlineCrown size={14} className="mr-2" />
+                  Retirer second propriétaire
+                </ContextMenuItem>
+              )}
             </>
           )}
           <ContextMenuSeparator />
@@ -837,6 +873,68 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
         onOpenChange={setServerProfileEditOpen}
         initialServerId={serverId}
       />
+
+      <AlertDialog
+        open={!!addSecondOwnerTarget}
+        onOpenChange={() => setAddSecondOwnerTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Définir {addSecondOwnerTarget?.name} comme second propriétaire ?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Ce membre aura les mêmes droits que vous sur ce serveur. Vous seul pourrez retirer ce statut.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (!addSecondOwnerTarget || !serverId) return;
+                setSecondaryOwner.mutate(
+                  { serverId, userId: addSecondOwnerTarget.id },
+                  { onSuccess: () => setAddSecondOwnerTarget(null) }
+                );
+              }}
+              disabled={setSecondaryOwner.isPending}
+            >
+              {setSecondaryOwner.isPending ? 'Confirmation...' : 'Confirmer'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={!!removeSecondOwnerTarget}
+        onOpenChange={() => setRemoveSecondOwnerTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Retirer {removeSecondOwnerTarget?.name} de la position de second propriétaire ?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Ce membre perdra immédiatement tous les droits liés à ce statut.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive hover:bg-destructive/90"
+              onClick={() => {
+                if (!serverId) return;
+                removeSecondaryOwner.mutate(serverId, {
+                  onSuccess: () => setRemoveSecondOwnerTarget(null),
+                });
+              }}
+              disabled={removeSecondaryOwner.isPending}
+            >
+              {removeSecondaryOwner.isPending ? 'Retrait...' : 'Confirmer'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 });

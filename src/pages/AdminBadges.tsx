@@ -11,7 +11,9 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Upload, Save, Trash2, ArrowLeft, Award } from 'lucide-react';
+import { Loader2, Upload, Save, Trash2, ArrowLeft, Award, Palette } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ModernColorPicker } from '@/components/profile/calendar/ModernColorPicker';
 import { toast } from 'sonner';
 
 interface ProfileSearchResult {
@@ -107,12 +109,21 @@ function BadgeRow({ badge, onChanged }: { badge: Badge | null; onChanged: () => 
           <div>
             <Label className="text-xs">Couleur</Label>
             <div className="flex gap-2 items-center">
-              <input
-                type="color"
-                value={color}
-                onChange={(e) => setColor(e.target.value)}
-                className="w-10 h-9 rounded cursor-pointer bg-transparent border border-border/40"
-              />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="w-10 h-9 rounded-md border border-border/40 flex items-center justify-center hover:ring-2 hover:ring-primary/40 transition"
+                    style={{ backgroundColor: color }}
+                    aria-label="Choisir une couleur"
+                  >
+                    <Palette className="w-3.5 h-3.5 text-white mix-blend-difference" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="start" className="w-[340px] p-0 border-none bg-transparent shadow-none">
+                  <ModernColorPicker value={color} onChange={setColor} />
+                </PopoverContent>
+              </Popover>
               <Input value={color} onChange={(e) => setColor(e.target.value)} />
             </div>
           </div>

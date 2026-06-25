@@ -158,10 +158,11 @@ export function FullUserProfileModal({
                   bgClassName="bg-background"
                 />
               </div>
-              {(user.custom_status || isOwnProfile) && (
+              {(user.custom_status || isOwnProfile) && user.status !== 'offline' && (
                 <div className="absolute left-[128px] bottom-[14px] z-20 max-w-[260px]">
                   <CustomStatusBubble
                     customStatus={user.custom_status}
+                    status={user.status}
                     size="md"
                     showPlaceholder={isOwnProfile}
                     onClick={isOwnProfile ? () => setCustomStatusOpen(true) : undefined}

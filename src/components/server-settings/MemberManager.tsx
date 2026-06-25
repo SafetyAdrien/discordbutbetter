@@ -56,6 +56,7 @@ export function MemberManager({ serverId }: MemberManagerProps) {
   const [banTarget, setBanTarget] = useState<{ id: string; name: string } | null>(null);
   const [banReason, setBanReason] = useState('');
   const [secondOwnerTarget, setSecondOwnerTarget] = useState<{ id: string; name: string } | null>(null);
+  const [removeSecondOwnerTarget, setRemoveSecondOwnerTarget] = useState<{ id: string; name: string } | null>(null);
   const [transferTarget, setTransferTarget] = useState<{ id: string; name: string } | null>(null);
 
   const { isGod, hasPermission } = usePermissions(serverId);
@@ -93,8 +94,12 @@ export function MemberManager({ serverId }: MemberManagerProps) {
   };
 
   const handleRemoveSecondaryOwner = () => {
-    removeSecondaryOwner.mutate(serverId);
+    if (!removeSecondOwnerTarget) return;
+    removeSecondaryOwner.mutate(serverId, {
+      onSuccess: () => setRemoveSecondOwnerTarget(null),
+    });
   };
+
 
   if (isLoading) {
     return (
@@ -219,7 +224,7 @@ export function MemberManager({ serverId }: MemberManagerProps) {
                           ) : (
                             <DropdownMenuItem 
                               className="text-destructive"
-                              onClick={handleRemoveSecondaryOwner}
+                              onClick={() => setRemoveSecondOwnerTarget({ id: member.user.id, name: member.user.display_name })}
                             >
                               <StreamlineCrown size={16} className="mr-2" />
                               Retirer second propriétaire
@@ -338,6 +343,28 @@ export function MemberManager({ serverId }: MemberManagerProps) {
               disabled={setSecondaryOwner.isPending}
             >
               {setSecondaryOwner.isPending ? 'Confirmation...' : 'Confirmer'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Remove Secondary Owner Confirmation Dialog */}
+      <AlertDialog open={!!removeSecondOwnerTarget} onOpenChange={() => setRemoveSecondOwnerTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Retirer {removeSecondOwnerTarget?.name} de la position de second propriétaire ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Ce membre perdra immédiatement tous les droits liés à ce statut.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRemoveSecondaryOwner}
+              className="bg-destructive hover:bg-destructive/90"
+              disabled={removeSecondaryOwner.isPending}
+            >
+              {removeSecondaryOwner.isPending ? 'Retrait...' : 'Confirmer'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

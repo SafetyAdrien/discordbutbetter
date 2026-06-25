@@ -131,7 +131,7 @@ export function useMultipleChannelPermissions(channelId: string | null, permissi
   queries.forEach((query, index) => {
     const perm = permissions[index];
     const cached = channelId ? getPermissionCache(`${channelId}:${perm}`) : null;
-    permissionsMap.set(perm, query.data?.granted ?? (isPending ? (cached ?? true) : false));
+    permissionsMap.set(perm, query.data?.granted ?? cached ?? false);
   });
 
   return {
@@ -140,7 +140,7 @@ export function useMultipleChannelPermissions(channelId: string | null, permissi
     isError,
     can: (permission: ServerPermission) => {
       const cached = channelId ? getPermissionCache(`${channelId}:${permission}`) : null;
-      return permissionsMap.get(permission) ?? (isPending ? (cached ?? true) : false);
+      return permissionsMap.get(permission) ?? cached ?? false;
     },
   };
 }

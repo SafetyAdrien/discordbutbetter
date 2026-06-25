@@ -260,11 +260,23 @@ export function useCreateMediaPost(channelId: string) {
       return { previous, optimisticId };
     },
 
-    onSuccess: (_data, _input, context) => {
-      // Drop optimistic — realtime will deliver the authoritative row with items
+    onSuccess: (data, _input, context) => {
+      // Replace optimistic with the authoritative server row so the post stays
+      // visible even if Realtime is slow / RLS filters it out for the author.
       queryClient.setQueryData<MediaPost[]>(
         ['media-posts', channelId],
-        (old = []) => old.filter((p) => p.id !== context?.optimisticId)
+        (old = []) => {
+          const withoutOptimistic = old.filter((p) => p.id !== context?.optimisticId);
+          if (withoutOptimistic.some((p) => p.id === (data as any).id)) return withoutOptimistic;
+          const items = (data as any).items ?? [];
+          const finalPost: MediaPost = {
+            ...(data as any),
+            items: items.length > 0 ? items : (context?.optimisticId
+              ? (old.find((p) => p.id === context.optimisticId)?.items ?? [])
+              : []),
+          };
+          return [finalPost, ...withoutOptimistic];
+        }
       );
       queryClient.invalidateQueries({ queryKey: ['media-posts', channelId] });
     },

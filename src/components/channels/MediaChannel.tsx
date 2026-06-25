@@ -199,13 +199,14 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
                 alt_text: item.alt_text,
               };
               const albumCount = item.items?.length ?? 0;
+              const isVideoLike = cover.file_type === 'video' || (cover.file_url?.toLowerCase().endsWith('.gif'));
               return (
               <div
                 key={item.id}
                 onClick={() => !item._isPending && setActivePost(item)}
                 className={cn(
-                  'group relative rounded-lg overflow-hidden bg-muted cursor-pointer hover:ring-2 hover:ring-primary transition-all',
-                  viewMode === 'grid' ? 'aspect-square' : 'flex items-center gap-4 p-2',
+                  'group relative overflow-hidden bg-muted cursor-pointer hover:ring-2 hover:ring-primary transition-all',
+                  viewMode === 'grid' ? 'aspect-square rounded-[15%]' : 'flex items-center gap-4 p-2 rounded-lg',
                   item._isPending && 'opacity-60 cursor-default'
                 )}
               >
@@ -220,6 +221,9 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
                     src={cover.file_url}
                     className={cn('object-cover', viewMode === 'grid' ? 'w-full h-full' : 'w-16 h-16 rounded')}
                     muted
+                    autoPlay
+                    loop
+                    playsInline
                   />
                 ) : (
                   <img
@@ -233,12 +237,6 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
                   <div className="absolute top-2 right-2 z-20 px-1.5 py-0.5 rounded-md bg-black/70 text-white text-xs font-semibold flex items-center gap-1">
                     <Layers className="w-3 h-3" />
                     {albumCount}
-                  </div>
-                )}
-
-                {viewMode === 'grid' && (
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <p className="text-white text-xs font-medium truncate">{item.title}</p>
                   </div>
                 )}
 
@@ -257,16 +255,6 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
                         size="sm"
                       />
                     </div>
-                  </div>
-                )}
-                {viewMode === 'grid' && (
-                  <div className="absolute top-2 left-2 z-20" onClick={(e) => e.stopPropagation()}>
-                    <ReactionBar
-                      reactions={reactionsData[item.id] || []}
-                      onToggle={(emoji) => handleToggleReaction(item.id, emoji)}
-                      serverId={null}
-                      size="sm"
-                    />
                   </div>
                 )}
               </div>

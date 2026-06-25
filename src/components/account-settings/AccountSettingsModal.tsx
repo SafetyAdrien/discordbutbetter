@@ -33,6 +33,7 @@ import { PrivacySettings } from './PrivacySettings';
 import { ConnectionsSettings } from './ConnectionsSettings';
 import { AuthorizedAppsSettings } from './AuthorizedAppsSettings';
 import { SessionsSettings } from './SessionsSettings';
+import { MarkdownHelpPage } from './MarkdownHelpPage';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { uuidToSnowflake } from '@/lib/snowflake';
 
@@ -41,7 +42,7 @@ interface AccountSettingsModalProps {
   initialTab?: SettingsTab | null;
 }
 
-type SettingsTab = 'account' | 'profile' | 'privacy' | 'connections' | 'apps' | 'sessions';
+type SettingsTab = 'account' | 'profile' | 'privacy' | 'connections' | 'apps' | 'sessions' | 'help-markdown';
 
 const tabs = [
   { id: 'account' as const, label: 'Mon compte', icon: User },
@@ -50,6 +51,7 @@ const tabs = [
   { id: 'connections' as const, label: 'Connexions', icon: Link2 },
   { id: 'apps' as const, label: 'Applications autorisées', icon: AppWindow },
   { id: 'sessions' as const, label: 'Sessions actives', icon: Smartphone },
+  { id: 'help-markdown' as const, label: 'Aide · Markdown', icon: HelpCircle },
 ];
 
 export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsModalProps) {
@@ -80,6 +82,7 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
       case 'connections': return <ConnectionsSettings />;
       case 'apps': return <AuthorizedAppsSettings />;
       case 'sessions': return <SessionsSettings />;
+      case 'help-markdown': return <MarkdownHelpPage />;
       default: return null;
     }
   };
@@ -186,6 +189,10 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
         <SettingsRow icon={<Palette className="w-4 h-4 text-muted-foreground" />} label="Apparence" onClick={() => setActiveTab('profile')} />
         <SettingsDivider />
         <SettingsRow icon={<Shield className="w-4 h-4 text-muted-foreground" />} label="Confidentialité & sécurité" onClick={() => setActiveTab('privacy')} />
+      </SettingsSection>
+
+      <SettingsSection title="Aide">
+        <SettingsRow icon={<HelpCircle className="w-4 h-4 text-muted-foreground" />} label="Guide Markdown" onClick={() => setActiveTab('help-markdown')} />
       </SettingsSection>
 
       <SettingsSection title="Support">

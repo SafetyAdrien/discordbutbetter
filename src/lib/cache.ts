@@ -214,110 +214,117 @@ export async function purgeAllCaches(): Promise<void> {
  */
 const AUTO_RELOAD_GUARD_KEY = `${DB_NAME}:auto-reload-done`;
 
-async function enforceCacheSchemaVersion(): Promise<void> {
+/**
+ * Synchronous part of schema enforcement: purge memory + localStorage mirror
+ * + bump version. Safe to call before render — guarantees no stale data can
+ * be read by `cacheGetSync` placeholders. The IDB clear is fired-and-forgot.
+ */
+export function enforceCacheSchemaVersionSync(): void {
   if (!canUseLocalStorage()) return;
-
   try {
     const stored = window.localStorage.getItem(CACHE_VERSION_KEY);
     const storedVersion = stored ? parseInt(stored, 10) : 0;
     if (storedVersion >= CACHE_SCHEMA_VERSION) return;
 
-    await purgeAllCaches();
+    memoryCache.clear();
+    clearSyncMirror();
     window.localStorage.setItem(CACHE_VERSION_KEY, String(CACHE_SCHEMA_VERSION));
 
-    // Clear Cache Storage too (service worker / HTTP fetch caches).
-    try {
-      if (typeof window !== 'undefined' && 'caches' in window) {
-        const keys = await caches.keys();
-        await Promise.all(keys.map((k) => caches.delete(k)));
-      }
-    } catch {
-      // ignore
+    // Async-clear IDB + Cache Storage in background (not blocking).
+    if (idbAvailable) {
+      getDB().then((db) => {
+        try {
+          const tx = db.transaction(STORE_NAME, 'readwrite');
+          tx.objectStore(STORE_NAME).clear();
+        } catch {}
+      }).catch(() => {});
     }
+    try {
+      if ('caches' in window) {
+        caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k)))).catch(() => {});
+      }
+    } catch {}
 
-    // First-time migration this session → force one reload so the running
-    // app instantly renders with the new layout/data instead of waiting for
-    // the user to manually refresh.
+    // Force one-time reload so the running session picks up the new bundle.
     try {
       const guard = window.sessionStorage.getItem(AUTO_RELOAD_GUARD_KEY);
       if (!guard && storedVersion > 0) {
         window.sessionStorage.setItem(AUTO_RELOAD_GUARD_KEY, '1');
         window.location.reload();
-        // Block further boot until the reload happens.
-        await new Promise(() => {});
       }
-    } catch {
-      // ignore — fall through to normal boot
-    }
-  } catch {
-    // ignore
-  }
+    } catch {}
+  } catch {}
 }
 
+/**
+ * Per-key hydration listeners. Fires when warmCache loads a value from IDB
+ * into the in-memory cache, so React Query hooks can immediately rehydrate
+ * empty queries without waiting for the network round-trip.
+ */
+type HydrateListener = (key: string, value: any) => void;
+const hydrateListeners = new Set<HydrateListener>();
+
+export function subscribeCacheHydrate(listener: HydrateListener): () => void {
+  hydrateListeners.add(listener);
+  return () => { hydrateListeners.delete(listener); };
+}
+
+function emitHydrate(key: string, value: any): void {
+  hydrateListeners.forEach((l) => {
+    try { l(key, value); } catch {}
+  });
+}
 
 /**
  * Warm the in-memory cache from IndexedDB.
- * Call this once on app startup; it now runs in background.
- * If the persisted cache schema version is out of date, every cache layer
- * is wiped first so users always pull fresh data after a deploy.
+ * Schema purge is now done synchronously in main.tsx, so this function only
+ * hydrates IDB → memory and marks the cache ready ASAP. Hydration is fully
+ * background — the `cacheReady` gate flips immediately so message queries
+ * never wait on IDB.
  */
 export async function warmCache(): Promise<void> {
   const { markPerf, measurePerf, recordPerf } = await import('@/lib/perf');
   markPerf('warmCache:start');
 
-  // Step 1 (BLOCKING, very fast): ensure the schema-version purge ran.
+  // Flip the gate immediately — placeholders use the localStorage mirror
+  // (already safe after the synchronous schema purge in main.tsx) and IDB
+  // entries will be pushed to React Query as they hydrate.
+  markCacheReady();
+
+  const hydrateStart = performance.now();
   try {
-    const t0 = performance.now();
-    await enforceCacheSchemaVersion();
-    recordPerf('warmCache:schemaEnforce', performance.now() - t0);
+    const db = await getDB();
+    let count = 0;
+    await new Promise<void>((resolve) => {
+      const tx = db.transaction(STORE_NAME, 'readonly');
+      const store = tx.objectStore(STORE_NAME);
+      const req = store.openCursor();
+      req.onsuccess = () => {
+        const cursor = req.result;
+        if (cursor) {
+          const key = cursor.key as string;
+          const value = cursor.value;
+          // Don't overwrite a fresher value already written by a live query.
+          if (!memoryCache.has(key)) {
+            memoryCache.set(key, value);
+            emitHydrate(key, value);
+          }
+          count += 1;
+          cursor.continue();
+        }
+      };
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+    });
+    recordPerf(`warmCache:idbHydrate(${count})`, performance.now() - hydrateStart);
   } catch {
-    // ignore
+    recordPerf('warmCache:idbHydrate(failed)', performance.now() - hydrateStart);
   }
 
-  // Step 2 (BLOCKING with 1200ms safety cap): hydrate IndexedDB into memory
-  // BEFORE marking the cache ready. Otherwise every `cacheGetSync()` issued by
-  // message/DM/server hooks at first paint returns `undefined` and we lose
-  // instant rendering on mobile (localStorage mirror often hits quota).
-  const HYDRATE_CAP_MS = 1200;
-  const hydrateStart = performance.now();
-
-  const hydratePromise = (async () => {
-    try {
-      const db = await getDB();
-      let count = 0;
-      await new Promise<void>((resolve) => {
-        const tx = db.transaction(STORE_NAME, 'readonly');
-        const store = tx.objectStore(STORE_NAME);
-        const req = store.openCursor();
-        req.onsuccess = () => {
-          const cursor = req.result;
-          if (cursor) {
-            memoryCache.set(cursor.key as string, cursor.value);
-            count += 1;
-            cursor.continue();
-          }
-        };
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => resolve();
-      });
-      recordPerf(`warmCache:idbHydrate(${count})`, performance.now() - hydrateStart);
-    } catch {
-      recordPerf('warmCache:idbHydrate(failed)', performance.now() - hydrateStart);
-    }
-  })();
-
-  await Promise.race([
-    hydratePromise,
-    new Promise<void>((resolve) => setTimeout(() => {
-      recordPerf('warmCache:idbHydrate(timeout)', performance.now() - hydrateStart);
-      resolve();
-    }, HYDRATE_CAP_MS)),
-  ]);
-
-  markCacheReady();
   markPerf('warmCache:ready');
-  measurePerf('warmCache:total(blocking)', 'warmCache:start', 'warmCache:ready');
+  measurePerf('warmCache:total', 'warmCache:start', 'warmCache:ready');
 }
+
 
 /**
  * Synchronous read from in-memory cache, with localStorage cold-boot fallback.

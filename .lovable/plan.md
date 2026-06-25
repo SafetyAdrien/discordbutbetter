@@ -1,94 +1,50 @@
-# Correctifs généraux
+## Goal
+Painter les messages (salons serveur, DMs, threads) **instantanément** au switch ou cold-boot, sans attendre la requête réseau ni l'hydratation IndexedDB.
 
-## 1. Propriétaire / Second propriétaire — synchro temps réel + UX
+## Diagnostic
+Aujourd'hui, le chemin de chargement message est :
 
-**Objectif** : ajout/retrait du second propriétaire instantané sur tous les clients, confirmation préalable, et action accessible depuis le clic droit sur un membre.
-
-- Activer la propagation realtime sur la table `servers` (champ `secondary_owner_id`) si elle ne l'est pas déjà — et brancher l'invalidation/patch cache dans `useServers` afin que le badge "Second propriétaire" apparaisse/disparaisse instantanément dans la liste des membres, profils, popovers et MemberManager sans rechargement.
-- Forcer l'invalidation/patch également de `useSecondaryOwner` au moment du UPDATE realtime.
-- Ajouter l'entrée **"Ajouter second propriétaire"** / **"Retirer second propriétaire"** dans le menu contextuel (clic droit) sur un membre dans `MemberList` (desktop) et l'équivalent mobile. Visible uniquement pour le **propriétaire officiel** du serveur, et masquée sur le propriétaire lui-même.
-- Avant toute action (ajout, retrait, transfert), afficher un **AlertDialog de confirmation** ("Êtes-vous sûr de vouloir nommer X second propriétaire ?" / "Êtes-vous sûr de vouloir retirer X de la position de second propriétaire ?"). Réutiliser le pattern déjà présent dans `MemberManager`.
-
-## 2. Statut personnalisé masqué quand Offline
-
-Dans tous les composants qui rendent le custom status (`CustomStatusBubble`, `UserProfilePopup`, `UserProfileCard`, `FullUserProfileModal`, `MemberList`, listes DM, etc.) :
-
-- Ne jamais afficher `custom_status.text` / `emoji` quand `profile.status === 'offline'`.
-- Centraliser via un petit helper (`getVisibleCustomStatus(profile)`) pour ne pas oublier d'endroit.
-
-## 3. Paramètres du serveur — Full Screen
-
-`src/components/server-settings/ServerSettingsModal.tsx` (desktop branch ligne 237-242) :
-
-- Remplacer le pattern overlay + carte `max-w-5xl max-h-[90vh]` par un conteneur plein écran `fixed inset-0 bg-background` (le même que la branche mobile/tablette actuelle ligne 200).
-- Supprimer le backdrop assombri et le centrage : la modale prend désormais 100% de la fenêtre, comme Discord.
-- Conserver la sidebar de navigation interne + bouton de fermeture en haut à droite.
-
-## 4. Color Picker moderne et universel
-
-**Objectif** : remplacer toute UI de sélection couleur par un picker au format de l'image fournie.
-
-### Composant `ModernColorPicker` (réécriture de `src/components/profile/calendar/ModernColorPicker.tsx`)
-
-Structure verticale, dans un cadre arrondi :
-
-```text
-+---------------------------------------+
-|                                       |
-|     Zone saturation/valeur 2D         |  <- crosshair circulaire blanc, draggable
-|     (dégradé teinte courante)         |
-|                                       |
-+---------------------------------------+
-|  ====== Slider teinte (hue) ======    |  <- crosshair circulaire blanc identique
-+---------------------------------------+
-|  ●  # F54927    [copy]  [Hex ▼]       |
-+---------------------------------------+
+```
+main.tsx → await warmCache() (≤1500ms) → render <App/>
+useMessages → useCacheReady() → query.enabled = false tant que warmCache n'a pas fini
+            → puis placeholderData via cacheGetSync()
 ```
 
-- **Zone SV** : `<canvas>` ou div en `bg-gradient` (blanc→teinte horizontal, transparent→noir vertical). Pointer events : `pointerdown` + `pointermove` + `setPointerCapture`. Le réticule est un rond blanc bordé, centré exactement sur la position du curseur (translate -50% -50%). Pendant le drag : `cursor: none` sur la zone (et sur le `body` via classe) pour cacher la souris ; restauré au `pointerup`.
-- **Slider teinte** : même mécanique pointer, réticule rond identique.
-- **Mise à jour temps réel** : `onChange` appelé à chaque pointermove (throttle via rAF), parent reçoit le HEX instantanément — pas de "commit on release".
-- **Bandeau bas** : pastille de la couleur courante, champ HEX éditable, bouton **copy** (icône `Copy` lucide → `navigator.clipboard.writeText`, toast "Copié"), et menu déroulant de format (`Hex`, `RGB`, `HSL`) qui change l'affichage de la valeur.
-- **Bouton copy conditionnel** : visible uniquement quand le format est choisi via le menu déroulant (comportement de la vidéo) — on l'attache au champ de valeur, pas à la palette globale.
+Le gate `cacheReady` retarde TOUT (la query, donc aussi le `placeholderData`) — au cold boot on perd jusqu'à 1,2 s avant même de peindre le cache local. Au switch de salon, c'est instantané grâce au mirror localStorage, **sauf** si les données n'existent qu'en IndexedDB (gros salons qui dépassent le quota localStorage) : on attend alors la requête réseau (~500 ms - 7 s mesurés).
 
-### Points d'utilisation à migrer
+## Plan
 
-Remplacer le `<input type="color">` ou ancien UI par `ModernColorPicker` (rendu dans un `Popover` déclenché par l'icône palette/pastille existante) dans :
+### 1. Découpler "schema purge" de "IDB hydrate" dans `src/lib/cache.ts`
+- Rendre `enforceCacheSchemaVersion()` **synchrone** (purge mémoire + localStorage mirror + bump du `CACHE_SCHEMA_VERSION` — l'effacement IDB peut rester en arrière-plan, sans bloquer).
+- Appeler cette fonction synchrone tout en haut de `main.tsx` AVANT `createRoot`. Ainsi aucune donnée stale ne peut être lue.
+- `markCacheReady()` est appelé **immédiatement** après la purge sync. `warmCache()` continue d'hydrater IDB → mémoire en background.
+- Pendant l'hydratation IDB, chaque entrée `messages:*` / `dm-messages:*` / `thread-messages:*` chargée appelle un nouvel hook de "rehydrate broadcast" qui pousse les données dans React Query via `queryClient.setQueryData(key, data)` SI la query existe déjà et est encore vide/placeholder. Cela fait apparaître les messages dès que IDB est lu, sans relancer la requête.
 
-- `src/components/server-settings/RoleEditor.tsx` (couleur de rôle, lignes 178-186).
-- `src/components/profile/calendar/CreateEventModal.tsx` (déjà branché, hérite automatiquement du nouveau composant).
-- `src/components/account-settings/ProfileSettingsTab.tsx` (couleur de bannière / accent).
-- Toute autre icône `Palette` qui ouvre un sélecteur de couleur dans les paramètres profil/serveur.
+### 2. Retirer le gate `cacheReady` sur les queries messages
+Fichiers : `src/hooks/useMessages.ts`, `src/hooks/useDMMessages.ts`, `src/hooks/useThreadMessages.ts`.
+- `enabled: !!channelId && !!user` (sans `&& cacheReady`).
+- `placeholderData` continue d'utiliser `cacheGetSync` : mémoire (rempli par warmCache), sinon mirror localStorage, sinon `undefined`.
+- Conséquence : la query part instantanément, le placeholder peint dans le même tick si dispo.
 
-Le composant est unique → comportement identique partout (drag, crosshair, masquage souris, copy, temps réel).
+### 3. Pont IDB → React Query
+Dans `cache.ts`, exposer un événement quand `warmCache` hydrate la mémoire. Créer `src/hooks/useCacheRehydrate.ts` monté une fois dans `App` qui, à l'hydratation IDB, pousse les clés `messages:*` / `dm-messages:*` / `thread-messages:*` dans `queryClient` (uniquement si la query existe déjà sans data).
 
----
+### 4. Garder le gate uniquement pour les écritures cohérentes
+La fonction `cacheSetAsync` reste inchangée. `useCacheReady` et `whenCacheReady` restent exportés mais ne sont plus utilisés par les hooks de messages (utiles si un autre flux en a besoin plus tard).
 
-## Détails techniques
+## Résultat attendu
+- **Switch de salon avec cache localStorage** : peint au même frame, query background.
+- **Switch de salon avec cache uniquement IDB** : peint dès que IDB hydrate (~30-150 ms), pas d'attente réseau.
+- **Cold boot premier salon jamais visité** : query part immédiatement (gain ≈ jusqu'à 1,2 s vs aujourd'hui).
+- **Cold boot avec cache existant** : placeholder peint immédiatement depuis mirror localStorage, puis IDB rehydrate complète (pour gros volumes) avant même la réponse réseau.
 
-**Realtime second propriétaire** : `ALTER PUBLICATION supabase_realtime ADD TABLE public.servers;` si absent, plus `REPLICA IDENTITY FULL` sur `servers` pour récupérer l'ancien `secondary_owner_id` en UPDATE. Côté client, dans `useServers`, écouter `postgres_changes UPDATE` et patcher la cache React Query.
+## Fichiers modifiés
+- `src/lib/cache.ts` (purge sync + signal d'hydratation IDB par clé)
+- `src/main.tsx` (purge schema synchrone avant render)
+- `src/hooks/useMessages.ts` (retirer gate)
+- `src/hooks/useDMMessages.ts` (retirer gate)
+- `src/hooks/useThreadMessages.ts` (retirer gate)
+- `src/hooks/useCacheRehydrate.ts` (nouveau — pont IDB→RQ)
+- `src/App.tsx` (montage de `useCacheRehydrate`)
 
-**Color picker — masquage souris** : ajouter une classe utilitaire `.cursor-none-global` (`* { cursor: none !important; }`) toggleée sur `document.documentElement` durant le drag pour garantir l'absence de curseur même hors zone.
-
-**Custom status hidden offline** : helper unique dans `src/lib/utils.ts` ou `src/lib/presence.ts` :
-
-```ts
-export const visibleCustomStatus = (p?: { status?: string; custom_status?: any }) =>
-  p && p.status !== 'offline' ? p.custom_status : null;
-```
-
-Aucune modification de la base sauf l'ajout éventuel de `servers` à la publication realtime.
-
-## Fichiers touchés
-
-- `src/components/profile/calendar/ModernColorPicker.tsx` (réécriture complète)
-- `src/components/server-settings/RoleEditor.tsx`
-- `src/components/account-settings/ProfileSettingsTab.tsx`
-- `src/components/server-settings/ServerSettingsModal.tsx`
-- `src/components/server-settings/MemberManager.tsx`
-- `src/components/layout/MemberList.tsx` + équivalent mobile
-- `src/hooks/useServers.ts` (realtime patch)
-- `src/hooks/useSecondaryOwner.ts` (invalidation realtime)
-- `src/components/profile/CustomStatusBubble.tsx`, `UserProfilePopup.tsx`, `UserProfileCard.tsx`, `FullUserProfileModal.tsx` (guard offline)
-- `src/lib/utils.ts` (helper `visibleCustomStatus`)
-- Migration SQL : `ALTER PUBLICATION supabase_realtime ADD TABLE public.servers;` + `REPLICA IDENTITY FULL` si nécessaire
+Aucun changement DB, aucun changement de logique métier ni d'UI.

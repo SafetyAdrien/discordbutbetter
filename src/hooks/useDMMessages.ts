@@ -59,7 +59,7 @@ export interface DMMessage {
 export function useDMMessages(conversationId: string | null) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const cacheReady = useCacheReady();
+  
 
   const query = useQuery({
     queryKey: ['dm-messages', conversationId],
@@ -148,7 +148,7 @@ export function useDMMessages(conversationId: string | null) {
           : null,
       }));
     },
-    enabled: !!conversationId && !!user && cacheReady,
+    enabled: !!conversationId && !!user,
     placeholderData: () => cacheGetSync(`dm-messages:${conversationId}`),
     staleTime: 30_000,
     refetchOnMount: (q) => (q.state.data ? false : 'always'),

@@ -69,7 +69,7 @@ export interface MessageWithAuthor {
 export function useMessages(channelId: string | null) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const cacheReady = useCacheReady();
+  
 
   const query = useQuery({
     queryKey: ['messages', channelId],
@@ -170,7 +170,7 @@ export function useMessages(channelId: string | null) {
         };
       });
     }),
-    enabled: !!channelId && !!user && cacheReady,
+    enabled: !!channelId && !!user,
     staleTime: 30_000,
     refetchOnMount: (q) => (q.state.data ? false : 'always'),
     refetchOnWindowFocus: false,

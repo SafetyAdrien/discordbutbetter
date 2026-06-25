@@ -224,7 +224,7 @@ export function MemberManager({ serverId }: MemberManagerProps) {
                           ) : (
                             <DropdownMenuItem 
                               className="text-destructive"
-                              onClick={handleRemoveSecondaryOwner}
+                              onClick={() => setRemoveSecondOwnerTarget({ id: member.user.id, name: member.user.display_name })}
                             >
                               <StreamlineCrown size={16} className="mr-2" />
                               Retirer second propriétaire

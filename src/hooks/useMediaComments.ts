@@ -54,8 +54,9 @@ export function useMediaComments(postId: string) {
     };
   }, [postId, queryClient]);
 
-  return useQuery({
+  const query = useQuery({
     queryKey: ['media-comments', postId],
+    placeholderData: () => (postId ? cacheGetSync(`media-comments:${postId}`) : undefined),
     queryFn: async () => {
       const { data, error } = await (supabase
         .from('media_post_comments') as any)
@@ -121,6 +122,14 @@ export function useMediaComments(postId: string) {
     },
     enabled: !!postId,
   });
+
+  useEffect(() => {
+    if (query.data && postId && !query.isPlaceholderData) {
+      cacheSetAsync(`media-comments:${postId}`, query.data);
+    }
+  }, [query.data, postId, query.isPlaceholderData]);
+
+  return query;
 }
 
 export function useAddMediaComment() {

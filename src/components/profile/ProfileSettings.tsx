@@ -275,17 +275,17 @@ export function ProfileSettings({ onClose }: ProfileSettingsProps) {
             </div>
             {!useGradient ? (
               <div className="flex gap-2">
-                <input type="color" value={themeColor} onChange={(e) => setThemeColor(e.target.value)} className="w-11 h-11 rounded cursor-pointer" />
+                <ColorSwatchPopover color={themeColor} onChange={setThemeColor} />
                 <Input value={themeColor} onChange={(e) => setThemeColor(e.target.value)} className="flex-1 h-11 rounded-xl" placeholder="#00D4FF" />
               </div>
             ) : (
               <div className="grid sm:grid-cols-2 gap-3">
                 <div className="flex gap-2">
-                  <input type="color" value={gradientStart} onChange={(e) => setGradientStart(e.target.value)} className="w-11 h-11 rounded cursor-pointer" />
+                  <ColorSwatchPopover color={gradientStart} onChange={setGradientStart} />
                   <Input value={gradientStart} onChange={(e) => setGradientStart(e.target.value)} placeholder="Début" className="h-11 rounded-xl" />
                 </div>
                 <div className="flex gap-2">
-                  <input type="color" value={gradientEnd} onChange={(e) => setGradientEnd(e.target.value)} className="w-11 h-11 rounded cursor-pointer" />
+                  <ColorSwatchPopover color={gradientEnd} onChange={setGradientEnd} />
                   <Input value={gradientEnd} onChange={(e) => setGradientEnd(e.target.value)} placeholder="Fin" className="h-11 rounded-xl" />
                 </div>
               </div>

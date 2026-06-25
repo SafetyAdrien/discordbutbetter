@@ -26,3 +26,15 @@ export function normalizeForSearch(text: string): string {
 export function formatChannelName(name: string, _type: string): string {
   return name;
 }
+
+/**
+ * Returns the custom status only if the user is not offline.
+ * Per global rule: custom status must NEVER be visible when status === 'offline'.
+ */
+export function visibleCustomStatus<T>(
+  status: string | null | undefined,
+  customStatus: T,
+): T | null {
+  if (status === 'offline') return null;
+  return customStatus ?? null;
+}

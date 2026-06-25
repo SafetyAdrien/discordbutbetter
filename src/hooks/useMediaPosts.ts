@@ -177,7 +177,8 @@ export function useCreateMediaPost(channelId: string) {
       const uploaded = await Promise.all(
         input.files.map(async (file) => {
           const ext = file.name.split('.').pop() || 'bin';
-          const filePath = `media/${channelId}/${crypto.randomUUID()}.${ext}`;
+          // RLS policy on storage requires first folder = auth.uid()
+          const filePath = `${userId}/media/${channelId}/${crypto.randomUUID()}.${ext}`;
           const { error: uploadError } = await supabase.storage
             .from('message-attachments')
             .upload(filePath, file);

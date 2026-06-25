@@ -326,8 +326,14 @@ export const useCreateThread = () => {
       }
       toast.error('Erreur lors de la création du thread');
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast.success('Thread créé');
+      // Cache-first: prime the detail cache + IDB so opening the newly created
+      // thread renders instantly without a server round-trip.
+      if (data?.id) {
+        queryClient.setQueryData(['thread', data.id], data);
+        cacheSetAsync(`thread:${data.id}`, data);
+      }
     },
     onSettled: (data) => {
       if (data?.channel_id) {

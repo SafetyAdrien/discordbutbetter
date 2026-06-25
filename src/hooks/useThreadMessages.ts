@@ -10,7 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 export const useThreadMessages = (threadId: string | undefined) => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const cacheReady = useCacheReady();
+  
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
   
   // Real-time subscription — skip own INSERTs (handled by optimistic update)

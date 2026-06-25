@@ -348,6 +348,28 @@ export function MemberManager({ serverId }: MemberManagerProps) {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Remove Secondary Owner Confirmation Dialog */}
+      <AlertDialog open={!!removeSecondOwnerTarget} onOpenChange={() => setRemoveSecondOwnerTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Retirer {removeSecondOwnerTarget?.name} de la position de second propriétaire ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Ce membre perdra immédiatement tous les droits liés à ce statut.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRemoveSecondaryOwner}
+              className="bg-destructive hover:bg-destructive/90"
+              disabled={removeSecondaryOwner.isPending}
+            >
+              {removeSecondaryOwner.isPending ? 'Retrait...' : 'Confirmer'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Transfer Ownership Confirmation Dialog */}
       <AlertDialog open={!!transferTarget} onOpenChange={() => setTransferTarget(null)}>
         <AlertDialogContent>

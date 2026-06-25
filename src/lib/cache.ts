@@ -393,6 +393,44 @@ export async function warmCache(): Promise<void> {
   // entries will be pushed to React Query as they hydrate.
   markCacheReady();
 
+  // --- Priority pass: hydrate the keys the user is most likely to need RIGHT
+  // NOW (current channel/server/thread/DM from persisted navigation state)
+  // BEFORE doing the full cursor scan. This usually completes in <50 ms and
+  // ensures messages + threads + spine render at the first frame even when
+  // the localStorage mirror was evicted or oversized.
+  const hotKeys = collectHotKeys();
+  if (hotKeys.length > 0) {
+    const hotStart = performance.now();
+    try {
+      const db = await getDB();
+      await new Promise<void>((resolve) => {
+        const tx = db.transaction(STORE_NAME, 'readonly');
+        const store = tx.objectStore(STORE_NAME);
+        let remaining = hotKeys.length;
+        if (remaining === 0) { resolve(); return; }
+        for (const key of hotKeys) {
+          const req = store.get(key);
+          req.onsuccess = () => {
+            const value = req.result;
+            if (value !== undefined && !memoryCache.has(key)) {
+              memoryCache.set(key, value);
+              emitHydrate(key, value);
+            }
+            remaining -= 1;
+            if (remaining === 0) resolve();
+          };
+          req.onerror = () => {
+            remaining -= 1;
+            if (remaining === 0) resolve();
+          };
+        }
+      });
+      recordPerf(`warmCache:hotKeys(${hotKeys.length})`, performance.now() - hotStart);
+    } catch {
+      // ignore — full cursor will still run below
+    }
+  }
+
   const hydrateStart = performance.now();
   try {
     const db = await getDB();
@@ -406,7 +444,6 @@ export async function warmCache(): Promise<void> {
         if (cursor) {
           const key = cursor.key as string;
           const value = cursor.value;
-          // Don't overwrite a fresher value already written by a live query.
           if (!memoryCache.has(key)) {
             memoryCache.set(key, value);
             emitHydrate(key, value);
@@ -425,6 +462,47 @@ export async function warmCache(): Promise<void> {
 
   markPerf('warmCache:ready');
   measurePerf('warmCache:total', 'warmCache:start', 'warmCache:ready');
+}
+
+/**
+ * Read the persisted navigation state and project it into the cache keys we
+ * want to hydrate first. Cheap and synchronous (just one localStorage read).
+ */
+function collectHotKeys(): string[] {
+  if (!canUseLocalStorage()) return [];
+  try {
+    const raw = window.localStorage.getItem('discord_navigation_state');
+    if (!raw) return [];
+    const nav = JSON.parse(raw) as {
+      activeServerId?: string | null;
+      activeChannelId?: string | null;
+      activeDMId?: string | null;
+      activeThreadId?: string | null;
+      threadChannelId?: string | null;
+    };
+    const keys = new Set<string>();
+    if (nav.activeServerId) {
+      keys.add(`channels:${nav.activeServerId}`);
+      keys.add(`categories:${nav.activeServerId}`);
+    }
+    if (nav.activeChannelId) {
+      keys.add(`messages:${nav.activeChannelId}`);
+      keys.add(`threads:${nav.activeChannelId}`);
+    }
+    if (nav.threadChannelId && nav.threadChannelId !== nav.activeChannelId) {
+      keys.add(`threads:${nav.threadChannelId}`);
+    }
+    if (nav.activeThreadId) {
+      keys.add(`thread:${nav.activeThreadId}`);
+      keys.add(`thread-messages:${nav.activeThreadId}`);
+    }
+    if (nav.activeDMId) {
+      keys.add(`dm-messages:${nav.activeDMId}`);
+    }
+    return Array.from(keys);
+  } catch {
+    return [];
+  }
 }
 
 

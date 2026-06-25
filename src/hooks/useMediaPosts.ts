@@ -82,15 +82,29 @@ export function useMediaPosts(channelId: string) {
   useEffect(() => {
     if (!channelId) return;
 
-    const refetchDebounced = (() => {
-      let t: ReturnType<typeof setTimeout> | undefined;
-      return () => {
-        clearTimeout(t);
-        t = setTimeout(() => {
-          queryClient.invalidateQueries({ queryKey: ['media-posts', channelIdRef.current] });
-        }, 200);
-      };
-    })();
+    const fetchAndUpsert = async (postId: string) => {
+      const { data, error } = await (supabase
+        .from('media_posts') as any)
+        .select('*, items:media_post_items(*)')
+        .eq('id', postId)
+        .maybeSingle();
+      if (error || !data) return;
+      if (data.channel_id !== channelIdRef.current) return;
+      const items: MediaPostItem[] = ((data.items ?? []) as MediaPostItem[])
+        .slice()
+        .sort((a, b) => a.position - b.position);
+      const normalized = { ...data, items } as MediaPost;
+      queryClient.setQueryData<MediaPost[]>(
+        ['media-posts', channelIdRef.current],
+        (old = []) => {
+          const without = old.filter((p) => p.id !== normalized.id);
+          // Insert preserving created_at desc ordering
+          const next = [normalized, ...without];
+          next.sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+          return next;
+        }
+      );
+    };
 
     const postsChannel = supabase
       .channel(`media-posts-${channelId}`)
@@ -98,17 +112,17 @@ export function useMediaPosts(channelId: string) {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'media_posts' },
         (payload) => {
-          const rec = (payload.new || payload.old) as { channel_id?: string } | undefined;
-          if (rec?.channel_id !== channelIdRef.current) return;
+          const rec = (payload.new || payload.old) as { channel_id?: string; id?: string } | undefined;
           if (payload.eventType === 'DELETE') {
             const deletedId = (payload.old as { id: string }).id;
             queryClient.setQueryData<MediaPost[]>(
               ['media-posts', channelIdRef.current],
               (old = []) => old.filter((p) => p.id !== deletedId)
             );
-          } else {
-            refetchDebounced();
+            return;
           }
+          if (rec?.channel_id !== channelIdRef.current || !rec.id) return;
+          fetchAndUpsert(rec.id);
         }
       )
       .subscribe();
@@ -118,7 +132,10 @@ export function useMediaPosts(channelId: string) {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'media_post_items' },
-        () => refetchDebounced()
+        (payload) => {
+          const rec = (payload.new || payload.old) as { post_id?: string } | undefined;
+          if (rec?.post_id) fetchAndUpsert(rec.post_id);
+        }
       )
       .subscribe();
 
@@ -215,7 +232,21 @@ export function useCreateMediaPost(channelId: string) {
         .insert(itemRows);
       if (itemsError) throw itemsError;
 
-      return post as unknown as MediaPost;
+      // Fetch the complete post WITH items so the cache has the authoritative
+      // record. Without this, a subsequent refetch may race with optimistic
+      // state and the just-published post can briefly vanish from the grid.
+      const { data: full, error: fullErr } = await (supabase
+        .from('media_posts') as any)
+        .select('*, items:media_post_items(*)')
+        .eq('id', post.id)
+        .single();
+      if (fullErr) throw fullErr;
+
+      const sortedItems: MediaPostItem[] = ((full.items ?? []) as MediaPostItem[])
+        .slice()
+        .sort((a, b) => a.position - b.position);
+
+      return { ...full, items: sortedItems } as MediaPost;
     },
 
     onMutate: async (input) => {
@@ -261,24 +292,18 @@ export function useCreateMediaPost(channelId: string) {
     },
 
     onSuccess: (data, _input, context) => {
-      // Replace optimistic with the authoritative server row so the post stays
-      // visible even if Realtime is slow / RLS filters it out for the author.
+      // Atomically swap optimistic with the fully-loaded server post (with
+      // items). Do NOT invalidate — that re-fetches the whole channel and
+      // can briefly drop the just-inserted row if Realtime hasn't propagated.
       queryClient.setQueryData<MediaPost[]>(
         ['media-posts', channelId],
         (old = []) => {
-          const withoutOptimistic = old.filter((p) => p.id !== context?.optimisticId);
-          if (withoutOptimistic.some((p) => p.id === (data as any).id)) return withoutOptimistic;
-          const items = (data as any).items ?? [];
-          const finalPost: MediaPost = {
-            ...(data as any),
-            items: items.length > 0 ? items : (context?.optimisticId
-              ? (old.find((p) => p.id === context.optimisticId)?.items ?? [])
-              : []),
-          };
-          return [finalPost, ...withoutOptimistic];
+          const withoutOptimistic = old.filter(
+            (p) => p.id !== context?.optimisticId && p.id !== data.id
+          );
+          return [data, ...withoutOptimistic];
         }
       );
-      queryClient.invalidateQueries({ queryKey: ['media-posts', channelId] });
     },
 
     onError: (_err, _input, context) => {

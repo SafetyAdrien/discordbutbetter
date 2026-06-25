@@ -68,10 +68,29 @@ export function useCreateForumComment(postId: string) {
       if (error) throw error;
       return data as ForumComment;
     },
-    onSuccess: () => {
+    onMutate: async (content: string) => {
+      if (!user) return;
+      await queryClient.cancelQueries({ queryKey: ['forum-comments', postId] });
+      const previous = queryClient.getQueryData<ForumComment[]>(['forum-comments', postId]);
+      const optimistic: ForumComment = {
+        id: `temp-${Date.now()}`,
+        post_id: postId,
+        author_id: user.id,
+        content: content.trim(),
+        parent_comment_id: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      queryClient.setQueryData<ForumComment[]>(['forum-comments', postId], (old = []) => [...old, optimistic]);
+      return { previous };
+    },
+    onError: (e: any, _v, ctx) => {
+      if (ctx?.previous) queryClient.setQueryData(['forum-comments', postId], ctx.previous);
+      toast.error(e?.message ?? 'Erreur lors de l\'envoi');
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['forum-comments', postId] });
     },
-    onError: (e: any) => toast.error(e?.message ?? 'Erreur lors de l\'envoi'),
   });
 }
 

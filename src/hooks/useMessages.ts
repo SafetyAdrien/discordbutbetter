@@ -69,7 +69,7 @@ export interface MessageWithAuthor {
 export function useMessages(channelId: string | null) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const cacheReady = useCacheReady();
+  
 
   const query = useQuery({
     queryKey: ['messages', channelId],

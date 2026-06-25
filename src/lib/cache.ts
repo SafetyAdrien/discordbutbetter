@@ -82,13 +82,115 @@ function readSyncMirror<T = any>(key: string): T | undefined {
   }
 }
 
+/**
+ * "Hot" prefixes that we aggressively keep in the synchronous localStorage
+ * mirror so that `cacheGetSync` returns instantly on cold boot — before
+ * IndexedDB hydration has finished.
+ */
+const HOT_PREFIXES = [
+  'messages:',
+  'thread-messages:',
+  'dm-messages:',
+  'threads:',
+  'thread:',
+  'channels:',
+  'servers:',
+  'categories:',
+];
+
+const SLIM_PREFIXES = ['messages:', 'thread-messages:', 'dm-messages:'];
+const SLIM_TAIL = 30;
+const MIRROR_MAX_BYTES = 80 * 1024;
+const LRU_KEY = `${DB_NAME}:lru`;
+
+function isHotKey(key: string): boolean {
+  return HOT_PREFIXES.some((p) => key.startsWith(p));
+}
+
+function isSlimKey(key: string): boolean {
+  return SLIM_PREFIXES.some((p) => key.startsWith(p));
+}
+
+function readLru(): Record<string, number> {
+  if (!canUseLocalStorage()) return {};
+  try {
+    const raw = window.localStorage.getItem(LRU_KEY);
+    return raw ? (JSON.parse(raw) as Record<string, number>) : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeLru(lru: Record<string, number>): void {
+  if (!canUseLocalStorage()) return;
+  try {
+    window.localStorage.setItem(LRU_KEY, JSON.stringify(lru));
+  } catch {}
+}
+
+function touchLru(key: string): void {
+  const lru = readLru();
+  lru[key] = Date.now();
+  writeLru(lru);
+}
+
+function evictOldestMirrors(): boolean {
+  if (!canUseLocalStorage()) return false;
+  const lru = readLru();
+  const entries = Object.entries(lru).sort((a, b) => a[1] - b[1]);
+  if (entries.length === 0) return false;
+  const removeCount = Math.max(1, Math.floor(entries.length * 0.25));
+  for (let i = 0; i < removeCount; i += 1) {
+    const [key] = entries[i];
+    delete lru[key];
+    try { window.localStorage.removeItem(getSyncStorageKey(key)); } catch {}
+  }
+  writeLru(lru);
+  return true;
+}
+
+function trySerialise(value: any): string | null {
+  try { return JSON.stringify(value); } catch { return null; }
+}
+
+function buildMirrorPayload(key: string, value: any): string | null {
+  let payload = trySerialise(value);
+  if (payload === null) return null;
+
+  if (payload.length > MIRROR_MAX_BYTES && isSlimKey(key) && Array.isArray(value)) {
+    const slim = value.slice(-SLIM_TAIL);
+    const slimPayload = trySerialise(slim);
+    if (slimPayload && slimPayload.length <= MIRROR_MAX_BYTES) return slimPayload;
+    return null;
+  }
+
+  if (payload.length > MIRROR_MAX_BYTES) return null;
+  return payload;
+}
+
 function writeSyncMirror(key: string, value: any): void {
   if (!canUseLocalStorage()) return;
 
-  try {
-    window.localStorage.setItem(getSyncStorageKey(key), JSON.stringify(value));
-  } catch {
-    // Ignore quota or serialization errors — memory/IDB still work
+  const payload = buildMirrorPayload(key, value);
+  if (payload === null) {
+    try { window.localStorage.removeItem(getSyncStorageKey(key)); } catch {}
+    return;
+  }
+
+  const fullKey = getSyncStorageKey(key);
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    try {
+      window.localStorage.setItem(fullKey, payload);
+      if (isHotKey(key)) touchLru(key);
+      return;
+    } catch (err: any) {
+      const name = err?.name || '';
+      if (name === 'QuotaExceededError' || name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+        if (!evictOldestMirrors()) return;
+        continue;
+      }
+      return;
+    }
   }
 }
 
@@ -291,6 +393,44 @@ export async function warmCache(): Promise<void> {
   // entries will be pushed to React Query as they hydrate.
   markCacheReady();
 
+  // --- Priority pass: hydrate the keys the user is most likely to need RIGHT
+  // NOW (current channel/server/thread/DM from persisted navigation state)
+  // BEFORE doing the full cursor scan. This usually completes in <50 ms and
+  // ensures messages + threads + spine render at the first frame even when
+  // the localStorage mirror was evicted or oversized.
+  const hotKeys = collectHotKeys();
+  if (hotKeys.length > 0) {
+    const hotStart = performance.now();
+    try {
+      const db = await getDB();
+      await new Promise<void>((resolve) => {
+        const tx = db.transaction(STORE_NAME, 'readonly');
+        const store = tx.objectStore(STORE_NAME);
+        let remaining = hotKeys.length;
+        if (remaining === 0) { resolve(); return; }
+        for (const key of hotKeys) {
+          const req = store.get(key);
+          req.onsuccess = () => {
+            const value = req.result;
+            if (value !== undefined && !memoryCache.has(key)) {
+              memoryCache.set(key, value);
+              emitHydrate(key, value);
+            }
+            remaining -= 1;
+            if (remaining === 0) resolve();
+          };
+          req.onerror = () => {
+            remaining -= 1;
+            if (remaining === 0) resolve();
+          };
+        }
+      });
+      recordPerf(`warmCache:hotKeys(${hotKeys.length})`, performance.now() - hotStart);
+    } catch {
+      // ignore — full cursor will still run below
+    }
+  }
+
   const hydrateStart = performance.now();
   try {
     const db = await getDB();
@@ -304,7 +444,6 @@ export async function warmCache(): Promise<void> {
         if (cursor) {
           const key = cursor.key as string;
           const value = cursor.value;
-          // Don't overwrite a fresher value already written by a live query.
           if (!memoryCache.has(key)) {
             memoryCache.set(key, value);
             emitHydrate(key, value);
@@ -323,6 +462,47 @@ export async function warmCache(): Promise<void> {
 
   markPerf('warmCache:ready');
   measurePerf('warmCache:total', 'warmCache:start', 'warmCache:ready');
+}
+
+/**
+ * Read the persisted navigation state and project it into the cache keys we
+ * want to hydrate first. Cheap and synchronous (just one localStorage read).
+ */
+function collectHotKeys(): string[] {
+  if (!canUseLocalStorage()) return [];
+  try {
+    const raw = window.localStorage.getItem('discord_navigation_state');
+    if (!raw) return [];
+    const nav = JSON.parse(raw) as {
+      activeServerId?: string | null;
+      activeChannelId?: string | null;
+      activeDMId?: string | null;
+      activeThreadId?: string | null;
+      threadChannelId?: string | null;
+    };
+    const keys = new Set<string>();
+    if (nav.activeServerId) {
+      keys.add(`channels:${nav.activeServerId}`);
+      keys.add(`categories:${nav.activeServerId}`);
+    }
+    if (nav.activeChannelId) {
+      keys.add(`messages:${nav.activeChannelId}`);
+      keys.add(`threads:${nav.activeChannelId}`);
+    }
+    if (nav.threadChannelId && nav.threadChannelId !== nav.activeChannelId) {
+      keys.add(`threads:${nav.threadChannelId}`);
+    }
+    if (nav.activeThreadId) {
+      keys.add(`thread:${nav.activeThreadId}`);
+      keys.add(`thread-messages:${nav.activeThreadId}`);
+    }
+    if (nav.activeDMId) {
+      keys.add(`dm-messages:${nav.activeDMId}`);
+    }
+    return Array.from(keys);
+  } catch {
+    return [];
+  }
 }
 
 

@@ -297,6 +297,10 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
   };
   const [filterSelectedIndex, setFilterSelectedIndex] = useState(0);
   const searchRef = useRef<HTMLInputElement>(null);
+  const [addSecondOwnerTarget, setAddSecondOwnerTarget] = useState<{ id: string; name: string } | null>(null);
+  const [removeSecondOwnerTarget, setRemoveSecondOwnerTarget] = useState<{ id: string; name: string } | null>(null);
+  const setSecondaryOwner = useSetSecondaryOwner();
+  const removeSecondaryOwner = useRemoveSecondaryOwner();
 
   // Calculate available filters based on search query
   const availableFilters = useMemo(() => {

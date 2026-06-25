@@ -94,8 +94,12 @@ export function MemberManager({ serverId }: MemberManagerProps) {
   };
 
   const handleRemoveSecondaryOwner = () => {
-    removeSecondaryOwner.mutate(serverId);
+    if (!removeSecondOwnerTarget) return;
+    removeSecondaryOwner.mutate(serverId, {
+      onSuccess: () => setRemoveSecondOwnerTarget(null),
+    });
   };
+
 
   if (isLoading) {
     return (

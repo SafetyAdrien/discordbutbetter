@@ -59,6 +59,17 @@ import { Shield, Pencil } from "lucide-react";
 import { useMembers } from "@/hooks/useMembers";
 import { useAuth } from "@/contexts/AuthContext";
 import { useServers } from "@/hooks/useServers";
+import { useSetSecondaryOwner, useRemoveSecondaryOwner } from "@/hooks/useSecondaryOwner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { ServerProfileEditModal } from "@/components/profile/ServerProfileEditModal";
 import {
   useMemberRoleFilterListener,

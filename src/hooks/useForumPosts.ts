@@ -54,6 +54,13 @@ export function useForumPosts(channelId: string) {
     return () => { supabase.removeChannel(ch); };
   }, [channelId, queryClient]);
 
+  // Persist to cache for instant rehydration
+  useEffect(() => {
+    if (query.data && channelId && !query.isPlaceholderData) {
+      cacheSetAsync(`forum-posts:${channelId}`, query.data);
+    }
+  }, [query.data, channelId, query.isPlaceholderData]);
+
   return query;
 }
 
@@ -78,10 +85,47 @@ export function useCreateForumPost(channelId: string, serverId: string) {
       if (error) throw error;
       return data as ForumPost;
     },
-    onSuccess: () => {
+    onMutate: async (input) => {
+      if (!user) return;
+      await queryClient.cancelQueries({ queryKey: ['forum-posts', channelId] });
+      const previous = queryClient.getQueryData<ForumPost[]>(['forum-posts', channelId]);
+      const optimisticId = `temp-${crypto.randomUUID()}`;
+      const now = new Date().toISOString();
+      const optimistic: ForumPost = {
+        id: optimisticId,
+        channel_id: channelId,
+        server_id: serverId,
+        author_id: user.id,
+        title: input.title.trim(),
+        content: input.content.trim() || null,
+        tags: input.tags,
+        is_pinned: false,
+        is_locked: false,
+        comment_count: 0,
+        upvote_count: 0,
+        last_activity_at: now,
+        created_at: now,
+        updated_at: now,
+        _isPending: true,
+      };
+      queryClient.setQueryData<ForumPost[]>(
+        ['forum-posts', channelId],
+        (old = []) => [optimistic, ...old],
+      );
+      return { previous, optimisticId };
+    },
+    onSuccess: (data, _input, ctx) => {
+      queryClient.setQueryData<ForumPost[]>(['forum-posts', channelId], (old = []) => {
+        const withoutOpt = old.filter(p => p.id !== ctx?.optimisticId);
+        if (withoutOpt.some(p => p.id === data.id)) return withoutOpt;
+        return [data, ...withoutOpt];
+      });
       queryClient.invalidateQueries({ queryKey: ['forum-posts', channelId] });
     },
-    onError: (e: any) => toast.error(e?.message ?? 'Erreur lors de la création du sujet'),
+    onError: (e: any, _i, ctx) => {
+      if (ctx?.previous) queryClient.setQueryData(['forum-posts', channelId], ctx.previous);
+      toast.error(e?.message ?? 'Erreur lors de la création du sujet');
+    },
   });
 }
 

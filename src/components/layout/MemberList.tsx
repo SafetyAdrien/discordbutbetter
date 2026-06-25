@@ -873,6 +873,68 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
         onOpenChange={setServerProfileEditOpen}
         initialServerId={serverId}
       />
+
+      <AlertDialog
+        open={!!addSecondOwnerTarget}
+        onOpenChange={() => setAddSecondOwnerTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Définir {addSecondOwnerTarget?.name} comme second propriétaire ?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Ce membre aura les mêmes droits que vous sur ce serveur. Vous seul pourrez retirer ce statut.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (!addSecondOwnerTarget || !serverId) return;
+                setSecondaryOwner.mutate(
+                  { serverId, userId: addSecondOwnerTarget.id },
+                  { onSuccess: () => setAddSecondOwnerTarget(null) }
+                );
+              }}
+              disabled={setSecondaryOwner.isPending}
+            >
+              {setSecondaryOwner.isPending ? 'Confirmation...' : 'Confirmer'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={!!removeSecondOwnerTarget}
+        onOpenChange={() => setRemoveSecondOwnerTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Retirer {removeSecondOwnerTarget?.name} de la position de second propriétaire ?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Ce membre perdra immédiatement tous les droits liés à ce statut.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive hover:bg-destructive/90"
+              onClick={() => {
+                if (!serverId) return;
+                removeSecondaryOwner.mutate(serverId, {
+                  onSuccess: () => setRemoveSecondOwnerTarget(null),
+                });
+              }}
+              disabled={removeSecondaryOwner.isPending}
+            >
+              {removeSecondaryOwner.isPending ? 'Retrait...' : 'Confirmer'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 });

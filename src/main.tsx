@@ -1,22 +1,18 @@
 import { createRoot } from "react-dom/client";
-import { warmCache, purgeAllCaches } from "./lib/cache";
+import { warmCache, purgeAllCaches, enforceCacheSchemaVersionSync } from "./lib/cache";
 import App from "./App.tsx";
 import "./index.css";
 
-async function bootstrap() {
-  try {
-    // Cap warmCache so a wedged IDB on mobile never blocks the shell.
-    await Promise.race([
-      warmCache(),
-      new Promise<void>((resolve) => setTimeout(resolve, 1500)),
-    ]);
-  } catch (e) {
-    console.warn('[bootstrap] warmCache failed, rendering anyway', e);
-  }
-  createRoot(document.getElementById("root")!).render(<App />);
-}
+// Synchronous schema purge BEFORE render — guarantees no stale data leaks
+// into placeholders. IDB hydration runs in background via warmCache().
+enforceCacheSchemaVersionSync();
 
-void bootstrap();
+// Kick off IDB hydration in background — does NOT block render.
+void warmCache().catch((e) => {
+  console.warn('[bootstrap] warmCache failed', e);
+});
+
+createRoot(document.getElementById("root")!).render(<App />);
 
 /**
  * Hard-refresh shortcuts (Ctrl/Cmd+R, Ctrl/Cmd+Shift+R, Ctrl+F5) must wipe
@@ -30,9 +26,7 @@ if (typeof window !== "undefined") {
   const isRefreshShortcut = (e: KeyboardEvent): boolean => {
     const mod = e.ctrlKey || e.metaKey;
     if (!mod) return false;
-    // Ctrl/Cmd + R  (with or without Shift)
     if (e.key === "r" || e.key === "R") return true;
-    // Ctrl + F5
     if (e.key === "F5") return true;
     return false;
   };
@@ -48,19 +42,16 @@ if (typeof window !== "undefined") {
 
       const reload = () => {
         try {
-          // Bypass HTTP cache where supported
-          // @ts-ignore - legacy forceReload arg still honored by some engines
+          // @ts-ignore
           window.location.reload(true);
         } catch {
           window.location.reload();
         }
       };
 
-      // Purge IndexedDB + localStorage mirror + in-memory cache, then reload.
       Promise.resolve(purgeAllCaches())
         .catch(() => undefined)
         .finally(() => {
-          // Also clear Cache Storage (service worker / fetch caches) if present
           try {
             if ("caches" in window) {
               caches
@@ -70,9 +61,7 @@ if (typeof window !== "undefined") {
                 .finally(reload);
               return;
             }
-          } catch {
-            // ignore
-          }
+          } catch {}
           reload();
         });
     },

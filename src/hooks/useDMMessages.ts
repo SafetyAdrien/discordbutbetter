@@ -148,7 +148,7 @@ export function useDMMessages(conversationId: string | null) {
           : null,
       }));
     },
-    enabled: !!conversationId && !!user && cacheReady,
+    enabled: !!conversationId && !!user,
     placeholderData: () => cacheGetSync(`dm-messages:${conversationId}`),
     staleTime: 30_000,
     refetchOnMount: (q) => (q.state.data ? false : 'always'),

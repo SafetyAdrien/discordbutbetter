@@ -732,9 +732,11 @@ const Index = () => {
                   <ForumChannel 
                     key={channelForChat.id}
                     channel={channelForChat}
+                    serverId={activeServerId ?? undefined}
                     onToggleMembers={handleToggleMembers}
                     showMembers={showMembers}
                   />
+
                 ) : channelForChat.type === 'tasks' ? (
                   <TasksChannel 
                     key={channelForChat.id}

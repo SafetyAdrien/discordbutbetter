@@ -444,7 +444,7 @@ export function MobileLayout({
       case 'media':
         return <FullScreenWrapper name={channelForChat.name} onBack={handleBackToChannels}><MediaChannel {...commonProps} /></FullScreenWrapper>;
       case 'forum':
-        return <FullScreenWrapper name={channelForChat.name} onBack={handleBackToChannels}><ForumChannel {...commonProps} /></FullScreenWrapper>;
+        return <FullScreenWrapper name={channelForChat.name} onBack={handleBackToChannels}><ForumChannel {...commonProps} serverId={(channelForChat as any).server_id} /></FullScreenWrapper>;
       case 'tasks':
         return <FullScreenWrapper name={channelForChat.name} onBack={handleBackToChannels}><TasksChannel {...commonProps} /></FullScreenWrapper>;
       case 'calendar':

@@ -996,72 +996,8 @@ export function MessageInput({
               </PopoverContent>
             </Popover>
 
-            <div className="flex min-w-0 items-center overflow-hidden">
-              <button
-                type="button"
-                onMouseDown={e => e.preventDefault()}
-                onClick={() => setMarkdownBarOpen(o => !o)}
-                title={markdownBarOpen ? 'Masquer le formatage' : 'Afficher le formatage'}
-                className={`shrink-0 text-muted-foreground hover:text-primary rounded-full transition-colors flex items-center justify-center ${compact ? 'p-1' : 'p-1.5'}`}
-              >
-                {markdownBarOpen ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-              </button>
-              <div className="ml-0.5 min-w-0 flex-1 overflow-hidden">
-                <div
-                  className={`flex items-center gap-0.5 whitespace-nowrap overflow-x-auto scrollbar-none transition-[opacity,transform] duration-200 ${markdownBarOpen ? 'translate-x-0 opacity-100' : '-translate-x-2 opacity-0 pointer-events-none'}`}
-                  style={{ transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)' }}
-                  aria-hidden={!markdownBarOpen}
-                >
-                  <button type="button" onMouseDown={e => e.preventDefault()} title="Titre 1" onClick={() => applyMarkdown('# ', '', true)} className={markdownButtonClass}><Heading1 className="w-4 h-4" /></button>
-                  <button type="button" onMouseDown={e => e.preventDefault()} title="Titre 2" onClick={() => applyMarkdown('## ', '', true)} className={markdownButtonClass}><Heading2 className="w-4 h-4" /></button>
-                  <button type="button" onMouseDown={e => e.preventDefault()} title="Titre 3" onClick={() => applyMarkdown('### ', '', true)} className={markdownButtonClass}><Heading3 className="w-4 h-4" /></button>
-                  <button type="button" onMouseDown={e => e.preventDefault()} title="Texte discret" onClick={() => applyMarkdown('-# ', '', true)} className={markdownButtonClass}><Type className="w-4 h-4" /></button>
-                  <div className="shrink-0 w-px h-4 bg-border/40 mx-1" />
-                  <button type="button" onMouseDown={e => e.preventDefault()} title="Gras" onClick={() => applyMarkdown('**')} className={markdownButtonClass}><Bold className="w-4 h-4" /></button>
-                  <button type="button" onMouseDown={e => e.preventDefault()} title="Italique" onClick={() => applyMarkdown('*')} className={markdownButtonClass}><Italic className="w-4 h-4" /></button>
-                  <button type="button" onMouseDown={e => e.preventDefault()} title="Souligné" onClick={() => applyMarkdown('__')} className={markdownButtonClass}><Underline className="w-4 h-4" /></button>
-                  <button type="button" onMouseDown={e => e.preventDefault()} title="Barré" onClick={() => applyMarkdown('~~')} className={markdownButtonClass}><Strikethrough className="w-4 h-4" /></button>
-                  <button type="button" onMouseDown={e => e.preventDefault()} title="Code en ligne" onClick={() => applyMarkdown('`')} className={markdownButtonClass}><Code className="w-4 h-4" /></button>
-                  <div className="shrink-0 w-px h-4 bg-border/40 mx-1" />
-                  <button type="button" onMouseDown={e => e.preventDefault()} title="Bloc de code" onClick={() => applyMarkdown('```', '```', false, true)} className={markdownButtonClass}><SquareCode className="w-4 h-4" /></button>
-                  <button type="button" onMouseDown={e => e.preventDefault()} title="Citation" onClick={() => applyMarkdown('> ', '', true)} className={markdownButtonClass}><Quote className="w-4 h-4" /></button>
-                  <button type="button" onMouseDown={e => e.preventDefault()} title="Citation multi-ligne" onClick={() => applyMarkdown('>>> ', '', true)} className={markdownButtonClass}><TextQuote className="w-4 h-4" /></button>
-                  <button type="button" onMouseDown={e => e.preventDefault()} title="Liste à puces" onClick={() => applyMarkdown('- ', '', true)} className={markdownButtonClass}><List className="w-4 h-4" /></button>
-                  <button type="button" onMouseDown={e => e.preventDefault()} title="Liste numérotée" onClick={() => applyMarkdown('1. ', '', true)} className={markdownButtonClass}><ListOrdered className="w-4 h-4" /></button>
-                  <button type="button" onMouseDown={e => e.preventDefault()} title="Lien" onClick={() => applyMarkdown('[', '](url)')} className={markdownButtonClass}><LinkIcon className="w-4 h-4" /></button>
-                  <button type="button" onMouseDown={e => e.preventDefault()} title="Spoiler" onClick={() => applyMarkdown('||')} className={markdownButtonClass}><EyeOff className="w-4 h-4" /></button>
-                  <div className="shrink-0 w-px h-4 bg-border/40 mx-1" />
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <button type="button" onMouseDown={e => e.preventDefault()} title="Avertissement" className={markdownButtonClass}><TriangleAlert className="w-4 h-4" /></button>
-                    </PopoverTrigger>
-                    <PopoverContent side="top" align="start" className="w-56 p-1">
-                      <div className="flex flex-col">
-                        {([
-                          { type: 'NOTE' as const, Icon: Info, label: 'Note', varName: 'alert-note' },
-                          { type: 'TIP' as const, Icon: Lightbulb, label: 'Astuce', varName: 'alert-tip' },
-                          { type: 'IMPORTANT' as const, Icon: MessageSquareWarning, label: 'Important', varName: 'alert-important' },
-                          { type: 'WARNING' as const, Icon: TriangleAlert, label: 'Avertissement', varName: 'alert-warning' },
-                          { type: 'CAUTION' as const, Icon: OctagonAlert, label: 'Attention', varName: 'alert-caution' },
-                        ]).map(({ type, Icon, label, varName }) => (
-                          <button
-                            key={type}
-                            type="button"
-                            onMouseDown={e => e.preventDefault()}
-                            onClick={() => insertAlert(type)}
-                            className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-accent text-left text-sm"
-                            style={{ color: `hsl(var(--${varName}))` }}
-                          >
-                            <Icon className="w-4 h-4 shrink-0" />
-                            <span className="text-foreground">{label}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              </div>
-            </div>
+            {/* Markdown formatting bar removed — guide available in user settings → Aide · Markdown */}
+
 
             <div className={`flex items-center justify-end gap-1 shrink-0 ${rightActionsWidthClass}`}>
               {!isMobile && (

@@ -1,50 +1,44 @@
-## Goal
-Painter les messages (salons serveur, DMs, threads) **instantanément** au switch ou cold-boot, sans attendre la requête réseau ni l'hydratation IndexedDB.
+## Objectif
+Appliquer la même architecture cache-first (zéro latence) aux **threads** (liste + vue ouverte) et aux **aperçus de liens** : tout doit s'afficher instantanément depuis le cache local au premier frame, puis se rafraîchir silencieusement en arrière-plan.
 
-## Diagnostic
-Aujourd'hui, le chemin de chargement message est :
+## 1) Fils (Threads)
 
-```
-main.tsx → await warmCache() (≤1500ms) → render <App/>
-useMessages → useCacheReady() → query.enabled = false tant que warmCache n'a pas fini
-            → puis placeholderData via cacheGetSync()
-```
+État actuel :
+- `useThreads(channelId)` lit déjà via `placeholderData: cacheGetSync('threads:…')`, mais le **bridge IDB→React Query** (`useCacheRehydrate`) n'écoute QUE `messages:* / dm-messages:* / thread-messages:*` — les listes de threads ne sont jamais réinjectées si la mémoire n'est pas encore hydratée au moment du premier render.
+- `useThread(threadId)` (vue détail) n'a **ni placeholderData, ni cache persistant** → chaque ouverture attend le réseau (~300–800 ms de latence visible).
+- `ThreadsPopover` affiche un skeleton tant que `isLoading` est vrai, ce qui flashe sur cold-cache.
+- `useThreadMessages` est déjà OK (cache + bridge + placeholderData).
 
-Le gate `cacheReady` retarde TOUT (la query, donc aussi le `placeholderData`) — au cold boot on perd jusqu'à 1,2 s avant même de peindre le cache local. Au switch de salon, c'est instantané grâce au mirror localStorage, **sauf** si les données n'existent qu'en IndexedDB (gros salons qui dépassent le quota localStorage) : on attend alors la requête réseau (~500 ms - 7 s mesurés).
+Changements :
+- **`src/hooks/useCacheRehydrate.ts`** : ajouter le routage des clés `threads:<channelId>` → `['threads', channelId]` et `thread:<threadId>` → `['thread', threadId]`, en gardant la garantie "ne pas écraser de données fraîches".
+- **`src/hooks/useThreads.ts`** :
+  - `useThread(threadId)` : ajouter `placeholderData: () => cacheGetSync('thread:'+threadId)`, `staleTime: 30_000`, `refetchOnMount` conditionnel, et persister via `cacheSetAsync` quand la donnée vient du réseau.
+  - `useThreads` : conserver le comportement actuel ; assouplir `refetchOnMount` pour ne pas rejouer la requête n+1 lourde si du cache est dispo.
+- **`src/components/threads/ThreadsPopover.tsx`** : ne plus afficher le skeleton quand on a déjà des données (`threads.length > 0` ou `data !== undefined`) — uniquement quand le cache est réellement vide ET qu'on charge pour la toute première fois.
 
-## Plan
+## 2) Aperçus de liens (Link previews)
 
-### 1. Découpler "schema purge" de "IDB hydrate" dans `src/lib/cache.ts`
-- Rendre `enforceCacheSchemaVersion()` **synchrone** (purge mémoire + localStorage mirror + bump du `CACHE_SCHEMA_VERSION` — l'effacement IDB peut rester en arrière-plan, sans bloquer).
-- Appeler cette fonction synchrone tout en haut de `main.tsx` AVANT `createRoot`. Ainsi aucune donnée stale ne peut être lue.
-- `markCacheReady()` est appelé **immédiatement** après la purge sync. `warmCache()` continue d'hydrater IDB → mémoire en background.
-- Pendant l'hydratation IDB, chaque entrée `messages:*` / `dm-messages:*` / `thread-messages:*` chargée appelle un nouvel hook de "rehydrate broadcast" qui pousse les données dans React Query via `queryClient.setQueryData(key, data)` SI la query existe déjà et est encore vide/placeholder. Cela fait apparaître les messages dès que IDB est lu, sans relancer la requête.
+État actuel :
+- `useUrlMetadata` n'a qu'un `Map` mémoire : tout reload / changement de salon = nouveau fetch via l'edge function `fetch-url-metadata` (latence visible + skeleton qui flashe).
+- Aucune persistance IDB, aucun seed synchrone au premier render.
 
-### 2. Retirer le gate `cacheReady` sur les queries messages
-Fichiers : `src/hooks/useMessages.ts`, `src/hooks/useDMMessages.ts`, `src/hooks/useThreadMessages.ts`.
-- `enabled: !!channelId && !!user` (sans `&& cacheReady`).
-- `placeholderData` continue d'utiliser `cacheGetSync` : mémoire (rempli par warmCache), sinon mirror localStorage, sinon `undefined`.
-- Conséquence : la query part instantanément, le placeholder peint dans le même tick si dispo.
-
-### 3. Pont IDB → React Query
-Dans `cache.ts`, exposer un événement quand `warmCache` hydrate la mémoire. Créer `src/hooks/useCacheRehydrate.ts` monté une fois dans `App` qui, à l'hydratation IDB, pousse les clés `messages:*` / `dm-messages:*` / `thread-messages:*` dans `queryClient` (uniquement si la query existe déjà sans data).
-
-### 4. Garder le gate uniquement pour les écritures cohérentes
-La fonction `cacheSetAsync` reste inchangée. `useCacheReady` et `whenCacheReady` restent exportés mais ne sont plus utilisés par les hooks de messages (utiles si un autre flux en a besoin plus tard).
+Changements :
+- **`src/hooks/useUrlMetadata.ts`** :
+  - Au démarrage du hook, lire `cacheGetSync('url-meta:'+url)` pour initialiser `data` ET passer `isLoading=false` si un cache existe (TTL 7 jours, vérifié sur le timestamp stocké).
+  - Après un fetch réussi, écrire `cacheSetAsync('url-meta:'+url, { meta, fetchedAt })`.
+  - Cache négatif (null) persisté aussi pour éviter de re-tenter en boucle (TTL plus court, 1h).
+  - Conserver la dédup `pendingRequests`.
+- **`src/hooks/useCacheRehydrate.ts`** : ajouter la route `url-meta:*` pour réinjecter en mémoire dès que IDB hydrate (utile quand le composant LinkEmbed se monte avant que `warmCache` ait terminé).
+- **`src/components/chat/LinkEmbed.tsx`** : ne plus afficher le squelette quand `data` est déjà défini (déjà le cas) ; supprimer le `setTimedOut(10s)` qui peut faire reflasher l'embed à vide — remplacer par un simple `if (isLoading && !data) skeleton`.
 
 ## Résultat attendu
-- **Switch de salon avec cache localStorage** : peint au même frame, query background.
-- **Switch de salon avec cache uniquement IDB** : peint dès que IDB hydrate (~30-150 ms), pas d'attente réseau.
-- **Cold boot premier salon jamais visité** : query part immédiatement (gain ≈ jusqu'à 1,2 s vs aujourd'hui).
-- **Cold boot avec cache existant** : placeholder peint immédiatement depuis mirror localStorage, puis IDB rehydrate complète (pour gros volumes) avant même la réponse réseau.
+- Ouverture d'un fil déjà visité : affiché au même frame (titre, créateur, messages) sans skeleton.
+- Liste de threads d'un salon déjà visité : visible instantanément à l'ouverture du popover.
+- Aperçu d'un lien déjà vu (même URL n'importe où) : rendu complet (titre, image, description, couleur) sans flash skeleton, même après reload F5.
+- Premiers chargements (cold) : skeleton uniquement pendant la VRAIE absence de cache, puis remplissage live.
 
-## Fichiers modifiés
-- `src/lib/cache.ts` (purge sync + signal d'hydratation IDB par clé)
-- `src/main.tsx` (purge schema synchrone avant render)
-- `src/hooks/useMessages.ts` (retirer gate)
-- `src/hooks/useDMMessages.ts` (retirer gate)
-- `src/hooks/useThreadMessages.ts` (retirer gate)
-- `src/hooks/useCacheRehydrate.ts` (nouveau — pont IDB→RQ)
-- `src/App.tsx` (montage de `useCacheRehydrate`)
-
-Aucun changement DB, aucun changement de logique métier ni d'UI.
+## Détails techniques
+- Réutilisation stricte de l'infra existante (`cacheGetSync`, `cacheSetAsync`, `subscribeCacheHydrate`, schema version `CACHE_SCHEMA_VERSION`).
+- Aucun changement de schéma DB.
+- Aucune modification d'edge function.
+- Aucune modification des mutations existantes (create/update/delete thread) — leurs invalidations restent compatibles.

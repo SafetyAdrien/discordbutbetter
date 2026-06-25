@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 
 export interface UrlMetadata {
   title: string | null;
@@ -9,41 +10,71 @@ export interface UrlMetadata {
   themeColor: string | null;
 }
 
-// Global in-memory cache
+interface CachedEntry {
+  meta: UrlMetadata | null;
+  fetchedAt: number;
+}
+
+// TTLs
+const POSITIVE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const NEGATIVE_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+// Global in-memory cache (fast path)
 const metadataCache = new Map<string, UrlMetadata | null>();
 const pendingRequests = new Map<string, Promise<UrlMetadata | null>>();
 
-export async function fetchMetadata(url: string): Promise<UrlMetadata | null> {
+function cacheKey(url: string) {
+  return `url-meta:${url}`;
+}
+
+function readPersisted(url: string): UrlMetadata | null | undefined {
+  const entry = cacheGetSync<CachedEntry>(cacheKey(url));
+  if (!entry || typeof entry.fetchedAt !== 'number') return undefined;
+  const age = Date.now() - entry.fetchedAt;
+  const ttl = entry.meta ? POSITIVE_TTL_MS : NEGATIVE_TTL_MS;
+  if (age > ttl) return undefined;
+  return entry.meta;
+}
+
+function primeFromPersisted(url: string): UrlMetadata | null | undefined {
   if (metadataCache.has(url)) return metadataCache.get(url)!;
-  
-  // Deduplicate in-flight requests
+  const persisted = readPersisted(url);
+  if (persisted !== undefined) {
+    metadataCache.set(url, persisted);
+    return persisted;
+  }
+  return undefined;
+}
+
+export async function fetchMetadata(url: string): Promise<UrlMetadata | null> {
+  const primed = primeFromPersisted(url);
+  if (primed !== undefined) return primed;
+
   if (pendingRequests.has(url)) return pendingRequests.get(url)!;
 
   const promise = (async () => {
     try {
-      console.log('[LinkEmbed] Fetching metadata for:', url);
       const { data, error } = await supabase.functions.invoke('fetch-url-metadata', {
         body: { url },
       });
-      console.log('[LinkEmbed] Response:', { data, error });
       if (error) {
-        console.error('[LinkEmbed] Invoke error:', error);
         metadataCache.set(url, null);
+        cacheSetAsync(cacheKey(url), { meta: null, fetchedAt: Date.now() });
         return null;
       }
-      // Handle both direct response and nested data
       const payload = data?.title !== undefined ? data : data?.data;
       if (!payload || payload.error) {
-        console.warn('[LinkEmbed] No metadata or error in payload:', payload);
         metadataCache.set(url, null);
+        cacheSetAsync(cacheKey(url), { meta: null, fetchedAt: Date.now() });
         return null;
       }
       const metadata = payload as UrlMetadata;
       metadataCache.set(url, metadata);
+      cacheSetAsync(cacheKey(url), { meta: metadata, fetchedAt: Date.now() });
       return metadata;
-    } catch (e) {
-      console.error('[LinkEmbed] Fetch exception:', e);
+    } catch {
       metadataCache.set(url, null);
+      cacheSetAsync(cacheKey(url), { meta: null, fetchedAt: Date.now() });
       return null;
     } finally {
       pendingRequests.delete(url);
@@ -55,8 +86,9 @@ export async function fetchMetadata(url: string): Promise<UrlMetadata | null> {
 }
 
 export function useUrlMetadata(url: string | null) {
-  const [data, setData] = useState<UrlMetadata | null>(url ? metadataCache.get(url) ?? null : null);
-  const [isLoading, setIsLoading] = useState(url ? !metadataCache.has(url) : false);
+  const initial = url ? primeFromPersisted(url) : undefined;
+  const [data, setData] = useState<UrlMetadata | null>(initial ?? null);
+  const [isLoading, setIsLoading] = useState(url ? initial === undefined : false);
 
   useEffect(() => {
     if (!url) {
@@ -65,17 +97,21 @@ export function useUrlMetadata(url: string | null) {
       return;
     }
 
-    if (metadataCache.has(url)) {
-      setData(metadataCache.get(url)!);
+    const primed = primeFromPersisted(url);
+    if (primed !== undefined) {
+      setData(primed);
       setIsLoading(false);
       return;
     }
 
     setIsLoading(true);
+    let cancelled = false;
     fetchMetadata(url).then((result) => {
+      if (cancelled) return;
       setData(result);
       setIsLoading(false);
     });
+    return () => { cancelled = true; };
   }, [url]);
 
   return { data, isLoading };
@@ -88,25 +124,18 @@ export function extractUrls(content: string): string[] {
 
   const urls: string[] = [];
 
-  // 1) Include URLs from masked links: [text](url)
   let maskedMatch: RegExpExecArray | null;
   while ((maskedMatch = maskedLinkRegex.exec(content)) !== null) {
     urls.push(maskedMatch[1]);
   }
 
-  // 2) Remove markdown link wrappers, keep the raw URL if present in text
   const strippedContent = content.replace(maskedLinkRegex, '$1');
 
-  // 3) Extract bare URLs
   const urlRegex = /(https?:\/\/[^\s<>"']+)/g;
   let match: RegExpExecArray | null;
   while ((match = urlRegex.exec(strippedContent)) !== null) {
     let url = match[1];
-
-    // Trim trailing punctuation commonly added in sentences
     url = url.replace(/[.,!?;:]+$/, '');
-
-    // Trim unmatched closing parenthesis
     while (url.endsWith(')')) {
       const opens = (url.match(/\(/g) || []).length;
       const closes = (url.match(/\)/g) || []).length;
@@ -116,8 +145,6 @@ export function extractUrls(content: string): string[] {
         break;
       }
     }
-
-    // Skip internal Discord message links for external rich embeds
     if (!messageLinkRegex.test(url)) {
       urls.push(url);
     }

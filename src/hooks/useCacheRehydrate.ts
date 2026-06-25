@@ -24,6 +24,14 @@ export function useCacheRehydrate(): void {
         queryKey = ['dm-messages', key.slice('dm-messages:'.length)];
       } else if (key.startsWith('thread-messages:')) {
         queryKey = ['thread-messages', key.slice('thread-messages:'.length)];
+      } else if (key.startsWith('threads:')) {
+        queryKey = ['threads', key.slice('threads:'.length)];
+      } else if (key.startsWith('thread:')) {
+        queryKey = ['thread', key.slice('thread:'.length)];
+      } else if (key.startsWith('url-meta:')) {
+        // Url metadata is consumed directly via cacheGetSync in useUrlMetadata,
+        // but we still seed React Query consumers if any subscribe later.
+        queryKey = ['url-meta', key.slice('url-meta:'.length)];
       }
 
       if (!queryKey) return;

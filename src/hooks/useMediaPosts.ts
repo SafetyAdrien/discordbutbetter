@@ -82,15 +82,29 @@ export function useMediaPosts(channelId: string) {
   useEffect(() => {
     if (!channelId) return;
 
-    const refetchDebounced = (() => {
-      let t: ReturnType<typeof setTimeout> | undefined;
-      return () => {
-        clearTimeout(t);
-        t = setTimeout(() => {
-          queryClient.invalidateQueries({ queryKey: ['media-posts', channelIdRef.current] });
-        }, 200);
-      };
-    })();
+    const fetchAndUpsert = async (postId: string) => {
+      const { data, error } = await (supabase
+        .from('media_posts') as any)
+        .select('*, items:media_post_items(*)')
+        .eq('id', postId)
+        .maybeSingle();
+      if (error || !data) return;
+      if (data.channel_id !== channelIdRef.current) return;
+      const items: MediaPostItem[] = ((data.items ?? []) as MediaPostItem[])
+        .slice()
+        .sort((a, b) => a.position - b.position);
+      const normalized = { ...data, items } as MediaPost;
+      queryClient.setQueryData<MediaPost[]>(
+        ['media-posts', channelIdRef.current],
+        (old = []) => {
+          const without = old.filter((p) => p.id !== normalized.id);
+          // Insert preserving created_at desc ordering
+          const next = [normalized, ...without];
+          next.sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+          return next;
+        }
+      );
+    };
 
     const postsChannel = supabase
       .channel(`media-posts-${channelId}`)
@@ -98,17 +112,17 @@ export function useMediaPosts(channelId: string) {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'media_posts' },
         (payload) => {
-          const rec = (payload.new || payload.old) as { channel_id?: string } | undefined;
-          if (rec?.channel_id !== channelIdRef.current) return;
+          const rec = (payload.new || payload.old) as { channel_id?: string; id?: string } | undefined;
           if (payload.eventType === 'DELETE') {
             const deletedId = (payload.old as { id: string }).id;
             queryClient.setQueryData<MediaPost[]>(
               ['media-posts', channelIdRef.current],
               (old = []) => old.filter((p) => p.id !== deletedId)
             );
-          } else {
-            refetchDebounced();
+            return;
           }
+          if (rec?.channel_id !== channelIdRef.current || !rec.id) return;
+          fetchAndUpsert(rec.id);
         }
       )
       .subscribe();
@@ -118,7 +132,10 @@ export function useMediaPosts(channelId: string) {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'media_post_items' },
-        () => refetchDebounced()
+        (payload) => {
+          const rec = (payload.new || payload.old) as { post_id?: string } | undefined;
+          if (rec?.post_id) fetchAndUpsert(rec.post_id);
+        }
       )
       .subscribe();
 

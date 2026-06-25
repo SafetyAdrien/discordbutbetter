@@ -4,12 +4,13 @@ import { subscribeCacheHydrate } from '@/lib/cache';
 
 /**
  * Bridges IndexedDB hydration to React Query: when warmCache loads a cached
- * `messages:*` / `dm-messages:*` / `thread-messages:*` entry into memory,
- * we push it into the matching React Query cache so the UI flips from empty
- * to cached data without waiting for the network round-trip.
+ * entry into memory, we push it into the matching React Query cache so the
+ * UI flips from empty to cached data without waiting for the network round-trip.
  *
- * Only writes when the query has no data yet — never clobbers fresher data
- * already returned by a live query.
+ * For most keys we only write when the query has no data — never clobber a
+ * fresher value from a live query. For server/channel lists we also seed when
+ * the current cache is structurally empty, because `useServers`/`useChannels`
+ * may have mounted with a `[]` fallback before IDB finished hydrating.
  */
 export function useCacheRehydrate(): void {
   const queryClient = useQueryClient();
@@ -17,6 +18,7 @@ export function useCacheRehydrate(): void {
   useEffect(() => {
     const unsub = subscribeCacheHydrate((key, value) => {
       let queryKey: unknown[] | null = null;
+      let allowOverwriteEmpty = false;
 
       if (key.startsWith('messages:')) {
         queryKey = ['messages', key.slice('messages:'.length)];
@@ -32,13 +34,30 @@ export function useCacheRehydrate(): void {
         // Url metadata is consumed directly via cacheGetSync in useUrlMetadata,
         // but we still seed React Query consumers if any subscribe later.
         queryKey = ['url-meta', key.slice('url-meta:'.length)];
+      } else if (key.startsWith('servers:')) {
+        // IDB key is scoped per user; React Query key is global.
+        queryKey = ['servers'];
+        allowOverwriteEmpty = true;
+      } else if (key.startsWith('channels:')) {
+        queryKey = ['channels', key.slice('channels:'.length)];
+        allowOverwriteEmpty = true;
       }
 
       if (!queryKey) return;
 
       const existing = queryClient.getQueryState(queryKey);
-      // Only seed when nothing real has arrived yet.
-      if (!existing || existing.data === undefined) {
+      const current: any = existing?.data;
+      const isEmpty =
+        current === undefined ||
+        (Array.isArray(current) && current.length === 0) ||
+        (current &&
+          typeof current === 'object' &&
+          Array.isArray(current.categories) &&
+          Array.isArray(current.orphanChannels) &&
+          current.categories.length === 0 &&
+          current.orphanChannels.length === 0);
+
+      if (allowOverwriteEmpty ? isEmpty : current === undefined) {
         queryClient.setQueryData(queryKey, value);
       }
     });

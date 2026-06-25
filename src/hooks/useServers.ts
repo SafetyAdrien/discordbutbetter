@@ -224,8 +224,88 @@ export function useServers() {
     }
   }, [query.data, user?.id, query.isPlaceholderData]);
 
+  // Background prefetch: warm channels cache for every server the user belongs to,
+  // so switching servers is instantaneous (rendered from cache, no network wait).
+  const prefetchedRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!query.data || !user) return;
+    const serverIds = query.data.map((s) => s.id);
+    const toPrefetch = serverIds.filter((id) => {
+      if (prefetchedRef.current.has(id)) return false;
+      const existing = queryClient.getQueryData<{ categories: any[]; orphanChannels: any[] }>(['channels', id]);
+      if (existing && (existing.categories.length > 0 || existing.orphanChannels.length > 0)) return false;
+      const persisted = cacheGetSync<{ categories: any[]; orphanChannels: any[] }>(`channels:${id}`);
+      if (persisted && (persisted.categories.length > 0 || persisted.orphanChannels.length > 0)) {
+        // Seed React Query from persisted IDB cache without hitting the network.
+        queryClient.setQueryData(['channels', id], persisted);
+        prefetchedRef.current.add(id);
+        return false;
+      }
+      return true;
+    });
+    if (toPrefetch.length === 0) return;
+
+    let cancelled = false;
+    const MAX_PARALLEL = 3;
+    const queue = [...toPrefetch];
+
+    const fetchOne = async (serverId: string) => {
+      prefetchedRef.current.add(serverId);
+      try {
+        const data = await queryClient.fetchQuery({
+          queryKey: ['channels', serverId],
+          queryFn: async () => {
+            const { data: categories, error: catError } = await supabase
+              .from('categories')
+              .select('id, name, position')
+              .eq('server_id', serverId)
+              .order('position', { ascending: true });
+            if (catError) throw catError;
+
+            const { data: channels, error: chanError } = await supabase
+              .from('channels')
+              .select('id, name, type, description, position, category_id, server_id, icon_url')
+              .eq('server_id', serverId)
+              .order('position', { ascending: true });
+            if (chanError) throw chanError;
+
+            const categorizedChannels = (categories ?? []).map((cat) => ({
+              ...cat,
+              channels: (channels ?? [])
+                .filter((ch) => ch.category_id === cat.id)
+                .sort((a, b) => (a.position ?? 0) - (b.position ?? 0)),
+            }));
+            const orphanChannels = (channels ?? [])
+              .filter((ch) => !ch.category_id)
+              .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+
+            return { categories: categorizedChannels, orphanChannels };
+          },
+          staleTime: 5 * 60 * 1000,
+        });
+        if (!cancelled && data) {
+          cacheSetAsync(`channels:${serverId}`, data);
+        }
+      } catch {
+        prefetchedRef.current.delete(serverId);
+      }
+    };
+
+    const workers = Array.from({ length: Math.min(MAX_PARALLEL, queue.length) }, async () => {
+      while (!cancelled && queue.length > 0) {
+        const next = queue.shift();
+        if (!next) break;
+        await fetchOne(next);
+      }
+    });
+    Promise.all(workers).catch(() => {});
+
+    return () => { cancelled = true; };
+  }, [query.data, user, queryClient]);
+
   return query;
 }
+
 
 export function usePublicServers() {
   const { user } = useAuth();

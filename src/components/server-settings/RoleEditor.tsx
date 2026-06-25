@@ -176,17 +176,26 @@ export function RoleEditor({ role, serverId }: RoleEditorProps) {
             </div>
             <div className="space-y-2">
               <Label>Couleur</Label>
-              <div className="flex gap-2">
-                <input
-                  type="color"
-                  value={color}
-                  onChange={(e) => setColor(e.target.value)}
-                  className="w-10 h-10 rounded cursor-pointer"
-                />
+              <div className="flex gap-2 items-center">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className="w-10 h-10 rounded-md border border-border flex items-center justify-center relative overflow-hidden hover:ring-2 hover:ring-primary/40 transition"
+                      style={{ backgroundColor: color }}
+                      aria-label="Choisir une couleur"
+                    >
+                      <Palette className="w-4 h-4 text-white mix-blend-difference" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent align="start" className="w-[340px] p-0 border-none bg-transparent shadow-none">
+                    <ModernColorPicker value={color} onChange={setColor} />
+                  </PopoverContent>
+                </Popover>
                 <Input
                   value={color}
                   onChange={(e) => setColor(e.target.value)}
-                  className="flex-1"
+                  className="flex-1 font-mono uppercase"
                 />
               </div>
             </div>

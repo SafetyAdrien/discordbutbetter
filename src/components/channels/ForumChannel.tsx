@@ -9,7 +9,8 @@ import { StreamlineForum } from '@/components/icons/StreamlineForum';
 import { useHasChannelPermission } from '@/hooks/useUserChannelPermissions';
 import { useForumPosts, useCreateForumPost, useForumVotes, useToggleForumVote, type ForumPost } from '@/hooks/useForumPosts';
 import { CreateForumPostModal } from '@/components/channels/forum/CreateForumPostModal';
-import { ForumPostDetailModal } from '@/components/channels/forum/ForumPostDetailModal';
+import { ForumPostSidePanel } from '@/components/channels/forum/ForumPostSidePanel';
+
 
 interface Channel { id: string; name: string; type: string; description?: string; server_id?: string; }
 
@@ -58,7 +59,9 @@ export function ForumChannel({ channel, serverId, onToggleMembers, showMembers }
   }, [posts, searchQuery, tagFilter, sortBy]);
 
   return (
-    <div className="flex-1 flex flex-col bg-[hsl(var(--surface-2)/0.3)] min-w-0 w-full overflow-x-hidden">
+    <div className="flex-1 flex min-w-0 w-full overflow-hidden">
+      <div className={cn('flex flex-col bg-[hsl(var(--surface-2)/0.3)] min-w-0 overflow-x-hidden', activePost ? 'flex-1 hidden md:flex' : 'flex-1')}>
+
       {/* Header */}
       <div className="h-12 px-2 sm:px-4 flex items-center gap-2 sm:gap-4 flex-shrink-0 bg-[hsl(var(--surface-2))] w-full" style={{ borderBottom: "1px solid hsl(var(--border) / 0.5)", boxShadow: "var(--shadow-elevation-1)", borderRadius: "0 0 var(--radius-xl) var(--radius-xl)" }}>
         <div className="flex items-center gap-2 min-w-0 flex-shrink">
@@ -201,13 +204,18 @@ export function ForumChannel({ channel, serverId, onToggleMembers, showMembers }
         }}
       />
 
+      </div>
+
       {activePost && (
-        <ForumPostDetailModal
-          post={activePost}
-          hasVoted={votedSet.has(activePost.id)}
-          onClose={() => setActivePost(null)}
-        />
+        <div className="w-full md:w-[440px] lg:w-[500px] flex-shrink-0 h-full">
+          <ForumPostSidePanel
+            post={activePost}
+            hasVoted={votedSet.has(activePost.id)}
+            onClose={() => setActivePost(null)}
+          />
+        </div>
       )}
     </div>
   );
 }
+

@@ -1,41 +1,66 @@
-## Diagnostic
+## 1. Cache-first immédiat (ThreadSpineLine & messages)
 
-Les hooks `useMessages`, `useThreadMessages`, `useThreads` lisent déjà `placeholderData: cacheGetSync(...)`, donc le code est correct *en théorie*. Mais en pratique tu vois encore de la latence sur les messages de salon et le ThreadSpine. Cause racine probable :
+**ThreadSpine (`src/components/threads/ThreadSpine.tsx`)**
+- Lire les threads en synchrone via `cacheGetSync('threads:<channelId>')` et les utiliser comme fallback de rendu tant que la query React Query n'a rien retourné, même si le hook `useThreads` renvoie un tableau vide.
+- Supprimer les guards `isLoading` qui masquent la spine ; rendre directement à partir du cache.
 
-1. **`cacheSetAsync` écrit dans `localStorage`** (le seul layer lisible *synchronement* au boot froid). Les payloads de messages (avec pièces jointes, replied snapshots, etc.) **dépassent fréquemment le quota** localStorage (~5 Mo total), donc le `try/catch` avale silencieusement l'erreur → au render suivant, `cacheGetSync` renvoie `undefined` → placeholder vide → on attend la réponse réseau.
-2. **`warmCache:idbHydrate` prend 1.1 – 1.7 s** dans les logs (157 entrées). Pendant ce temps, les queries déjà montées n'ont aucune donnée à afficher ; le `useCacheRehydrate` bridge n'écrit ces clés (`messages:*`, `thread-messages:*`, `threads:*`, `thread:*`) que si `current === undefined`, donc oui ça écrit pendant l'attente — mais l'utilisateur voit quand même 1 à 2 s de vide.
-3. **ThreadSpine** dépend de `useThreads(channelId)` ; même problème → spine invisible jusqu'à hydratation.
+**Messages salon (`src/hooks/useMessages.ts`) et thread-messages (`src/hooks/useThreadMessages.ts`)**
+- Renforcer `placeholderData: cacheGetSync('messages:<id>')` en `initialData` pour seeding au tout premier render.
+- Hydrater les 30 derniers messages depuis `localStorage` (slim mirror) puis compléter en arrière-plan par IDB + réseau via `useCacheRehydrate` (déjà étendu).
+- S'assurer que `MessageList` ne renvoie pas de skeleton tant que `data && data.length > 0` (cache présent).
 
-## Plan
+**Mirroring agressif (`src/lib/cache.ts`)**
+- Ajouter `threads:` aux `SLIM_PREFIXES` pour qu'au moins 30 entrées tiennent en localStorage même quand la liste est grosse.
 
-### 1. Snapshot synchrone "hot" en localStorage (boot froid)
+## 2. Salon Médias — affichage + détail latéral
 
-`src/lib/cache.ts` :
-- Ajouter une **liste de préfixes "hot"** (`messages:`, `thread-messages:`, `threads:`, `thread:`, `channels:`, `servers:`, `dm-messages:`) avec une stratégie de mirror :
-  - Cap par valeur : ~80 Ko sérialisé (au-delà on **n'écrit pas** dans le mirror, juste IDB + mémoire).
-  - Pour `messages:*` / `thread-messages:*` / `dm-messages:*` : si oversized, écrire un **slim mirror** des **30 derniers messages seulement** sous la même clé (juste pour le boot). La query queryFn ramènera la vraie liste complète en arrière-plan.
-- LRU eviction simple : si `setItem` jette `QuotaExceededError`, supprimer les plus anciennes entrées `nexuschat-cache:*` (timestamp stocké à côté) jusqu'à pouvoir réécrire.
+**Cache invalidation après création (`useMediaPosts.ts`)**
+- Vérifier que `createPost` invalide bien `['media-posts', channelId]` et insère optimistiquement le post en tête de liste (corrige "aucune publication n'apparaît").
 
-### 2. Hydratation IDB priorisée (route active)
+**Cartes carrées (`MediaChannel.tsx`)**
+- Grille `aspect-square`, `rounded-[15%]`, fond = média (img/vidéo/GIF en cover, autoplay muet pour vidéos/GIF).
+- Suppression des overlays texte couvrants.
 
-`src/lib/cache.ts` :
-- Persister `lastChannelId` / `lastServerId` / `lastThreadId` dans `sessionStorage` à chaque navigation (déjà fait pour la nav state — sinon le faire dans `Index.tsx`).
-- Dans `warmCache`, faire **3 `store.get(key)` ciblés AVANT le cursor** pour `messages:${lastChannelId}`, `threads:${lastChannelId}`, `thread-messages:${lastThreadId}`. Émettre `emitHydrate` pour ces clés immédiatement (souvent < 50 ms). Le cursor complet continue derrière.
+**Vue détail latérale (remplacement de `MediaPostDetailModal.tsx` par un panneau latéral)**
+- Nouveau composant `MediaPostSidePanel` monté à droite de `ChatArea` (même slot que `ThreadView`).
+- Layout vertical split : aperçu médias en haut, commentaires (`MediaComments`) en dessous.
+- Carousel multi-images : flèches gauche/droite + indicateurs (pastilles) en bas.
+- Zoom infini sur image : `react-zoom-pan-pinch` (ou wheel/pinch handler maison) avec pan, double-clic reset.
 
-### 3. Bridge : overwriteEmpty pour les listes de messages/threads
+## 3. Salon Forum — même logique
 
-`src/hooks/useCacheRehydrate.ts` :
-- Passer `allowOverwriteEmpty = true` pour `messages:`, `dm-messages:`, `thread-messages:`, `threads:`, `thread:`. Raison : si `queryFn` a déjà retourné `[]` (échec réseau silencieux, RLS, ou tout simplement pas de données), on autorise le seed depuis IDB. C'est sans risque parce qu'on n'écrase que `[]` ou `undefined`.
+- `ForumChannel.tsx` : panneau latéral identique pour ouvrir un post (titre + corps + commentaires en dessous, carousel pour pièces jointes multiples, zoom infini sur images).
+- Réutiliser le composant `MediaPostSidePanel` paramétrable (mode `media` | `forum`).
+- Vérifier la cache-invalidation après création de post forum (`useForumPosts` ou équivalent).
 
-### 4. Vérification
+## 4. Marquage lu après mention / messages
 
-- Naviguer entre deux salons connus puis recharger → les messages et le ThreadSpine doivent apparaître **au premier frame** sans skeleton.
-- Logs `[perf]` : on doit voir `warmCache:hotKey(...)` < 50 ms et le rendu effectif des messages avant `query:messages(...)` resolve.
+- `useChannelUnreadCounts` / `useChannelMentionNotifications` / `useMarkChannelAsRead` : sur `markAsRead`, reset des deux compteurs (`unread_count` ET `mention_count`) côté optimistic + serveur.
+- S'assurer que `ChannelList` lit ces deux compteurs et retire la pastille rouge ET le style "unread" (font-bold/blanc) une fois remis à zéro.
+- Synchroniser via Realtime sur la table de read-state existante.
 
-## Fichiers modifiés
+## 5. Helper Markdown → Paramètres utilisateur
 
-- `src/lib/cache.ts` (slim mirror + LRU eviction + hot-key prefetch)
-- `src/hooks/useCacheRehydrate.ts` (`allowOverwriteEmpty` étendu)
-- `src/pages/Index.tsx` (persister `lastChannelId`/`lastThreadId` dans sessionStorage si pas déjà fait)
+**Retirer du chat**
+- Supprimer la barre Markdown et son toggle dans `MessageInput.tsx` (lignes ~1000-1035) et le state `markdownBarOpen`.
 
-Aucun changement sur les hooks `useMessages`, `useThreads`, `useThreadMessages` — déjà cache-first. Aucun bump de `CACHE_SCHEMA_VERSION` nécessaire.
+**Ajouter dans Account Settings**
+- Nouvelle section "Aide" dans `AccountSettings.tsx` (sidebar gauche).
+- Sous-page "Markdown" : `MarkdownHelpPage.tsx` listant par catégorie, basé sur dfr.gg/wiki/interface/salons-textuels/markdown :
+  - **Titres** (`# `, `## `, `### `, `-# ` discret) avec aperçu rendu
+  - **Style de texte** (gras, italique, souligné, barré, spoiler)
+  - **Code** (en ligne `` ` ``, bloc ```` ``` ```` avec coloration syntaxique + langues supportées)
+  - **Citations** (`> `, `>>> `)
+  - **Listes** (puces, numérotées, imbrication)
+  - **Liens** (`[texte](url)`, masquage embed avec `<url>`)
+  - **Mentions & emojis** (rappel `<@id>`, `:emoji:`)
+- Chaque exemple : input markdown brut affiché à gauche + rendu via `MarkdownText` à droite.
+
+## Détails techniques
+
+- ThreadSpine + messages : reuse `cacheGetSync` du fichier `src/lib/cache.ts` déjà en place.
+- Panel latéral : suivre le pattern de `ThreadView` (état dans `Index.tsx` ou via contexte de layout).
+- Zoom : librairie `react-zoom-pan-pinch` (légère, déjà compatible Vite).
+- Markdown help : aucun changement backend.
+
+Aucune migration SQL nécessaire (la table de read-state existe déjà).

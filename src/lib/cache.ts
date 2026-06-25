@@ -98,7 +98,7 @@ const HOT_PREFIXES = [
   'categories:',
 ];
 
-const SLIM_PREFIXES = ['messages:', 'thread-messages:', 'dm-messages:'];
+const SLIM_PREFIXES = ['messages:', 'thread-messages:', 'dm-messages:', 'threads:'];
 const SLIM_TAIL = 30;
 const MIRROR_MAX_BYTES = 80 * 1024;
 const LRU_KEY = `${DB_NAME}:lru`;

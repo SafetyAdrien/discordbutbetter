@@ -129,11 +129,11 @@ export const useThreads = (channelId: string | undefined) => {
 };
 
 export const useThread = (threadId: string | undefined) => {
-  return useQuery({
+  const query = useQuery({
     queryKey: ['thread', threadId],
     queryFn: async () => {
       if (!threadId) return null;
-      
+
       const { data, error } = await supabase
         .from('threads')
         .select(`
@@ -147,7 +147,19 @@ export const useThread = (threadId: string | undefined) => {
       return data as Thread;
     },
     enabled: !!threadId,
+    placeholderData: () => (threadId ? cacheGetSync(`thread:${threadId}`) : undefined),
+    staleTime: 30_000,
+    refetchOnMount: (q) => (q.state.data ? false : 'always'),
+    refetchOnWindowFocus: false,
   });
+
+  useEffect(() => {
+    if (query.data && threadId && !query.isPlaceholderData) {
+      cacheSetAsync(`thread:${threadId}`, query.data);
+    }
+  }, [query.data, threadId, query.isPlaceholderData]);
+
+  return query;
 };
 
 export const useCreateThread = () => {

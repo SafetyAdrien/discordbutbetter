@@ -59,7 +59,7 @@ export interface DMMessage {
 export function useDMMessages(conversationId: string | null) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const cacheReady = useCacheReady();
+  
 
   const query = useQuery({
     queryKey: ['dm-messages', conversationId],

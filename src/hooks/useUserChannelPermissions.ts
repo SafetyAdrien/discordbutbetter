@@ -77,7 +77,7 @@ export function useHasChannelPermission(channelId: string | null, permission: Se
 
   return {
     ...query,
-    data: query.data ?? (query.isPending ? (cached ?? true) : false),
+    data: query.data ?? (cached ?? false),
   };
 }
 

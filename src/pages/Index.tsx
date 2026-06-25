@@ -203,6 +203,34 @@ const Index = () => {
   const { data: channelsData } = useChannels(activeServerId, initialChannelsData);
   const { data: messages = [] } = useMessages(activeChannelId);
   const { data: members = [] } = useMembers(activeServerId);
+
+  // Cache-first preload: when a server opens, warm threads for every text-like
+  // channel so popovers and embeds render synchronously the first time.
+  const threadCapableChannelIds = useMemo(() => {
+    if (!channelsData) return [] as string[];
+    const ids: string[] = [];
+    const accept = new Set(['text', 'announcement', 'forum', 'media']);
+    channelsData.categories.forEach((cat) => cat.channels.forEach((ch) => {
+      if (accept.has(ch.type as string)) ids.push(ch.id);
+    }));
+    channelsData.orphanChannels.forEach((ch) => {
+      if (accept.has(ch.type as string)) ids.push(ch.id);
+    });
+    return ids;
+  }, [channelsData]);
+  usePrefetchThreadsForChannels(threadCapableChannelIds);
+
+  // Cache-first preload: warm link metadata for every URL in the current
+  // channel so LinkEmbed paints synchronously when scrolled into view.
+  useEffect(() => {
+    if (!messages.length) return;
+    const urls = new Set<string>();
+    for (const m of messages as { content?: string | null }[]) {
+      if (!m.content) continue;
+      for (const u of extractUrls(m.content)) urls.add(u);
+    }
+    if (urls.size) prefetchUrls(urls);
+  }, [messages]);
   // Realtime profiles updates (DB -> postgres_changes)
   useProfilesRealtime();
   

@@ -621,7 +621,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
                   </span>
                   <span className="text-muted-foreground truncate">{member.activity_text}</span>
                 </div>
-              ) : member.customStatus ? (
+              ) : member.customStatus && member.status !== 'offline' ? (
                 <p className="text-xs text-muted-foreground truncate">{member.customStatus}</p>
               ) : null}
             </div>

@@ -241,6 +241,7 @@ export function MobileProfileView({
           >
             <CustomStatusBubble
               customStatus={profile?.custom_status}
+              status={currentStatus}
               onClick={() => {
                 haptics.light();
                 setShowCustomStatus(true);

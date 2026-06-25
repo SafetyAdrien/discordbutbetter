@@ -22,20 +22,22 @@ export function useCacheRehydrate(): void {
 
       if (key.startsWith('messages:')) {
         queryKey = ['messages', key.slice('messages:'.length)];
+        allowOverwriteEmpty = true;
       } else if (key.startsWith('dm-messages:')) {
         queryKey = ['dm-messages', key.slice('dm-messages:'.length)];
+        allowOverwriteEmpty = true;
       } else if (key.startsWith('thread-messages:')) {
         queryKey = ['thread-messages', key.slice('thread-messages:'.length)];
+        allowOverwriteEmpty = true;
       } else if (key.startsWith('threads:')) {
         queryKey = ['threads', key.slice('threads:'.length)];
+        allowOverwriteEmpty = true;
       } else if (key.startsWith('thread:')) {
         queryKey = ['thread', key.slice('thread:'.length)];
+        allowOverwriteEmpty = true;
       } else if (key.startsWith('url-meta:')) {
-        // Url metadata is consumed directly via cacheGetSync in useUrlMetadata,
-        // but we still seed React Query consumers if any subscribe later.
         queryKey = ['url-meta', key.slice('url-meta:'.length)];
       } else if (key.startsWith('servers:')) {
-        // IDB key is scoped per user; React Query key is global.
         queryKey = ['servers'];
         allowOverwriteEmpty = true;
       } else if (key.startsWith('channels:')) {

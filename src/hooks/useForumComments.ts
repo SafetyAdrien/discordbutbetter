@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
@@ -20,6 +21,7 @@ export function useForumComments(postId: string | null) {
   const query = useQuery<ForumComment[]>({
     queryKey: ['forum-comments', postId],
     enabled: !!postId,
+    placeholderData: () => (postId ? cacheGetSync(`forum-comments:${postId}`) : undefined),
     queryFn: async () => {
       const { data, error } = await (supabase.from('forum_post_comments' as any) as any)
         .select('*')
@@ -42,6 +44,12 @@ export function useForumComments(postId: string | null) {
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [postId, queryClient]);
+
+  useEffect(() => {
+    if (query.data && postId && !query.isPlaceholderData) {
+      cacheSetAsync(`forum-comments:${postId}`, query.data);
+    }
+  }, [query.data, postId, query.isPlaceholderData]);
 
   return query;
 }

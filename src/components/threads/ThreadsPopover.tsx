@@ -65,7 +65,7 @@ const ThreadsPopover: React.FC<ThreadsPopoverProps> = ({ channelId, onSelectThre
 
       {/* Thread List */}
       <ScrollArea className="flex-1">
-        {isLoading ? (
+        {isLoading && threads.length === 0 ? (
           <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
             Chargement...
           </div>

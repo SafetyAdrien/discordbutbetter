@@ -348,6 +348,8 @@ interface ChatAreaProps {
   onCloseThread?: () => void;
   members?: Array<{ id: string; memberId?: string; displayName: string; username: string; avatar?: string; bio?: string }>;
   onChannelSelect?: (channelId: string) => void;
+  onLoadOlder?: () => Promise<number>;
+  hasMoreOlder?: boolean;
 }
 // Long-press wrapper for polls on mobile
 function PollLongPressWrapper({
@@ -426,6 +428,8 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     onCloseThread,
     members = [],
     onChannelSelect,
+    onLoadOlder,
+    hasMoreOlder = false,
   },
   ref,
 ) {
@@ -567,6 +571,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   }, []);
 
   // Track scroll position to detect "at bottom" and stabilize on resize
+  const loadingOlderRef = useRef(false);
   useEffect(() => {
     const vp = chatContainerRef.current?.querySelector<HTMLDivElement>('[data-radix-scroll-area-viewport]');
     if (!vp) return;
@@ -578,6 +583,28 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
       wasAtBottomRef.current = atBottom;
       // Bouton "Aller en bas" : visible uniquement avec ≥50 messages et distance > 150px
       setShowJumpToBottom(messages.length >= 50 && distanceFromBottom > 150);
+
+      // Infinite scroll: load older messages when near the top
+      if (
+        onLoadOlder &&
+        hasMoreOlder &&
+        !loadingOlderRef.current &&
+        vp.scrollTop < 200 &&
+        messages.length > 0
+      ) {
+        loadingOlderRef.current = true;
+        const prevHeight = vp.scrollHeight;
+        const prevTop = vp.scrollTop;
+        void onLoadOlder().then((added) => {
+          requestAnimationFrame(() => {
+            if (added && added > 0 && scrollViewportRef.current) {
+              const delta = scrollViewportRef.current.scrollHeight - prevHeight;
+              scrollViewportRef.current.scrollTop = prevTop + delta;
+            }
+            loadingOlderRef.current = false;
+          });
+        });
+      }
     };
     computeAtBottom();
 
@@ -602,7 +629,8 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
       vp.removeEventListener('scroll', computeAtBottom);
       ro.disconnect();
     };
-  }, [channel.id, restoreEditScrollLock, messages.length]);
+  }, [channel.id, restoreEditScrollLock, messages.length, onLoadOlder, hasMoreOlder]);
+
 
   // Auto-scroll to bottom on new messages, only if user was at bottom and not editing
   useEffect(() => {

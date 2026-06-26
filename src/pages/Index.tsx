@@ -201,7 +201,10 @@ const Index = () => {
   }, [activeServerId, servers]);
   
   const { data: channelsData } = useChannels(activeServerId, initialChannelsData);
-  const { data: messages = [] } = useMessages(activeChannelId);
+  const messagesQuery = useMessages(activeChannelId);
+  const messages = messagesQuery.data ?? [];
+  const loadOlderMessages = (messagesQuery as any).loadOlder as (() => Promise<number>) | undefined;
+  const hasMoreOlder = (messagesQuery as any).hasMoreOlder as boolean | undefined;
   const { data: members = [] } = useMembers(activeServerId);
 
   // Cache-first preload: when a server opens, warm threads for every text-like
@@ -795,6 +798,8 @@ const Index = () => {
                       setActiveThreadId(null);
                       setThreadChannelId(null);
                     }}
+                    onLoadOlder={loadOlderMessages}
+                    hasMoreOlder={hasMoreOlder ?? false}
                   />
                 )}
               </div>

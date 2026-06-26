@@ -449,12 +449,14 @@ export function UserProfilePopup({
         {/* Avatar row */}
         <div className="relative -mt-10 mb-2">
           <div className="relative inline-block">
-            <Avatar className="w-[72px] h-[72px] border-[5px] border-card">
-              <AvatarImage src={effectiveUser.avatar} alt={effectiveUser.displayName} />
-              <AvatarFallback className="bg-primary/20 text-primary text-2xl">
-                {effectiveUser.displayName.charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
+            <UserAvatarImage
+              src={effectiveUser.avatar}
+              alt={effectiveUser.displayName}
+              className="w-[72px] h-[72px] border-[5px] border-card"
+              fallbackClassName="bg-primary/20 text-primary text-2xl"
+              fallback={effectiveUser.displayName.charAt(0).toUpperCase()}
+            />
+
             <StatusIndicator
               status={user.status}
               className="absolute bottom-0.5 right-0.5 w-[18px] h-[18px] border-[4px] border-card"

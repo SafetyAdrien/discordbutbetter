@@ -30,7 +30,9 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
   const { data: canUploadMedia = true } = useHasChannelPermission(channel.id, 'upload_media');
   const [viewMode, setViewMode] = useState<'feed' | 'grid' | 'list'>('feed');
   const [selectedFiles, setSelectedFiles] = useState<File[] | null>(null);
+  const [quotedPost, setQuotedPost] = useState<MediaPost | null>(null);
   const [activePost, setActivePost] = useState<MediaPost | null>(null);
+
 
   // Real data hooks
   const { data: mediaItems = [] } = useMediaPosts(channel.id);
@@ -82,7 +84,7 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
     }
   }, []);
 
-  const handleUploadClick = () => {
+  const handleUploadClick = (forReply: MediaPost | null = null) => {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*,video/*';
@@ -90,11 +92,13 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
     input.onchange = (e) => {
       const files = (e.target as HTMLInputElement).files;
       if (files && files.length > 0) {
+        setQuotedPost(forReply);
         setSelectedFiles(Array.from(files));
       }
     };
     input.click();
   };
+
 
   const handlePublish = (data: {
     files: File[];

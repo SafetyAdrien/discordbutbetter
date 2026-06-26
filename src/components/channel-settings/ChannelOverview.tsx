@@ -164,13 +164,21 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
   };
 
   const handleCropComplete = (blob: Blob) => {
+    if (blobPreviewUrlRef.current) {
+      URL.revokeObjectURL(blobPreviewUrlRef.current);
+    }
     const previewUrl = URL.createObjectURL(blob);
+    blobPreviewUrlRef.current = previewUrl;
     setIconUrl(previewUrl);
     setPendingIconBlob(blob);
     setIconRemoved(false);
   };
 
   const handleRemoveIcon = () => {
+    if (blobPreviewUrlRef.current) {
+      URL.revokeObjectURL(blobPreviewUrlRef.current);
+      blobPreviewUrlRef.current = null;
+    }
     setIconUrl(null);
     setPendingIconBlob(null);
     setIconRemoved(true);

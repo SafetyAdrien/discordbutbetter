@@ -1,61 +1,71 @@
-## Ajustements Salon Médias (Feed + Duels)
+## Plan : Intégration LiveKit Cloud (SDK + connexion)
 
-### 1. Menu "3 points" (MoreHorizontal) — MediaPostCard
-Remplacer le clic actuel (qui ouvre le side panel) par un vrai menu `DropdownMenu` (desktop) / `MobileMoreActionsSheet` (mobile, via `useBreakpoint`) avec les options :
+### Objectif
+Préparer l'application à utiliser **LiveKit Cloud** comme stack unique pour l'audio/vidéo : appels DM, salons vocaux/vidéo et stage/live streaming. Cette phase se limite à l'installation du SDK, la génération sécurisée de tokens et la mise en place d'un hook de connexion de base. La stack WebRTC maison (`useWebRTC`, `useDMCallWebRTC`, `useStageWebRTC`) reste en place ; elle sera remplacée dans une phase ultérieure.
 
-- **Marquer comme lu** — flag local `media-read-posts` en `localStorage` (Set d'IDs), retire un éventuel point d'indicateur "non lu".
-- **Modifier** — ouvre une `EditMediaPostModal` (titre, description, spoiler). Update via `media_posts` table. Auteur uniquement.
-- **Copier l'identifiant** — Snowflake 18 chiffres via util existant `snowflake.ts`, `copyToClipboard`.
-- **Copier le lien** — `${origin}/channels/${serverId}/${channelId}?post=${postId}`.
-- **Répondre** — ouvre `CreateMediaPostModal` en mode "quote" : insère un bloc d'aperçu (titre + miniature + auteur) sous forme d'un nouvel item de post. Implémenté en passant une prop `quotedPost` au modal, ajouté en tête de la description sous forme markdown (citation `> @auteur — titre` + lien interne).
-- **Supprimer le post** — confirm dialog existante (auteur ou `manage_messages`).
-- **Voir les stats** — ouvre `MediaPostStatsModal` (nouveau composant) :
-  - Compteur de commentaires + réactions (groupées par emoji).
-  - Pour les duels : **tableau 2 colonnes** (Option A / Option B), liste des votants (avatar + display_name), pourcentage, total.
+### Décisions
+- **Hébergement** : LiveKit Cloud (URL + API key + API secret fournis par le dashboard LiveKit).
+- **SDK UI** : SDK client bas niveau uniquement, pas `@livekit/components-react`, afin de garder le design maîtrisé.
+- **Sécurité** : l'`LIVEKIT_API_SECRET` reste côté backend ; le client appelle une edge function pour obtenir un token JWT signé.
 
-### 2. Barre d'actions — MediaPostCard
-- Retirer le bouton `SmilePlus` séparé n'existe pas tel quel sur la carte, **mais** retirer la `ReactionBar` complète sous la carte (qui sert d'ajout libre d'emoji). Garder uniquement le bouton `Heart`.
-- À côté de l'icône `Heart`, dans **le même container/background pill**, afficher le compteur `reactionCount` (toutes réactions confondues). Style : `inline-flex` avec fond `bg-muted` arrondi, gap réduit.
-- À côté du `MessageCircle`, afficher le nombre exact de commentaires (`comments.length`) dans le même style pill.
-- Supprimer le bloc "X réactions · Y commentaires" en dessous (redondant).
-- `MediaPostSidePanel` : même traitement (Heart + count pill, MessageCircle + count pill, suppression de la `ReactionBar` libre).
+### Étapes
 
-### 3. Duels Visuels — correctif vote
-Bug actuel : `useCastDuelVote` fait `delete + insert` sans détecter si l'utilisateur reclique sur le **même item** (perçu comme "impossible de retirer"). Et le changement A↔B fonctionne en base mais l'UX ne le signale pas.
+1. **Ajouter les dépendances**
+   - `bun add livekit-client`
+   - Optionnel : `bun add -D @livekit/protocol` (types)
+   - Vérifier que le build Vite et le PWA restent stables (ajustement Workbox si le SDK ajoute un chunk lourd).
 
-Correctif `useMediaDuel.ts` :
-- Si `itemId` cliqué === vote actuel ⇒ **delete seul** (toggle off, retire le vote).
-- Sinon ⇒ delete + insert (switch). Optimistic update mis à jour en conséquence.
-- `MediaDuelView` : surligner visuellement le côté voté + tooltip "Cliquer à nouveau pour retirer / cliquer sur l'autre pour changer".
+2. **Configurer les secrets LiveKit Cloud**
+   - Créer via `add_secret` :
+     - `LIVEKIT_URL` : l'URL wss du projet Cloud (ex: `wss://xxx.livekit.cloud`).
+     - `LIVEKIT_API_KEY` : clé API du projet.
+     - `LIVEKIT_API_SECRET` : secret API du projet.
+   - Aucune valeur n'est hardcodée dans le code ; le client ne connaît que `LIVEKIT_URL` (public) et obtient le token via edge function.
 
-### 4. Bouton "Stats Duel" en remplacement de Trash2
-Sur les posts de type **duel** uniquement, dans le header de la carte/side panel, remplacer l'icône `Trash2` (qui reste dispo dans le menu 3 points) par un bouton `BarChart3` qui :
+3. **Créer l'edge function `livekit-token`**
+   - Fichier : `supabase/functions/livekit-token/index.ts`.
+   - Utilise `livekit-server-sdk` via import `npm:livekit-server-sdk@^...`.
+   - Authentifie l'utilisateur avec `getClaims()` sur le header `Authorization`.
+   - Endpoint `POST` acceptant `{ room: string, identity: string, name?: string, metadata?: Record<string,unknown> }`.
+   - Génère un token JWT avec les droits minimums (`RoomJoin`, `CanPublish`, `CanSubscribe`, `CanPublishData`).
+   - Pour les rooms de stage, ajoute `RoomCreate` et `RoomAdmin` aux modérateurs (vérifiés via `user_roles` ou permissions serveur).
+   - CORS headers sur toutes les réponses, y compris erreurs.
+   - Déployer et tester avec `curl`.
 
-- Déclenche une **animation d'ouverture horizontale (flip 3D)** : la carte pivote sur l'axe Y avec `transform-style: preserve-3d` + `rotateY(180deg)` (durée 600ms `cubic-bezier(0.4, 0, 0.2, 1)`).
-- Le **dos de la carte** garde exactement le même style (header, fond `surface-2`, bordure, rayon) mais affiche :
-  - Header identique (avatar + titre).
-  - Un graphique moderne (barres horizontales animées via Recharts `BarChart` + `Cell` pour couleurs A/B) : votes par option, total, % global.
-  - Compteur de commentaires + réactions.
-  - Bouton "Retour" qui rejoue l'animation inverse.
-- Réutilisable : nouveau composant `MediaDuelStatsBack.tsx`, monté inconditionnellement (deux faces du flip).
+4. **Créer le service client LiveKit**
+   - Fichier : `src/lib/livekit.ts`.
+   - Fonction `fetchLiveKitToken(roomName, options)` appelant `supabase.functions.invoke('livekit-token')`.
+   - Fonction `createLiveKitRoom(url, token)` instanciant `new Room()` avec une configuration adaptée au projet (Opus, redondance, reconnexion auto, etc.).
+   - Gestion centralisée des événements : `RoomEvent.Connected`, `Disconnected`, `Reconnecting`, `Reconnected`, `ParticipantConnected`, `ParticipantDisconnected`, `TrackSubscribed`, `TrackUnsubscribed`, `LocalTrackPublished`.
 
-### Composants & Fichiers (technique)
+5. **Créer le hook React `useLiveKit`**
+   - Fichier : `src/hooks/useLiveKit.ts`.
+   - Signature : `useLiveKit(roomName: string, options: { identity: string, name?: string, video?: boolean, audio?: boolean, screenShare?: boolean, metadata?: object })`.
+   - Connecte automatiquement au montage, déconnecte au démontage.
+   - Expose : `room`, `isConnected`, `isConnecting`, `error`, `participants`, `localParticipant`, `audioTracks`, `videoTracks`, `screenShareTracks`, `toggleMute`, `toggleVideo`, `toggleScreenShare`, `disconnect`.
+   - Gère les états d'erreur et de reconnexion avec retour à l'utilisateur.
 
-**Créés**
-- `src/components/channels/media/MediaPostStatsModal.tsx` — modal stats générale (tableau votants groupés par option pour duels).
-- `src/components/channels/media/EditMediaPostModal.tsx` — édition titre/description/spoiler.
-- `src/components/channels/media/MediaDuelStatsBack.tsx` — face arrière de carte duel (graphique Recharts).
-- `src/components/channels/media/MediaPostActionsMenu.tsx` — wrapper Dropdown/Sheet partagé Card + SidePanel.
+6. **Créer un composant de test minimal**
+   - Fichier : `src/components/livekit/LiveKitConnectionTest.tsx`.
+   - Composant autonome qui demande un token, rejoint une room temporaire (`test-<userId>`), affiche le statut de connexion et permet de mute/demute la caméra/micro.
+   - Utilisé pour valider la connexion sans toucher aux salons existants.
 
-**Modifiés**
-- `src/components/channels/media/MediaPostCard.tsx` — menu 3 points, pills Heart/Comment, flip duel, retrait ReactionBar.
-- `src/components/channels/media/MediaPostSidePanel.tsx` — même menu 3 points, pills, retrait ReactionBar libre.
-- `src/components/channels/media/MediaDuelView.tsx` — UX toggle/switch + label dynamique.
-- `src/hooks/useMediaDuel.ts` — logique toggle-off si reclic même item (mutationFn + onMutate).
-- `src/hooks/useMediaPosts.ts` — ajout `useUpdateMediaPost` (titre/description/spoiler).
+7. **Validation et nettoyage**
+   - `bun run lint` et `bun run build` doivent passer.
+   - Vérifier que le PWA build reste sous la limite Workbox (5 Mo actuelle).
+   - Tester l'edge function et le composant de test via le preview.
+   - S'assurer que les anciens hooks WebRTC ne sont pas cassés par l'ajout de LiveKit.
 
-**Aucun changement DB requis** (utilise `media_posts`, `media_post_duel_votes`, `media_post_comments`, `media_post_reactions` existants + jointure `profiles` pour noms/avatars dans stats).
+### Hors scope (phase 2)
+- Remplacer `useWebRTC` par une room LiveKit pour les salons vocaux.
+- Remplacer `useDMCallWebRTC` par une room privée à 2 participants.
+- Remplacer `useStageWebRTC` par une room LiveKit avec rôles speaker/audience.
+- Supprimer les tables `voice_signals`, `dm_call_signals`, `voice_states` et la signalisation maison.
 
-### Hors-scope
-- "Marquer comme lu" reste local (pas de table dédiée — cohérent avec le système actuel des `media-saved-posts`).
-- "Répondre" produit un nouveau post avec citation markdown, pas un fil de réponse natif (système Threads existant non réutilisé ici).
+### Livrables
+- `package.json` mis à jour.
+- `supabase/functions/livekit-token/index.ts`.
+- `src/lib/livekit.ts`.
+- `src/hooks/useLiveKit.ts`.
+- `src/components/livekit/LiveKitConnectionTest.tsx`.
+- Secrets `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` configurés dans le backend.

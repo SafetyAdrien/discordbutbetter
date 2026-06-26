@@ -39,7 +39,7 @@ function useAuthorProfile(userId: string | undefined) {
   });
 }
 
-export function MediaPostSidePanel({ post, channelId, serverId = null, onClose }: Props) {
+export function MediaPostSidePanel({ post, channelId, serverId = null, onClose, onReply }: Props) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { data: author } = useAuthorProfile(post.author_id);
@@ -98,14 +98,16 @@ export function MediaPostSidePanel({ post, channelId, serverId = null, onClose }
   const [editOpen, setEditOpen] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
 
-  const heartReactions = (reactionsData[post.id] || []).find((r: any) => r.emoji === '❤️');
-  const heartCount = heartReactions?.count ?? 0;
-  const heartReacted = !!heartReactions?.reacted;
+  const postReactions = reactionsData[post.id] || [];
+  const heartList = postReactions.filter((r) => r.emoji === '❤️');
+  const heartCount = heartList.length;
+  const heartReacted = !!user && heartList.some((r) => r.user_id === user.id);
 
   const { data: comments = [] } = useMediaCommentsHook(post.id);
   const commentCount = comments.length;
 
   const isAuthor = user?.id === post.author_id;
+
 
 
   return (
@@ -125,12 +127,15 @@ export function MediaPostSidePanel({ post, channelId, serverId = null, onClose }
         <MediaPostActionsMenu
           post={post}
           channelId={channelId}
+          serverId={serverId}
           isAuthor={isAuthor}
+          canDelete={isAuthor}
           onEdit={() => setEditOpen(true)}
-          onStats={() => setStatsOpen(true)}
+          onShowStats={() => setStatsOpen(true)}
           onReply={() => onReply?.(post)}
-          onDeleted={onClose}
+          onDeleted={() => onClose()}
         />
+
         <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
 
           <X className="w-4 h-4" />

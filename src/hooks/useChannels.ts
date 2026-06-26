@@ -110,45 +110,81 @@ export function useChannels(
   useEffect(() => {
     if (!serverId || !user) return;
 
+    const queryKey = ['channels', serverId] as const;
+
+    const patchChannelInline = (next: Partial<ChannelWithCategory> & { id: string }) => {
+      queryClient.setQueryData<{ categories: CategoryWithChannels[]; orphanChannels: OrphanChannel[] }>(queryKey, (old) => {
+        if (!old) return old;
+        let changed = false;
+        const apply = (ch: ChannelWithCategory): ChannelWithCategory => {
+          if (ch.id !== next.id) return ch;
+          changed = true;
+          return { ...ch, ...next };
+        };
+        const newData = {
+          categories: old.categories.map((cat) => ({ ...cat, channels: cat.channels.map(apply) })),
+          orphanChannels: old.orphanChannels.map(apply),
+        };
+        return changed ? newData : old;
+      });
+      // Mirror into the aggregate servers cache too
+      queryClient.setQueryData<any[]>(['servers'], (old) => {
+        if (!Array.isArray(old)) return old;
+        return old.map((s: any) => {
+          if (s.id !== serverId) return s;
+          return {
+            ...s,
+            categories: (s.categories || []).map((cat: any) => ({
+              ...cat,
+              channels: (cat.channels || []).map((ch: any) => (ch.id === next.id ? { ...ch, ...next } : ch)),
+            })),
+            orphanChannels: (s.orphanChannels || []).map((ch: any) => (ch.id === next.id ? { ...ch, ...next } : ch)),
+          };
+        });
+      });
+    };
+
+    const invalidate = () => {
+      if (mutationLockRef.current) return;
+      clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey });
+        queryClient.invalidateQueries({ queryKey: ['servers'] });
+      }, 300);
+    };
+
     const channelsChannel = supabase
       .channel(`channels-rt-${serverId}`)
       .on(
         'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'channels',
-          filter: `server_id=eq.${serverId}`
-        },
-        () => {
+        { event: '*', schema: 'public', table: 'channels', filter: `server_id=eq.${serverId}` },
+        (payload) => {
           if (mutationLockRef.current) return;
-          clearTimeout(debounceRef.current);
-          debounceRef.current = setTimeout(() => {
-            queryClient.invalidateQueries({ queryKey: ['channels', serverId] });
-            queryClient.invalidateQueries({ queryKey: ['servers'] });
-          }, 300);
-        }
+          // Patch UPDATE inline (rename, position, icon…) — no refetch, no flicker.
+          if (payload.eventType === 'UPDATE') {
+            const next = payload.new as ChannelWithCategory;
+            if (next?.id) {
+              patchChannelInline(next);
+              return;
+            }
+          }
+          invalidate();
+        },
       )
-      .subscribe();
+      .subscribe((status) => {
+        // Race-condition fix: on (re)subscribe, refetch once to catch events
+        // that landed between the initial SELECT and the live subscription.
+        if (status === 'SUBSCRIBED') {
+          queryClient.invalidateQueries({ queryKey });
+        }
+      });
 
     const categoriesChannel = supabase
       .channel(`categories-rt-${serverId}`)
       .on(
         'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'categories',
-          filter: `server_id=eq.${serverId}`
-        },
-        () => {
-          if (mutationLockRef.current) return;
-          clearTimeout(debounceRef.current);
-          debounceRef.current = setTimeout(() => {
-            queryClient.invalidateQueries({ queryKey: ['channels', serverId] });
-            queryClient.invalidateQueries({ queryKey: ['servers'] });
-          }, 300);
-        }
+        { event: '*', schema: 'public', table: 'categories', filter: `server_id=eq.${serverId}` },
+        () => { invalidate(); },
       )
       .subscribe();
 

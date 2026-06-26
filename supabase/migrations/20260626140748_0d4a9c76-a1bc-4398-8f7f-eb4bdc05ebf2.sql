@@ -1,0 +1,1 @@
+CREATE POLICY "Users can remove their own duel vote" ON public.media_post_duel_votes FOR DELETE TO authenticated USING (user_id = auth.uid());

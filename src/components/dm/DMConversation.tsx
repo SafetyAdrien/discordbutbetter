@@ -719,6 +719,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                         </div>
                         </SwipeToReplyRow>
                       </UniversalMessageContextMenu>
+                      </>)}
                       </div>
                     );
                   })}

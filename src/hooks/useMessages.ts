@@ -340,7 +340,99 @@ export function useMessages(channelId: string | null) {
     };
   }, [channelId, user, queryClient]);
 
-  return query;
+  // ── Infinite scroll: load older messages on demand ───────────────────────
+  const [hasMoreOlder, setHasMoreOlder] = useState(true);
+  const [isLoadingOlder, setIsLoadingOlder] = useState(false);
+
+  useEffect(() => {
+    setHasMoreOlder(true);
+    setIsLoadingOlder(false);
+  }, [channelId]);
+
+  const loadOlder = useCallback(async (): Promise<number> => {
+    if (!channelId || !user) return 0;
+    if (isLoadingOlder || !hasMoreOlder) return 0;
+    const current = queryClient.getQueryData<MessageWithAuthor[]>(['messages', channelId]) || [];
+    if (current.length === 0) return 0;
+    const oldest = current[0];
+    if (!oldest?.created_at) return 0;
+    setIsLoadingOlder(true);
+    try {
+      const { data, error } = await supabase
+        .from('messages')
+        .select(`
+          id, content, created_at, edited_at, attachments, channel_id,
+          reply_to_id, source_server_id, source_server_name, source_server_icon,
+          source_channel_name, is_published_message, publish_dismissed, is_system,
+          author:profiles!messages_author_id_fkey (
+            id, username, display_name, avatar_url, status, custom_status
+          )
+        `)
+        .eq('channel_id', channelId)
+        .lt('created_at', oldest.created_at)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      if (error) throw error;
+
+      const older: MessageWithAuthor[] = (data as any[])
+        .map((m) => ({ ...m, attachments: Array.isArray(m.attachments) ? m.attachments : [] }))
+        .reverse() as MessageWithAuthor[];
+
+      // Resolve replies for older batch
+      const replyIds = Array.from(new Set(older.map((m) => m.reply_to_id).filter(Boolean) as string[]));
+      const replyMap = new Map<string, RepliedMessageSnapshot>();
+      if (replyIds.length > 0) {
+        const { data: replyData } = await supabase
+          .from('messages')
+          .select(`
+            id, content, attachments,
+            author:profiles!messages_author_id_fkey (id, username, display_name, avatar_url)
+          `)
+          .in('id', replyIds);
+        if (replyData) {
+          for (const r of replyData as any[]) {
+            replyMap.set(r.id, {
+              id: r.id,
+              content: r.content || '',
+              attachments: Array.isArray(r.attachments) ? r.attachments : [],
+              author: r.author
+                ? { id: r.author.id, username: r.author.username, display_name: r.author.display_name, avatar_url: r.author.avatar_url }
+                : null,
+            });
+          }
+        }
+      }
+
+      const resolved = older.map((m) => {
+        if (!m.reply_to_id) return m;
+        const snap = replyMap.get(m.reply_to_id);
+        return {
+          ...m,
+          repliedMessage: snap ?? { id: m.reply_to_id, content: '', attachments: [], deleted: true, author: null },
+        };
+      });
+
+      if (resolved.length < 50) setHasMoreOlder(false);
+
+      if (resolved.length > 0) {
+        queryClient.setQueryData<MessageWithAuthor[]>(['messages', channelId], (old) => {
+          const existing = old || [];
+          const existingIds = new Set(existing.map((m) => m.id));
+          const fresh = resolved.filter((m) => !existingIds.has(m.id));
+          return [...fresh, ...existing];
+        });
+      }
+
+      return resolved.length;
+    } catch (e) {
+      console.error('[useMessages] loadOlder failed', e);
+      return 0;
+    } finally {
+      setIsLoadingOlder(false);
+    }
+  }, [channelId, user, queryClient, hasMoreOlder, isLoadingOlder]);
+
+  return Object.assign(query, { loadOlder, hasMoreOlder, isLoadingOlder });
 }
 
 // Helper function to upload attachments

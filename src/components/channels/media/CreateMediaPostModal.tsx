@@ -287,6 +287,44 @@ export function CreateMediaPostModal({
             />
           </div>
 
+          {/* Duel mode */}
+          <div className="rounded-lg border border-border p-3 space-y-2">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="media-duel"
+                checked={isDuel}
+                onCheckedChange={(v) => setIsDuel(v === true)}
+              />
+              <Label htmlFor="media-duel" className="cursor-pointer text-sm flex items-center gap-1.5">
+                <Swords className="w-3.5 h-3.5" /> Duel visuel (A vs B)
+              </Label>
+            </div>
+            {isDuel && (
+              <div className="pl-6 space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  Un duel demande exactement 2 médias. {duelInvalid && (
+                    <span className="text-destructive">Vous en avez {files.length}.</span>
+                  )}
+                </p>
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="duel-dur" className="text-xs">Durée du vote</Label>
+                  <select
+                    id="duel-dur"
+                    value={duelDurationHours}
+                    onChange={(e) => setDuelDurationHours(Number(e.target.value))}
+                    className="text-xs rounded-md border border-border bg-background px-2 py-1"
+                  >
+                    <option value={1}>1 heure</option>
+                    <option value={6}>6 heures</option>
+                    <option value={24}>24 heures</option>
+                    <option value={72}>3 jours</option>
+                    <option value={168}>7 jours</option>
+                  </select>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Spoiler */}
           <div className="flex items-center gap-2">
             <Checkbox

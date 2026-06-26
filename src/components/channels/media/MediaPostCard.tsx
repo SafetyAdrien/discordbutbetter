@@ -142,7 +142,7 @@ export function MediaPostCard({ post, channelId, serverId = null, onOpenDetail, 
 
   // ---- Front face ----
   const FrontFace = (
-    <div className="absolute inset-0 [backface-visibility:hidden] bg-[hsl(var(--surface-2))] rounded-2xl border border-border/40 overflow-hidden shadow-[var(--shadow-elevation-1)] flex flex-col">
+    <div className="relative [backface-visibility:hidden] bg-[hsl(var(--surface-2))] rounded-2xl border border-border/40 overflow-hidden shadow-[var(--shadow-elevation-1)] flex flex-col">
       {/* Header */}
       <header className="flex items-center gap-3 px-4 py-3">
         <Avatar className="w-9 h-9">
@@ -361,26 +361,14 @@ export function MediaPostCard({ post, channelId, serverId = null, onOpenDetail, 
         style={{ perspective: '1600px' }}
       >
         <div
-          className="relative w-full transition-transform duration-[600ms] [transform-style:preserve-3d]"
+          className="relative w-full [transform-style:preserve-3d]"
           style={{
             transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
-            transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
-            // Reserve height; back face is absolute so we need explicit min height
-            minHeight: post.is_duel ? 560 : undefined,
+            transition: 'transform 600ms cubic-bezier(0.4, 0, 0.2, 1)',
           }}
         >
-          {/* Wrapper that holds front in flow, back absolute */}
-          <div className="relative" style={{ minHeight: post.is_duel ? 560 : 'auto' }}>
-            {/* Front kept in flow only when not flipped to drive layout height */}
-            <div className="relative">
-              {FrontFace}
-              {/* Spacer to give the absolutely-positioned front a height when it sits as the visible face */}
-              <div className="invisible" aria-hidden>
-                <div style={{ height: post.is_duel ? 560 : 720 }} />
-              </div>
-            </div>
-            {BackFace}
-          </div>
+          {FrontFace}
+          {BackFace}
         </div>
       </div>
 
@@ -389,3 +377,4 @@ export function MediaPostCard({ post, channelId, serverId = null, onOpenDetail, 
     </>
   );
 }
+

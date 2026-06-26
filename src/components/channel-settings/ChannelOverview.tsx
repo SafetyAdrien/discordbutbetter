@@ -190,11 +190,13 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
       return;
     }
 
+    isSavingRef.current = true;
     try {
       const nameChanged = name !== channel.name;
       const finalName = (shouldFormatStrict && nameChanged) ? formatStrictChannelName(name.trim()) : name.trim();
       if (!finalName) {
         toast.error('Le nom du salon ne peut pas être vide');
+        isSavingRef.current = false;
         return;
       }
 
@@ -238,12 +240,26 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
         icon_url: finalIconUrl,
       });
 
+      // Pin the freshly-uploaded URL locally so the preview doesn't flicker
+      // back to the old icon while realtime catches up.
+      if (typeof finalIconUrl === 'string') {
+        setIconUrl(finalIconUrl);
+      } else if (finalIconUrl === null) {
+        setIconUrl(null);
+      }
       setPendingIconBlob(null);
       setIconRemoved(false);
+      if (blobPreviewUrlRef.current) {
+        URL.revokeObjectURL(blobPreviewUrlRef.current);
+        blobPreviewUrlRef.current = null;
+      }
     } catch (error) {
       console.error('Save error:', error);
       setIsUploadingIcon(false);
       toast.error('Erreur lors de la mise à jour');
+      // Keep pendingIconBlob/iconRemoved intact so the user can retry without re-cropping.
+    } finally {
+      isSavingRef.current = false;
     }
   };
 

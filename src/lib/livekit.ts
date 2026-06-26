@@ -1,7 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import {
   Room,
-  RoomEvent,
   RoomOptions,
   RoomConnectOptions,
   Track,
@@ -9,7 +8,6 @@ import {
   Participant,
   TrackPublication,
 } from 'livekit-client';
-
 
 export interface LiveKitTokenResponse {
   token: string;
@@ -51,12 +49,6 @@ export function createLiveKitRoom(url: string, token: string, options?: Partial<
     adaptiveStream: true,
     dynacast: true,
     stopLocalTrackOnUnpublish: true,
-    reconnectOptions: {
-      maxRetries: 7,
-      backoffTime: 1000,
-      maxBackoffTime: 20000,
-      alwaysRetry: true,
-    },
     publishDefaults: {
       videoEncoding: {
         maxBitrate: 1_700_000,
@@ -75,15 +67,12 @@ export function createLiveKitRoom(url: string, token: string, options?: Partial<
       echoCancellation: true,
       noiseSuppression: true,
       autoGainControl: true,
-      sampleRate: 48000,
-      channelCount: 1,
     },
     ...options,
   };
 
   const room = new Room(roomOptions);
 
-  // Connect to the server
   const connectOptions: RoomConnectOptions = {
     autoSubscribe: true,
   };
@@ -120,22 +109,22 @@ export async function connectToLiveKitRoom(
   return { room, tokenResponse };
 }
 
-export function getAudioTracks(participant: Participant): (LocalTrackPublication | RemoteTrackPublication)[] {
+export function getAudioTracks(participant: Participant): TrackPublication[] {
   return Array.from(participant.trackPublications.values()).filter(
-    (pub) => pub.track && (pub.source === Track.Source.Camera || pub.source === Track.Source.Microphone)
+    (pub) => pub.track && pub.source === Track.Source.Microphone
   );
 }
 
-export function getVideoTracks(participant: Participant): (LocalTrackPublication | RemoteTrackPublication)[] {
+export function getVideoTracks(participant: Participant): TrackPublication[] {
   return Array.from(participant.trackPublications.values()).filter(
     (pub) => pub.track && pub.source === Track.Source.Camera
   );
 }
 
-export function getScreenShareTracks(participant: Participant): (LocalTrackPublication | RemoteTrackPublication)[] {
+export function getScreenShareTracks(participant: Participant): TrackPublication[] {
   return Array.from(participant.trackPublications.values()).filter(
     (pub) => pub.track && pub.source === Track.Source.ScreenShare
   );
 }
 
-export type { Room, Participant, RemoteParticipant, LocalTrackPublication, RemoteTrackPublication };
+export type { Room, Participant, TrackPublication };

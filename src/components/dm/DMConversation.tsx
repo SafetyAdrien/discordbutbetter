@@ -169,6 +169,9 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
     }
   }, [conversationId]);
 
+  // Native: detect screenshots / screen recordings and post a system message.
+  useScreenCaptureDetection(conversationId);
+
   // Clear server-scoped fields from the markdown context: DMs have no roles,
   // so RoleMention must not inherit a stale serverId from another surface.
   useEffect(() => {

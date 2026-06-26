@@ -273,11 +273,7 @@ const ServerDragOverlay = forwardRef<HTMLDivElement, { server: Server }>(({ serv
     >
       {server.icon ? (
         server.icon.startsWith('http') ? (
-          <img 
-            src={server.icon} 
-            alt={server.name}
-            className="w-full h-full object-cover rounded-[inherit]"
-          />
+          <ServerIconImage src={server.icon} alt={server.name} />
         ) : (
           <span className="text-xl">{server.icon}</span>
         )

@@ -83,6 +83,8 @@ export function CreateMediaPostModal({
       description: description.trim(),
       altTexts: altTexts.map((a) => a.trim()),
       isSpoiler,
+      isDuel,
+      duelDurationHours,
     });
   };
 

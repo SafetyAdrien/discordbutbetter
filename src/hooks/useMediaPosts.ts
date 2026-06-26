@@ -202,6 +202,10 @@ export function useCreateMediaPost(channelId: string) {
       const first = uploaded[0];
 
       // 2. Insert media_posts (use first file as legacy fields for backward compat)
+      const isDuel = !!input.isDuel && uploaded.length === 2;
+      const duelExpiresAt = isDuel && input.duelDurationHours
+        ? new Date(Date.now() + input.duelDurationHours * 60 * 60 * 1000).toISOString()
+        : null;
       const postRow = {
         channel_id: channelId,
         author_id: userId,
@@ -213,6 +217,8 @@ export function useCreateMediaPost(channelId: string) {
         file_size: first.file.size,
         alt_text: input.altTexts?.[0] ?? '',
         is_spoiler: input.isSpoiler,
+        is_duel: isDuel,
+        duel_expires_at: duelExpiresAt,
       };
 
       const { data: post, error } = await (supabase

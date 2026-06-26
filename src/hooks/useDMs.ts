@@ -145,24 +145,63 @@ export function useDMConversations() {
     }
   }, [query.data, user?.id, query.isPlaceholderData]);
 
-  // Real-time subscription for new messages
+  // Real-time subscriptions: messages (inline patch), conversations + participants (invalidate)
   useEffect(() => {
     if (!user) return;
+
+    const refetch = () => queryClient.invalidateQueries({ queryKey: ['dm-conversations', user.id] });
 
     const channel = supabase
       .channel(`dm-updates:${user.id}`, { config: { private: true } })
       .on(
         'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'dm_messages',
+        { event: 'INSERT', schema: 'public', table: 'dm_messages' },
+        (payload) => {
+          const msg = payload.new as {
+            conversation_id: string;
+            content: string;
+            created_at: string;
+            author_id: string | null;
+          };
+          // Patch lastMessage inline + re-sort, no refetch.
+          queryClient.setQueryData<DMConversation[]>(['dm-conversations', user.id], (old) => {
+            if (!Array.isArray(old)) return old;
+            const idx = old.findIndex((c) => c.id === msg.conversation_id);
+            if (idx === -1) {
+              // New conversation we don't know about yet — full refetch.
+              refetch();
+              return old;
+            }
+            const target = old[idx];
+            const updated: DMConversation = {
+              ...target,
+              lastMessage: {
+                content: msg.content,
+                created_at: msg.created_at,
+                author_id: msg.author_id,
+                author_display_name: target.lastMessage?.author_id === msg.author_id
+                  ? target.lastMessage?.author_display_name ?? null
+                  : target.participants.find((p) => p.id === msg.author_id)?.display_name ?? null,
+              },
+            };
+            const next = [updated, ...old.slice(0, idx), ...old.slice(idx + 1)];
+            return next;
+          });
         },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['dm-conversations', user.id] });
-        }
       )
-      .subscribe();
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'dm_conversations' },
+        () => { refetch(); },
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'dm_participants' },
+        () => { refetch(); },
+      )
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') refetch();
+      });
 
     return () => {
       supabase.removeChannel(channel);

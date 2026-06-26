@@ -162,7 +162,7 @@ export function useLiveKit(roomName: string | null, options: UseLiveKitOptions =
           optionsRef.current.onConnected?.(r);
         });
 
-        r.on(RoomEvent.Disconnected, (reason?: string) => {
+        r.on(RoomEvent.Disconnected, (reason?: DisconnectReason) => {
           setIsConnected(false);
           setIsConnecting(false);
           optionsRef.current.onDisconnected?.(reason);

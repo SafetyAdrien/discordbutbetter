@@ -126,41 +126,69 @@ export function MediaPostSidePanel({ post, channelId, serverId = null, onClose }
         </Button>
       </div>
 
-      {/* Media area (top) */}
-      <div className="relative bg-black flex items-center justify-center" style={{ height: '55%' }}>
-        {!revealed && post.is_spoiler ? (
-          <button onClick={() => setRevealed(true)} className="flex flex-col items-center gap-3 text-white">
-            <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center">
-              <EyeOff className="w-8 h-8" />
-            </div>
-            <span className="text-sm font-medium">Spoiler — cliquer pour afficher</span>
-          </button>
-        ) : isImage ? (
-          <InfiniteZoomImage src={activeItem.file_url} alt={activeItem.alt_text || post.title} className="w-full h-full" />
-        ) : (
-          <video src={activeItem.file_url} className="max-w-full max-h-full" controls autoPlay />
-        )}
+      {/* Media area (top) — duel mode replaces single-media display */}
+      {post.is_duel ? (
+        <div className="bg-black overflow-hidden flex-shrink-0">
+          <MediaDuelView post={post} />
+        </div>
+      ) : (
+        <div ref={mediaBoxRef} className="relative bg-black flex items-center justify-center" style={{ height: '55%' }}>
+          {!revealed && post.is_spoiler ? (
+            <button onClick={() => setRevealed(true)} className="flex flex-col items-center gap-3 text-white">
+              <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center">
+                <EyeOff className="w-8 h-8" />
+              </div>
+              <span className="text-sm font-medium">Spoiler — cliquer pour afficher</span>
+            </button>
+          ) : isImage ? (
+            <InfiniteZoomImage src={activeItem.file_url} alt={activeItem.alt_text || post.title} className="w-full h-full" />
+          ) : (
+            <video src={activeItem.file_url} className="max-w-full max-h-full" controls autoPlay />
+          )}
 
-        {items.length > 1 && revealed && (
-          <>
+          {/* Canvas Live overlay (images only) */}
+          {revealed && isImage && mediaBox.w > 0 && (
+            <CanvasLiveOverlay
+              postId={post.id}
+              itemId={activeItem.id}
+              width={mediaBox.w}
+              height={mediaBox.h}
+              active={drawing}
+              onClose={() => setDrawing(false)}
+            />
+          )}
+
+          {revealed && isImage && !drawing && (
             <button
-              onClick={() => setActiveIndex((i) => (i - 1 + items.length) % items.length)}
-              className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center z-10"
+              onClick={() => setDrawing(true)}
+              className="absolute top-2 right-2 z-20 w-9 h-9 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center"
+              title="Annoter en direct"
             >
-              <ChevronLeft className="w-5 h-5" />
+              <Brush className="w-4 h-4" />
             </button>
-            <button
-              onClick={() => setActiveIndex((i) => (i + 1) % items.length)}
-              className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center z-10"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
-            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 px-2.5 py-0.5 rounded-full bg-black/60 text-white text-xs font-medium z-10">
-              {activeIndex + 1} / {items.length}
-            </div>
-          </>
-        )}
-      </div>
+          )}
+
+          {items.length > 1 && revealed && (
+            <>
+              <button
+                onClick={() => setActiveIndex((i) => (i - 1 + items.length) % items.length)}
+                className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center z-10"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setActiveIndex((i) => (i + 1) % items.length)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center z-10"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 px-2.5 py-0.5 rounded-full bg-black/60 text-white text-xs font-medium z-10">
+                {activeIndex + 1} / {items.length}
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Thumbnail strip */}
       {items.length > 1 && (

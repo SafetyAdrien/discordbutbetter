@@ -270,8 +270,8 @@ export function usePreloader(
         const dms = readCache<any[]>(`dm-conversations:${user.id}`) || [];
         const topDmIds = dms.slice(0, 5).map((d: any) => d.id).filter(Boolean);
         for (const cid of topDmIds) {
-          const cached = readCache<any>(`dm-messages:${cid}`);
-          if (cached) queryClient.setQueryData(['dm-messages', cid], cached);
+          const cached = readCache<any>(`dm-messages:${user.id}:${cid}`);
+          if (cached) queryClient.setQueryData(['dm-messages', user.id, cid], cached);
         }
       } catch {}
       writeCache('preloader-done', '1');

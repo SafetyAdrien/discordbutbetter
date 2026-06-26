@@ -4,6 +4,7 @@ import { CustomStatusBubble } from './CustomStatusBubble';
 import { CustomStatusModal } from './CustomStatusModal';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { UserAvatarImage } from '@/components/ui/user-avatar-image';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useMutualServers } from '@/hooks/useMutualServers';
@@ -146,12 +147,14 @@ export function FullUserProfileModal({
           <div className="px-6 -mt-14 relative z-10 flex items-end justify-between gap-3">
             <div className="relative min-w-0 shrink-0">
               <div className="relative">
-                <Avatar className="w-28 h-28 ring-[5px] ring-background">
-                  <AvatarImage src={user.avatar_url || undefined} />
-                  <AvatarFallback className="bg-primary/20 text-primary text-4xl font-semibold">
-                    {user.display_name?.charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
+                <UserAvatarImage
+                  src={user.avatar_url}
+                  alt={user.display_name}
+                  className="w-28 h-28 ring-[5px] ring-background"
+                  fallbackClassName="bg-primary/20 text-primary text-4xl font-semibold"
+                  fallback={user.display_name?.charAt(0).toUpperCase()}
+                />
+
                 <StatusIndicator
                   status={user.status || 'offline'}
                   className="absolute bottom-1 right-1 w-6 h-6 border-[4px] border-background"

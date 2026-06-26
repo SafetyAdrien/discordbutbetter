@@ -1,8 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
-import { useCacheReady } from '@/hooks/useCacheReady';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -56,16 +55,26 @@ export interface DMMessage {
   isPending?: boolean;
 }
 
+// Helper to scope cache keys per user — avoids cross-account bleed if a user
+// signs out/in without a full reload.
+const dmKey = (userId: string | undefined | null, conversationId: string | null) =>
+  ['dm-messages', userId ?? 'anon', conversationId ?? 'none'] as const;
+const dmIdbKey = (userId: string, conversationId: string) =>
+  `dm-messages:${userId}:${conversationId}`;
+
 export function useDMMessages(conversationId: string | null) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  
+  const userId = user?.id;
+
+  const queryKey = dmKey(userId, conversationId);
 
   const query = useQuery({
-    queryKey: ['dm-messages', conversationId],
+    queryKey,
     queryFn: async (): Promise<DMMessage[]> => {
       if (!conversationId) return [];
 
+      // Fetch the 50 MOST RECENT messages (desc + reverse), not the oldest 50.
       const { data, error } = await supabase
         .from('dm_messages')
         .select(`
@@ -84,22 +93,24 @@ export function useDMMessages(conversationId: string | null) {
           )
         `)
         .eq('conversation_id', conversationId)
-        .order('created_at', { ascending: true })
-        .limit(100);
+        .order('created_at', { ascending: false })
+        .limit(50);
 
       if (error) throw error;
 
-      const baseMessages: DMMessage[] = (data as any[]).map((msg) => ({
-        ...msg,
-        attachments: Array.isArray(msg.attachments) ? msg.attachments : [],
-      })) as DMMessage[];
+      const baseMessages: DMMessage[] = (data as any[])
+        .map((msg) => ({
+          ...msg,
+          attachments: Array.isArray(msg.attachments) ? msg.attachments : [],
+        }))
+        .reverse() as DMMessage[];
 
       // Resolve replied messages in a single batched query
       const replyIds = Array.from(
         new Set(baseMessages.map((m) => m.reply_to_id).filter(Boolean) as string[])
       );
 
-      let replyMap = new Map<string, RepliedDMSnapshot>();
+      const replyMap = new Map<string, RepliedDMSnapshot>();
       if (replyIds.length > 0) {
         const { data: replyData } = await supabase
           .from('dm_messages')
@@ -149,18 +160,19 @@ export function useDMMessages(conversationId: string | null) {
       }));
     },
     enabled: !!conversationId && !!user,
-    placeholderData: () => cacheGetSync(`dm-messages:${conversationId}`),
+    placeholderData: () =>
+      userId && conversationId ? cacheGetSync(dmIdbKey(userId, conversationId)) : undefined,
     staleTime: 30_000,
     refetchOnMount: (q) => (q.state.data ? false : 'always'),
     refetchOnWindowFocus: false,
   });
 
-  // Persist to IndexedDB
+  // Persist to IndexedDB (scoped per user)
   useEffect(() => {
-    if (query.data && conversationId && !query.isPlaceholderData) {
-      cacheSetAsync(`dm-messages:${conversationId}`, query.data);
+    if (query.data && conversationId && userId && !query.isPlaceholderData) {
+      cacheSetAsync(dmIdbKey(userId, conversationId), query.data);
     }
-  }, [query.data, conversationId, query.isPlaceholderData]);
+  }, [query.data, conversationId, userId, query.isPlaceholderData]);
 
   // Real-time subscription
   useEffect(() => {
@@ -249,14 +261,11 @@ export function useDMMessages(conversationId: string | null) {
                 : []) as unknown as StoredAttachment[],
               repliedMessage,
             };
-            queryClient.setQueryData<DMMessage[]>(
-              ['dm-messages', conversationId],
-              (old) => {
-                if (!old) return [parsedData];
-                if (old.some(m => m.id === parsedData.id)) return old;
-                return [...old, parsedData];
-              }
-            );
+            queryClient.setQueryData<DMMessage[]>(queryKey, (old) => {
+              if (!old) return [parsedData];
+              if (old.some((m) => m.id === parsedData.id)) return old;
+              return [...old, parsedData];
+            });
           }
         }
       )
@@ -270,17 +279,14 @@ export function useDMMessages(conversationId: string | null) {
         },
         (payload) => {
           const updated = payload.new as any;
-          queryClient.setQueryData<DMMessage[]>(
-            ['dm-messages', conversationId],
-            (old) => {
-              if (!old) return old;
-              return old.map((m) =>
-                m.id === updated.id
-                  ? { ...m, content: updated.content, edited_at: updated.edited_at }
-                  : m
-              );
-            }
-          );
+          queryClient.setQueryData<DMMessage[]>(queryKey, (old) => {
+            if (!old) return old;
+            return old.map((m) =>
+              m.id === updated.id
+                ? { ...m, content: updated.content, edited_at: updated.edited_at }
+                : m
+            );
+          });
         }
       )
       .on(
@@ -293,23 +299,118 @@ export function useDMMessages(conversationId: string | null) {
         },
         (payload) => {
           const deleted = payload.old as any;
-          queryClient.setQueryData<DMMessage[]>(
-            ['dm-messages', conversationId],
-            (old) => {
-              if (!old) return old;
-              return old.filter((m) => m.id !== deleted.id);
-            }
-          );
+          queryClient.setQueryData<DMMessage[]>(queryKey, (old) => {
+            if (!old) return old;
+            return old.filter((m) => m.id !== deleted.id);
+          });
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        // Race condition fix: messages inserted between the initial fetch and
+        // the Realtime SUBSCRIBED window are otherwise lost until manual refresh.
+        // Invalidating once on SUBSCRIBED guarantees catch-up.
+        if (status === 'SUBSCRIBED') {
+          queryClient.invalidateQueries({ queryKey });
+        }
+      });
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [conversationId, user, queryClient]);
+    // queryKey is stable per (userId, conversationId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversationId, user?.id, queryClient]);
 
-  return query;
+  // ── Infinite scroll: load older messages on demand ───────────────────────
+  const [hasMoreOlder, setHasMoreOlder] = useState(true);
+  const [isLoadingOlder, setIsLoadingOlder] = useState(false);
+
+  useEffect(() => {
+    setHasMoreOlder(true);
+    setIsLoadingOlder(false);
+  }, [conversationId, userId]);
+
+  const loadOlder = useCallback(async (): Promise<number> => {
+    if (!conversationId || !user) return 0;
+    if (isLoadingOlder || !hasMoreOlder) return 0;
+    const current = queryClient.getQueryData<DMMessage[]>(queryKey) || [];
+    if (current.length === 0) return 0;
+    const oldest = current[0];
+    if (!oldest?.created_at) return 0;
+    setIsLoadingOlder(true);
+    try {
+      const { data, error } = await supabase
+        .from('dm_messages')
+        .select(`
+          id, content, created_at, edited_at, attachments, conversation_id, reply_to_id,
+          author:profiles!dm_messages_author_id_fkey (
+            id, username, display_name, avatar_url
+          )
+        `)
+        .eq('conversation_id', conversationId)
+        .lt('created_at', oldest.created_at)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      if (error) throw error;
+
+      const older: DMMessage[] = (data as any[])
+        .map((m) => ({ ...m, attachments: Array.isArray(m.attachments) ? m.attachments : [] }))
+        .reverse() as DMMessage[];
+
+      const replyIds = Array.from(new Set(older.map((m) => m.reply_to_id).filter(Boolean) as string[]));
+      const replyMap = new Map<string, RepliedDMSnapshot>();
+      if (replyIds.length > 0) {
+        const { data: replyData } = await supabase
+          .from('dm_messages')
+          .select(`
+            id, content, attachments,
+            author:profiles!dm_messages_author_id_fkey (id, username, display_name, avatar_url)
+          `)
+          .in('id', replyIds);
+        if (replyData) {
+          for (const r of replyData as any[]) {
+            replyMap.set(r.id, {
+              id: r.id,
+              content: r.content || '',
+              attachments: Array.isArray(r.attachments) ? r.attachments : [],
+              author: r.author
+                ? { id: r.author.id, username: r.author.username, display_name: r.author.display_name, avatar_url: r.author.avatar_url }
+                : null,
+            });
+          }
+        }
+      }
+
+      const resolved = older.map((m) => {
+        if (!m.reply_to_id) return m;
+        const snap = replyMap.get(m.reply_to_id);
+        return {
+          ...m,
+          repliedMessage: snap ?? { id: m.reply_to_id, content: '', attachments: [], deleted: true, author: null },
+        };
+      });
+
+      if (resolved.length < 50) setHasMoreOlder(false);
+
+      if (resolved.length > 0) {
+        queryClient.setQueryData<DMMessage[]>(queryKey, (old) => {
+          const existing = old || [];
+          const existingIds = new Set(existing.map((m) => m.id));
+          const fresh = resolved.filter((m) => !existingIds.has(m.id));
+          return [...fresh, ...existing];
+        });
+      }
+
+      return resolved.length;
+    } catch (e) {
+      console.error('[useDMMessages] loadOlder failed', e);
+      return 0;
+    } finally {
+      setIsLoadingOlder(false);
+    }
+  }, [conversationId, user, queryClient, hasMoreOlder, isLoadingOlder, queryKey]);
+
+  return Object.assign(query, { loadOlder, hasMoreOlder, isLoadingOlder });
 }
 
 // Helper function to upload attachments
@@ -322,7 +423,7 @@ async function uploadDMAttachments(
   for (const attachment of pendingAttachments) {
     const fileExt = attachment.file.name.split('.').pop();
     const fileName = `${userId}/${crypto.randomUUID()}.${fileExt}`;
-    
+
     const { data, error } = await supabase.storage
       .from('message-attachments')
       .upload(fileName, attachment.file, {
@@ -421,7 +522,7 @@ export function useSendDMMessage() {
       // Resolve replied snapshot from cache (the original message is in the same channel)
       let repliedMessage: RepliedDMSnapshot | null = null;
       if (replyToId) {
-        const cached = queryClient.getQueryData<DMMessage[]>(['dm-messages', conversationId]);
+        const cached = queryClient.getQueryData<DMMessage[]>(dmKey(user.id, conversationId));
         const found = cached?.find((m) => m.id === replyToId);
         if (found && found.author) {
           repliedMessage = {
@@ -447,18 +548,17 @@ export function useSendDMMessage() {
       } as DMMessage;
     },
     onMutate: async ({ conversationId, content, attachments = [], replyToId }) => {
-      await queryClient.cancelQueries({ queryKey: ['dm-messages', conversationId] });
+      if (!user) return { previousMessages: undefined, optimisticMessage: undefined };
+      const key = dmKey(user.id, conversationId);
+      await queryClient.cancelQueries({ queryKey: key });
 
-      const previousMessages = queryClient.getQueryData<DMMessage[]>([
-        'dm-messages',
-        conversationId,
-      ]);
+      const previousMessages = queryClient.getQueryData<DMMessage[]>(key);
 
       const optimisticAttachments: StoredAttachment[] = attachments.map(a => ({
         id: a.id,
         url: a.previewUrl,
         name: a.name,
-        type: a.file.type.startsWith('image/') ? 'image' : 
+        type: a.file.type.startsWith('image/') ? 'image' :
               a.file.type.startsWith('video/') ? 'video' : 'file',
         size: a.file.size,
         description: a.description || undefined,
@@ -502,32 +602,25 @@ export function useSendDMMessage() {
         isPending: true,
       };
 
-      queryClient.setQueryData<DMMessage[]>(
-        ['dm-messages', conversationId],
-        (old) => [...(old || []), optimisticMessage]
-      );
+      queryClient.setQueryData<DMMessage[]>(key, (old) => [...(old || []), optimisticMessage]);
 
       return { previousMessages, optimisticMessage };
     },
     onSuccess: (data, { conversationId }, context) => {
+      if (!user) return;
       const msgData = data as DMMessage;
-      queryClient.setQueryData<DMMessage[]>(
-        ['dm-messages', conversationId],
-        (old) => {
-          if (!old) return [msgData];
-          return old.map((m) =>
-            m.id === context?.optimisticMessage.id ? msgData : m
-          );
-        }
-      );
+      const key = dmKey(user.id, conversationId);
+      queryClient.setQueryData<DMMessage[]>(key, (old) => {
+        if (!old) return [msgData];
+        return old.map((m) =>
+          m.id === context?.optimisticMessage?.id ? msgData : m
+        );
+      });
       queryClient.invalidateQueries({ queryKey: ['dm-conversations'] });
     },
-    onError: (error, { conversationId }, context) => {
-      if (context?.previousMessages) {
-        queryClient.setQueryData(
-          ['dm-messages', conversationId],
-          context.previousMessages
-        );
+    onError: (_error, { conversationId }, context) => {
+      if (user && context?.previousMessages) {
+        queryClient.setQueryData(dmKey(user.id, conversationId), context.previousMessages);
       }
       toast.error("Erreur lors de l'envoi du message");
     },
@@ -541,7 +634,6 @@ export function useEditDMMessage() {
   return useMutation({
     mutationFn: async ({
       messageId,
-      conversationId,
       content,
     }: {
       messageId: string;
@@ -564,15 +656,14 @@ export function useEditDMMessage() {
       return data;
     },
     onMutate: async ({ messageId, conversationId, content }) => {
-      await queryClient.cancelQueries({ queryKey: ['dm-messages', conversationId] });
+      if (!user) return { previousMessages: undefined };
+      const key = dmKey(user.id, conversationId);
+      await queryClient.cancelQueries({ queryKey: key });
 
-      const previousMessages = queryClient.getQueryData<DMMessage[]>([
-        'dm-messages',
-        conversationId,
-      ]);
+      const previousMessages = queryClient.getQueryData<DMMessage[]>(key);
 
       queryClient.setQueryData<DMMessage[]>(
-        ['dm-messages', conversationId],
+        key,
         (old) => old?.map((m) => (m.id === messageId ? { ...m, content, edited_at: new Date().toISOString() } : m)) || []
       );
 
@@ -581,9 +672,9 @@ export function useEditDMMessage() {
     onSuccess: () => {
       toast.success('Message modifié');
     },
-    onError: (error, { conversationId }, context) => {
-      if (context?.previousMessages) {
-        queryClient.setQueryData(['dm-messages', conversationId], context.previousMessages);
+    onError: (_error, { conversationId }, context) => {
+      if (user && context?.previousMessages) {
+        queryClient.setQueryData(dmKey(user.id, conversationId), context.previousMessages);
       }
       toast.error('Erreur lors de la modification');
     },
@@ -597,7 +688,6 @@ export function useDeleteDMMessage() {
   return useMutation({
     mutationFn: async ({
       messageId,
-      conversationId,
     }: {
       messageId: string;
       conversationId: string;
@@ -613,15 +703,14 @@ export function useDeleteDMMessage() {
       if (error) throw error;
     },
     onMutate: async ({ messageId, conversationId }) => {
-      await queryClient.cancelQueries({ queryKey: ['dm-messages', conversationId] });
+      if (!user) return { previousMessages: undefined };
+      const key = dmKey(user.id, conversationId);
+      await queryClient.cancelQueries({ queryKey: key });
 
-      const previousMessages = queryClient.getQueryData<DMMessage[]>([
-        'dm-messages',
-        conversationId,
-      ]);
+      const previousMessages = queryClient.getQueryData<DMMessage[]>(key);
 
       queryClient.setQueryData<DMMessage[]>(
-        ['dm-messages', conversationId],
+        key,
         (old) => old?.filter((m) => m.id !== messageId) || []
       );
 
@@ -630,9 +719,9 @@ export function useDeleteDMMessage() {
     onSuccess: () => {
       toast.success('Message supprimé');
     },
-    onError: (error, { conversationId }, context) => {
-      if (context?.previousMessages) {
-        queryClient.setQueryData(['dm-messages', conversationId], context.previousMessages);
+    onError: (_error, { conversationId }, context) => {
+      if (user && context?.previousMessages) {
+        queryClient.setQueryData(dmKey(user.id, conversationId), context.previousMessages);
       }
       toast.error('Erreur lors de la suppression');
     },

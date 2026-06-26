@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatarImage } from "@/components/ui/user-avatar-image";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertTriangle, Mail, Lock, Trash2, ShieldCheck, Loader2, LogOut } from "lucide-react";
 import {
@@ -154,12 +155,14 @@ export function AccountSettings() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center gap-4">
-            <Avatar className="w-16 h-16">
-              <AvatarImage src={profile?.avatar_url || undefined} />
-              <AvatarFallback className="bg-primary/20 text-primary text-xl">
-                {profile?.display_name?.charAt(0).toUpperCase() || "?"}
-              </AvatarFallback>
-            </Avatar>
+            <UserAvatarImage
+              src={profile?.avatar_url}
+              alt={profile?.display_name}
+              className="w-16 h-16"
+              fallbackClassName="bg-primary/20 text-primary text-xl"
+              fallback={profile?.display_name?.charAt(0).toUpperCase() || '?'}
+            />
+
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-lg">{profile?.display_name}</p>
               {!isChangingUsername ? (

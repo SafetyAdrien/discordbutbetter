@@ -31,6 +31,8 @@ export interface MediaPost {
   alt_text: string;
   is_spoiler: boolean;
   created_at: string;
+  is_duel?: boolean;
+  duel_expires_at?: string | null;
   items: MediaPostItem[];
   // Optimistic-only fields
   _isPending?: boolean;
@@ -161,6 +163,8 @@ interface CreateMediaPostInput {
   title: string;
   description: string;
   isSpoiler: boolean;
+  isDuel?: boolean;
+  duelDurationHours?: number;
 }
 
 export function useCreateMediaPost(channelId: string) {
@@ -198,6 +202,10 @@ export function useCreateMediaPost(channelId: string) {
       const first = uploaded[0];
 
       // 2. Insert media_posts (use first file as legacy fields for backward compat)
+      const isDuel = !!input.isDuel && uploaded.length === 2;
+      const duelExpiresAt = isDuel && input.duelDurationHours
+        ? new Date(Date.now() + input.duelDurationHours * 60 * 60 * 1000).toISOString()
+        : null;
       const postRow = {
         channel_id: channelId,
         author_id: userId,
@@ -209,6 +217,8 @@ export function useCreateMediaPost(channelId: string) {
         file_size: first.file.size,
         alt_text: input.altTexts?.[0] ?? '',
         is_spoiler: input.isSpoiler,
+        is_duel: isDuel,
+        duel_expires_at: duelExpiresAt,
       };
 
       const { data: post, error } = await (supabase
@@ -279,6 +289,10 @@ export function useCreateMediaPost(channelId: string) {
         file_size: items[0].file_size,
         alt_text: items[0].alt_text ?? '',
         is_spoiler: input.isSpoiler,
+        is_duel: !!input.isDuel && input.files.length === 2,
+        duel_expires_at: input.isDuel && input.duelDurationHours
+          ? new Date(Date.now() + input.duelDurationHours * 60 * 60 * 1000).toISOString()
+          : null,
         created_at: new Date().toISOString(),
         items,
         _isPending: true,

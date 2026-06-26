@@ -102,6 +102,8 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
     description: string;
     altTexts: string[];
     isSpoiler: boolean;
+    isDuel?: boolean;
+    duelDurationHours?: number;
   }) => {
     createPost.mutate(data, {
       onSuccess: (created) => {

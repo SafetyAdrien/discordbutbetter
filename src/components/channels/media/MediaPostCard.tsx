@@ -11,6 +11,7 @@ import { useMediaPostReactions, useToggleMediaReaction } from '@/hooks/useMediaR
 import { useMediaComments } from '@/hooks/useMediaComments';
 import { MarkdownText } from '@/lib/markdown';
 import type { MediaPost } from '@/hooks/useMediaPosts';
+import { MediaDuelView } from './MediaDuelView';
 import { toast } from 'sonner';
 
 interface Props {
@@ -169,7 +170,10 @@ export function MediaPostCard({ post, channelId, serverId = null, onOpenDetail, 
         </Button>
       </header>
 
-      {/* Media */}
+      {/* Media (or Duel inline) */}
+      {post.is_duel ? (
+        <MediaDuelView post={post} />
+      ) : (
       <div
         className="relative bg-black select-none"
         style={{ aspectRatio: '4 / 5', maxHeight: '80vh' }}
@@ -252,6 +256,7 @@ export function MediaPostCard({ post, channelId, serverId = null, onOpenDetail, 
           </>
         )}
       </div>
+      )}
 
       {/* Actions */}
       <div className="flex items-center gap-1 px-3 py-2">

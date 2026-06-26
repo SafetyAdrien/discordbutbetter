@@ -3796,6 +3796,16 @@ export type Database = {
           token: string
         }[]
       }
+      get_dm_last_messages: {
+        Args: never
+        Returns: {
+          author_display_name: string
+          author_id: string
+          content: string
+          conversation_id: string
+          created_at: string
+        }[]
+      }
       get_friendship_profiles: {
         Args: { friendship_user_ids: string[] }
         Returns: {

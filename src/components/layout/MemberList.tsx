@@ -36,6 +36,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { UserAvatarImage } from "@/components/ui/user-avatar-image";
 import { UserProfilePopup } from "@/components/profile/UserProfilePopup";
 import { RoleCheckboxItem } from "@/components/profile/RoleCheckboxItem";
 import {
@@ -556,12 +557,12 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
             style={{ transition: 'all 300ms cubic-bezier(0.2, 0, 0, 1)' }}
           >
             <div className="relative flex-shrink-0">
-              <Avatar className={cn("w-8 h-8", member.status === "offline" && "opacity-50 grayscale")}>
-                <AvatarImage src={member.avatar} alt={member.displayName} />
-                <AvatarFallback className="bg-primary/20 text-primary text-sm">
-                  {member.displayName.charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
+              <UserAvatarImage
+                src={member.avatar}
+                alt={member.displayName}
+                fallback={member.displayName.charAt(0).toUpperCase()}
+                className={cn("w-8 h-8", member.status === "offline" && "opacity-50 grayscale")}
+              />
               <StatusIndicator
                 status={member.status}
                 className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 border-2 border-card"

@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { UserAvatarImage } from '@/components/ui/user-avatar-image';
 
 interface CustomStatusModalProps {
   open: boolean;
@@ -133,12 +134,12 @@ export function CustomStatusModal({ open, onOpenChange }: CustomStatusModalProps
         <div className="flex-1 overflow-y-auto pb-6" style={{ overscrollBehavior: 'contain' }}>
           {/* User card */}
           <div className="mx-4 rounded-2xl bg-card border border-border/50 p-4 flex items-center gap-3">
-            <Avatar className="w-12 h-12">
-              <AvatarImage src={profile?.avatar_url || undefined} />
-              <AvatarFallback className="bg-primary/20 text-primary font-semibold">
-                {initial}
-              </AvatarFallback>
-            </Avatar>
+            <UserAvatarImage
+              src={profile?.avatar_url || undefined}
+              fallback={initial}
+              fallbackClassName="font-semibold"
+              className="w-12 h-12"
+            />
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-sm truncate">{profile?.display_name}</p>
               <p className="text-xs text-muted-foreground truncate">@{profile?.username}</p>

@@ -4,6 +4,7 @@ import { CustomStatusBubble } from './CustomStatusBubble';
 import { CustomStatusModal } from './CustomStatusModal';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { UserAvatarImage } from '@/components/ui/user-avatar-image';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useMutualServers } from '@/hooks/useMutualServers';

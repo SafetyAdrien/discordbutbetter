@@ -135,19 +135,19 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers, 
         <PopoverTrigger asChild>
           <button className="flex items-center gap-2 flex-1 min-w-0 hover:bg-muted rounded-md p-1 transition-colors">
             <div className="relative">
-              <Avatar
+              <UserAvatarImage
+                src={profile?.avatar_url}
+                alt={profile?.display_name}
                 className={cn(
                   "w-8 h-8 transition-all",
                   profile?.id && speakingUsers?.has(profile.id)
                     ? "ring-2 ring-[hsl(var(--voice-active))] voice-active-ring"
                     : "ring-2 ring-primary/30",
                 )}
-              >
-                <AvatarImage src={profile?.avatar_url || undefined} />
-                <AvatarFallback className="bg-primary/20 text-primary text-sm">
-                  {profile?.display_name?.charAt(0).toUpperCase() || "?"}
-                </AvatarFallback>
-              </Avatar>
+                fallbackClassName="bg-primary/20 text-primary text-sm"
+                fallback={profile?.display_name?.charAt(0).toUpperCase() || '?'}
+              />
+
               <StatusIndicator
                 status={currentStatus}
                 className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 border-2 border-background"

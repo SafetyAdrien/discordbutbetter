@@ -62,9 +62,7 @@ export function createLiveKitRoom(url: string, token: string, options?: Partial<
         maxBitrate: 1_700_000,
         maxFramerate: 30,
       },
-      audioEncoding: {
-        maxBitrate: 32000,
-      },
+      audioBitrate: 32000,
       dtx: true,
       red: true,
       videoCodec: 'vp8',

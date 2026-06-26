@@ -162,12 +162,7 @@ function SortableServerIcon({
                 
               {server.icon ? (
                   server.icon.startsWith('http') ? (
-                    <img 
-                      src={server.icon} 
-                      alt={server.name}
-                      className="w-full h-full object-cover rounded-[inherit] pointer-events-none"
-                      draggable={false}
-                    />
+                    <ServerIconImage src={server.icon} alt={server.name} />
                   ) : (
                     <span className="text-xl pointer-events-none">{server.icon}</span>
                   )

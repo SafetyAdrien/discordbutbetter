@@ -104,15 +104,18 @@ export function useMessages(channelId: string | null) {
           )
         `)
         .eq('channel_id', channelId)
-        .order('created_at', { ascending: true })
-        .limit(100);
+        .order('created_at', { ascending: false })
+        .limit(50);
 
       if (error) throw error;
 
-      const baseMessages: MessageWithAuthor[] = (data as any[]).map((msg) => ({
-        ...msg,
-        attachments: Array.isArray(msg.attachments) ? msg.attachments : [],
-      })) as MessageWithAuthor[];
+      // Fetched newest-first for fast initial paint; reverse to chronological order for the UI.
+      const baseMessages: MessageWithAuthor[] = (data as any[])
+        .map((msg) => ({
+          ...msg,
+          attachments: Array.isArray(msg.attachments) ? msg.attachments : [],
+        }))
+        .reverse() as MessageWithAuthor[];
 
       // Resolve replied messages in a single batched query
       const replyIds = Array.from(

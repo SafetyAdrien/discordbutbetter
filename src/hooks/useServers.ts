@@ -133,6 +133,22 @@ export function useServers() {
     };
   }, [user, queryClient]);
 
+  // Realtime on server_members for the current user — kick / leave / join from another device
+  useEffect(() => {
+    if (!user) return;
+    const ch = supabase
+      .channel(`server-members-rt:${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'server_members', filter: `user_id=eq.${user.id}` },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['servers'] });
+        },
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [user, queryClient]);
+
 
   // Persist user id so a cold mount can read the previous user's server cache
   // BEFORE supabase.auth.getSession() resolves — otherwise the first paint is
@@ -206,6 +222,13 @@ export function useServers() {
             orphanChannels: cachedChannels?.orphanChannels || [],
           };
         }) ?? [];
+
+      // Stable deterministic order for servers not covered by user's custom order
+      servers.sort((a, b) => {
+        const ta = a.created_at ? Date.parse(a.created_at) : 0;
+        const tb = b.created_at ? Date.parse(b.created_at) : 0;
+        return ta - tb;
+      });
 
       return servers;
     }),

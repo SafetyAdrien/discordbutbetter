@@ -43,6 +43,35 @@ import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 
 // (Drop indicator removed - now rendered inline like mobile)
 
+// Server icon image with skeleton placeholder until decoded — prevents the
+// "fallback initials flash then real icon" jank on cold cache loads.
+function ServerIconImage({ src, alt }: { src: string; alt: string }) {
+  const [loaded, setLoaded] = useState(false);
+  return (
+    <div className="relative w-full h-full rounded-[inherit] overflow-hidden">
+      {!loaded && (
+        <div className="absolute inset-0 animate-pulse bg-muted/40 rounded-[inherit]" />
+      )}
+      <img
+        src={src}
+        alt={alt}
+        width={48}
+        height={48}
+        loading="lazy"
+        decoding="async"
+        draggable={false}
+        onLoad={() => setLoaded(true)}
+        onError={() => setLoaded(true)}
+        className={cn(
+          'w-full h-full object-cover rounded-[inherit] pointer-events-none transition-opacity duration-150',
+          loaded ? 'opacity-100' : 'opacity-0'
+        )}
+      />
+    </div>
+  );
+}
+
+
 // Sortable Server Icon Component
 function SortableServerIcon({
   server,
@@ -133,12 +162,7 @@ function SortableServerIcon({
                 
               {server.icon ? (
                   server.icon.startsWith('http') ? (
-                    <img 
-                      src={server.icon} 
-                      alt={server.name}
-                      className="w-full h-full object-cover rounded-[inherit] pointer-events-none"
-                      draggable={false}
-                    />
+                    <ServerIconImage src={server.icon} alt={server.name} />
                   ) : (
                     <span className="text-xl pointer-events-none">{server.icon}</span>
                   )
@@ -249,11 +273,7 @@ const ServerDragOverlay = forwardRef<HTMLDivElement, { server: Server }>(({ serv
     >
       {server.icon ? (
         server.icon.startsWith('http') ? (
-          <img 
-            src={server.icon} 
-            alt={server.name}
-            className="w-full h-full object-cover rounded-[inherit]"
-          />
+          <ServerIconImage src={server.icon} alt={server.name} />
         ) : (
           <span className="text-xl">{server.icon}</span>
         )

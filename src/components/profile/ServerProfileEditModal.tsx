@@ -185,12 +185,13 @@ export function ServerProfileEditModal({ open, onOpenChange, initialServerId }: 
                 className="relative inline-block group cursor-pointer"
                 onClick={() => avatarInputRef.current?.click()}
               >
-                <Avatar className="w-20 h-20 border-4 border-card">
-                  <AvatarImage src={displayAvatar || undefined} />
-                  <AvatarFallback className="bg-primary/20 text-primary text-xl">
-                    {displayName.charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
+                <UserAvatarImage
+                  src={displayAvatar || undefined}
+                  alt={displayName}
+                  fallback={displayName.charAt(0).toUpperCase()}
+                  fallbackClassName="bg-primary/20 text-primary text-xl"
+                  className="w-20 h-20 border-4 border-card"
+                />
                 <div className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                   {uploadAvatar.isPending ? <Loader2 className="w-5 h-5 text-white animate-spin" /> : <Camera className="w-5 h-5 text-white" />}
                 </div>

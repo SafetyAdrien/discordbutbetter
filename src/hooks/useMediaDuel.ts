@@ -45,30 +45,61 @@ export function useCastDuelVote() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ postId, itemId }: { postId: string; itemId: string }) => {
+    mutationFn: async ({
+      postId,
+      itemId,
+      currentItemId,
+    }: {
+      postId: string;
+      itemId: string;
+      currentItemId?: string | null;
+    }) => {
       if (!user) throw new Error('Not authenticated');
-      const key = ['duel-votes', postId];
-      const current = queryClient.getQueryData<DuelVote[]>(key) ?? [];
-      const mine = current.find((v) => v.user_id === user.id) ?? null;
 
-      // Toggle off: same item clicked again → remove vote entirely
-      if (mine && mine.item_id === itemId) {
-        await (supabase.from('media_post_duel_votes') as any)
+      // Toggle off: same item clicked again → remove vote entirely.
+      // Important: do not read React Query here. onMutate already seeded an
+      // optimistic vote, so reading the cache would mis-detect a fresh vote as
+      // an existing one and immediately delete it again.
+      if (currentItemId === itemId) {
+        const { error } = await (supabase.from('media_post_duel_votes') as any)
           .delete()
           .eq('post_id', postId)
           .eq('user_id', user.id);
+        if (error) throw error;
         return { action: 'removed' as const, postId, itemId };
       }
 
-      // Switch or new vote
-      await (supabase.from('media_post_duel_votes') as any)
-        .delete()
-        .eq('post_id', postId)
-        .eq('user_id', user.id);
+      // Switch vote in place when the UI already knows about an existing vote.
+      // This avoids delete→insert races and keeps the unique (post_id, user_id)
+      // constraint stable.
+      if (currentItemId) {
+        const { data, error } = await (supabase.from('media_post_duel_votes') as any)
+          .update({ item_id: itemId })
+          .eq('post_id', postId)
+          .eq('user_id', user.id)
+          .select('*')
+          .maybeSingle();
+        if (error) throw error;
+        if (data) return { action: 'set' as const, vote: data as DuelVote };
+      }
+
       const { data, error } = await (supabase.from('media_post_duel_votes') as any)
         .insert({ post_id: postId, user_id: user.id, item_id: itemId })
         .select('*')
-        .single();
+        .maybeSingle();
+
+      // If cache was stale and a row already exists, recover by updating it.
+      if (error?.code === '23505') {
+        const { data: updated, error: updateError } = await (supabase.from('media_post_duel_votes') as any)
+          .update({ item_id: itemId })
+          .eq('post_id', postId)
+          .eq('user_id', user.id)
+          .select('*')
+          .single();
+        if (updateError) throw updateError;
+        return { action: 'set' as const, vote: updated as DuelVote };
+      }
+
       if (error) throw error;
       return { action: 'set' as const, vote: data as DuelVote };
     },

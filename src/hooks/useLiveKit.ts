@@ -97,7 +97,7 @@ export function useLiveKit(roomName: string | null, options: UseLiveKitOptions =
     if (!r || !isConnected) return;
     const pub = r.localParticipant.getTrackPublication(Track.Source.Microphone);
     if (pub) {
-      await pub.setMuted(!pub.isMuted);
+      await r.localParticipant.setMicrophoneEnabled(pub.isMuted);
     } else if (optionsRef.current.audio !== false) {
       await r.localParticipant.setMicrophoneEnabled(true);
     }
@@ -109,12 +109,13 @@ export function useLiveKit(roomName: string | null, options: UseLiveKitOptions =
     if (!r || !isConnected) return;
     const pub = r.localParticipant.getTrackPublication(Track.Source.Camera);
     if (pub) {
-      await pub.setMuted(!pub.isMuted);
+      await r.localParticipant.setCameraEnabled(pub.isMuted);
     } else if (optionsRef.current.video !== false) {
       await r.localParticipant.setCameraEnabled(true);
     }
     updateLocalTracks(r);
   }, [isConnected, updateLocalTracks]);
+
 
   const toggleScreenShare = useCallback(async () => {
     const r = roomRef.current;

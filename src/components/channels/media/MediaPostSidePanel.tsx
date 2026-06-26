@@ -1,10 +1,12 @@
-import { useState, useEffect, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, X, Trash2, EyeOff } from 'lucide-react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { ChevronLeft, ChevronRight, X, Trash2, EyeOff, Brush } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ReactionBar } from '@/components/chat/ReactionBar';
 import { MediaComments } from './MediaComments';
+import { MediaDuelView } from './MediaDuelView';
+import { CanvasLiveOverlay } from './CanvasLiveOverlay';
 import { InfiniteZoomImage } from '@/components/channels/shared/InfiniteZoomImage';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMediaPostReactions, useToggleMediaReaction } from '@/hooks/useMediaReactions';

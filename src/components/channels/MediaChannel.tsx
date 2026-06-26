@@ -28,7 +28,7 @@ export interface MediaChannelProps {
 
 export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaChannelProps) {
   const { data: canUploadMedia = true } = useHasChannelPermission(channel.id, 'upload_media');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'feed' | 'grid' | 'list'>('feed');
   const [selectedFiles, setSelectedFiles] = useState<File[] | null>(null);
   const [activePost, setActivePost] = useState<MediaPost | null>(null);
 

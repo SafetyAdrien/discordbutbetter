@@ -30,6 +30,7 @@ import { useChannels } from '@/hooks/useChannels';
 import { useMessages, useSendMessage } from '@/hooks/useMessages';
 import { useMembers, MemberWithProfile } from '@/hooks/useMembers';
 import { useProfilesRealtime } from '@/hooks/useProfilesRealtime';
+import { useDownloadPermissionsRecipientRealtime } from '@/hooks/useDownloadPermissions';
 import { usePermissionsRealtime, useGlobalPermissionsRealtime } from '@/hooks/usePermissionsRealtime';
 import { useServerAssetsRealtime } from '@/hooks/useServerAssets';
 import { usePrefetchThreadsForChannels } from '@/hooks/useThreads';

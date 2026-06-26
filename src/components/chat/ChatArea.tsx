@@ -348,6 +348,8 @@ interface ChatAreaProps {
   onCloseThread?: () => void;
   members?: Array<{ id: string; memberId?: string; displayName: string; username: string; avatar?: string; bio?: string }>;
   onChannelSelect?: (channelId: string) => void;
+  onLoadOlder?: () => Promise<number>;
+  hasMoreOlder?: boolean;
 }
 // Long-press wrapper for polls on mobile
 function PollLongPressWrapper({

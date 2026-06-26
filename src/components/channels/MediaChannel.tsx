@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { Upload, Grid, List, Users, EyeOff, Layers } from 'lucide-react';
+import { Upload, Grid, List, Users, EyeOff, Layers, Rss } from 'lucide-react';
 import { StreamlineMedia } from '@/components/icons/StreamlineMedia';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -8,6 +8,7 @@ import { UploadDropOverlay } from '@/components/chat/upload/UploadDropOverlay';
 import { useHasChannelPermission } from '@/hooks/useUserChannelPermissions';
 import { CreateMediaPostModal } from '@/components/channels/media/CreateMediaPostModal';
 import { MediaPostSidePanel } from '@/components/channels/media/MediaPostSidePanel';
+import { MediaFeed } from '@/components/channels/media/MediaFeed';
 import { useMediaPosts, useCreateMediaPost, type MediaPost } from '@/hooks/useMediaPosts';
 import { useMediaPostReactions, useToggleMediaReaction } from '@/hooks/useMediaReactions';
 import { ReactionBar } from '@/components/chat/ReactionBar';
@@ -27,7 +28,7 @@ export interface MediaChannelProps {
 
 export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaChannelProps) {
   const { data: canUploadMedia = true } = useHasChannelPermission(channel.id, 'upload_media');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'feed' | 'grid' | 'list'>('feed');
   const [selectedFiles, setSelectedFiles] = useState<File[] | null>(null);
   const [activePost, setActivePost] = useState<MediaPost | null>(null);
 
@@ -134,11 +135,22 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
         <div className="flex items-center gap-2 ml-auto flex-shrink-0">
           <div className="flex rounded-md border border-border overflow-hidden">
             <button
+              onClick={() => setViewMode('feed')}
+              className={cn(
+                'p-1.5 transition-colors',
+                viewMode === 'feed' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'
+              )}
+              title="Fil social"
+            >
+              <Rss className="w-4 h-4" />
+            </button>
+            <button
               onClick={() => setViewMode('grid')}
               className={cn(
                 'p-1.5 transition-colors',
                 viewMode === 'grid' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'
               )}
+              title="Grille"
             >
               <Grid className="w-4 h-4" />
             </button>
@@ -148,6 +160,7 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
                 'p-1.5 transition-colors',
                 viewMode === 'list' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'
               )}
+              title="Liste"
             >
               <List className="w-4 h-4" />
             </button>
@@ -172,9 +185,9 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className={cn('flex-1 overflow-y-auto', viewMode === 'feed' ? '' : 'p-4')}>
         {mediaItems.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center">
+          <div className="flex flex-col items-center justify-center h-full text-center p-4">
             <div className="w-20 h-20 rounded-full bg-muted/50 flex items-center justify-center mb-4">
               <StreamlineMedia className="w-10 h-10 text-muted-foreground/50" />
             </div>
@@ -189,6 +202,14 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
               </Button>
             )}
           </div>
+        ) : viewMode === 'feed' ? (
+          <MediaFeed
+            posts={mediaItems}
+            channelId={channel.id}
+            serverId={null}
+            onOpenDetail={(p) => setActivePost(p)}
+            onDeleted={(id) => { if (activePost?.id === id) setActivePost(null); }}
+          />
         ) : (
           <div
             className={cn(

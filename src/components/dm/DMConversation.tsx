@@ -491,6 +491,30 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                             <div className="flex-1 h-px bg-border" />
                           </div>
                         )}
+                        {message.system_type ? (
+                          (() => {
+                            const who = message.author?.display_name || message.author?.username || 'Quelqu\'un';
+                            const Icon =
+                              message.system_type === 'screenshot'
+                                ? Camera
+                                : message.system_type === 'screen_recording_start'
+                                ? VideoIcon
+                                : VideoOff;
+                            const label =
+                              message.system_type === 'screenshot'
+                                ? `${who} a pris une capture d'écran.`
+                                : message.system_type === 'screen_recording_start'
+                                ? `${who} a démarré un enregistrement d'écran.`
+                                : `${who} a arrêté l'enregistrement d'écran.`;
+                            return (
+                              <div className="flex items-center justify-center gap-2 py-1.5 text-xs italic text-muted-foreground">
+                                <Icon className="w-3.5 h-3.5" />
+                                <span>{label}</span>
+                              </div>
+                            );
+                          })()
+                        ) : (<></>)}
+                        {!message.system_type && (<></>)}
                         {/* Replied line (Discord-like, faithful resolution) */}
                         {message.repliedMessage && (
                           <div className={cn("pt-1.5", showAuthor ? "" : "pt-2.5") }>

@@ -6,12 +6,10 @@ import {
   RoomConnectOptions,
   Track,
   VideoPresets,
-  AudioPresets,
   Participant,
-  RemoteParticipant,
-  LocalTrackPublication,
-  RemoteTrackPublication,
+  TrackPublication,
 } from 'livekit-client';
+
 
 export interface LiveKitTokenResponse {
   token: string;

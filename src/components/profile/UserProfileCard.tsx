@@ -172,12 +172,14 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers, 
 
             {/* Avatar overlapping banner */}
             <div className="absolute -bottom-6 left-3">
-              <Avatar className="w-14 h-14 border-4 border-card">
-                <AvatarImage src={profile?.avatar_url || undefined} />
-                <AvatarFallback className="bg-primary/20 text-primary text-lg">
-                  {profile?.display_name?.charAt(0).toUpperCase() || "?"}
-                </AvatarFallback>
-              </Avatar>
+              <UserAvatarImage
+                src={profile?.avatar_url}
+                alt={profile?.display_name}
+                className="w-14 h-14 border-4 border-card"
+                fallbackClassName="bg-primary/20 text-primary text-lg"
+                fallback={profile?.display_name?.charAt(0).toUpperCase() || '?'}
+              />
+
               <StatusIndicator
                 status={currentStatus}
                 className="absolute bottom-0 right-0 w-4 h-4 border-2 border-card"

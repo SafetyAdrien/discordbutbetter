@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { MarkdownTextarea } from '@/components/chat/MarkdownTextarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { EyeOff, ImageIcon, Plus, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { EyeOff, ImageIcon, Plus, X, ChevronLeft, ChevronRight, Swords } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface CreateMediaPostModalProps {
@@ -24,6 +24,8 @@ interface CreateMediaPostModalProps {
     description: string;
     altTexts: string[];
     isSpoiler: boolean;
+    isDuel?: boolean;
+    duelDurationHours?: number;
   }) => void;
   isPending?: boolean;
 }

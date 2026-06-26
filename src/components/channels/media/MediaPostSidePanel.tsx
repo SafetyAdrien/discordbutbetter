@@ -41,6 +41,20 @@ export function MediaPostSidePanel({ post, channelId, serverId = null, onClose }
   const { data: author } = useAuthorProfile(post.author_id);
   const [activeIndex, setActiveIndex] = useState(0);
   const [revealed, setRevealed] = useState(!post.is_spoiler);
+  const [drawing, setDrawing] = useState(false);
+  const mediaBoxRef = useRef<HTMLDivElement>(null);
+  const [mediaBox, setMediaBox] = useState({ w: 0, h: 0 });
+
+  useEffect(() => {
+    const el = mediaBoxRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      setMediaBox({ w: el.clientWidth, h: el.clientHeight });
+    });
+    ro.observe(el);
+    setMediaBox({ w: el.clientWidth, h: el.clientHeight });
+    return () => ro.disconnect();
+  }, []);
 
   const items = post.items?.length
     ? post.items

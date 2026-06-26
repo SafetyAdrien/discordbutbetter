@@ -1,6 +1,7 @@
 import { ReactNode, useMemo, useState } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { UserAvatarImage } from '@/components/ui/user-avatar-image';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useMembers } from '@/hooks/useMembers';
 
@@ -62,12 +63,12 @@ export function EveryoneHerePopup({ type, serverId, children }: EveryoneHerePopu
                   key={m.id}
                   className="flex items-center gap-2 px-3 py-1.5 hover:bg-surface-hover transition-colors"
                 >
-                  <Avatar className="h-6 w-6">
-                    <AvatarImage src={m.avatar ?? undefined} />
-                    <AvatarFallback className="text-[10px]">
-                      {m.displayName[0]?.toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
+                  <UserAvatarImage
+                    src={m.avatar ?? undefined}
+                    fallback={m.displayName[0]?.toUpperCase() || '?'}
+                    fallbackClassName="text-[10px]"
+                    className="h-6 w-6"
+                  />
                   <span className="text-sm text-foreground truncate">{m.displayName}</span>
                 </div>
               ))

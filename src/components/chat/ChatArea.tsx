@@ -428,6 +428,8 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     onCloseThread,
     members = [],
     onChannelSelect,
+    onLoadOlder,
+    hasMoreOlder = false,
   },
   ref,
 ) {

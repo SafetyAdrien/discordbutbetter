@@ -105,8 +105,9 @@ export function useDMConversations() {
               content: lastMsg.content, 
               created_at: lastMsg.created_at,
               author_id: lastMsg.author_id,
-              author_display_name: (lastMsg.author as { display_name: string } | null)?.display_name || null
+              author_display_name: lastMsg.author_display_name
             } : undefined,
+
           };
         })
         .sort((a, b) => {

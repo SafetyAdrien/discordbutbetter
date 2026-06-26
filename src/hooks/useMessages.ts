@@ -327,7 +327,13 @@ export function useMessages(channelId: string | null) {
           );
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        // Race recovery: once Realtime is live, refetch to catch any INSERT
+        // that landed between the initial fetch and the subscription ack.
+        if (status === 'SUBSCRIBED') {
+          queryClient.invalidateQueries({ queryKey: ['messages', channelId] });
+        }
+      });
 
     return () => {
       supabase.removeChannel(channel);

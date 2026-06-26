@@ -1,7 +1,7 @@
 import { ReactNode, useMemo, useState } from 'react';
 import { Copy, Filter, Shield, Users } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { UserAvatarImage } from '@/components/ui/user-avatar-image';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -216,12 +216,13 @@ export function RoleInfoPopup({ roleId, serverId, children }: RoleInfoPopupProps
                   className="flex items-center gap-2 px-3 py-1.5 hover:bg-surface-hover transition-colors"
                 >
                   <div className="relative">
-                    <Avatar className="h-6 w-6">
-                      <AvatarImage src={m.avatar ?? undefined} />
-                      <AvatarFallback className="text-[10px]">
-                        {m.displayName[0]?.toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
+                    <UserAvatarImage
+                      src={m.avatar ?? undefined}
+                      alt={m.displayName}
+                      fallback={m.displayName[0]?.toUpperCase()}
+                      fallbackClassName="text-[10px]"
+                      className="h-6 w-6"
+                    />
                     <span
                       className={cn(
                         'absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full ring-2 ring-popover',

@@ -24,8 +24,18 @@ export function useCacheRehydrate(): void {
         queryKey = ['messages', key.slice('messages:'.length)];
         allowOverwriteEmpty = true;
       } else if (key.startsWith('dm-messages:')) {
-        queryKey = ['dm-messages', key.slice('dm-messages:'.length)];
-        allowOverwriteEmpty = true;
+        // Format: dm-messages:${userId}:${conversationId} (scoped per user)
+        const rest = key.slice('dm-messages:'.length);
+        const sep = rest.indexOf(':');
+        if (sep > 0) {
+          const uid = rest.slice(0, sep);
+          const cid = rest.slice(sep + 1);
+          queryKey = ['dm-messages', uid, cid];
+          allowOverwriteEmpty = true;
+        } else {
+          // Legacy key without user scope — ignore (will be overwritten on next save)
+          return;
+        }
       } else if (key.startsWith('thread-messages:')) {
         queryKey = ['thread-messages', key.slice('thread-messages:'.length)];
         allowOverwriteEmpty = true;

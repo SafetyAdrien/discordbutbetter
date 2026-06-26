@@ -135,11 +135,22 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
         <div className="flex items-center gap-2 ml-auto flex-shrink-0">
           <div className="flex rounded-md border border-border overflow-hidden">
             <button
+              onClick={() => setViewMode('feed')}
+              className={cn(
+                'p-1.5 transition-colors',
+                viewMode === 'feed' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'
+              )}
+              title="Fil social"
+            >
+              <Rss className="w-4 h-4" />
+            </button>
+            <button
               onClick={() => setViewMode('grid')}
               className={cn(
                 'p-1.5 transition-colors',
                 viewMode === 'grid' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'
               )}
+              title="Grille"
             >
               <Grid className="w-4 h-4" />
             </button>
@@ -149,6 +160,7 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
                 'p-1.5 transition-colors',
                 viewMode === 'list' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'
               )}
+              title="Liste"
             >
               <List className="w-4 h-4" />
             </button>

@@ -934,6 +934,7 @@ export type Database = {
           edited_at: string | null
           id: string
           reply_to_id: string | null
+          system_type: string | null
         }
         Insert: {
           attachments?: Json | null
@@ -944,6 +945,7 @@ export type Database = {
           edited_at?: string | null
           id?: string
           reply_to_id?: string | null
+          system_type?: string | null
         }
         Update: {
           attachments?: Json | null
@@ -954,6 +956,7 @@ export type Database = {
           edited_at?: string | null
           id?: string
           reply_to_id?: string | null
+          system_type?: string | null
         }
         Relationships: [
           {
@@ -1096,6 +1099,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      download_permissions: {
+        Row: {
+          allowed_user_id: string
+          created_at: string
+          id: string
+          owner_id: string
+        }
+        Insert: {
+          allowed_user_id: string
+          created_at?: string
+          id?: string
+          owner_id: string
+        }
+        Update: {
+          allowed_user_id?: string
+          created_at?: string
+          id?: string
+          owner_id?: string
+        }
+        Relationships: []
       }
       forum_post_comment_reactions: {
         Row: {
@@ -2085,6 +2109,7 @@ export type Database = {
           last_activity_at: string
           last_seen_at: string
           manual_status: Database["public"]["Enums"]["user_status"] | null
+          notify_screenshot_capture: boolean
           pronouns: string | null
           server_order: string[] | null
           status: Database["public"]["Enums"]["user_status"] | null
@@ -2107,6 +2132,7 @@ export type Database = {
           last_activity_at?: string
           last_seen_at?: string
           manual_status?: Database["public"]["Enums"]["user_status"] | null
+          notify_screenshot_capture?: boolean
           pronouns?: string | null
           server_order?: string[] | null
           status?: Database["public"]["Enums"]["user_status"] | null
@@ -2129,6 +2155,7 @@ export type Database = {
           last_activity_at?: string
           last_seen_at?: string
           manual_status?: Database["public"]["Enums"]["user_status"] | null
+          notify_screenshot_capture?: boolean
           pronouns?: string | null
           server_order?: string[] | null
           status?: Database["public"]["Enums"]["user_status"] | null
@@ -3747,6 +3774,10 @@ export type Database = {
         Returns: undefined
       }
       can_access_realtime_topic: { Args: { _topic: string }; Returns: boolean }
+      can_download_user_content: {
+        Args: { _owner_id: string; _viewer_id: string }
+        Returns: boolean
+      }
       can_mention_everyone: {
         Args: { _server_id: string; _user_id: string }
         Returns: boolean
@@ -3921,6 +3952,10 @@ export type Database = {
         Args: { _server_id: string }
         Returns: undefined
       }
+      report_screen_capture: {
+        Args: { _conversation_id: string; _event: string }
+        Returns: undefined
+      }
       request_server_deletion: {
         Args: { _server_id: string }
         Returns: boolean
@@ -3932,6 +3967,15 @@ export type Database = {
       revoke_badge: {
         Args: { _badge_id: string; _user_id: string }
         Returns: undefined
+      }
+      search_downloadable_candidates: {
+        Args: { _query: string }
+        Returns: {
+          avatar_url: string
+          display_name: string
+          id: string
+          username: string
+        }[]
       }
       server_deafen_participant: {
         Args: {

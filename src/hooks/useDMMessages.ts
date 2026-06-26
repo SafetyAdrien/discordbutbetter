@@ -37,6 +37,11 @@ export interface RepliedDMSnapshot {
   } | null;
 }
 
+export type DMSystemType =
+  | 'screenshot'
+  | 'screen_recording_start'
+  | 'screen_recording_stop';
+
 export interface DMMessage {
   id: string;
   content: string;
@@ -46,6 +51,7 @@ export interface DMMessage {
   conversation_id: string;
   reply_to_id?: string | null;
   repliedMessage?: RepliedDMSnapshot | null;
+  system_type?: DMSystemType | null;
   author: {
     id: string;
     username: string;
@@ -85,6 +91,7 @@ export function useDMMessages(conversationId: string | null) {
           attachments,
           conversation_id,
           reply_to_id,
+          system_type,
           author:profiles!dm_messages_author_id_fkey (
             id,
             username,
@@ -203,6 +210,7 @@ export function useDMMessages(conversationId: string | null) {
               attachments,
               conversation_id,
               reply_to_id,
+              system_type,
               author:profiles!dm_messages_author_id_fkey (
                 id,
                 username,
@@ -342,7 +350,7 @@ export function useDMMessages(conversationId: string | null) {
       const { data, error } = await supabase
         .from('dm_messages')
         .select(`
-          id, content, created_at, edited_at, attachments, conversation_id, reply_to_id,
+          id, content, created_at, edited_at, attachments, conversation_id, reply_to_id, system_type,
           author:profiles!dm_messages_author_id_fkey (
             id, username, display_name, avatar_url
           )

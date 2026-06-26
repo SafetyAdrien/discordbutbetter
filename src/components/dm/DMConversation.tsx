@@ -49,6 +49,8 @@ import { Reply, X as XIcon } from 'lucide-react';
 import { SwipeToReplyRow } from '@/components/mobile/SwipeToReplyRow';
 import { useSwipeBack } from '@/hooks/useSwipeBack';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
+import { useScreenCaptureDetection } from '@/hooks/useScreenCaptureDetection';
+import { Camera, Video as VideoIcon, VideoOff } from 'lucide-react';
 
 const statusColors: Record<string, string> = {
   online: 'bg-[hsl(var(--online))]',
@@ -166,6 +168,9 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
       markAsRead.mutate(conversationId);
     }
   }, [conversationId]);
+
+  // Native: detect screenshots / screen recordings and post a system message.
+  useScreenCaptureDetection(conversationId);
 
   // Clear server-scoped fields from the markdown context: DMs have no roles,
   // so RoleMention must not inherit a stale serverId from another surface.
@@ -486,6 +491,29 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                             <div className="flex-1 h-px bg-border" />
                           </div>
                         )}
+                        {message.system_type && (() => {
+                          const who = message.author?.display_name || message.author?.username || 'Quelqu\'un';
+                          const Icon =
+                            message.system_type === 'screenshot'
+                              ? Camera
+                              : message.system_type === 'screen_recording_start'
+                              ? VideoIcon
+                              : VideoOff;
+                          const label =
+                            message.system_type === 'screenshot'
+                              ? `${who} a pris une capture d'écran.`
+                              : message.system_type === 'screen_recording_start'
+                              ? `${who} a démarré un enregistrement d'écran.`
+                              : `${who} a arrêté l'enregistrement d'écran.`;
+                          return (
+                            <div className="flex items-center justify-center gap-2 py-1.5 text-xs italic text-muted-foreground">
+                              <Icon className="w-3.5 h-3.5" />
+                              <span>{label}</span>
+                            </div>
+                          );
+                        })()}
+                        {!message.system_type && (<>
+                        {/* --- Regular message rendering below --- */}
                         {/* Replied line (Discord-like, faithful resolution) */}
                         {message.repliedMessage && (
                           <div className={cn("pt-1.5", showAuthor ? "" : "pt-2.5") }>
@@ -691,6 +719,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                         </div>
                         </SwipeToReplyRow>
                       </UniversalMessageContextMenu>
+                      </>)}
                       </div>
                     );
                   })}

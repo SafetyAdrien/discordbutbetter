@@ -24,64 +24,50 @@ export function useScreenCaptureDetection(conversationId: string | null) {
     let cancelled = false;
 
     (async () => {
-      // Dynamically import Capacitor + the plugin so the bundle doesn't break
-      // when the packages aren't installed yet (web-only builds).
       let Capacitor: any;
       let PrivacyScreen: any;
       try {
-        ({ Capacitor } = await import(/* @vite-ignore */ '@capacitor/core'));
+        ({ Capacitor } = await import('@capacitor/core'));
       } catch {
-        return; // No native runtime available.
+        return;
       }
       if (!Capacitor?.isNativePlatform?.()) return;
 
       try {
-        const mod = await import(
-          /* @vite-ignore */ '@capacitor-community/privacy-screen'
-        );
+        const mod: any = await import('@capacitor-community/privacy-screen');
         PrivacyScreen = mod.PrivacyScreen ?? mod.default;
       } catch {
-        return; // Plugin not installed in this build.
+        return;
       }
-
       if (cancelled || !PrivacyScreen?.addListener) return;
 
       const report = (event: CaptureEvent) => {
-        supabase.rpc('report_screen_capture', {
-          _conversation_id: conversationId,
-          _event: event,
-        }).then(({ error }) => {
-          if (error) console.error('[screen-capture] report failed', error);
-        });
+        supabase
+          .rpc('report_screen_capture', {
+            _conversation_id: conversationId,
+            _event: event,
+          })
+          .then(({ error }) => {
+            if (error) console.error('[screen-capture] report failed', error);
+          });
       };
 
       const handles: Array<{ remove: () => void } | undefined> = [];
-
-      try {
-        handles.push(
-          await PrivacyScreen.addListener('screenshotTaken', () => report('screenshot')),
-        );
-      } catch {/* event may not exist on this platform */}
-
-      try {
-        handles.push(
-          await PrivacyScreen.addListener('screenRecordingStarted', () =>
-            report('screen_recording_start'),
-          ),
-        );
-      } catch {/* */}
-
-      try {
-        handles.push(
-          await PrivacyScreen.addListener('screenRecordingStopped', () =>
-            report('screen_recording_stop'),
-          ),
-        );
-      } catch {/* */}
+      const events: Array<[string, CaptureEvent]> = [
+        ['screenshotTaken', 'screenshot'],
+        ['screenRecordingStarted', 'screen_recording_start'],
+        ['screenRecordingStopped', 'screen_recording_stop'],
+      ];
+      for (const [name, type] of events) {
+        try {
+          const h = await PrivacyScreen.addListener(name, () => report(type));
+          handles.push(h);
+        } catch {/* event may not exist on this platform */}
+      }
 
       cleanup = () => {
         for (const h of handles) {
-          try { h?.remove?.(); } catch {/* ignore */}
+          try { h?.remove?.(); } catch {/* */}
         }
       };
     })();

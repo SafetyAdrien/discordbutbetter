@@ -1,21 +1,73 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Shield, MessageSquare, UserPlus, Eye } from 'lucide-react';
+import { Shield, MessageSquare, UserPlus, Eye, Download, Camera, ChevronRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { DownloadPermissionsSettings } from './DownloadPermissionsSettings';
 
 export function PrivacySettings() {
+  const { user } = useAuth();
   const [settings, setSettings] = useState({
     allowDMsFromEveryone: true,
     allowFriendRequestsFromEveryone: true,
     showOnlineStatus: true,
     showCurrentActivity: true,
   });
+  const [notifyScreenshotCapture, setNotifyScreenshotCapture] = useState<boolean>(true);
+  const [view, setView] = useState<'main' | 'downloads'>('main');
+
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('notify_screenshot_capture')
+        .eq('id', user.id)
+        .maybeSingle();
+      if (!cancelled && data && typeof (data as any).notify_screenshot_capture === 'boolean') {
+        setNotifyScreenshotCapture((data as any).notify_screenshot_capture);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [user?.id]);
 
   const updateSetting = (key: keyof typeof settings, value: boolean) => {
     setSettings(prev => ({ ...prev, [key]: value }));
   };
+
+  const updateScreenshotNotify = async (checked: boolean) => {
+    setNotifyScreenshotCapture(checked); // optimistic
+    if (!user?.id) return;
+    const { error } = await supabase
+      .from('profiles')
+      .update({ notify_screenshot_capture: checked } as any)
+      .eq('id', user.id);
+    if (error) {
+      setNotifyScreenshotCapture(!checked);
+      console.error('[privacy] update notify_screenshot_capture failed', error);
+    }
+  };
+
+  if (view === 'downloads') {
+    return (
+      <div className="space-y-4">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setView('main')}
+          className="-ml-2"
+        >
+          ← Retour
+        </Button>
+        <DownloadPermissionsSettings />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -39,6 +91,23 @@ export function PrivacySettings() {
             <Switch
               checked={settings.allowDMsFromEveryone}
               onCheckedChange={(checked) => updateSetting('allowDMsFromEveryone', checked)}
+            />
+          </div>
+
+          <div className="flex items-center justify-between pt-2 border-t border-border/40">
+            <div className="space-y-0.5">
+              <Label className="flex items-center gap-2">
+                <Camera className="w-4 h-4" />
+                Notifier les captures d'écran
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Un message système est publié dans la conversation lorsqu'une capture ou un enregistrement
+                d'écran est détecté sur mobile. Activé par défaut.
+              </p>
+            </div>
+            <Switch
+              checked={notifyScreenshotCapture}
+              onCheckedChange={updateScreenshotNotify}
             />
           </div>
         </CardContent>
@@ -106,6 +175,28 @@ export function PrivacySettings() {
               onCheckedChange={(checked) => updateSetting('showCurrentActivity', checked)}
             />
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Download permissions */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Download className="w-5 h-5" />
+            Téléchargement de mon contenu
+          </CardTitle>
+          <CardDescription>
+            Choisissez qui peut télécharger votre avatar, votre bannière et vos pièces jointes.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <button
+            onClick={() => setView('downloads')}
+            className="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl border border-border/60 bg-card hover:bg-accent transition-colors"
+          >
+            <span className="text-sm font-medium">Gérer la liste d'autorisation</span>
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+          </button>
         </CardContent>
       </Card>
 

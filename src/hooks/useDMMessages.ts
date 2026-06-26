@@ -210,6 +210,7 @@ export function useDMMessages(conversationId: string | null) {
               attachments,
               conversation_id,
               reply_to_id,
+              system_type,
               author:profiles!dm_messages_author_id_fkey (
                 id,
                 username,

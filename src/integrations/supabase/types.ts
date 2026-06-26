@@ -1447,6 +1447,57 @@ export type Database = {
           },
         ]
       }
+      media_post_annotations: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          item_id: string
+          points: Json
+          post_id: string
+          size: number
+          tool: string
+          user_id: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          id?: string
+          item_id: string
+          points: Json
+          post_id: string
+          size?: number
+          tool?: string
+          user_id: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          item_id?: string
+          points?: Json
+          post_id?: string
+          size?: number
+          tool?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "media_post_annotations_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "media_post_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "media_post_annotations_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "media_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       media_post_comment_reactions: {
         Row: {
           comment_id: string
@@ -1538,6 +1589,45 @@ export type Database = {
           },
         ]
       }
+      media_post_duel_votes: {
+        Row: {
+          created_at: string
+          id: string
+          item_id: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_id: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_id?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "media_post_duel_votes_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "media_post_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "media_post_duel_votes_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "media_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       media_post_items: {
         Row: {
           alt_text: string | null
@@ -1613,11 +1703,13 @@ export type Database = {
           channel_id: string
           created_at: string | null
           description: string
+          duel_expires_at: string | null
           file_name: string
           file_size: number
           file_type: string
           file_url: string
           id: string
+          is_duel: boolean
           is_spoiler: boolean | null
           title: string
         }
@@ -1627,11 +1719,13 @@ export type Database = {
           channel_id: string
           created_at?: string | null
           description?: string
+          duel_expires_at?: string | null
           file_name?: string
           file_size?: number
           file_type?: string
           file_url: string
           id?: string
+          is_duel?: boolean
           is_spoiler?: boolean | null
           title: string
         }
@@ -1641,11 +1735,13 @@ export type Database = {
           channel_id?: string
           created_at?: string | null
           description?: string
+          duel_expires_at?: string | null
           file_name?: string
           file_size?: number
           file_type?: string
           file_url?: string
           id?: string
+          is_duel?: boolean
           is_spoiler?: boolean | null
           title?: string
         }

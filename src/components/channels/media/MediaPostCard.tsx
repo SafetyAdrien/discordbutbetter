@@ -169,7 +169,10 @@ export function MediaPostCard({ post, channelId, serverId = null, onOpenDetail, 
         </Button>
       </header>
 
-      {/* Media */}
+      {/* Media (or Duel inline) */}
+      {post.is_duel ? (
+        <MediaDuelView post={post} />
+      ) : (
       <div
         className="relative bg-black select-none"
         style={{ aspectRatio: '4 / 5', maxHeight: '80vh' }}

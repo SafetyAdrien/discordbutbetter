@@ -77,7 +77,8 @@ export function MediaPostCard({ post, channelId, serverId = null, onOpenDetail, 
   const { data: reactionsData = {} } = useMediaPostReactions(postIds);
   const toggleReaction = useToggleMediaReaction();
   const reactions = reactionsData[post.id] || [];
-  const reactionCount = reactions.reduce((sum, r) => sum + (r.users?.length ?? r.count ?? 0), 0);
+  const reactionCount = reactions.length;
+  const userHeart = !!user && reactions.some((r) => r.emoji === '❤️' && r.user_id === user.id);
 
   const { data: comments = [] } = useMediaComments(post.id);
   const previewComments = useMemo(() => comments.slice(-2), [comments]);

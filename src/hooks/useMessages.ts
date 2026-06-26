@@ -104,15 +104,18 @@ export function useMessages(channelId: string | null) {
           )
         `)
         .eq('channel_id', channelId)
-        .order('created_at', { ascending: true })
-        .limit(100);
+        .order('created_at', { ascending: false })
+        .limit(50);
 
       if (error) throw error;
 
-      const baseMessages: MessageWithAuthor[] = (data as any[]).map((msg) => ({
-        ...msg,
-        attachments: Array.isArray(msg.attachments) ? msg.attachments : [],
-      })) as MessageWithAuthor[];
+      // Fetched newest-first for fast initial paint; reverse to chronological order for the UI.
+      const baseMessages: MessageWithAuthor[] = (data as any[])
+        .map((msg) => ({
+          ...msg,
+          attachments: Array.isArray(msg.attachments) ? msg.attachments : [],
+        }))
+        .reverse() as MessageWithAuthor[];
 
       // Resolve replied messages in a single batched query
       const replyIds = Array.from(
@@ -324,7 +327,13 @@ export function useMessages(channelId: string | null) {
           );
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        // Race recovery: once Realtime is live, refetch to catch any INSERT
+        // that landed between the initial fetch and the subscription ack.
+        if (status === 'SUBSCRIBED') {
+          queryClient.invalidateQueries({ queryKey: ['messages', channelId] });
+        }
+      });
 
     return () => {
       supabase.removeChannel(channel);

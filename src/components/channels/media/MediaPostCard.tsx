@@ -11,6 +11,7 @@ import { useMediaPostReactions, useToggleMediaReaction } from '@/hooks/useMediaR
 import { useMediaComments } from '@/hooks/useMediaComments';
 import { MarkdownText } from '@/lib/markdown';
 import type { MediaPost } from '@/hooks/useMediaPosts';
+import { MediaDuelView } from './MediaDuelView';
 import { toast } from 'sonner';
 
 interface Props {

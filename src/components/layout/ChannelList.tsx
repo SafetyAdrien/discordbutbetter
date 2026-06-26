@@ -1805,7 +1805,8 @@ export function ChannelList({
                       id: channel.id,
                       name: channel.name,
                       type: (channel.type || "text") as ChannelType,
-                      description: channel.description || undefined
+                      description: channel.description || undefined,
+                      icon_url: channel.icon_url ?? null
                     }}
                     serverId={server.id}
                     isActive={activeChannelId === channel.id && !activeThreadId}
@@ -1818,7 +1819,8 @@ export function ChannelList({
                       id: channel.id,
                       name: channel.name,
                       type: (channel.type || "text") as ChannelType,
-                      description: channel.description || undefined
+                      description: channel.description || undefined,
+                      icon_url: channel.icon_url ?? null
                     })
                     }
                     onCopyLink={() => handleCopyLink(channel.id)}
@@ -1945,7 +1947,11 @@ threads={threadsByChannel[channel.id] || []}
                   const Icon = channel ? channelIcons[(channel.type || "text") as ChannelType] : StreamlineHash;
                   return (
                     <div style={ghostStyle} className="flex items-center gap-2 px-2 py-1.5 ml-2">
-                      <Icon className="w-5 h-5 text-[#949BA4] shrink-0" />
+                      {channel?.icon_url && channel.type !== "voice" && channel.type !== "stage" ? (
+                        <img src={channel.icon_url} alt="" className="w-5 h-5 rounded-sm object-cover shrink-0" />
+                      ) : (
+                        <Icon className="w-5 h-5 text-[#949BA4] shrink-0" />
+                      )}
                       <span className="text-sm font-medium text-[#F2F3F5] truncate">
                         {channel?.name ?? "Salon"}
                       </span>

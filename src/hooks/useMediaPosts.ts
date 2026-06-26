@@ -163,6 +163,8 @@ interface CreateMediaPostInput {
   title: string;
   description: string;
   isSpoiler: boolean;
+  isDuel?: boolean;
+  duelDurationHours?: number;
 }
 
 export function useCreateMediaPost(channelId: string) {

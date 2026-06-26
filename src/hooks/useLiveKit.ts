@@ -53,7 +53,7 @@ export function useLiveKit(roomName: string | null, options: UseLiveKitOptions =
   const [participants, setParticipants] = useState<RemoteParticipant[]>([]);
   const [localAudioTrack, setLocalAudioTrack] = useState<LocalTrack | undefined>();
   const [localVideoTrack, setLocalVideoTrack] = useState<LocalTrack | undefined>();
-  const [screenShareTrack, setScreenShareTrack] = useState<LocalTrack | undefined>);
+  const [screenShareTrack, setScreenShareTrack] = useState<LocalTrack | undefined>();
 
   const roomRef = useRef<Room | null>(null);
   const optionsRef = useRef(options);

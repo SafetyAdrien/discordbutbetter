@@ -143,10 +143,14 @@ export function ProfileSettingsTab() {
             className="relative hover:opacity-80 transition-opacity shrink-0"
             aria-label="Changer l'avatar"
           >
-            <Avatar className="w-28 h-28 ring-[5px] ring-background">
-              <AvatarImage src={profile?.avatar_url || undefined} />
-              <AvatarFallback className="bg-primary/20 text-primary text-4xl font-semibold">{initial}</AvatarFallback>
-            </Avatar>
+            <UserAvatarImage
+              src={profile?.avatar_url}
+              alt={profile?.display_name}
+              className="w-28 h-28 ring-[5px] ring-background"
+              fallbackClassName="bg-primary/20 text-primary text-4xl font-semibold"
+              fallback={initial}
+            />
+
             <div className="absolute bottom-1 right-1 w-7 h-7 rounded-full border-[4px] border-background bg-primary flex items-center justify-center">
               {uploadAvatar.isPending ? (
                 <Loader2 className="w-3 h-3 animate-spin text-primary-foreground" />

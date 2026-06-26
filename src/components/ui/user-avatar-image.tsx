@@ -30,8 +30,10 @@ export function UserAvatarImage({
   fallback,
   className,
   fallbackClassName,
+  imgClassName,
   disableSkeleton = false,
-  ...imgProps
+  loading = 'lazy',
+  decoding = 'async',
 }: UserAvatarImageProps) {
   const [loaded, setLoaded] = useState(false);
   const [errored, setErrored] = useState(false);
@@ -55,18 +57,17 @@ export function UserAvatarImage({
       )}
       {showImage ? (
         <img
-          {...imgProps}
           src={src ?? undefined}
           alt={alt ?? ''}
-          loading={imgProps.loading ?? 'lazy'}
-          decoding={imgProps.decoding ?? 'async'}
+          loading={loading}
+          decoding={decoding}
           draggable={false}
           onLoad={() => setLoaded(true)}
           onError={() => setErrored(true)}
           className={cn(
             'aspect-square h-full w-full object-cover transition-opacity duration-150',
             loaded ? 'opacity-100' : 'opacity-0',
-            imgProps.className
+            imgClassName
           )}
         />
       ) : (

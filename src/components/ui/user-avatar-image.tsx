@@ -1,16 +1,20 @@
 import { useEffect, useState, type ImgHTMLAttributes, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
-interface UserAvatarImageProps extends Omit<ImgHTMLAttributes<HTMLImageElement>, 'src' | 'onLoad' | 'onError'> {
+interface UserAvatarImageProps {
   src?: string | null;
   alt?: string;
-  fallback?: React.ReactNode;
+  fallback?: ReactNode;
   /** Tailwind classes applied to the outer wrapper (sizing, rounding). */
   className?: string;
   /** Classes applied specifically to the fallback container. */
   fallbackClassName?: string;
+  /** Classes applied to the inner <img>. */
+  imgClassName?: string;
   /** Disable the skeleton pulse while loading. */
   disableSkeleton?: boolean;
+  loading?: ImgHTMLAttributes<HTMLImageElement>['loading'];
+  decoding?: ImgHTMLAttributes<HTMLImageElement>['decoding'];
 }
 
 /**

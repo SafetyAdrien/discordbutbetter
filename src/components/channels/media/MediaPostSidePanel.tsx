@@ -265,6 +265,10 @@ export function MediaPostSidePanel({ post, channelId, serverId = null, onClose, 
         </div>
 
       </ScrollArea>
+
+      {editOpen && <EditMediaPostModal post={post} channelId={channelId} onClose={() => setEditOpen(false)} />}
+      {statsOpen && <MediaPostStatsModal post={post} onClose={() => setStatsOpen(false)} />}
     </div>
   );
 }
+

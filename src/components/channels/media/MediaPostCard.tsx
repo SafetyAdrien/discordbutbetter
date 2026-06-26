@@ -255,6 +255,7 @@ export function MediaPostCard({ post, channelId, serverId = null, onOpenDetail, 
           </>
         )}
       </div>
+      )}
 
       {/* Actions */}
       <div className="flex items-center gap-1 px-3 py-2">

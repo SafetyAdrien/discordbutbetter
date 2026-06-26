@@ -42,6 +42,8 @@ export function CreateMediaPostModal({
   const [description, setDescription] = useState('');
   const [altTexts, setAltTexts] = useState<string[]>(initialFiles.map(() => ''));
   const [isSpoiler, setIsSpoiler] = useState(false);
+  const [isDuel, setIsDuel] = useState(false);
+  const [duelDurationHours, setDuelDurationHours] = useState(24);
   const urlsRef = useRef<string[]>([]);
   const addInputRef = useRef<HTMLInputElement>(null);
 

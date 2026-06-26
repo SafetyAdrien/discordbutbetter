@@ -798,6 +798,8 @@ const Index = () => {
                       setActiveThreadId(null);
                       setThreadChannelId(null);
                     }}
+                    onLoadOlder={loadOlderMessages}
+                    hasMoreOlder={hasMoreOlder ?? false}
                   />
                 )}
               </div>

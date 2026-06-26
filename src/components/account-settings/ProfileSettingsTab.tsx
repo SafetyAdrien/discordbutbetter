@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { UserAvatarImage } from '@/components/ui/user-avatar-image';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Camera, Loader2, Pencil, CalendarDays } from 'lucide-react';
 import { MarkdownLiveTextarea } from '@/components/profile/MarkdownLiveTextarea';

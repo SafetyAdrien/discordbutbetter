@@ -115,7 +115,9 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
       },
     });
     setSelectedFiles(null);
+    setQuotedPost(null);
   };
+
 
   return (
     <div className="flex-1 flex min-w-0 w-full overflow-hidden">
@@ -215,7 +217,9 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
             serverId={null}
             onOpenDetail={(p) => setActivePost(p)}
             onDeleted={(id) => { if (activePost?.id === id) setActivePost(null); }}
+            onReply={(p) => handleUploadClick(p)}
           />
+
         ) : (
           <div
             className={cn(
@@ -311,11 +315,13 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
       {selectedFiles && (
         <CreateMediaPostModal
           files={selectedFiles}
-          onClose={() => setSelectedFiles(null)}
+          onClose={() => { setSelectedFiles(null); setQuotedPost(null); }}
           onPublish={handlePublish}
           isPending={createPost.isPending}
+          quotedPost={quotedPost ? { id: quotedPost.id, title: quotedPost.title, authorName: null } : null}
         />
       )}
+
 
     </div>
 

@@ -85,6 +85,9 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
   const isExemptFromStrict = channel.type === 'voice' || channel.type === 'stage';
   const shouldFormatStrict = !isFlexible && !isExemptFromStrict;
 
+  // Reset all fields ONLY when switching to a different channel.
+  // Avoid resetting on every realtime refresh of `channel.*` because that would
+  // wipe an in-progress local edit (notably the freshly-cropped icon preview).
   useEffect(() => {
     setName(channel.name);
     setDescription(channel.description || '');
@@ -93,7 +96,15 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
     setIconUrl(channel.icon_url ?? null);
     setPendingIconBlob(null);
     setIconRemoved(false);
-  }, [channel.id, channel.name, channel.description, channel.type, channel.slowmode_seconds, channel.icon_url]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [channel.id]);
+
+  // Reconcile the displayed icon with server updates ONLY when the user
+  // has no pending local change staged (no blob, no removal in progress).
+  useEffect(() => {
+    if (pendingIconBlob || iconRemoved) return;
+    setIconUrl(channel.icon_url ?? null);
+  }, [channel.icon_url, pendingIconBlob, iconRemoved]);
 
   const typeInfo = channelTypeLabels[channel.type] ?? channelTypeLabels.text;
   const TypeIcon = typeInfo.icon;

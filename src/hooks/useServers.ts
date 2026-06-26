@@ -133,6 +133,22 @@ export function useServers() {
     };
   }, [user, queryClient]);
 
+  // Realtime on server_members for the current user — kick / leave / join from another device
+  useEffect(() => {
+    if (!user) return;
+    const ch = supabase
+      .channel(`server-members-rt:${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'server_members', filter: `user_id=eq.${user.id}` },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['servers'] });
+        },
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [user, queryClient]);
+
 
   // Persist user id so a cold mount can read the previous user's server cache
   // BEFORE supabase.auth.getSession() resolves — otherwise the first paint is

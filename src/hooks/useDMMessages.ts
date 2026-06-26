@@ -37,6 +37,11 @@ export interface RepliedDMSnapshot {
   } | null;
 }
 
+export type DMSystemType =
+  | 'screenshot'
+  | 'screen_recording_start'
+  | 'screen_recording_stop';
+
 export interface DMMessage {
   id: string;
   content: string;
@@ -46,6 +51,7 @@ export interface DMMessage {
   conversation_id: string;
   reply_to_id?: string | null;
   repliedMessage?: RepliedDMSnapshot | null;
+  system_type?: DMSystemType | null;
   author: {
     id: string;
     username: string;

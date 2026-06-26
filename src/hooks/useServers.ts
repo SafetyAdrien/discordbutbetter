@@ -207,6 +207,13 @@ export function useServers() {
           };
         }) ?? [];
 
+      // Stable deterministic order for servers not covered by user's custom order
+      servers.sort((a, b) => {
+        const ta = a.created_at ? Date.parse(a.created_at) : 0;
+        const tb = b.created_at ? Date.parse(b.created_at) : 0;
+        return ta - tb;
+      });
+
       return servers;
     }),
     enabled: !!user,

@@ -74,28 +74,18 @@ export function useDMConversations() {
 
       if (allPartError) throw allPartError;
 
-      // Get last message per conversation in parallel — one tiny query each (LIMIT 1)
-      // instead of a single unbounded SELECT that scanned ALL dm_messages.
-      const lastMessageEntries = await Promise.all(
-        conversationIds.map(async (cid) => {
-          const { data, error } = await supabase
-            .from('dm_messages')
-            .select(`
-              conversation_id,
-              content,
-              created_at,
-              author_id,
-              author:profiles!dm_messages_author_id_fkey (display_name)
-            `)
-            .eq('conversation_id', cid)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-          if (error) return null;
-          return data;
-        })
-      );
-      const lastMessages = lastMessageEntries.filter((m): m is NonNullable<typeof m> => !!m);
+      // Single RPC call: last message per conversation, filtered by auth.uid() server-side.
+      const { data: lastMsgData, error: lastMsgError } = await supabase
+        .rpc('get_dm_last_messages');
+      if (lastMsgError) throw lastMsgError;
+      const lastMessages = (lastMsgData || []) as Array<{
+        conversation_id: string;
+        content: string;
+        created_at: string;
+        author_id: string | null;
+        author_display_name: string | null;
+      }>;
+
 
 
       // Combine data

@@ -78,12 +78,24 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
   const [cropperSrc, setCropperSrc] = useState<string | null>(null);
   const [isUploadingIcon, setIsUploadingIcon] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const blobPreviewUrlRef = useRef<string | null>(null);
+  const isSavingRef = useRef(false);
   const updateChannel = useUpdateChannel();
   const { data: serverSettings } = useServerSettings(channel.server_id);
 
   const isFlexible = serverSettings?.flexible_channel_names ?? true;
   const isExemptFromStrict = channel.type === 'voice' || channel.type === 'stage';
   const shouldFormatStrict = !isFlexible && !isExemptFromStrict;
+
+  // Revoke any lingering blob preview URL on unmount to avoid leaks.
+  useEffect(() => {
+    return () => {
+      if (blobPreviewUrlRef.current) {
+        URL.revokeObjectURL(blobPreviewUrlRef.current);
+        blobPreviewUrlRef.current = null;
+      }
+    };
+  }, []);
 
   // Reset all fields ONLY when switching to a different channel.
   // Avoid resetting on every realtime refresh of `channel.*` because that would
@@ -96,13 +108,17 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
     setIconUrl(channel.icon_url ?? null);
     setPendingIconBlob(null);
     setIconRemoved(false);
+    if (blobPreviewUrlRef.current) {
+      URL.revokeObjectURL(blobPreviewUrlRef.current);
+      blobPreviewUrlRef.current = null;
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channel.id]);
 
   // Reconcile the displayed icon with server updates ONLY when the user
-  // has no pending local change staged (no blob, no removal in progress).
+  // has no pending local change staged and no save is currently in flight.
   useEffect(() => {
-    if (pendingIconBlob || iconRemoved) return;
+    if (pendingIconBlob || iconRemoved || isSavingRef.current) return;
     setIconUrl(channel.icon_url ?? null);
   }, [channel.icon_url, pendingIconBlob, iconRemoved]);
 
@@ -148,13 +164,21 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
   };
 
   const handleCropComplete = (blob: Blob) => {
+    if (blobPreviewUrlRef.current) {
+      URL.revokeObjectURL(blobPreviewUrlRef.current);
+    }
     const previewUrl = URL.createObjectURL(blob);
+    blobPreviewUrlRef.current = previewUrl;
     setIconUrl(previewUrl);
     setPendingIconBlob(blob);
     setIconRemoved(false);
   };
 
   const handleRemoveIcon = () => {
+    if (blobPreviewUrlRef.current) {
+      URL.revokeObjectURL(blobPreviewUrlRef.current);
+      blobPreviewUrlRef.current = null;
+    }
     setIconUrl(null);
     setPendingIconBlob(null);
     setIconRemoved(true);
@@ -166,11 +190,13 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
       return;
     }
 
+    isSavingRef.current = true;
     try {
       const nameChanged = name !== channel.name;
       const finalName = (shouldFormatStrict && nameChanged) ? formatStrictChannelName(name.trim()) : name.trim();
       if (!finalName) {
         toast.error('Le nom du salon ne peut pas être vide');
+        isSavingRef.current = false;
         return;
       }
 
@@ -214,12 +240,26 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
         icon_url: finalIconUrl,
       });
 
+      // Pin the freshly-uploaded URL locally so the preview doesn't flicker
+      // back to the old icon while realtime catches up.
+      if (typeof finalIconUrl === 'string') {
+        setIconUrl(finalIconUrl);
+      } else if (finalIconUrl === null) {
+        setIconUrl(null);
+      }
       setPendingIconBlob(null);
       setIconRemoved(false);
+      if (blobPreviewUrlRef.current) {
+        URL.revokeObjectURL(blobPreviewUrlRef.current);
+        blobPreviewUrlRef.current = null;
+      }
     } catch (error) {
       console.error('Save error:', error);
       setIsUploadingIcon(false);
       toast.error('Erreur lors de la mise à jour');
+      // Keep pendingIconBlob/iconRemoved intact so the user can retry without re-cropping.
+    } finally {
+      isSavingRef.current = false;
     }
   };
 

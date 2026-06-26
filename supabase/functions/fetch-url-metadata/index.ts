@@ -185,8 +185,8 @@ Deno.serve(async (req) => {
 
     // Don't return empty metadata
     if (!metadata.title && !metadata.description && !metadata.image) {
-      return new Response(JSON.stringify({ error: 'No metadata found' }), {
-        status: 404,
+      return new Response(JSON.stringify({ ...metadata, empty: true }), {
+        status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }

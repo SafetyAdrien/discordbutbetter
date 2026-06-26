@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { Upload, Grid, List, Users, EyeOff, Layers } from 'lucide-react';
+import { Upload, Grid, List, Users, EyeOff, Layers, Rss } from 'lucide-react';
 import { StreamlineMedia } from '@/components/icons/StreamlineMedia';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -8,6 +8,7 @@ import { UploadDropOverlay } from '@/components/chat/upload/UploadDropOverlay';
 import { useHasChannelPermission } from '@/hooks/useUserChannelPermissions';
 import { CreateMediaPostModal } from '@/components/channels/media/CreateMediaPostModal';
 import { MediaPostSidePanel } from '@/components/channels/media/MediaPostSidePanel';
+import { MediaFeed } from '@/components/channels/media/MediaFeed';
 import { useMediaPosts, useCreateMediaPost, type MediaPost } from '@/hooks/useMediaPosts';
 import { useMediaPostReactions, useToggleMediaReaction } from '@/hooks/useMediaReactions';
 import { ReactionBar } from '@/components/chat/ReactionBar';

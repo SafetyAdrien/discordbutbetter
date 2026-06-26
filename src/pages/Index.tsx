@@ -237,6 +237,7 @@ const Index = () => {
   }, [messages]);
   // Realtime profiles updates (DB -> postgres_changes)
   useProfilesRealtime();
+  useDownloadPermissionsRecipientRealtime();
   
   // Realtime permissions updates (server-specific + global)
   usePermissionsRealtime(activeServerId);

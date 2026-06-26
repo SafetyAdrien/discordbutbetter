@@ -1,18 +1,20 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { Heart, MessageCircle, Bookmark, MoreHorizontal, Volume2, VolumeX, ChevronLeft, ChevronRight, EyeOff, Trash2 } from 'lucide-react';
+import { Heart, MessageCircle, Bookmark, Volume2, VolumeX, ChevronLeft, ChevronRight, EyeOff, BarChart3 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { ReactionBar } from '@/components/chat/ReactionBar';
 import { useMediaPostReactions, useToggleMediaReaction } from '@/hooks/useMediaReactions';
 import { useMediaComments } from '@/hooks/useMediaComments';
 import { MarkdownText } from '@/lib/markdown';
 import type { MediaPost } from '@/hooks/useMediaPosts';
 import { MediaDuelView } from './MediaDuelView';
-import { toast } from 'sonner';
+import { MediaDuelStatsBack } from './MediaDuelStatsBack';
+import { MediaPostActionsMenu } from './MediaPostActionsMenu';
+import { EditMediaPostModal } from './EditMediaPostModal';
+import { MediaPostStatsModal } from './MediaPostStatsModal';
 
 interface Props {
   post: MediaPost;
@@ -20,6 +22,7 @@ interface Props {
   serverId?: string | null;
   onOpenDetail: (post: MediaPost) => void;
   onDeleted?: (postId: string) => void;
+  onReply?: (post: MediaPost) => void;
 }
 
 function relTime(iso: string) {
@@ -59,7 +62,7 @@ function toggleSaved(id: string): boolean {
   return now;
 }
 
-export function MediaPostCard({ post, channelId, serverId = null, onOpenDetail, onDeleted }: Props) {
+export function MediaPostCard({ post, channelId, serverId = null, onOpenDetail, onDeleted, onReply }: Props) {
   const { user } = useAuth();
   const { data: author } = useAuthor(post.author_id);
   const items = post.items?.length ? post.items : [{
@@ -73,6 +76,9 @@ export function MediaPostCard({ post, channelId, serverId = null, onOpenDetail, 
   const [descExpanded, setDescExpanded] = useState(false);
   const [saved, setSaved] = useState(() => readSaved().has(post.id));
   const [heartBurst, setHeartBurst] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [statsOpen, setStatsOpen] = useState(false);
+  const [flipped, setFlipped] = useState(false);
 
   const postIds = useMemo(() => [post.id], [post.id]);
   const { data: reactionsData = {} } = useMediaPostReactions(postIds);
@@ -132,22 +138,11 @@ export function MediaPostCard({ post, channelId, serverId = null, onOpenDetail, 
   };
 
   const isAuthor = user?.id === post.author_id;
-
-  const handleDelete = async () => {
-    if (!confirm('Supprimer ce post ?')) return;
-    const { error } = await (supabase.from('media_posts') as any).delete().eq('id', post.id);
-    if (error) { toast.error('Erreur lors de la suppression'); return; }
-    toast.success('Post supprimé');
-    onDeleted?.(post.id);
-  };
-
   const descShort = post.description && post.description.length > 140 && !descExpanded;
 
-  return (
-    <article
-      ref={cardRef}
-      className="w-full max-w-[600px] mx-auto bg-[hsl(var(--surface-2))] border border-border/40 rounded-2xl overflow-hidden shadow-[var(--shadow-elevation-1)]"
-    >
+  // ---- Front face ----
+  const FrontFace = (
+    <div className="relative [backface-visibility:hidden] bg-[hsl(var(--surface-2))] rounded-2xl border border-border/40 overflow-hidden shadow-[var(--shadow-elevation-1)] flex flex-col">
       {/* Header */}
       <header className="flex items-center gap-3 px-4 py-3">
         <Avatar className="w-9 h-9">
@@ -160,14 +155,29 @@ export function MediaPostCard({ post, channelId, serverId = null, onOpenDetail, 
           </p>
           <p className="text-xs text-muted-foreground">{relTime(post.created_at)}</p>
         </div>
-        {isAuthor && (
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={handleDelete} aria-label="Supprimer">
-            <Trash2 className="w-4 h-4" />
+        {post.is_duel && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => setFlipped(true)}
+            aria-label="Voir les stats du duel"
+            title="Statistiques du duel"
+          >
+            <BarChart3 className="w-4 h-4" />
           </Button>
         )}
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onOpenDetail(post)} aria-label="Détails">
-          <MoreHorizontal className="w-4 h-4" />
-        </Button>
+        <MediaPostActionsMenu
+          post={post}
+          channelId={channelId}
+          serverId={serverId}
+          isAuthor={isAuthor}
+          canDelete={isAuthor}
+          onEdit={() => setEditOpen(true)}
+          onReply={() => onReply?.(post)}
+          onShowStats={() => setStatsOpen(true)}
+          onDeleted={onDeleted}
+        />
       </header>
 
       {/* Media (or Duel inline) */}
@@ -218,14 +228,12 @@ export function MediaPostCard({ post, channelId, serverId = null, onOpenDetail, 
           />
         )}
 
-        {/* Heart burst */}
         {heartBurst && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <Heart className="w-28 h-28 text-white drop-shadow-2xl animate-[ping_700ms_ease-out]" fill="currentColor" />
           </div>
         )}
 
-        {/* Carousel controls */}
         {items.length > 1 && revealed && (
           <>
             <button
@@ -258,23 +266,30 @@ export function MediaPostCard({ post, channelId, serverId = null, onOpenDetail, 
       </div>
       )}
 
-      {/* Actions */}
-      <div className="flex items-center gap-1 px-3 py-2">
+      {/* Actions pills */}
+      <div className="flex items-center gap-2 px-3 py-2">
         <button
           onClick={() => toggleReaction.mutate({ postId: post.id, emoji: '❤️', currentReactions: reactions })}
-          className="p-2 hover:bg-muted rounded-full transition-colors"
+          className={cn(
+            'inline-flex items-center gap-1.5 pl-2 pr-3 py-1.5 rounded-full bg-muted hover:bg-muted/70 transition-colors',
+            userHeart && 'bg-[hsl(var(--destructive)/0.12)] hover:bg-[hsl(var(--destructive)/0.18)]'
+          )}
           aria-label="Réagir"
         >
           <Heart
-            className={cn('w-6 h-6', userHeart ? 'text-[hsl(var(--destructive))] fill-current' : 'text-foreground')}
+            className={cn('w-5 h-5', userHeart ? 'text-[hsl(var(--destructive))] fill-current' : 'text-foreground')}
           />
+          <span className={cn('text-sm font-semibold tabular-nums', userHeart && 'text-[hsl(var(--destructive))]')}>
+            {reactionCount}
+          </span>
         </button>
         <button
           onClick={() => onOpenDetail(post)}
-          className="p-2 hover:bg-muted rounded-full transition-colors"
+          className="inline-flex items-center gap-1.5 pl-2 pr-3 py-1.5 rounded-full bg-muted hover:bg-muted/70 transition-colors"
           aria-label="Commenter"
         >
-          <MessageCircle className="w-6 h-6" />
+          <MessageCircle className="w-5 h-5" />
+          <span className="text-sm font-semibold tabular-nums">{comments.length}</span>
         </button>
         <div className="flex-1" />
         <button
@@ -282,29 +297,8 @@ export function MediaPostCard({ post, channelId, serverId = null, onOpenDetail, 
           className="p-2 hover:bg-muted rounded-full transition-colors"
           aria-label={saved ? 'Retirer des sauvegardés' : 'Sauvegarder'}
         >
-          <Bookmark className={cn('w-6 h-6', saved && 'fill-current text-primary')} />
+          <Bookmark className={cn('w-5 h-5', saved && 'fill-current text-primary')} />
         </button>
-      </div>
-
-      {/* Reactions bar (full) */}
-      <div className="px-4">
-        <ReactionBar
-          reactions={reactions}
-          onToggle={(emoji) => toggleReaction.mutate({ postId: post.id, emoji, currentReactions: reactions })}
-          serverId={serverId}
-          size="sm"
-        />
-      </div>
-
-      {/* Counts */}
-      <div className="px-4 pt-2 text-sm font-semibold">
-        {reactionCount > 0 && <span>{reactionCount} réaction{reactionCount > 1 ? 's' : ''}</span>}
-        {reactionCount > 0 && comments.length > 0 && <span className="text-muted-foreground"> · </span>}
-        {comments.length > 0 && (
-          <button onClick={() => onOpenDetail(post)} className="text-muted-foreground hover:underline">
-            {comments.length} commentaire{comments.length > 1 ? 's' : ''}
-          </button>
-        )}
       </div>
 
       {/* Title + description */}
@@ -343,13 +337,44 @@ export function MediaPostCard({ post, channelId, serverId = null, onOpenDetail, 
         </div>
       )}
 
-      {/* Quick comment trigger */}
       <button
         onClick={() => onOpenDetail(post)}
-        className="w-full text-left px-4 py-3 text-sm text-muted-foreground border-t border-border/40 hover:bg-muted/30 transition-colors"
+        className="mt-auto w-full text-left px-4 py-3 text-sm text-muted-foreground border-t border-border/40 hover:bg-muted/30 transition-colors"
       >
         Ajouter un commentaire…
       </button>
-    </article>
+    </div>
+  );
+
+  // ---- Back face (duel stats) ----
+  const BackFace = (
+    <div className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)] bg-[hsl(var(--surface-2))] rounded-2xl border border-border/40 shadow-[var(--shadow-elevation-1)] overflow-hidden">
+      <MediaDuelStatsBack post={post} onBack={() => setFlipped(false)} />
+    </div>
+  );
+
+  return (
+    <>
+      <div
+        ref={cardRef}
+        className="w-full max-w-[600px] mx-auto"
+        style={{ perspective: '1600px' }}
+      >
+        <div
+          className="relative w-full [transform-style:preserve-3d]"
+          style={{
+            transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
+            transition: 'transform 600ms cubic-bezier(0.4, 0, 0.2, 1)',
+          }}
+        >
+          {FrontFace}
+          {BackFace}
+        </div>
+      </div>
+
+      {editOpen && <EditMediaPostModal post={post} channelId={channelId} onClose={() => setEditOpen(false)} />}
+      {statsOpen && <MediaPostStatsModal post={post} onClose={() => setStatsOpen(false)} />}
+    </>
   );
 }
+

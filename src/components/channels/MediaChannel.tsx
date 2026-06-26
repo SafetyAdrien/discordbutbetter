@@ -30,7 +30,9 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
   const { data: canUploadMedia = true } = useHasChannelPermission(channel.id, 'upload_media');
   const [viewMode, setViewMode] = useState<'feed' | 'grid' | 'list'>('feed');
   const [selectedFiles, setSelectedFiles] = useState<File[] | null>(null);
+  const [quotedPost, setQuotedPost] = useState<MediaPost | null>(null);
   const [activePost, setActivePost] = useState<MediaPost | null>(null);
+
 
   // Real data hooks
   const { data: mediaItems = [] } = useMediaPosts(channel.id);
@@ -82,7 +84,7 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
     }
   }, []);
 
-  const handleUploadClick = () => {
+  const handleUploadClick = (forReply: MediaPost | null = null) => {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*,video/*';
@@ -90,11 +92,13 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
     input.onchange = (e) => {
       const files = (e.target as HTMLInputElement).files;
       if (files && files.length > 0) {
+        setQuotedPost(forReply);
         setSelectedFiles(Array.from(files));
       }
     };
     input.click();
   };
+
 
   const handlePublish = (data: {
     files: File[];
@@ -111,7 +115,9 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
       },
     });
     setSelectedFiles(null);
+    setQuotedPost(null);
   };
+
 
   return (
     <div className="flex-1 flex min-w-0 w-full overflow-hidden">
@@ -168,7 +174,7 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
             </button>
           </div>
           {canUploadMedia && (
-            <Button size="sm" onClick={handleUploadClick} className="hidden sm:inline-flex">
+            <Button size="sm" onClick={() => handleUploadClick()} className="hidden sm:inline-flex">
               <Upload className="w-4 h-4 sm:mr-2" />
               <span className="hidden sm:inline">Téléverser</span>
             </Button>
@@ -198,7 +204,7 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
               Partagez des images et vidéos avec les membres de ce salon.
             </p>
             {canUploadMedia && (
-              <Button onClick={handleUploadClick}>
+              <Button onClick={() => handleUploadClick()}>
                 <Upload className="w-4 h-4 mr-2" />
                 Téléverser un fichier
               </Button>
@@ -211,7 +217,9 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
             serverId={null}
             onOpenDetail={(p) => setActivePost(p)}
             onDeleted={(id) => { if (activePost?.id === id) setActivePost(null); }}
+            onReply={(p) => handleUploadClick(p)}
           />
+
         ) : (
           <div
             className={cn(
@@ -296,7 +304,7 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
       {/* Mobile FAB */}
       {canUploadMedia && (
         <button
-          onClick={handleUploadClick}
+          onClick={() => handleUploadClick()}
           className="sm:hidden fixed bottom-[calc(72px+env(safe-area-inset-bottom,0px))] right-4 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:bg-primary/90 transition-colors z-10"
           aria-label="Téléverser"
         >
@@ -307,11 +315,13 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
       {selectedFiles && (
         <CreateMediaPostModal
           files={selectedFiles}
-          onClose={() => setSelectedFiles(null)}
+          onClose={() => { setSelectedFiles(null); setQuotedPost(null); }}
           onPublish={handlePublish}
           isPending={createPost.isPending}
+          quotedPost={quotedPost ? { id: quotedPost.id, title: quotedPost.title, authorName: null } : null}
         />
       )}
+
 
     </div>
 

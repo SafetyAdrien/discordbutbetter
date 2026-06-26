@@ -1,17 +1,19 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { ChevronLeft, ChevronRight, X, Trash2, EyeOff, Brush } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, EyeOff, Brush, Heart, MessageCircle, BarChart3 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ReactionBar } from '@/components/chat/ReactionBar';
 import { MediaComments } from './MediaComments';
 import { MediaDuelView } from './MediaDuelView';
 import { CanvasLiveOverlay } from './CanvasLiveOverlay';
+import { MediaPostActionsMenu } from './MediaPostActionsMenu';
+import { EditMediaPostModal } from './EditMediaPostModal';
+import { MediaPostStatsModal } from './MediaPostStatsModal';
 import { InfiniteZoomImage } from '@/components/channels/shared/InfiniteZoomImage';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMediaPostReactions, useToggleMediaReaction } from '@/hooks/useMediaReactions';
+import { useMediaComments as useMediaCommentsHook } from '@/hooks/useMediaComments';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import type { MediaPost } from '@/hooks/useMediaPosts';
@@ -21,7 +23,9 @@ interface Props {
   channelId: string;
   serverId?: string | null;
   onClose: () => void;
+  onReply?: (post: MediaPost) => void;
 }
+
 
 function useAuthorProfile(userId: string | undefined) {
   return useQuery({
@@ -35,7 +39,7 @@ function useAuthorProfile(userId: string | undefined) {
   });
 }
 
-export function MediaPostSidePanel({ post, channelId, serverId = null, onClose }: Props) {
+export function MediaPostSidePanel({ post, channelId, serverId = null, onClose, onReply }: Props) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { data: author } = useAuthorProfile(post.author_id);
@@ -91,16 +95,20 @@ export function MediaPostSidePanel({ post, channelId, serverId = null, onClose }
     return () => window.removeEventListener('keydown', onKey);
   }, [items.length, onClose]);
 
-  const handleDelete = async () => {
-    if (!confirm('Supprimer ce post ?')) return;
-    const { error } = await (supabase.from('media_posts') as any).delete().eq('id', post.id);
-    if (error) { toast.error('Erreur lors de la suppression'); return; }
-    queryClient.setQueryData<MediaPost[]>(['media-posts', channelId], (old = []) => old.filter((p) => p.id !== post.id));
-    toast.success('Post supprimé');
-    onClose();
-  };
+  const [editOpen, setEditOpen] = useState(false);
+  const [statsOpen, setStatsOpen] = useState(false);
+
+  const postReactions = reactionsData[post.id] || [];
+  const heartList = postReactions.filter((r) => r.emoji === '❤️');
+  const heartCount = heartList.length;
+  const heartReacted = !!user && heartList.some((r) => r.user_id === user.id);
+
+  const { data: comments = [] } = useMediaCommentsHook(post.id);
+  const commentCount = comments.length;
 
   const isAuthor = user?.id === post.author_id;
+
+
 
   return (
     <div className="h-full flex flex-col bg-background border-l border-border">
@@ -116,12 +124,20 @@ export function MediaPostSidePanel({ post, channelId, serverId = null, onClose }
             {author?.display_name ?? 'Utilisateur'} · {new Date(post.created_at).toLocaleDateString('fr-FR')}
           </p>
         </div>
-        {isAuthor && (
-          <Button variant="ghost" size="icon" onClick={handleDelete} className="h-8 w-8 text-destructive hover:text-destructive">
-            <Trash2 className="w-4 h-4" />
-          </Button>
-        )}
+        <MediaPostActionsMenu
+          post={post}
+          channelId={channelId}
+          serverId={serverId}
+          isAuthor={isAuthor}
+          canDelete={isAuthor}
+          onEdit={() => setEditOpen(true)}
+          onShowStats={() => setStatsOpen(true)}
+          onReply={() => onReply?.(post)}
+          onDeleted={() => onClose()}
+        />
+
         <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
+
           <X className="w-4 h-4" />
         </Button>
       </div>
@@ -210,27 +226,49 @@ export function MediaPostSidePanel({ post, channelId, serverId = null, onClose }
         </div>
       )}
 
-      {/* Description + reactions */}
-      {(post.description || true) && (
-        <div className="px-3 py-2 border-b border-border flex-shrink-0">
-          {post.description && (
-            <p className="text-sm text-muted-foreground whitespace-pre-wrap mb-2">{post.description}</p>
+      {/* Description + actions pills */}
+      <div className="px-3 py-2 border-b border-border flex-shrink-0">
+        {post.description && (
+          <p className="text-sm text-muted-foreground whitespace-pre-wrap mb-2">{post.description}</p>
+        )}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handleToggleReaction('❤️')}
+            className={cn(
+              'h-8 px-3 rounded-full flex items-center gap-1.5 text-sm transition-colors',
+              heartReacted ? 'bg-red-500/15 text-red-500' : 'bg-muted hover:bg-muted/80 text-foreground'
+            )}
+          >
+            <Heart className={cn('w-4 h-4', heartReacted && 'fill-current')} />
+            <span className="font-medium tabular-nums">{heartCount}</span>
+          </button>
+          <div className="h-8 px-3 rounded-full bg-muted flex items-center gap-1.5 text-sm text-foreground">
+            <MessageCircle className="w-4 h-4" />
+            <span className="font-medium tabular-nums">{commentCount}</span>
+          </div>
+          {post.is_duel && (
+            <button
+              onClick={() => setStatsOpen(true)}
+              className="h-8 px-3 rounded-full bg-muted hover:bg-muted/80 flex items-center gap-1.5 text-sm text-foreground"
+              title="Voir les stats du duel"
+            >
+              <BarChart3 className="w-4 h-4" />
+            </button>
           )}
-          <ReactionBar
-            reactions={reactionsData[post.id] || []}
-            onToggle={handleToggleReaction}
-            serverId={serverId}
-            size="sm"
-          />
         </div>
-      )}
+      </div>
 
       {/* Comments */}
       <ScrollArea className="flex-1">
         <div className="p-3">
           <MediaComments postId={post.id} serverId={serverId} />
         </div>
+
       </ScrollArea>
+
+      {editOpen && <EditMediaPostModal post={post} channelId={channelId} onClose={() => setEditOpen(false)} />}
+      {statsOpen && <MediaPostStatsModal post={post} onClose={() => setStatsOpen(false)} />}
     </div>
   );
 }
+

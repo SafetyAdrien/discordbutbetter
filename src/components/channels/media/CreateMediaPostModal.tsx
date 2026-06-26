@@ -15,6 +15,12 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { EyeOff, ImageIcon, Plus, X, ChevronLeft, ChevronRight, Swords } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+interface QuotedPostLite {
+  id: string;
+  title: string;
+  authorName: string | null;
+}
+
 interface CreateMediaPostModalProps {
   files: File[];
   onClose: () => void;
@@ -28,6 +34,7 @@ interface CreateMediaPostModalProps {
     duelDurationHours?: number;
   }) => void;
   isPending?: boolean;
+  quotedPost?: QuotedPostLite | null;
 }
 
 export function CreateMediaPostModal({
@@ -35,15 +42,21 @@ export function CreateMediaPostModal({
   onClose,
   onPublish,
   isPending = false,
+  quotedPost = null,
 }: CreateMediaPostModalProps) {
   const [files, setFiles] = useState<File[]>(initialFiles);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
+  const [title, setTitle] = useState(quotedPost ? `Re: ${quotedPost.title}` : '');
+  const [description, setDescription] = useState(
+    quotedPost
+      ? `> **${quotedPost.authorName ?? 'Utilisateur'}** — ${quotedPost.title}\n\n`
+      : ''
+  );
   const [altTexts, setAltTexts] = useState<string[]>(initialFiles.map(() => ''));
   const [isSpoiler, setIsSpoiler] = useState(false);
   const [isDuel, setIsDuel] = useState(false);
   const [duelDurationHours, setDuelDurationHours] = useState(24);
+
   const urlsRef = useRef<string[]>([]);
   const addInputRef = useRef<HTMLInputElement>(null);
 

@@ -47,7 +47,20 @@ export function useCastDuelVote() {
   return useMutation({
     mutationFn: async ({ postId, itemId }: { postId: string; itemId: string }) => {
       if (!user) throw new Error('Not authenticated');
-      // Upsert pattern: delete prior vote then insert
+      const key = ['duel-votes', postId];
+      const current = queryClient.getQueryData<DuelVote[]>(key) ?? [];
+      const mine = current.find((v) => v.user_id === user.id) ?? null;
+
+      // Toggle off: same item clicked again → remove vote entirely
+      if (mine && mine.item_id === itemId) {
+        await (supabase.from('media_post_duel_votes') as any)
+          .delete()
+          .eq('post_id', postId)
+          .eq('user_id', user.id);
+        return { action: 'removed' as const, postId, itemId };
+      }
+
+      // Switch or new vote
       await (supabase.from('media_post_duel_votes') as any)
         .delete()
         .eq('post_id', postId)
@@ -57,17 +70,21 @@ export function useCastDuelVote() {
         .select('*')
         .single();
       if (error) throw error;
-      return data as DuelVote;
+      return { action: 'set' as const, vote: data as DuelVote };
     },
     onMutate: async ({ postId, itemId }) => {
       if (!user) return;
       const key = ['duel-votes', postId];
       await queryClient.cancelQueries({ queryKey: key });
       const prev = queryClient.getQueryData<DuelVote[]>(key) ?? [];
-      const next = [
-        ...prev.filter((v) => v.user_id !== user.id),
-        { id: `temp-${Date.now()}`, post_id: postId, user_id: user.id, item_id: itemId, created_at: new Date().toISOString() },
-      ];
+      const mine = prev.find((v) => v.user_id === user.id);
+      const withoutMine = prev.filter((v) => v.user_id !== user.id);
+      const next = mine && mine.item_id === itemId
+        ? withoutMine
+        : [
+            ...withoutMine,
+            { id: `temp-${Date.now()}`, post_id: postId, user_id: user.id, item_id: itemId, created_at: new Date().toISOString() },
+          ];
       queryClient.setQueryData(key, next);
       return { prev };
     },

@@ -350,7 +350,7 @@ export function useDMMessages(conversationId: string | null) {
       const { data, error } = await supabase
         .from('dm_messages')
         .select(`
-          id, content, created_at, edited_at, attachments, conversation_id, reply_to_id,
+          id, content, created_at, edited_at, attachments, conversation_id, reply_to_id, system_type,
           author:profiles!dm_messages_author_id_fkey (
             id, username, display_name, avatar_url
           )

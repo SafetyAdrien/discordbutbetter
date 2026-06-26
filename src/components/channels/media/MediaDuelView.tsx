@@ -80,7 +80,7 @@ export function MediaDuelView({ post, className }: Props) {
             <button
               key={it.id}
               disabled={!canVote}
-              onClick={() => castVote.mutate({ postId: post.id, itemId: it.id })}
+              onClick={() => castVote.mutate({ postId: post.id, itemId: it.id, currentItemId: myVote })}
               className={cn(
                 'group relative aspect-[3/4] overflow-hidden bg-black focus:outline-none',
                 isVotedByMe && 'ring-2 ring-primary ring-inset',

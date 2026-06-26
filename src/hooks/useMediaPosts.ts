@@ -31,6 +31,8 @@ export interface MediaPost {
   alt_text: string;
   is_spoiler: boolean;
   created_at: string;
+  is_duel?: boolean;
+  duel_expires_at?: string | null;
   items: MediaPostItem[];
   // Optimistic-only fields
   _isPending?: boolean;

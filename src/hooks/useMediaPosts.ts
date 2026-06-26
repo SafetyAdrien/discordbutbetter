@@ -289,6 +289,10 @@ export function useCreateMediaPost(channelId: string) {
         file_size: items[0].file_size,
         alt_text: items[0].alt_text ?? '',
         is_spoiler: input.isSpoiler,
+        is_duel: !!input.isDuel && input.files.length === 2,
+        duel_expires_at: input.isDuel && input.duelDurationHours
+          ? new Date(Date.now() + input.duelDurationHours * 60 * 60 * 1000).toISOString()
+          : null,
         created_at: new Date().toISOString(),
         items,
         _isPending: true,

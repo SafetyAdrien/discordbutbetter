@@ -66,7 +66,8 @@ export function CreateMediaPostModal({
   }, []);
 
   const descLength = description.length;
-  const isValid = title.trim().length > 0 && descLength >= 10 && descLength <= 500 && files.length > 0;
+  const duelInvalid = isDuel && files.length !== 2;
+  const isValid = title.trim().length > 0 && descLength >= 10 && descLength <= 500 && files.length > 0 && !duelInvalid;
 
   const activeFile = files[activeIndex];
   const activeUrl = previewUrls[activeIndex];

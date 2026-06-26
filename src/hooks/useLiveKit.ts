@@ -9,6 +9,7 @@ import {
   LocalTrack,
   TrackPublication,
   RoomOptions,
+  DisconnectReason,
 } from 'livekit-client';
 import { connectToLiveKitRoom, LiveKitTokenResponse } from '@/lib/livekit';
 
@@ -22,7 +23,7 @@ export interface UseLiveKitOptions {
   adminRoom?: boolean;
   roomOptions?: Partial<RoomOptions>;
   onConnected?: (room: Room) => void;
-  onDisconnected?: (reason?: string) => void;
+  onDisconnected?: (reason?: DisconnectReason) => void;
   onError?: (error: Error) => void;
 }
 

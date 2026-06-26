@@ -10,7 +10,9 @@ interface Props {
   serverId?: string | null;
   onOpenDetail: (post: MediaPost) => void;
   onDeleted?: (postId: string) => void;
+  onReply?: (post: MediaPost) => void;
 }
+
 
 const SEEN_KEY_PREFIX = 'media-stories-seen:';
 
@@ -19,7 +21,7 @@ function readSeen(channelId: string): Set<string> {
   catch { return new Set(); }
 }
 
-export function MediaFeed({ posts, channelId, serverId = null, onOpenDetail, onDeleted }: Props) {
+export function MediaFeed({ posts, channelId, serverId = null, onOpenDetail, onDeleted, onReply }: Props) {
   const [seenIds, setSeenIds] = useState<Set<string>>(() => readSeen(channelId));
   const [storyIndex, setStoryIndex] = useState<number | null>(null);
 
@@ -54,8 +56,10 @@ export function MediaFeed({ posts, channelId, serverId = null, onOpenDetail, onD
             serverId={serverId}
             onOpenDetail={onOpenDetail}
             onDeleted={onDeleted}
+            onReply={onReply}
           />
         ))}
+
       </div>
 
       {storyIndex !== null && stories.length > 0 && (

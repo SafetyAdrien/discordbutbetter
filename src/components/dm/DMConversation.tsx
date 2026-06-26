@@ -49,6 +49,8 @@ import { Reply, X as XIcon } from 'lucide-react';
 import { SwipeToReplyRow } from '@/components/mobile/SwipeToReplyRow';
 import { useSwipeBack } from '@/hooks/useSwipeBack';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
+import { useScreenCaptureDetection } from '@/hooks/useScreenCaptureDetection';
+import { Camera, Video as VideoIcon, VideoOff } from 'lucide-react';
 
 const statusColors: Record<string, string> = {
   online: 'bg-[hsl(var(--online))]',

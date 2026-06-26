@@ -185,9 +185,9 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className={cn('flex-1 overflow-y-auto', viewMode === 'feed' ? '' : 'p-4')}>
         {mediaItems.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center">
+          <div className="flex flex-col items-center justify-center h-full text-center p-4">
             <div className="w-20 h-20 rounded-full bg-muted/50 flex items-center justify-center mb-4">
               <StreamlineMedia className="w-10 h-10 text-muted-foreground/50" />
             </div>
@@ -202,6 +202,14 @@ export function MediaChannel({ channel, onToggleMembers, showMembers }: MediaCha
               </Button>
             )}
           </div>
+        ) : viewMode === 'feed' ? (
+          <MediaFeed
+            posts={mediaItems}
+            channelId={channel.id}
+            serverId={null}
+            onOpenDetail={(p) => setActivePost(p)}
+            onDeleted={(id) => { if (activePost?.id === id) setActivePost(null); }}
+          />
         ) : (
           <div
             className={cn(

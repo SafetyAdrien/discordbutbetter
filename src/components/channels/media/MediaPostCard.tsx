@@ -261,7 +261,7 @@ export function MediaPostCard({ post, channelId, serverId = null, onOpenDetail, 
           aria-label="Réagir"
         >
           <Heart
-            className={cn('w-6 h-6', reactions.some(r => r.emoji === '❤️' && r.hasReacted) ? 'text-[hsl(var(--destructive))] fill-current' : 'text-foreground')}
+            className={cn('w-6 h-6', userHeart ? 'text-[hsl(var(--destructive))] fill-current' : 'text-foreground')}
           />
         </button>
         <button

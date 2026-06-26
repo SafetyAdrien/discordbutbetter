@@ -10,6 +10,7 @@ import { useDMConversations } from '@/hooks/useDMs';
 import { useUnreadCounts } from '@/hooks/useUnreadCounts';
 import { useDMCalls } from '@/hooks/useDMCalls';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { UserAvatarImage } from '@/components/ui/user-avatar-image';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { MarkdownTextarea } from '@/components/chat/MarkdownTextarea';
@@ -114,7 +115,9 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
   } = usePendingAttachments();
 
   const { data: conversations = [] } = useDMConversations();
-  const { data: messages = [], isLoading } = useDMMessages(conversationId);
+  const { data: messages = [], isLoading, loadOlder, hasMoreOlder, isLoadingOlder } = useDMMessages(conversationId);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const loadingOlderRef = useRef(false);
   const sendMessage = useSendDMMessage();
   const editMessage = useEditDMMessage();
   const deleteMessage = useDeleteDMMessage();
@@ -181,6 +184,36 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Infinite scroll: load older DMs when user scrolls near top, preserving position
+  useEffect(() => {
+    const vp = scrollAreaRef.current?.querySelector<HTMLDivElement>('[data-radix-scroll-area-viewport]');
+    if (!vp) return;
+    const onScroll = () => {
+      if (
+        hasMoreOlder &&
+        !loadingOlderRef.current &&
+        !isLoadingOlder &&
+        vp.scrollTop < 200 &&
+        messages.length > 0
+      ) {
+        loadingOlderRef.current = true;
+        const prevHeight = vp.scrollHeight;
+        const prevTop = vp.scrollTop;
+        void loadOlder().then((added) => {
+          requestAnimationFrame(() => {
+            if (added && added > 0) {
+              const delta = vp.scrollHeight - prevHeight;
+              vp.scrollTop = prevTop + delta;
+            }
+            loadingOlderRef.current = false;
+          });
+        });
+      }
+    };
+    vp.addEventListener('scroll', onScroll, { passive: true });
+    return () => vp.removeEventListener('scroll', onScroll);
+  }, [hasMoreOlder, isLoadingOlder, loadOlder, messages.length, conversationId]);
 
   const handleVoiceCall = () => {
     startCall.mutate({ callType: 'voice' });
@@ -396,8 +429,13 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
         {/* Left column: Messages + Input */}
         <div className="flex-1 flex flex-col min-h-0">
           {/* Messages */}
-          <ScrollArea className="flex-1 min-h-0">
+          <ScrollArea ref={scrollAreaRef} className="flex-1 min-h-0">
             <div className="flex flex-col justify-end min-h-full p-4 space-y-px">
+              {isLoadingOlder && (
+                <div className="flex items-center justify-center py-2">
+                  <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                </div>
+              )}
               {isLoading ? (
                 <div className="flex items-center justify-center h-full">
                   <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />

@@ -17,14 +17,6 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     mode === "development" && componentTagger(),
-    viteStaticCopy({
-      targets: [
-        {
-          src: "node_modules/@timephy/rnnoise-wasm/dist/*",
-          dest: "rnnoise",
-        },
-      ],
-    }),
     VitePWA({
       registerType: "autoUpdate",
       workbox: {

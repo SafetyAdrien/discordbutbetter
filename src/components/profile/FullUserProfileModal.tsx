@@ -145,6 +145,7 @@ export function FullUserProfileModal({
               backgroundSize: 'cover',
               backgroundPosition: 'center',
             }}
+            {...bannerGuard}
           />
           <div className="px-6 -mt-14 relative z-10 flex items-end justify-between gap-3">
             <div className="relative min-w-0 shrink-0">
@@ -155,6 +156,7 @@ export function FullUserProfileModal({
                   className="w-28 h-28 ring-[5px] ring-background"
                   fallbackClassName="bg-primary/20 text-primary text-4xl font-semibold"
                   fallback={user.display_name?.charAt(0).toUpperCase()}
+                  ownerId={user.id}
                 />
 
                 <StatusIndicator

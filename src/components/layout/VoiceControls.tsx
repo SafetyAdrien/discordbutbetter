@@ -201,7 +201,14 @@ export function VoiceControls({
                 {isDeafened ? 'Activer le son' : 'Couper le son'}
               </TooltipContent>
             </Tooltip>
-            <OutputSettingsPopover outputVolume={outputVolume} onOutputVolumeChange={setOutputVolume}>
+            <OutputSettingsPopover
+              outputVolume={outputVolume}
+              onOutputVolumeChange={setOutputVolume}
+              outputDeviceId={outputDeviceId}
+              availableOutputs={availableOutputs}
+              onOutputDeviceChange={setOutputDeviceId}
+              outputSinkSupported={outputSinkSupported}
+            >
               <Button
                 size="sm"
                 variant="ghost"

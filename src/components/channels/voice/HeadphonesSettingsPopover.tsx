@@ -24,6 +24,10 @@ interface HeadphonesSettingsPopoverProps {
   onOutputDeviceChange?: (id: string) => void | Promise<void>;
   outputSinkSupported?: boolean;
   outputSinkPartial?: boolean;
+  // Permission gating (audiooutput labels require mic permission on most browsers)
+  micPermission?: 'granted' | 'denied' | 'prompt' | 'unknown';
+  onRequestPermission?: () => Promise<boolean>;
+  onOpenRefresh?: () => Promise<void> | void;
 }
 
 export function HeadphonesSettingsPopover({

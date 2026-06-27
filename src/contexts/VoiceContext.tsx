@@ -852,6 +852,13 @@ const defaultVoiceContext: VoiceContextType = {
   setAudioFilter: () => {},
   outputVolume: 100,
   setOutputVolume: () => {},
+  inputDeviceId: 'default',
+  outputDeviceId: 'default',
+  availableInputs: [],
+  availableOutputs: [],
+  setInputDeviceId: async () => {},
+  setOutputDeviceId: async () => {},
+  outputSinkSupported: false,
 };
 
 export function useVoice() {

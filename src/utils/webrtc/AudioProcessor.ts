@@ -237,21 +237,27 @@ export class AudioProcessor {
     lastNode.connect(this.gainNode);
     lastNode = this.gainNode;
 
+    // Analyser for spectral VAD — Fix A: tapped BEFORE the noise gate so the
+    // VAD never reads its own attenuated output. Previously placed downstream
+    // of gateGainNode, which created a self-locking loop: once the gate closed
+    // after a silence, analyser saw 0, VAD never reopened it, and both the
+    // local meter and the transmitted signal stayed dead until a full restart.
+    // The analyser is a side-chain (not in the transmission path) so it does
+    // not need to feed destination.
+    this.analyserNode = this.audioContext.createAnalyser();
+    this.analyserNode.fftSize = 4096;
+    this.analyserNode.smoothingTimeConstant = 0.3;
+    lastNode.connect(this.analyserNode);
+
     // Noise gate gain — the VAD opens/closes this without touching mic volume (Fix #2).
     this.gateGainNode = this.audioContext.createGain();
     this.gateGainNode.gain.value = 1;
     lastNode.connect(this.gateGainNode);
     lastNode = this.gateGainNode;
 
-    // Analyser for spectral VAD
-    this.analyserNode = this.audioContext.createAnalyser();
-    this.analyserNode.fftSize = 4096;
-    this.analyserNode.smoothingTimeConstant = 0.3;
-    lastNode.connect(this.analyserNode);
-
-    // Destination
+    // Destination — fed by the post-gate node so peers receive gated audio.
     this.destinationNode = this.audioContext.createMediaStreamDestination();
-    this.analyserNode.connect(this.destinationNode);
+    lastNode.connect(this.destinationNode);
 
     this.processedStream = this.destinationNode.stream;
 
@@ -654,6 +660,15 @@ export class AudioProcessor {
       this.audioContext.close().catch(() => {});
       this.audioContext = null;
     }
+
+    // Fix B — the AudioWorklet module is bound to the AudioContext we just
+    // closed. The next processStream() opens a brand-new context that has
+    // no worklets registered, so loadRNNoise() must re-run addModule().
+    // Without this reset, the `if (this.rnnoiseLoaded) return true` short-
+    // circuit silently skipped addModule and the AudioWorkletNode constructor
+    // threw "Unknown AudioWorklet name 'NoiseSuppressorWorklet'" on every
+    // device switch, dropping RNNoise into bypass until a full page reload.
+    this.rnnoiseLoaded = false;
 
     this.ambientSamples = [];
     this.ambientNoiseLevel = 0.05;

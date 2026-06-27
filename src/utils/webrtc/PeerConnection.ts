@@ -25,10 +25,13 @@ export interface ConnectionStats {
   connectionType: string;
 }
 
-// --- Bitrate tiers for adaptive quality ---
-const AUDIO_BITRATE_HIGH = 96000;
-const AUDIO_BITRATE_MED = 64000;
-const AUDIO_BITRATE_LOW = 32000;
+// --- Bitrate tiers for adaptive quality (Fix #5 — aligned with Discord voice) ---
+// Lowered from 96/64/32 → 64/40/24 to match Discord's voice profile.
+// Opus is exceptionally intelligible at low bitrates; 24 kbps remains
+// fully understandable in survival mode while saving bandwidth headroom.
+const AUDIO_BITRATE_HIGH = 64000;
+const AUDIO_BITRATE_MED = 40000;
+const AUDIO_BITRATE_LOW = 24000;
 const ADAPTATION_INTERVAL_MS = 3000;
 
 const ICE_SERVERS: RTCIceServer[] = [

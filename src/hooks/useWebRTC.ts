@@ -691,6 +691,30 @@ export function useWebRTC(): UseWebRTCReturn {
     };
   }, [disconnectInternal]);
 
+  // Fix #6 — hot-swap the active input device on the existing peer connections.
+  const switchInputDevice = useCallback(async (deviceId: string): Promise<boolean> => {
+    const newTrack = await mediaManager.restartMicrophoneWith(deviceId);
+    if (!newTrack) {
+      setHasMicrophoneAccess(false);
+      setMicrophoneError(true);
+      return false;
+    }
+    setHasMicrophoneAccess(true);
+    setMicrophoneError(false);
+    setIsMicrophoneActive(true);
+    for (const pc of peersRef.current.values()) {
+      try { await pc.replaceAudioTrack(newTrack); }
+      catch (e) { console.warn('[useWebRTC] replaceAudioTrack failed for a peer:', e); }
+    }
+    return true;
+  }, []);
+
+  // Fix #6 — switch the output sink (works on both native + Web Audio paths).
+  const setOutputSinkId = useCallback(async (deviceId: string): Promise<void> => {
+    await mediaManager.setOutputSinkId(deviceId);
+  }, []);
+
+
   return {
     isConnected,
     isConnecting,

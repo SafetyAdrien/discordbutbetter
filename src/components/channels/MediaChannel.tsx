@@ -194,6 +194,7 @@ export function MediaChannel({ channel, onToggleMembers, showMembers, hideHeader
           )}
         </div>
       </div>
+      )}
 
       {/* Content */}
       <div className={cn('flex-1 overflow-y-auto', viewMode === 'feed' ? '' : 'p-4')}>

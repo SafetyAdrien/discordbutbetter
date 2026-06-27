@@ -159,6 +159,7 @@ export function CalendarChannel({ channel, onToggleMembers, showMembers, hideHea
           )}
         </div>
       </div>
+      )}
 
       {viewMode === 'agenda' ? (
         <ContextMenu>

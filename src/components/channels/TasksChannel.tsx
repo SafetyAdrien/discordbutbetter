@@ -102,6 +102,7 @@ export function TasksChannel({ channel, onToggleMembers, showMembers, hideHeader
           )}
         </div>
       </div>
+      )}
 
       {/* Add Task (desktop inline) */}
       {canCreateTasks && (

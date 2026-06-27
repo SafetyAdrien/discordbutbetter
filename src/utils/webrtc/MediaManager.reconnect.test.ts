@@ -74,9 +74,12 @@ async function freshManager() {
   return mod.mediaManager;
 }
 
-function lastAudioElement(): HTMLAudioElement {
-  const all = document.querySelectorAll("audio");
-  return all[all.length - 1] as HTMLAudioElement;
+function audioFor(mm: unknown, peerId: string): HTMLAudioElement {
+  const map = (mm as { remoteAudioElements: Map<string, HTMLAudioElement> })
+    .remoteAudioElements;
+  const el = map.get(peerId);
+  if (!el) throw new Error(`no audio element registered for ${peerId}`);
+  return el;
 }
 
 describe("MediaManager — reconnect audio invariant (Bug #2 regression)", () => {

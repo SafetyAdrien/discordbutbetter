@@ -49,6 +49,13 @@ export function VoiceControls({
     setAudioFilter,
     outputVolume,
     setOutputVolume,
+    inputDeviceId,
+    outputDeviceId,
+    availableInputs,
+    availableOutputs,
+    setInputDeviceId,
+    setOutputDeviceId,
+    outputSinkSupported,
   } = useVoice();
 
   return (

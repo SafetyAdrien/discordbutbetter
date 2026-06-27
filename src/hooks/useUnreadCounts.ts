@@ -188,6 +188,9 @@ export function useUnreadCounts() {
       // Arm guard so any in-flight realtime INSERT/refetch with messages
       // older than this moment cannot resurrect the badge.
       markReadGuard(conversationId);
+      // Register this read moment in the cross-device monotone registry so
+      // older read events broadcast from other devices can't rewind it.
+      recordReadAt(conversationId, Date.now());
 
       await queryClient.cancelQueries({ queryKey: ['unread-counts', user?.id] });
       const previousCounts = queryClient.getQueryData<Record<string, number>>(['unread-counts', user?.id]);

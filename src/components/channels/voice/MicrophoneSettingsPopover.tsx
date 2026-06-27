@@ -23,6 +23,10 @@ interface MicrophoneSettingsPopoverProps {
   onToggleLowShelf: (v: boolean) => void;
   enableHighPass: boolean;
   onToggleHighPass: (v: boolean) => void;
+  // Fix #6 — input device selection (optional, all-or-nothing block)
+  inputDeviceId?: string;
+  availableInputs?: MediaDeviceInfo[];
+  onInputDeviceChange?: (id: string) => void | Promise<void>;
   open?: boolean;
   onOpenChange?: (o: boolean) => void;
 }

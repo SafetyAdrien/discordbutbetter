@@ -70,7 +70,13 @@ export function useLongPress({
   }, []);
 
   const move = useCallback(
-    (e: React.TouchEvent) => {
+    (e?: React.TouchEvent) => {
+      // No event = manual cancellation from a parent gesture handler.
+      // Preserve the legacy behaviour of "cancel on any move".
+      if (!e) {
+        clear();
+        return;
+      }
       const start = startPosRef.current;
       if (!start || !timerRef.current) return;
       const t = e.touches[0];

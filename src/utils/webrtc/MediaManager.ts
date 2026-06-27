@@ -48,6 +48,13 @@ const SCREEN_SHARE_PRESETS: Record<ScreenShareOptions['quality'], { width: numbe
 export class MediaManager {
   private audioContext: AudioContext | null = null;
   private localAudioStream: MediaStream | null = null;
+  /**
+   * Fix G — durable reference to the raw getUserMedia stream (pre-processing).
+   * Needed so stopMicrophone() can release the physical input device even when
+   * restartMicrophoneWith() keeps the AudioContext alive across a device swap.
+   * Without this, the OS-level mic indicator stayed lit forever after a switch.
+   */
+  private localRawStream: MediaStream | null = null;
   private localCameraStream: MediaStream | null = null;
   private localScreenStream: MediaStream | null = null;
   private analyser: AnalyserNode | null = null;

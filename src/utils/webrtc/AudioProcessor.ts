@@ -347,7 +347,13 @@ export class AudioProcessor {
           try { this.preRNNoiseTap.disconnect(this.rnnoiseGainNode); } catch { /* already */ }
           if (!this.rnnoiseNode && this.rnnoiseLoaded) {
             try {
-              this.rnnoiseNode = new AudioWorkletNode(this.audioContext, NoiseSuppressorWorklet_Name);
+              // Fix J — same explicit mono config as the initial creation site.
+              this.rnnoiseNode = new AudioWorkletNode(this.audioContext, NoiseSuppressorWorklet_Name, {
+                channelCount: 1,
+                channelCountMode: 'explicit',
+                channelInterpretation: 'discrete',
+                outputChannelCount: [1],
+              });
             } catch (e) {
               console.warn('[AudioProcessor] Could not lazy-create RNNoise:', e);
             }

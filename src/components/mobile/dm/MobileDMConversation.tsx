@@ -31,6 +31,10 @@ import { format, isSameDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { haptics } from '@/lib/haptics';
 import { toast } from 'sonner';
+import { useDMPolls, useDeleteDMPoll, useEndDMPoll, DMPoll } from '@/hooks/useDMPolls';
+import { DMPollDisplay } from '@/components/chat/DMPollDisplay';
+import { BarChart2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface Props {
   conversationId: string;

@@ -19,9 +19,11 @@ export interface ForumChannelProps {
   serverId?: string;
   onToggleMembers?: () => void;
   showMembers?: boolean;
+  /** Hide the internal header bar (used when a parent shell — e.g. MobileLayout — already renders one). */
+  hideHeader?: boolean;
 }
 
-export function ForumChannel({ channel, serverId, onToggleMembers, showMembers }: ForumChannelProps) {
+export function ForumChannel({ channel, serverId, onToggleMembers, showMembers, hideHeader = false }: ForumChannelProps) {
   const { data: canCreatePosts = true } = useHasChannelPermission(channel.id, 'create_forum_posts');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'recent' | 'popular'>('recent');
@@ -63,6 +65,7 @@ export function ForumChannel({ channel, serverId, onToggleMembers, showMembers }
       <div className={cn('flex flex-col bg-[hsl(var(--surface-2)/0.3)] min-w-0 overflow-x-hidden', activePost ? 'flex-1 hidden md:flex' : 'flex-1')}>
 
       {/* Header */}
+      {!hideHeader && (
       <div className="h-12 px-2 sm:px-4 flex items-center gap-2 sm:gap-4 flex-shrink-0 bg-[hsl(var(--surface-2))] w-full" style={{ borderBottom: "1px solid hsl(var(--border) / 0.5)", boxShadow: "var(--shadow-elevation-1)", borderRadius: "0 0 var(--radius-xl) var(--radius-xl)" }}>
         <div className="flex items-center gap-2 min-w-0 flex-shrink">
           <StreamlineForum className="text-muted-foreground flex-shrink-0" size={16} />

@@ -539,7 +539,10 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                       ? format(new Date(message.created_at), 'HH:mm', { locale: fr })
                       : '';
 
-                    return (
+                    const msgTs = currentDate.getTime();
+                    const pollsBefore = flushPollsBefore(msgTs);
+                    return (<>
+                      {pollsBefore}
                       <div
                         key={message.id}
                         ref={(el) => {

@@ -8,7 +8,8 @@ import { StreamlineMedia } from '@/components/icons/StreamlineMedia';
 import { StreamlineCalendar } from '@/components/icons/StreamlineCalendar';
 import { StreamlineTasks } from '@/components/icons/StreamlineTasks';
 import { StreamlineStage } from '@/components/icons/StreamlineStage';
-import { Sheet, SheetContent, SheetTrigger, SheetClose } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger, SheetClose, SheetTitle } from '@/components/ui/sheet';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { MemberList } from '@/components/layout/MemberList';
@@ -111,6 +112,9 @@ export function MobileChannelHeader({
             side="right"
             className="w-[85vw] max-w-80 p-0 rounded-l-2xl bg-surface-1 [&>button.absolute]:hidden"
           >
+            <VisuallyHidden>
+              <SheetTitle>Membres du salon {channelName}</SheetTitle>
+            </VisuallyHidden>
             <div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
               <h3 className="text-sm font-semibold text-foreground ml-1">Membres</h3>
               <SheetClose asChild>

@@ -121,11 +121,6 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     catch { return 100; }
   });
 
-  // Output (headphones) volume — persisted, applied to all remote audio
-  const [outputVolume, setOutputVolumeState] = useState<number>(() => {
-    try { return parseInt(localStorage.getItem('voice-output-volume') || '100', 10); }
-    catch { return 100; }
-  });
 
   // ---- Device selection state (Fix #6) ----
   const [inputDeviceId, setInputDeviceIdState] = useState<string>(() => mediaManager.getInputDeviceId());

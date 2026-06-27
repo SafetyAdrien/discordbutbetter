@@ -58,9 +58,14 @@ export function MicrophoneSettingsPopover({
   onToggleLowShelf,
   enableHighPass,
   onToggleHighPass,
+  inputDeviceId,
+  availableInputs,
+  onInputDeviceChange,
   open,
   onOpenChange,
 }: MicrophoneSettingsPopoverProps) {
+  const showInputSelector =
+    typeof onInputDeviceChange === 'function' && Array.isArray(availableInputs);
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>

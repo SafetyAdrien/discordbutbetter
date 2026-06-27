@@ -75,6 +75,10 @@ interface VoiceContextType {
   setOutputDeviceId: (id: string) => Promise<void>;
   outputSinkSupported: boolean;
   outputSinkPartial: boolean;
+  // Mic permission gate for device enumeration
+  micPermission: 'granted' | 'denied' | 'prompt' | 'unknown';
+  refreshDevices: () => Promise<void>;
+  requestMicPermission: () => Promise<boolean>;
 }
 
 const VoiceContext = createContext<VoiceContextType | null>(null);

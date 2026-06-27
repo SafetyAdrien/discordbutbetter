@@ -3,6 +3,7 @@ import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { Headphones, Info } from 'lucide-react';
 import { DiscordHeadphones } from '@/components/icons/DiscordHeadphones';
@@ -16,6 +17,12 @@ interface HeadphonesSettingsPopoverProps {
   onToggleDeafen: () => void;
   open?: boolean;
   onOpenChange?: (o: boolean) => void;
+  // Fix C — optional output device selection
+  outputDeviceId?: string;
+  availableOutputs?: MediaDeviceInfo[];
+  onOutputDeviceChange?: (id: string) => void | Promise<void>;
+  outputSinkSupported?: boolean;
+  outputSinkPartial?: boolean;
 }
 
 export function HeadphonesSettingsPopover({
@@ -26,7 +33,15 @@ export function HeadphonesSettingsPopover({
   onToggleDeafen,
   open,
   onOpenChange,
+  outputDeviceId,
+  availableOutputs,
+  onOutputDeviceChange,
+  outputSinkSupported,
+  outputSinkPartial,
 }: HeadphonesSettingsPopoverProps) {
+  const showDeviceSelector =
+    typeof onOutputDeviceChange === 'function' && Array.isArray(availableOutputs);
+
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>{children}</PopoverTrigger>
@@ -54,6 +69,46 @@ export function HeadphonesSettingsPopover({
               onValueChange={([v]) => onOutputVolumeChange(v)}
             />
           </div>
+
+          {showDeviceSelector && (
+            <>
+              <Separator />
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Headphones className="w-3.5 h-3.5 text-muted-foreground" />
+                  <Label className="text-xs text-muted-foreground">Périphérique de sortie</Label>
+                </div>
+                <Select
+                  value={outputDeviceId || 'default'}
+                  onValueChange={(v) => onOutputDeviceChange!(v)}
+                >
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Périphérique par défaut" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="default">Périphérique par défaut</SelectItem>
+                    {availableOutputs!
+                      .filter((d) => d.deviceId && d.deviceId !== 'default')
+                      .map((d) => (
+                        <SelectItem key={d.deviceId} value={d.deviceId}>
+                          {d.label || `Sortie ${d.deviceId.slice(0, 6)}`}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+                {outputSinkSupported === false && (
+                  <p className="text-[10px] text-muted-foreground leading-tight">
+                    Ce navigateur ne supporte pas pleinement le changement de sortie audio.
+                  </p>
+                )}
+                {outputSinkSupported !== false && outputSinkPartial === true && (
+                  <p className="text-[10px] text-muted-foreground leading-tight">
+                    Certains flux peuvent ignorer ce choix sur ce navigateur.
+                  </p>
+                )}
+              </div>
+            </>
+          )}
 
           <Separator />
 

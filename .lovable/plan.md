@@ -1,71 +1,71 @@
-## Voie 2 réelle (recréation AudioContext + analyser) + cohérence sélecteur sortie
+# Plan — Vérification voice_signals (3 scénarios + comparatif audience)
 
-### Fix A — `setOutputSinkId` : fallback constructeur `AudioContext({ sinkId })`
-Dans `src/utils/webrtc/MediaManager.ts::setOutputSinkId`, après la tentative existante `ctx.setSinkId()` :
+## Confirmé en audit (avant test)
 
-- Probe one-shot mémorisée sur l'instance : si `AudioContext.prototype.setSinkId` est absente mais que `new AudioContext({ sinkId: '' })` réussit, entrer la branche fallback.
-- **Itérer uniquement sur les entrées de `remoteAudioContexts` dont `entry.gainNode !== null`** (chaîne d'amplification effective > 1 active, voie 2 réellement câblée vers `destination`). Les autres entrées sortent par la voie 1 (`<audio>` natif) déjà rerouté par `setSinkId` sur l'élément — leur recréer un contexte serait gratuit et perturberait inutilement l'analyser → indicateur de niveau qui clignote sans raison.
+- **Salon vocal** → `voice_signals.channel_id = channels.id` → policy stricte `has_channel_permission(channel_id, 'connect_voice')` ✅ alignée.
+- **DM** → `dm_call_signals`, table dédiée, hors scope.
+- **Stage** → `useStageWebRTC.ts:112` passe `sessionId` (`stage_sessions.id`) en `channel_id` à `SignalingService`. La policy stricte appelle `has_channel_permission` sur cet UUID → retourne `false` → **toute insertion `voice_signals` côté Stage est rejetée** (speaker ET audience).
 
-Pour chaque entrée éligible :
-1. Capturer **uniquement** `savedGain = entry.gainNode.gain.value` (seul état dynamique runtime ; limiter/saturator sont des constantes pures via `_createLimiter` / `_createSaturator`).
-2. Conserver la référence au `MediaStream` distant déjà attaché.
-3. `try { newCtx = new AudioContext({ sinkId: this._outputDeviceId, sampleRate: 48000, latencyHint: 'interactive' }) }`. Sur échec : `console.warn`, conserver l'entrée existante, passer à la suivante.
-4. Sur succès, recréer **toute la topologie** sur `newCtx`, les deux branches :
-   ```text
-   newSource   = newCtx.createMediaStreamSource(stream)
-   newAnalyser = newCtx.createAnalyser()
-   newAnalyser.fftSize = 2048                  // identique L.486
-   newAnalyser.smoothingTimeConstant = 0.3     // identique L.487
-   newGain     = newCtx.createGain(); newGain.gain.value = savedGain
-   newLimiter  = this._createLimiter(newCtx)   // factory pure
-   newSaturator= this._createSaturator(newCtx) // factory pure (tanh, oversample '4x')
+Conséquence côté audience : WebRTC nécessite un échange offer/answer/ICE même pour un peer purement receveur. Si le signaling de l'audience est bloqué, **l'audience n'entend rien** — pas seulement "ne peut pas parler".
 
-   newSource.connect(newAnalyser)                                  // branche lecture niveau
-   newSource.connect(newGain)
-   newGain.connect(newLimiter)
-   newLimiter.connect(newSaturator)
-   newSaturator.connect(newCtx.destination)                        // branche audible
-   ```
-   L'analyser est **obligatoire** sinon `getRemoteSpeakingLevel` / `getRemoteFrequencyData` figent l'anneau "qui parle" du pair après changement de sortie.
-5. Disconnect propre des anciens nœuds, `await oldContext.close()` sous try/catch, remplacer l'entry dans la `Map` avec la nouvelle structure complète `{ context, analyser, source, gainNode, limiterNode, saturatorNode }`.
+## Scénarios de test
 
-Aucun changement à `_createLimiter` / `_createSaturator` ni à `AudioProcessor.ts`.
+### Scénario 1 — Salon vocal standard
+A et B rejoignent un salon `type=voice`. Attendu : tous les POST `/voice_signals` en 201, échange ICE/SDP complet, audio bidirectionnel OK.
 
-### Fix B — `outputSinkSupported` en logique ET
-Dans `MediaManager.ts`, exposer deux probes statiques mémorisées :
-- `canRouteNativeAudioToDevice()` → `'setSinkId' in HTMLMediaElement.prototype`.
-- `canRouteWebAudioToDevice()` → vraie si `'setSinkId' in AudioContext.prototype` **OU** si `new AudioContext({ sinkId: '' })` réussit (probe one-shot, contexte fermé immédiatement).
+### Scénario 2 — Stage speaker + audience (état actuel)
+- A démarre une `stage_session`, passe `speaker`.
+- B rejoint en `audience`.
+- Capture du premier POST `/voice_signals` côté A **et** côté B.
+- Attendu actuel : 403/42501 des deux côtés → confirme la régression.
+- **Vérification audio explicite côté B (audience)** : capture des connexion-states de `RTCPeerConnection` et vérifie qu'aucun `remote audio track` n'arrive (la cible du test, c'est ça — pas juste le code HTTP).
 
-Dans `VoiceContext.tsx` :
-- `outputSinkSupported = canRouteNative && canRouteWebAudio` (vérité fonctionnelle complète).
-- Ajouter `outputSinkPartial = (canRouteNative || canRouteWebAudio) && !outputSinkSupported`, exposé via le contexte pour permettre un message d'avertissement nuancé dans les popovers.
-- Propager les deux flags aux deux popovers (`OutputSettingsPopover` et `HeadphonesSettingsPopover` via `UserProfileCard`).
+### Scénario 3 — Stage speaker ↔ speaker
+A et B tous deux speakers. Vérifie le P2P entre speakers.
 
-### Fix C — Brancher la sélection de sortie sur `UserProfileCard`
-`src/components/channels/voice/HeadphonesSettingsPopover.tsx` :
-- Ajouter props optionnelles : `outputDeviceId?`, `availableOutputs?: MediaDeviceInfo[]`, `onOutputDeviceChange?`, `outputSinkSupported?: boolean`, `outputSinkPartial?: boolean`.
-- Si `onOutputDeviceChange` et `availableOutputs` sont fournis, afficher un bloc `Select` "Périphérique de sortie" entre le slider "Volume général" et le bouton "Couper le son" (réplique exacte du bloc d'`OutputSettingsPopover`).
-- Sous-ligne d'info : "Ce navigateur ne supporte pas pleinement le changement de sortie audio." si `outputSinkSupported === false`, ou "Certains flux peuvent ignorer ce choix sur ce navigateur." si `outputSinkPartial === true`.
+## Décision migration : NE PAS écrire de SQL maintenant
 
-`src/components/profile/UserProfileCard.tsx` :
-- Câbler depuis `voiceCtx` : `outputDeviceId`, `availableOutputs`, `onOutputDeviceChange={voiceCtx.setOutputSinkId}`, `outputSinkSupported`, `outputSinkPartial`.
+Si Stage est confirmé KO, on **repasse en plan** avec les résultats avant d'écrire la migration. Deux variantes à comparer en test, pas à choisir à l'aveugle :
 
-### Hors scope (dette technique, notée)
-Duplication `OutputSettingsPopover` (Fix #6) vs `HeadphonesSettingsPopover` (historique) → fusion ultérieure en un seul composant. Pas touché ici pour garder le diff focalisé.
+### Variante A — Permissive (audience peut signaler)
+```sql
+WITH CHECK (
+  auth.uid() = from_user_id
+  AND (
+    has_channel_permission(auth.uid(), channel_id, 'connect_voice')
+    OR EXISTS (
+      SELECT 1 FROM public.stage_sessions s
+      WHERE s.id = voice_signals.channel_id
+        AND has_channel_permission(auth.uid(), s.channel_id, 'connect_voice')
+    )
+  )
+);
+```
 
-### Diff attendu
-- `src/utils/webrtc/MediaManager.ts` : branche fallback `AudioContext({ sinkId })` dans `setOutputSinkId` filtrée sur `gainNode !== null`, recréation des deux branches (analyser + chaîne audible), probes statiques `canRouteNativeAudioToDevice` / `canRouteWebAudioToDevice`.
-- `src/contexts/VoiceContext.tsx` : refonte calcul `outputSinkSupported` (ET) + nouveau `outputSinkPartial`, propagation aux popovers.
-- `src/components/channels/voice/HeadphonesSettingsPopover.tsx` : nouvelles props optionnelles + bloc sélecteur de sortie + sous-ligne d'info.
-- `src/components/profile/UserProfileCard.tsx` : passage des props au popover casque.
-- **Non modifiés** : `AudioProcessor.ts`, `_createLimiter`, `_createSaturator`.
+### Variante B — Stricte (signaling réservé speaker/moderator)
+Comme A, mais avec jointure `stage_participants` filtrant `role IN ('speaker','moderator')` sur la branche Stage.
 
-### Validation
-- Vitest sous `src/utils/webrtc/` : mock `AudioContext` sans `setSinkId` méthode mais acceptant `{ sinkId }` au constructeur. Vérifier :
-  - Seules les entrées avec `gainNode !== null` sont recréées (regression guard : entrée sans gainNode → ancienne entry intacte).
-  - Topologie reconstruite : 5 `connect()` attendus (`source→analyser`, `source→gain`, `gain→limiter`, `limiter→saturator`, `saturator→destination`).
-  - `analyser.fftSize === 2048`, `analyser.smoothingTimeConstant === 0.3`.
-  - `gain.gain.value` préservé entre ancien et nouveau contexte.
-  - `oldContext.close()` appelé exactement une fois.
-- Test des 4 combinaisons natif×webaudio pour `outputSinkSupported` (ET) et `outputSinkPartial`.
-- `tsgo --noEmit` clean.
+### Test comparatif (après confirmation Stage KO)
+Appliquer A **en sandbox locale du test** (via une migration temporaire ou un toggle de policy dans un schéma de test), rejouer Scénarios 2 et 3, mesurer :
+- Audio reçu côté audience (oui/non) sous A.
+- Audio reçu côté audience sous B (en bloquant son signaling sortant).
+- Risque d'abus identifié sous A (audience peut-elle spammer des signaux non sollicités vers speakers ?).
+
+Décision finale tranchée sur la base de ces mesures, pas sur une hypothèse.
+
+## Méthode de test (Playwright)
+
+- 2 contextes browser headless, sessions Supabase injectées.
+- Hooks console + response sur `/rest/v1/voice_signals`.
+- Pour Stage : instrumentation supplémentaire des `RTCPeerConnection.connectionState` et présence/absence de `RTCRtpReceiver` audio actif côté audience.
+- Snapshot DB après chaque phase.
+- Si une seule session Supabase injectée → STOP, demander un 2e compte de test.
+
+## Sortie
+
+Rapport en chat (pas de SQL appliqué) :
+- Matrice 3 scénarios × {HTTP signaling, ICE complet, audio bidirectionnel, audio reçu audience}.
+- Recommandation A vs B argumentée par les mesures du test comparatif.
+- Demande de validation explicite avant d'écrire la migration corrective.
+
+Approuvé : je passe en build mode pour exécuter les 3 scénarios + comparatif A/B, puis je reviens en plan avec les résultats.

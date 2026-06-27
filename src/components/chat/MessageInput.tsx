@@ -79,6 +79,7 @@ export function MessageInput({
   channelId = null,
   channelName = 'général',
   threadId = null,
+  dmConversationId = null,
   members = [],
   roles = [],
   channels = [],

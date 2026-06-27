@@ -1960,7 +1960,7 @@ threads={threadsByChannel[channel.id] || []}
                 })()}
               </DragOverlay>
             </DndContext>
-          </div>
+          </ChannelListScrollContainer>
         </ContextMenuTrigger>
         <ContextMenuContent className="w-52">
           <ContextMenuItem

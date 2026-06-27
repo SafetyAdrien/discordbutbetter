@@ -33,6 +33,7 @@ export function rememberProfileTrigger(e: React.MouseEvent | MouseEvent) {
 
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { UserAvatarImage } from '@/components/ui/user-avatar-image';
+import { useImageGuardProps } from '@/hooks/useDownloadPermissions';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';

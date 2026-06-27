@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, Fragment } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -31,6 +31,10 @@ import { format, isSameDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { haptics } from '@/lib/haptics';
 import { toast } from 'sonner';
+import { useDMPolls, useDeleteDMPoll, useEndDMPoll, DMPoll } from '@/hooks/useDMPolls';
+import { DMPollDisplay } from '@/components/chat/DMPollDisplay';
+import { BarChart2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface Props {
   conversationId: string;
@@ -208,6 +212,45 @@ export function MobileDMConversation({ conversationId, onBack }: Props) {
     });
   }, [messages, user, isGroup]);
 
+  // DM Polls
+  const { data: polls = [] } = useDMPolls(conversationId);
+  const deletePoll = useDeleteDMPoll();
+  const endPoll = useEndDMPoll();
+  const sortedPolls = useMemo(
+    () => [...polls].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()),
+    [polls],
+  );
+  const renderMobilePoll = (poll: DMPoll) => {
+    const isOwn = poll.author_id === user?.id;
+    return (
+      <div key={`poll-${poll.id}`} className="px-3 py-2">
+        <div className="rounded-2xl bg-[hsl(var(--surface-2))] p-3">
+          <div className="flex items-center gap-2 mb-2">
+            <BarChart2 className="w-3.5 h-3.5 text-primary" />
+            <span className="text-[11px] font-semibold text-primary">SONDAGE</span>
+            <span className="text-[10px] text-muted-foreground ml-1">
+              {poll.author?.display_name || 'Utilisateur'}
+            </span>
+            <span className="text-[10px] text-muted-foreground/60 ml-auto">
+              {format(new Date(poll.created_at), 'HH:mm', { locale: fr })}
+            </span>
+          </div>
+          <DMPollDisplay poll={poll} conversationId={conversationId} />
+          {isOwn && (
+            <div className="flex items-center gap-2 mt-2">
+              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => endPoll.mutate({ pollId: poll.id, conversationId })}>
+                Terminer
+              </Button>
+              <Button variant="ghost" size="sm" className="h-7 text-xs text-destructive" onClick={() => deletePoll.mutate({ pollId: poll.id, conversationId })}>
+                Supprimer
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const handleSend = async (
     attachmentsToSend?: { file: File; name: string; description: string; isSpoiler: boolean }[],
   ) => {
@@ -303,40 +346,63 @@ export function MobileDMConversation({ conversationId, onBack }: Props) {
               </p>
             </div>
           ) : (
-            grouped.map(({ raw, bubble, showAvatar, showAuthorName, isLastOfBurst, showDateSeparator }) => (
-              <div
-                key={raw.id}
-                ref={(el) => {
-                  if (el) messageRefs.current.set(raw.id, el);
-                  else messageRefs.current.delete(raw.id);
-                }}
-              >
-                {showDateSeparator && (
-                  <div className="sticky top-0 z-10 my-2 flex items-center justify-center">
-                    <span className="px-3 py-1 text-[11px] font-medium text-muted-foreground bg-[hsl(var(--surface-2))]/80 backdrop-blur rounded-full">
-                      {formatDateLabel(new Date(raw.created_at || Date.now()))}
-                    </span>
-                  </div>
-                )}
-                <MobileMessageBubble
-                  message={bubble}
-                  showAvatar={showAvatar}
-                  showAuthorName={showAuthorName}
-                  isLastOfBurst={isLastOfBurst}
-                  isGroup={isGroup}
-                  reactions={reactionsData[raw.id] || []}
-                  currentUserId={user?.id ?? null}
-                  onReply={() => setReplyingTo(raw)}
-                  onLongPress={() => setActionMessage(raw)}
-                  onToggleReaction={handleToggleReaction}
-                  onAvatarTap={(uid) => {
-                    setProfileUserId(uid);
-                    setShowProfile(true);
-                  }}
-                  onJumpToMessage={handleJumpToMessage}
-                />
-              </div>
-            ))
+            (() => {
+              let pollCursor = 0;
+              const flushPollsBefore = (ts: number) => {
+                const out: JSX.Element[] = [];
+                while (pollCursor < sortedPolls.length && new Date(sortedPolls[pollCursor].created_at).getTime() <= ts) {
+                  out.push(renderMobilePoll(sortedPolls[pollCursor]));
+                  pollCursor++;
+                }
+                return out;
+              };
+              const items = grouped.map(({ raw, bubble, showAvatar, showAuthorName, isLastOfBurst, showDateSeparator }) => {
+                const ts = new Date(raw.created_at || Date.now()).getTime();
+                const before = flushPollsBefore(ts);
+                return (
+                  <Fragment key={raw.id}>
+                    {before}
+                    <div
+                      ref={(el) => {
+                        if (el) messageRefs.current.set(raw.id, el);
+                        else messageRefs.current.delete(raw.id);
+                      }}
+                    >
+                      {showDateSeparator && (
+                        <div className="sticky top-0 z-10 my-2 flex items-center justify-center">
+                          <span className="px-3 py-1 text-[11px] font-medium text-muted-foreground bg-[hsl(var(--surface-2))]/80 backdrop-blur rounded-full">
+                            {formatDateLabel(new Date(raw.created_at || Date.now()))}
+                          </span>
+                        </div>
+                      )}
+                      <MobileMessageBubble
+                        message={bubble}
+                        showAvatar={showAvatar}
+                        showAuthorName={showAuthorName}
+                        isLastOfBurst={isLastOfBurst}
+                        isGroup={isGroup}
+                        reactions={reactionsData[raw.id] || []}
+                        currentUserId={user?.id ?? null}
+                        onReply={() => setReplyingTo(raw)}
+                        onLongPress={() => setActionMessage(raw)}
+                        onToggleReaction={handleToggleReaction}
+                        onAvatarTap={(uid) => {
+                          setProfileUserId(uid);
+                          setShowProfile(true);
+                        }}
+                        onJumpToMessage={handleJumpToMessage}
+                      />
+                    </div>
+                  </Fragment>
+                );
+              });
+              return (
+                <>
+                  {items}
+                  {sortedPolls.slice(pollCursor).map((p) => renderMobilePoll(p))}
+                </>
+              );
+            })()
           )}
 
           {/* Typing indicator bubble */}
@@ -398,6 +464,7 @@ export function MobileDMConversation({ conversationId, onBack }: Props) {
           onTypingStart={startTyping}
           onTypingStop={stopTyping}
           channelId={null}
+          dmConversationId={conversationId}
           channelName={displayName}
           compact
         />

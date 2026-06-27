@@ -3,6 +3,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Button } from '@/components/ui/button';
 import { EmojiStickerPicker } from './EmojiStickerPicker';
 import { CreatePollModal } from './CreatePollModal';
+import { CreateDMPollModal } from './CreateDMPollModal';
 import { InputMarkdownOverlay, hasOverlayMarkdown, OVERLAY_FONT_SIZE, OVERLAY_LINE_HEIGHT, INPUT_FONT_FAMILY, MentionEntry } from './InputMarkdownOverlay';
 
 import { MentionAutocomplete, MentionMember, MentionRole, MentionChannel } from './MentionAutocomplete';
@@ -29,6 +30,8 @@ interface MessageInputProps {
   channelId?: string | null;
   channelName?: string;
   threadId?: string | null;
+  // DM context : when set, the poll button opens a DM-poll modal
+  dmConversationId?: string | null;
   // Mention autocomplete data
   members?: MentionMember[];
   roles?: MentionRole[];
@@ -76,6 +79,7 @@ export function MessageInput({
   channelId = null,
   channelName = 'général',
   threadId = null,
+  dmConversationId = null,
   members = [],
   roles = [],
   channels = [],
@@ -977,7 +981,7 @@ export function MessageInput({
                     <span>Ajouter une image</span>
                   </button>
                 )}
-                {(channelId || threadId) && canCreatePolls && (
+                {(channelId || threadId || dmConversationId) && canCreatePolls && (
                   <button
                     type="button"
                     className="flex items-center gap-2 w-full px-3 py-2 rounded-md hover:bg-muted transition-colors text-sm"
@@ -1045,7 +1049,13 @@ export function MessageInput({
 
       
       
-      {(channelId || threadId) && (
+      {dmConversationId ? (
+        <CreateDMPollModal
+          conversationId={dmConversationId}
+          open={pollModalOpen}
+          onOpenChange={setPollModalOpen}
+        />
+      ) : (channelId || threadId) ? (
         <CreatePollModal
           channelId={channelId || ''}
           serverId={serverId}
@@ -1053,7 +1063,7 @@ export function MessageInput({
           open={pollModalOpen}
           onOpenChange={setPollModalOpen}
         />
-      )}
+      ) : null}
 
       <MentionEveryoneWarningModal
         open={pendingEveryoneMention !== null}

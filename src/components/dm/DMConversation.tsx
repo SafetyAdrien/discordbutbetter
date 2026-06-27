@@ -162,12 +162,17 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
   });
 
   const participant = participantFromList ?? directParticipant ?? null;
-  // Mark conversation as read when opened
+  // Mark conversation as read when opened OR when new messages arrive while focused.
+  // Mirrors ChatArea.tsx: skip if tab hidden, 400ms debounce.
   useEffect(() => {
-    if (conversationId) {
+    if (!user || !conversationId) return;
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+    const t = setTimeout(() => {
       markAsRead.mutate(conversationId);
-    }
-  }, [conversationId]);
+    }, 400);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversationId, user, messages.length]);
 
   // Native: detect screenshots / screen recordings and post a system message.
   useScreenCaptureDetection(conversationId);

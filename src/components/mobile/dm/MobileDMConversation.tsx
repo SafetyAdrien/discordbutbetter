@@ -119,11 +119,17 @@ export function MobileDMConversation({ conversationId, onBack }: Props) {
     : participant?.display_name || 'Utilisateur';
   const avatarUrl = isGroup ? conversation?.icon_url || null : participant?.avatar_url || null;
 
-  // Mark as read on open + when messages change while open
+  // Mark as read on open + when new messages arrive while focused.
+  // Mirrors ChatArea.tsx: skip if tab hidden, 400ms debounce.
   useEffect(() => {
-    if (conversationId) markAsRead.mutate(conversationId);
+    if (!user || !conversationId) return;
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+    const t = setTimeout(() => {
+      markAsRead.mutate(conversationId);
+    }, 400);
+    return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conversationId]);
+  }, [conversationId, user, messages.length]);
 
   // Scroll to bottom on new messages
   useEffect(() => {

@@ -74,6 +74,7 @@ interface VoiceContextType {
   setInputDeviceId: (id: string) => Promise<void>;
   setOutputDeviceId: (id: string) => Promise<void>;
   outputSinkSupported: boolean;
+  outputSinkPartial: boolean;
 }
 
 const VoiceContext = createContext<VoiceContextType | null>(null);

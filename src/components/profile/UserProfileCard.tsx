@@ -314,6 +314,9 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers, 
             onToggleLowShelf={(v) => voiceCtx.setAudioFilter('lowShelf', v)}
             enableHighPass={voiceCtx.audioFilters.highPass}
             onToggleHighPass={(v) => voiceCtx.setAudioFilter('highPass', v)}
+            inputDeviceId={voiceCtx.inputDeviceId}
+            availableInputs={voiceCtx.availableInputs}
+            onInputDeviceChange={voiceCtx.setInputDeviceId}
           >
             <button className="px-0.5 py-1 hover:bg-muted rounded-l-none rounded-r-md transition-colors border-l border-border/30">
               {micPopoverOpen ? <ChevronUp className="w-[15px] h-[15px] text-muted-foreground" /> : <ChevronDown className="w-[15px] h-[15px] text-muted-foreground" />}

@@ -3,8 +3,9 @@ import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { ShieldCheck, AudioLines, SlidersHorizontal } from 'lucide-react';
+import { ShieldCheck, AudioLines, SlidersHorizontal, Mic } from 'lucide-react';
 import type { NoiseSuppressonMode, VADSensitivity } from '@/utils/webrtc/AudioProcessor';
 
 interface MicrophoneSettingsPopoverProps {
@@ -22,6 +23,10 @@ interface MicrophoneSettingsPopoverProps {
   onToggleLowShelf: (v: boolean) => void;
   enableHighPass: boolean;
   onToggleHighPass: (v: boolean) => void;
+  // Fix #6 — input device selection (optional, all-or-nothing block)
+  inputDeviceId?: string;
+  availableInputs?: MediaDeviceInfo[];
+  onInputDeviceChange?: (id: string) => void | Promise<void>;
   open?: boolean;
   onOpenChange?: (o: boolean) => void;
 }
@@ -53,9 +58,14 @@ export function MicrophoneSettingsPopover({
   onToggleLowShelf,
   enableHighPass,
   onToggleHighPass,
+  inputDeviceId,
+  availableInputs,
+  onInputDeviceChange,
   open,
   onOpenChange,
 }: MicrophoneSettingsPopoverProps) {
+  const showInputSelector =
+    typeof onInputDeviceChange === 'function' && Array.isArray(availableInputs);
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>
@@ -70,6 +80,37 @@ export function MicrophoneSettingsPopover({
           </div>
 
           <Separator />
+
+          {showInputSelector && (
+            <>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Mic className="w-3.5 h-3.5 text-muted-foreground" />
+                  <Label className="text-xs text-muted-foreground">Périphérique d'entrée</Label>
+                </div>
+                <Select
+                  value={inputDeviceId || 'default'}
+                  onValueChange={(v) => onInputDeviceChange!(v)}
+                >
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Micro par défaut" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="default">Micro par défaut</SelectItem>
+                    {availableInputs!
+                      .filter((d) => d.deviceId && d.deviceId !== 'default')
+                      .map((d) => (
+                        <SelectItem key={d.deviceId} value={d.deviceId}>
+                          {d.label || `Micro ${d.deviceId.slice(0, 6)}`}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Separator />
+            </>
+          )}
+
 
           {/* Mic Volume */}
           <div className="space-y-2">

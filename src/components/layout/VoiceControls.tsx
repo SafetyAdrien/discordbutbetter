@@ -49,6 +49,13 @@ export function VoiceControls({
     setAudioFilter,
     outputVolume,
     setOutputVolume,
+    inputDeviceId,
+    outputDeviceId,
+    availableInputs,
+    availableOutputs,
+    setInputDeviceId,
+    setOutputDeviceId,
+    outputSinkSupported,
   } = useVoice();
 
   return (
@@ -155,6 +162,9 @@ export function VoiceControls({
               onToggleLowShelf={(v) => setAudioFilter('lowShelf', v)}
               enableHighPass={audioFilters.highPass}
               onToggleHighPass={(v) => setAudioFilter('highPass', v)}
+              inputDeviceId={inputDeviceId}
+              availableInputs={availableInputs}
+              onInputDeviceChange={setInputDeviceId}
             >
               <Button
                 size="sm"
@@ -191,7 +201,14 @@ export function VoiceControls({
                 {isDeafened ? 'Activer le son' : 'Couper le son'}
               </TooltipContent>
             </Tooltip>
-            <OutputSettingsPopover outputVolume={outputVolume} onOutputVolumeChange={setOutputVolume}>
+            <OutputSettingsPopover
+              outputVolume={outputVolume}
+              onOutputVolumeChange={setOutputVolume}
+              outputDeviceId={outputDeviceId}
+              availableOutputs={availableOutputs}
+              onOutputDeviceChange={setOutputDeviceId}
+              outputSinkSupported={outputSinkSupported}
+            >
               <Button
                 size="sm"
                 variant="ghost"

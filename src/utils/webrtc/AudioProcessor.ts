@@ -67,8 +67,15 @@ export class AudioProcessor {
   private deEsserFilter: BiquadFilterNode | null = null;
   private lowShelfFilter: BiquadFilterNode | null = null;
   private compressorNode: DynamicsCompressorNode | null = null;
+  /** User-controlled mic input gain (0..2). Decoupled from the noise gate. */
   private gainNode: GainNode | null = null;
+  /** Dedicated noise-gate gain so the VAD never overrides mic volume (Fix #2). */
+  private gateGainNode: GainNode | null = null;
   private rnnoiseGainNode: GainNode | null = null;
+  /** Node feeding into the RNNoise branch — kept so we can bypass cleanly (Fix #1). */
+  private preRNNoiseTap: AudioNode | null = null;
+  /** True when RNNoise is currently bypassed (mode=off). */
+  private rnnoiseBypassed = false;
   private destinationNode: MediaStreamAudioDestinationNode | null = null;
   private rnnoiseNode: AudioWorkletNode | null = null;
   private rnnoiseLoaded = false;
@@ -141,7 +148,9 @@ export class AudioProcessor {
    */
   async processStream(inputStream: MediaStream): Promise<MediaStream> {
     if (!this.audioContext) {
-      this.audioContext = new AudioContext({ sampleRate: 48000 });
+      // Fix #3 — pin to 48 kHz interactive context. Mismatching the OS default
+      // (often 44.1 kHz) produced the metallic resampling artifacts.
+      this.audioContext = new AudioContext({ sampleRate: 48000, latencyHint: 'interactive' });
     }
 
     if (this.audioContext.state === 'suspended') {
@@ -167,7 +176,7 @@ export class AudioProcessor {
     this.deEsserFilter.type = 'peaking';
     this.deEsserFilter.frequency.value = 6500;
     this.deEsserFilter.Q.value = 2.0;
-    this.deEsserFilter.gain.value = -4; // -4dB cut on sibilants
+    this.deEsserFilter.gain.value = -4;
     lastNode.connect(this.deEsserFilter);
     lastNode = this.deEsserFilter;
 
@@ -179,27 +188,40 @@ export class AudioProcessor {
     lastNode.connect(this.lowShelfFilter);
     lastNode = this.lowShelfFilter;
 
-    // RNNoise ML noise suppression (Krisp-like)
+    // Save the tap point *before* RNNoise so we can bypass cleanly (Fix #1).
+    this.preRNNoiseTap = lastNode;
+
+    // Always create rnnoiseGainNode so the bypass path has a stable shape.
+    this.rnnoiseGainNode = this.audioContext.createGain();
+
     if (this.config.noiseSuppression !== 'off' && this.config.enableRNNoise) {
       const loaded = await this.loadRNNoise(this.audioContext);
       if (loaded) {
         try {
           this.rnnoiseNode = new AudioWorkletNode(this.audioContext, NoiseSuppressorWorklet_Name);
-          lastNode.connect(this.rnnoiseNode);
-          lastNode = this.rnnoiseNode;
-
-          // RNNoise output gain (for low vs high mode)
-          this.rnnoiseGainNode = this.audioContext.createGain();
+          this.preRNNoiseTap.connect(this.rnnoiseNode);
+          this.rnnoiseNode.connect(this.rnnoiseGainNode);
           this.rnnoiseGainNode.gain.value = this.config.noiseSuppression === 'low' ? 0.85 : 1.0;
-          lastNode.connect(this.rnnoiseGainNode);
-          lastNode = this.rnnoiseGainNode;
-
+          this.rnnoiseBypassed = false;
           console.log('[AudioProcessor] RNNoise noise suppression active, mode:', this.config.noiseSuppression);
         } catch (error) {
           console.warn('[AudioProcessor] Failed to create RNNoise node:', error);
+          this.preRNNoiseTap.connect(this.rnnoiseGainNode);
+          this.rnnoiseGainNode.gain.value = 1;
+          this.rnnoiseBypassed = true;
         }
+      } else {
+        this.preRNNoiseTap.connect(this.rnnoiseGainNode);
+        this.rnnoiseGainNode.gain.value = 1;
+        this.rnnoiseBypassed = true;
       }
+    } else {
+      // Mode 'off' — straight dry path through rnnoiseGainNode at unity gain.
+      this.preRNNoiseTap.connect(this.rnnoiseGainNode);
+      this.rnnoiseGainNode.gain.value = 1;
+      this.rnnoiseBypassed = true;
     }
+    lastNode = this.rnnoiseGainNode;
 
     // Dynamic compressor
     if (this.config.enableCompression) {
@@ -213,15 +235,21 @@ export class AudioProcessor {
       lastNode = this.compressorNode;
     }
 
-    // Gain node (for noise gate control)
+    // Mic volume gain (user controlled, 0..2). Independent of the noise gate.
     this.gainNode = this.audioContext.createGain();
     this.gainNode.gain.value = 1;
     lastNode.connect(this.gainNode);
     lastNode = this.gainNode;
 
-    // Analyser for spectral VAD — larger FFT for better frequency resolution
+    // Noise gate gain — the VAD opens/closes this without touching mic volume (Fix #2).
+    this.gateGainNode = this.audioContext.createGain();
+    this.gateGainNode.gain.value = 1;
+    lastNode.connect(this.gateGainNode);
+    lastNode = this.gateGainNode;
+
+    // Analyser for spectral VAD
     this.analyserNode = this.audioContext.createAnalyser();
-    this.analyserNode.fftSize = 4096; // 2048 frequency bins, ~11.7Hz resolution at 48kHz
+    this.analyserNode.fftSize = 4096;
     this.analyserNode.smoothingTimeConstant = 0.3;
     lastNode.connect(this.analyserNode);
 
@@ -241,21 +269,39 @@ export class AudioProcessor {
   setNoiseSuppression(mode: NoiseSuppressonMode): void {
     this.config.noiseSuppression = mode;
 
-    if (this.rnnoiseNode && this.rnnoiseGainNode) {
+    // Fix #1 — bypass RNNoise cleanly instead of zeroing its output gain
+    // (which previously muted the mic entirely when set to "off").
+    if (this.audioContext && this.rnnoiseGainNode && this.preRNNoiseTap) {
       if (mode === 'off') {
-        // Bypass: set RNNoise output gain to 0 and connect source directly
-        // Since we can't easily remove nodes, we disconnect rnnoise output
-        this.rnnoiseGainNode.gain.value = 0;
+        if (!this.rnnoiseBypassed) {
+          try { this.rnnoiseNode?.disconnect(this.rnnoiseGainNode); } catch { /* already */ }
+          try { this.preRNNoiseTap.connect(this.rnnoiseGainNode); } catch { /* already */ }
+          this.rnnoiseBypassed = true;
+        }
+        this.rnnoiseGainNode.gain.value = 1;
       } else {
+        // Re-enable RNNoise (lazy-create if it wasn't built at init).
+        if (this.rnnoiseBypassed) {
+          try { this.preRNNoiseTap.disconnect(this.rnnoiseGainNode); } catch { /* already */ }
+          if (!this.rnnoiseNode && this.rnnoiseLoaded) {
+            try {
+              this.rnnoiseNode = new AudioWorkletNode(this.audioContext, NoiseSuppressorWorklet_Name);
+            } catch (e) {
+              console.warn('[AudioProcessor] Could not lazy-create RNNoise:', e);
+            }
+          }
+          if (this.rnnoiseNode) {
+            try { this.preRNNoiseTap.connect(this.rnnoiseNode); } catch { /* already */ }
+            try { this.rnnoiseNode.connect(this.rnnoiseGainNode); } catch { /* already */ }
+            this.rnnoiseBypassed = false;
+          } else {
+            // RNNoise unavailable — fall back to dry path
+            try { this.preRNNoiseTap.connect(this.rnnoiseGainNode); } catch {}
+            this.rnnoiseBypassed = true;
+          }
+        }
         this.rnnoiseGainNode.gain.value = mode === 'low' ? 0.85 : 1.0;
       }
-    }
-
-    // For 'high' mode, apply more aggressive noise gate threshold
-    if (mode === 'high') {
-      this.config.noiseGateThreshold = -45;
-    } else {
-      this.config.noiseGateThreshold = -50;
     }
 
     console.log('[AudioProcessor] Noise suppression set to:', mode);
@@ -432,22 +478,30 @@ export class AudioProcessor {
   }
 
   /**
-   * Apply noise gate (mute when below threshold)
+   * Fix #2 — actually gate the *transmitted* signal via the dedicated
+   * gateGainNode. Threshold scales with VAD sensitivity: high sensitivity
+   * opens the gate for quieter sounds, low sensitivity demands more volume.
    */
   applyNoiseGate(level: number): void {
-    if (!this.gainNode || !this.config.enableNoiseGate) return;
+    if (!this.gateGainNode || !this.audioContext || !this.config.enableNoiseGate) return;
 
-    const threshold = this.ambientNoiseLevel + 0.05;
+    const sensitivityOffset: Record<VADSensitivity, number> = {
+      low: 0.08,
+      medium: 0.05,
+      high: 0.02,
+    };
+    const threshold = this.ambientNoiseLevel + sensitivityOffset[this.config.vadSensitivity];
     const shouldOpen = level > threshold;
+    const now = this.audioContext.currentTime;
 
     if (shouldOpen && !this.isGateOpen) {
       this.isGateOpen = true;
-      this.gainNode.gain.cancelScheduledValues(this.audioContext!.currentTime);
-      this.gainNode.gain.linearRampToValueAtTime(
+      this.gateGainNode.gain.cancelScheduledValues(now);
+      this.gateGainNode.gain.setValueAtTime(this.gateGainNode.gain.value, now);
+      this.gateGainNode.gain.linearRampToValueAtTime(
         1,
-        this.audioContext!.currentTime + this.config.noiseGateAttack / 1000
+        now + this.config.noiseGateAttack / 1000
       );
-      
       if (this.gateHoldTimer) {
         clearTimeout(this.gateHoldTimer);
         this.gateHoldTimer = null;
@@ -456,10 +510,13 @@ export class AudioProcessor {
       if (!this.gateHoldTimer) {
         this.gateHoldTimer = setTimeout(() => {
           this.isGateOpen = false;
-          this.gainNode?.gain.cancelScheduledValues(this.audioContext!.currentTime);
-          this.gainNode?.gain.linearRampToValueAtTime(
+          if (!this.gateGainNode || !this.audioContext) return;
+          const t = this.audioContext.currentTime;
+          this.gateGainNode.gain.cancelScheduledValues(t);
+          this.gateGainNode.gain.setValueAtTime(this.gateGainNode.gain.value, t);
+          this.gateGainNode.gain.linearRampToValueAtTime(
             0,
-            this.audioContext!.currentTime + this.config.noiseGateRelease / 1000
+            t + this.config.noiseGateRelease / 1000
           );
           this.gateHoldTimer = null;
         }, 100);
@@ -579,16 +636,20 @@ export class AudioProcessor {
     this.rnnoiseGainNode?.disconnect();
     this.compressorNode?.disconnect();
     this.gainNode?.disconnect();
+    this.gateGainNode?.disconnect();
     this.analyserNode?.disconnect();
-    
+
     this.sourceNode = null;
     this.highPassFilter = null;
     this.deEsserFilter = null;
     this.lowShelfFilter = null;
     this.rnnoiseNode = null;
     this.rnnoiseGainNode = null;
+    this.preRNNoiseTap = null;
+    this.rnnoiseBypassed = false;
     this.compressorNode = null;
     this.gainNode = null;
+    this.gateGainNode = null;
     this.analyserNode = null;
     this.destinationNode = null;
     this.processedStream = null;

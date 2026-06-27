@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { ScreenShareQualityModal } from './ScreenShareQualityModal';
 import { MicrophoneSettingsPopover } from './MicrophoneSettingsPopover';
+import { useVoice } from '@/contexts/VoiceContext';
 import type { ScreenShareOptions } from '@/utils/webrtc/MediaManager';
 import type { NoiseSuppressonMode, VADSensitivity } from '@/utils/webrtc/AudioProcessor';
 
@@ -73,6 +74,8 @@ export function VoiceActionBar({
   onAudioFilterChange,
 }: VoiceActionBarProps) {
   const [showScreenShareModal, setShowScreenShareModal] = useState(false);
+  const { inputDeviceId, availableInputs, setInputDeviceId } = useVoice();
+
 
   const handleScreenShareClick = () => {
     if (isScreenSharing) {
@@ -129,6 +132,9 @@ export function VoiceActionBar({
                 onToggleLowShelf={(v) => onAudioFilterChange('lowShelf', v)}
                 enableHighPass={audioFilters.highPass}
                 onToggleHighPass={(v) => onAudioFilterChange('highPass', v)}
+                inputDeviceId={inputDeviceId}
+                availableInputs={availableInputs}
+                onInputDeviceChange={setInputDeviceId}
               >
                 <Button
                   variant="ghost"

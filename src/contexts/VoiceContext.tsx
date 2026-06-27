@@ -66,6 +66,14 @@ interface VoiceContextType {
   // Output (headphones) volume
   outputVolume: number;
   setOutputVolume: (vol: number) => void;
+  // Device selection (Fix #6)
+  inputDeviceId: string;
+  outputDeviceId: string;
+  availableInputs: MediaDeviceInfo[];
+  availableOutputs: MediaDeviceInfo[];
+  setInputDeviceId: (id: string) => Promise<void>;
+  setOutputDeviceId: (id: string) => Promise<void>;
+  outputSinkSupported: boolean;
 }
 
 const VoiceContext = createContext<VoiceContextType | null>(null);
@@ -112,6 +120,49 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     try { return parseInt(localStorage.getItem('voice-output-volume') || '100', 10); }
     catch { return 100; }
   });
+
+
+  // ---- Device selection state (Fix #6) ----
+  const [inputDeviceId, setInputDeviceIdState] = useState<string>(() => mediaManager.getInputDeviceId());
+  const [outputDeviceId, setOutputDeviceIdState] = useState<string>(() => mediaManager.getOutputDeviceId());
+  const [availableInputs, setAvailableInputs] = useState<MediaDeviceInfo[]>([]);
+  const [availableOutputs, setAvailableOutputs] = useState<MediaDeviceInfo[]>([]);
+  const outputSinkSupported = mediaManager.canRouteWebAudioToDevice() ||
+    (typeof HTMLMediaElement !== 'undefined' && 'setSinkId' in HTMLMediaElement.prototype);
+
+  // Enumerate devices on mount + when the system reports a device change.
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.enumerateDevices) return;
+    let cancelled = false;
+    const refresh = async () => {
+      try {
+        const list = await navigator.mediaDevices.enumerateDevices();
+        if (cancelled) return;
+        const ins = list.filter(d => d.kind === 'audioinput');
+        const outs = list.filter(d => d.kind === 'audiooutput');
+        setAvailableInputs(ins);
+        setAvailableOutputs(outs);
+        // If a persisted id no longer exists, fall back to 'default'.
+        if (inputDeviceId !== 'default' && !ins.some(d => d.deviceId === inputDeviceId)) {
+          mediaManager.setInputDeviceId('default');
+          setInputDeviceIdState('default');
+        }
+        if (outputDeviceId !== 'default' && !outs.some(d => d.deviceId === outputDeviceId)) {
+          await mediaManager.setOutputSinkId('default');
+          setOutputDeviceIdState('default');
+        }
+      } catch (e) {
+        console.warn('[VoiceContext] enumerateDevices failed:', e);
+      }
+    };
+    refresh();
+    navigator.mediaDevices.addEventListener?.('devicechange', refresh);
+    return () => {
+      cancelled = true;
+      navigator.mediaDevices.removeEventListener?.('devicechange', refresh);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [voiceState, setVoiceState] = useState<VoiceState>({
     channelId: null,
@@ -679,6 +730,30 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     mediaManager.setMasterOutputVolume(vol);
   }, []);
 
+  // Fix #6 — input device setter. Hot-swaps the active mic via useWebRTC
+  // when connected; otherwise just persists the choice for the next session.
+  const setInputDeviceId = useCallback(async (id: string) => {
+    const next = id || 'default';
+    setInputDeviceIdState(next);
+    if (voiceState.channelId) {
+      const ok = await webrtc.switchInputDevice(next);
+      if (!ok) toast.error("Impossible d'utiliser ce périphérique d'entrée");
+    } else {
+      mediaManager.setInputDeviceId(next);
+    }
+  }, [voiceState.channelId, webrtc]);
+
+  // Fix #6 — output device setter. Works without a live call.
+  const setOutputDeviceId = useCallback(async (id: string) => {
+    const next = id || 'default';
+    setOutputDeviceIdState(next);
+    try { await webrtc.setOutputSinkId(next); }
+    catch (e) {
+      console.warn('[VoiceContext] setOutputSinkId failed:', e);
+      toast.error("Impossible d'utiliser ce périphérique de sortie");
+    }
+  }, [webrtc]);
+
   return (
     <VoiceContext.Provider
       value={{
@@ -726,6 +801,14 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         // Output volume
         outputVolume,
         setOutputVolume,
+        // Device selection (Fix #6)
+        inputDeviceId,
+        outputDeviceId,
+        availableInputs,
+        availableOutputs,
+        setInputDeviceId,
+        setOutputDeviceId,
+        outputSinkSupported,
       }}
     >
       {children}
@@ -769,6 +852,13 @@ const defaultVoiceContext: VoiceContextType = {
   setAudioFilter: () => {},
   outputVolume: 100,
   setOutputVolume: () => {},
+  inputDeviceId: 'default',
+  outputDeviceId: 'default',
+  availableInputs: [],
+  availableOutputs: [],
+  setInputDeviceId: async () => {},
+  setOutputDeviceId: async () => {},
+  outputSinkSupported: false,
 };
 
 export function useVoice() {

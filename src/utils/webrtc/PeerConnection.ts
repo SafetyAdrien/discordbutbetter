@@ -25,10 +25,13 @@ export interface ConnectionStats {
   connectionType: string;
 }
 
-// --- Bitrate tiers for adaptive quality ---
-const AUDIO_BITRATE_HIGH = 96000;
-const AUDIO_BITRATE_MED = 64000;
-const AUDIO_BITRATE_LOW = 32000;
+// --- Bitrate tiers for adaptive quality (Fix #5 — aligned with Discord voice) ---
+// Lowered from 96/64/32 → 64/40/24 to match Discord's voice profile.
+// Opus is exceptionally intelligible at low bitrates; 24 kbps remains
+// fully understandable in survival mode while saving bandwidth headroom.
+const AUDIO_BITRATE_HIGH = 64000;
+const AUDIO_BITRATE_MED = 40000;
+const AUDIO_BITRATE_LOW = 24000;
 const ADAPTATION_INTERVAL_MS = 3000;
 
 const ICE_SERVERS: RTCIceServer[] = [
@@ -62,6 +65,8 @@ export class PeerConnection {
   private pendingCandidates: RTCIceCandidateInit[] = [];
   private hasRemoteDescription = false;
   private audioSenders: Map<string, RTCRtpSender> = new Map();
+  /** Tracks the main microphone sender so we can hot-swap input devices. */
+  private micSender: RTCRtpSender | null = null;
   private videoSenders: Map<string, RTCRtpSender> = new Map();
   private isRestarting = false;
   private screenEncodingOptions: ScreenShareEncodingOptions | null = null;
@@ -140,9 +145,32 @@ export class PeerConnection {
     stream.getAudioTracks().forEach((track) => {
       const sender = this.pc.addTrack(track, stream);
       this.audioSenders.set(track.id, sender);
+      // Remember the first non-screen audio sender as the mic sender for hot-swap.
+      if (!this.micSender) this.micSender = sender;
     });
     console.log('[PeerConnection] Added audio stream to peer:', this.peerId);
   }
+
+  /**
+   * Fix #6 — hot-swap the active microphone track without renegotiating SDP.
+   * Used when the user changes input device while connected.
+   */
+  async replaceAudioTrack(track: MediaStreamTrack): Promise<void> {
+    if (!this.micSender) {
+      // No existing sender — fall back to addTrack + renegotiation.
+      this.addAudioStream(new MediaStream([track]));
+      await this.createOffer();
+      return;
+    }
+    try {
+      await this.micSender.replaceTrack(track);
+    } catch (err) {
+      console.warn('[PeerConnection] replaceAudioTrack failed, renegotiating:', err);
+      this.addAudioStream(new MediaStream([track]));
+      await this.createOffer();
+    }
+  }
+
 
   setScreenShareEncoding(options: ScreenShareEncodingOptions): void {
     this.screenEncodingOptions = options;
@@ -304,8 +332,13 @@ export class PeerConnection {
   }
 
   /**
-   * Optimize Opus fmtp parameters for high-quality voice:
-   * - 96kbps bitrate, 48kHz, FEC, DTX
+  /**
+   * Optimize Opus fmtp parameters for voice (Discord-aligned):
+   * - 64 kbps target (lowered from 96), 48 kHz, FEC for packet-loss recovery.
+   * - DTX disabled (usedtx=0): deliberate — DTX causes audible
+   *   "syllable clipping" on silence→speech transitions, the exact symptom
+   *   reported as "voix qui sonne mal" par intermittence. Disabling DTX
+   *   removes that artifact at the cost of ~5 kbps of background bandwidth.
    */
   private optimizeSdpForOpus(sdp: string): string {
     return sdp.replace(
@@ -314,11 +347,11 @@ export class PeerConnection {
         const existingParams = params.split(';').map((p: string) => p.trim());
         const optimizations = [
           'stereo=0',
-          'maxaveragebitrate=96000',
+          'maxaveragebitrate=64000',
           'maxplaybackrate=48000',
           'sprop-maxcapturerate=48000',
           'useinbandfec=1',
-          'usedtx=1',
+          'usedtx=0',
         ];
         const newParams = [...existingParams];
         for (const opt of optimizations) {

@@ -396,24 +396,29 @@ export class MediaManager {
       analyser.smoothingTimeConstant = 0.3;
       source.connect(analyser);
 
-      // GainNode + brick-wall limiter for amplification beyond 100%
-      // (taking master into account). Chain: source -> gain -> limiter -> destination
+      // GainNode + brick-wall limiter + tanh saturator for amplification > 100%
+      // Chain: source -> gain -> limiter -> saturator -> destination.
+      // The saturator (WaveShaperNode, tanh, oversample 4x) guarantees the
+      // final peak stays <= ~0.95 even if the limiter transient slips through.
       let gainNode: GainNode | null = null;
       let limiterNode: DynamicsCompressorNode | null = null;
+      let saturatorNode: WaveShaperNode | null = null;
       const effective = (savedVolume / 100) * this._masterOutputVolume;
       if (effective > 1) {
         gainNode = context.createGain();
         gainNode.gain.value = effective;
         limiterNode = this._createLimiter(context);
+        saturatorNode = this._createSaturator(context);
         source.connect(gainNode);
         gainNode.connect(limiterNode);
-        limiterNode.connect(context.destination);
+        limiterNode.connect(saturatorNode);
+        saturatorNode.connect(context.destination);
         // When using GainNode for amplification, mute the native element
         audio.volume = 0;
         audio.muted = true;
       }
 
-      this.remoteAudioContexts.set(peerId, { context, analyser, source, gainNode, limiterNode });
+      this.remoteAudioContexts.set(peerId, { context, analyser, source, gainNode, limiterNode, saturatorNode });
       this.remoteVADStates.set(peerId, { spectralHistory: [], speakingState: false, holdTimer: null });
       console.log('[MediaManager] Added remote audio for peer:', peerId, 'volume:', savedVolume);
     } catch (error) {

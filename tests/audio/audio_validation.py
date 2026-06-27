@@ -24,6 +24,16 @@ async () => {
     l.attack.value = 0.003; l.release.value = 0.1;
     return l;
   }
+  function createSaturator(c) {
+    const s = c.createWaveShaper();
+    const N = 4096; const curve = new Float32Array(N); const CLAMP = 0.95;
+    for (let i = 0; i < N; i++) {
+      const x = (i / (N - 1)) * 4 - 2;
+      curve[i] = CLAMP * Math.tanh(x);
+    }
+    s.curve = curve; s.oversample = '4x';
+    return s;
+  }
   async function render(durationSec, schedule) {
     const sr = 48000;
     const ctx = new OfflineAudioContext(1, Math.ceil(durationSec * sr), sr);

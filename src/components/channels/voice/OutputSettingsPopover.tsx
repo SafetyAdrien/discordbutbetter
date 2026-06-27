@@ -75,25 +75,31 @@ export function OutputSettingsPopover({
                   <Headphones className="w-3.5 h-3.5 text-muted-foreground" />
                   <Label className="text-xs text-muted-foreground">Périphérique de sortie</Label>
                 </div>
-                <Select
-                  value={outputDeviceId || 'default'}
-                  onValueChange={(v) => onOutputDeviceChange!(v)}
-                >
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue placeholder="Périphérique par défaut" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="default">Périphérique par défaut</SelectItem>
-                    {availableOutputs!
-                      .filter((d) => d.deviceId && d.deviceId !== 'default')
-                      .map((d) => (
+                {needsPermission ? (
+                  <MicPermissionGate
+                    denied={micPermission === 'denied'}
+                    onRequest={onRequestPermission!}
+                    label="Autoriser le micro pour lister les sorties audio"
+                  />
+                ) : (
+                  <Select
+                    value={outputDeviceId || 'default'}
+                    onValueChange={(v) => onOutputDeviceChange!(v)}
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="Périphérique par défaut" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="default">Périphérique par défaut</SelectItem>
+                      {realOutputs.map((d) => (
                         <SelectItem key={d.deviceId} value={d.deviceId}>
                           {d.label || `Sortie ${d.deviceId.slice(0, 6)}`}
                         </SelectItem>
                       ))}
-                  </SelectContent>
-                </Select>
-                {outputSinkSupported === false && (
+                    </SelectContent>
+                  </Select>
+                )}
+                {!needsPermission && outputSinkSupported === false && (
                   <p className="text-[10px] text-muted-foreground leading-tight">
                     Ce navigateur ne supporte pas pleinement le changement de sortie audio.
                   </p>

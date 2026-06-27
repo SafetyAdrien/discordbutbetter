@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { markReadGuard } from '@/lib/readStateGuard';
+import { markReadGuard, recordReadAt } from '@/lib/readStateGuard';
 import type { ChannelUnreadInfo } from '@/hooks/useChannelUnreadCounts';
 import type { ServerUnreadInfo } from '@/hooks/useServerUnreadCounts';
 

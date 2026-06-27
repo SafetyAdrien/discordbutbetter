@@ -112,6 +112,9 @@ export function MobileChannelHeader({
             side="right"
             className="w-[85vw] max-w-80 p-0 rounded-l-2xl bg-surface-1 [&>button.absolute]:hidden"
           >
+            <VisuallyHidden>
+              <SheetTitle>Membres du salon {channelName}</SheetTitle>
+            </VisuallyHidden>
             <div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
               <h3 className="text-sm font-semibold text-foreground ml-1">Membres</h3>
               <SheetClose asChild>

@@ -164,16 +164,17 @@ export function useRemoveDownloadPermission() {
 }
 
 /**
- * Returns true when the current viewer is allowed to download `ownerId`'s content.
- * Owner is always allowed on their own content.
+ * Returns whether the current viewer is allowed to download `ownerId`'s content,
+ * plus the loading state of the underlying permission check.
+ * Owner is always allowed on their own content (canDownload=true, isLoading=false).
  */
-export function useCanDownload(ownerId: string | null | undefined): boolean {
+export function useCanDownload(ownerId: string | null | undefined): { canDownload: boolean; isLoading: boolean } {
   const { user } = useAuth();
   const viewerId = user?.id;
 
   const enabled = !!ownerId && !!viewerId && ownerId !== viewerId;
 
-  const { data } = useQuery({
+  const { data, isLoading, isFetching } = useQuery({
     queryKey: CAN_KEY(ownerId ?? '_', viewerId),
     enabled,
     staleTime: 60_000,
@@ -190,9 +191,31 @@ export function useCanDownload(ownerId: string | null | undefined): boolean {
     },
   });
 
-  if (!ownerId) return false;
-  if (viewerId && ownerId === viewerId) return true;
-  return Boolean(data);
+  if (!ownerId) return { canDownload: false, isLoading: false };
+  if (viewerId && ownerId === viewerId) return { canDownload: true, isLoading: false };
+  return {
+    canDownload: Boolean(data),
+    isLoading: enabled && (isLoading || (data === undefined && isFetching)),
+  };
+}
+
+/**
+ * Props to attach to an <img> (or any element wrapping a CSS background-image)
+ * belonging to another user. Blocks "Save image as..." (right-click) and
+ * drag-and-drop saving when the viewer is not authorized. Fail-safe: blocks
+ * while the permission check is in flight.
+ */
+export function useImageGuardProps(ownerId: string | null | undefined) {
+  const { canDownload, isLoading } = useCanDownload(ownerId);
+  const blocked = !canDownload || isLoading;
+  return {
+    onContextMenu: blocked
+      ? (e: { preventDefault: () => void }) => {
+          e.preventDefault();
+        }
+      : undefined,
+    draggable: blocked ? false : undefined,
+  } as const;
 }
 
 export interface DownloadableCandidate {

@@ -713,12 +713,15 @@ export class MediaManager {
         } catch { /* node may be detached */ }
         const gn = remoteCtx.gainNode;
         const lim = remoteCtx.limiterNode;
+        const sat = remoteCtx.saturatorNode;
         setTimeout(() => {
           try { gn.disconnect(); } catch { /* already */ }
           if (lim) { try { lim.disconnect(); } catch { /* already */ } }
+          if (sat) { try { sat.disconnect(); } catch { /* already */ } }
         }, RAMP * 1000 + 5);
         remoteCtx.gainNode = null;
         remoteCtx.limiterNode = null;
+        remoteCtx.saturatorNode = null;
       }
       if (audio) {
         audio.volume = Math.max(0, effective);
@@ -733,9 +736,11 @@ export class MediaManager {
           remoteCtx.gainNode = remoteCtx.context.createGain();
           remoteCtx.gainNode.gain.value = 0.0001;
           remoteCtx.limiterNode = this._createLimiter(remoteCtx.context);
+          remoteCtx.saturatorNode = this._createSaturator(remoteCtx.context);
           remoteCtx.source.connect(remoteCtx.gainNode);
           remoteCtx.gainNode.connect(remoteCtx.limiterNode);
-          remoteCtx.limiterNode.connect(remoteCtx.context.destination);
+          remoteCtx.limiterNode.connect(remoteCtx.saturatorNode);
+          remoteCtx.saturatorNode.connect(remoteCtx.context.destination);
         }
         try {
           remoteCtx.gainNode!.gain.cancelScheduledValues(now);

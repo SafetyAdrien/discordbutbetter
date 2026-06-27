@@ -813,6 +813,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         setInputDeviceId,
         setOutputDeviceId,
         outputSinkSupported,
+        outputSinkPartial,
       }}
     >
       {children}

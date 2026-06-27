@@ -32,7 +32,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Message } from '@/types/app';
 import { MarkdownText, setMarkdownContext, getMarkdownContext } from '@/lib/markdown';
-import { LinkEmbeds } from '@/components/chat/LinkEmbed';
+import { SmartLinkEmbeds as LinkEmbeds } from '@/components/chat/embeds';
 import { usePendingAttachments, PendingAttachment } from '@/hooks/usePendingAttachments';
 import { UploadDropOverlay } from '@/components/chat/upload/UploadDropOverlay';
 import { MessageAttachments, StoredAttachment } from '@/components/chat/MessageAttachments';

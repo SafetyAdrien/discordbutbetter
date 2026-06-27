@@ -5,3 +5,6 @@ verify_jwt = true
 
 [functions.fetch-url-metadata]
 verify_jwt = true
+
+[functions.twitch-channel-status]
+verify_jwt = true

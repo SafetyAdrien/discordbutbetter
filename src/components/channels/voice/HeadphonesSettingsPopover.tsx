@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { Headphones, Info } from 'lucide-react';
 import { DiscordHeadphones } from '@/components/icons/DiscordHeadphones';
 import { DiscordHeadphonesOff } from '@/components/icons/DiscordHeadphonesOff';
+import { MicPermissionGate } from './MicPermissionGate';
 
 interface HeadphonesSettingsPopoverProps {
   children: React.ReactNode;

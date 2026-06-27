@@ -28,12 +28,23 @@ export function OutputSettingsPopover({
   availableOutputs,
   onOutputDeviceChange,
   outputSinkSupported,
+  micPermission,
+  onRequestPermission,
+  onOpenRefresh,
 }: OutputSettingsPopoverProps) {
   const showDeviceSelector =
     typeof onOutputDeviceChange === 'function' && Array.isArray(availableOutputs);
+  const realOutputs = (availableOutputs || []).filter(
+    (d) => d.deviceId && d.deviceId !== 'default' && d.label
+  );
+  const needsPermission =
+    showDeviceSelector &&
+    typeof onRequestPermission === 'function' &&
+    realOutputs.length === 0 &&
+    micPermission !== 'granted';
 
   return (
-    <Popover>
+    <Popover onOpenChange={(o) => { if (o) void onOpenRefresh?.(); }}>
       <PopoverTrigger asChild>{children}</PopoverTrigger>
       <PopoverContent side="top" align="center" className="w-72 p-0">
         <div className="p-3 space-y-3">

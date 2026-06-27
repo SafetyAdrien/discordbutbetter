@@ -135,6 +135,9 @@ export function VoiceActionBar({
                 inputDeviceId={inputDeviceId}
                 availableInputs={availableInputs}
                 onInputDeviceChange={setInputDeviceId}
+                micPermission={micPermission}
+                onRequestPermission={requestMicPermission}
+                onOpenRefresh={refreshDevices}
               >
                 <Button
                   variant="ghost"

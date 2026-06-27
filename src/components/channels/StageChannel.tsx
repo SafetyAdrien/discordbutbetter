@@ -229,6 +229,7 @@ export function StageChannel({ channel, serverId, hideHeader = false }: StageCha
   return (
     <div className="flex-1 flex flex-col bg-[hsl(var(--surface-2)/0.3)] min-w-0 w-full overflow-x-hidden">
       {/* Header with status */}
+      {!hideHeader && (
       <div className={cn(
         "h-12 flex items-center px-2 sm:px-4 justify-between transition-colors gap-2 w-full bg-[hsl(var(--surface-2))]",
         isLive && "bg-[hsl(var(--online))]/10"
@@ -271,6 +272,8 @@ export function StageChannel({ channel, serverId, hideHeader = false }: StageCha
           )}
         </div>
       </div>
+      )}
+
 
       {/* Pre-live waiting screen with music indicator */}
       {isPreLive && !isModerator && (

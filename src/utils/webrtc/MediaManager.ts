@@ -216,12 +216,11 @@ export class MediaManager {
 
       let newCtx: AudioContext;
       try {
-        // @ts-ignore — { sinkId } not in lib.dom yet
         newCtx = new AudioContext({
           sinkId: this._outputDeviceId,
           sampleRate: 48000,
           latencyHint: 'interactive',
-        });
+        } as AudioContextOptions & { sinkId: string });
       } catch (e) {
         console.warn('[MediaManager] AudioContext({sinkId}) recreation failed for peer:', peerId, e);
         continue;

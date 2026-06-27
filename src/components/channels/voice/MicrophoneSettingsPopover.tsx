@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { cn } from '@/lib/utils';
 import { ShieldCheck, AudioLines, SlidersHorizontal, Mic } from 'lucide-react';
 import type { NoiseSuppressonMode, VADSensitivity } from '@/utils/webrtc/AudioProcessor';
+import { MicPermissionGate } from './MicPermissionGate';
 
 interface MicrophoneSettingsPopoverProps {
   children: React.ReactNode;

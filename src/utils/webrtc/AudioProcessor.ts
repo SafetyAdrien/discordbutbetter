@@ -79,6 +79,13 @@ export class AudioProcessor {
   private destinationNode: MediaStreamAudioDestinationNode | null = null;
   private rnnoiseNode: AudioWorkletNode | null = null;
   private rnnoiseLoaded = false;
+  /**
+   * Fix F — first node downstream of sourceNode in the processing chain.
+   * Captured at the end of processStream() so swapInputStream() can rewire
+   * a fresh MediaStreamAudioSourceNode without rebuilding any other node
+   * (RNNoise, gate, analyser, compressor, …) or closing the AudioContext.
+   */
+  private sourceTarget: AudioNode | null = null;
   
   private config: AudioProcessorConfig;
   private processedStream: MediaStream | null = null;
@@ -261,7 +268,46 @@ export class AudioProcessor {
 
     this.processedStream = this.destinationNode.stream;
 
+    // Fix F — remember the first node downstream of sourceNode so we can
+    // hot-swap the input MediaStream without recreating the AudioContext or
+    // reloading the RNNoise WASM worklet on every device switch.
+    this.sourceTarget = this.highPassFilter ?? this.deEsserFilter;
+
     console.log('[AudioProcessor] Processing chain created (RNNoise:', this.rnnoiseNode ? 'ON' : 'OFF', ', NS mode:', this.config.noiseSuppression, ')');
+    return this.processedStream;
+  }
+
+  /**
+   * Fix F — hot-swap the input MediaStream into the existing processing chain.
+   *
+   * A device change should only replace the *source* — every downstream node
+   * (filters, RNNoise worklet, noise gate, analyser, compressor, destination)
+   * stays connected and the AudioContext stays open. This avoids the
+   * RNNoise WASM reload that made each switch feel like a full mic restart.
+   *
+   * Falls back to processStream() when the chain isn't currently up (first
+   * start, or after an explicit cleanup() following voice disconnect).
+   */
+  async swapInputStream(inputStream: MediaStream): Promise<MediaStream> {
+    if (
+      !this.audioContext ||
+      !this.sourceNode ||
+      !this.sourceTarget ||
+      !this.processedStream
+    ) {
+      return this.processStream(inputStream);
+    }
+
+    if (this.audioContext.state === 'suspended') {
+      await this.audioContext.resume();
+    }
+
+    try { this.sourceNode.disconnect(); } catch { /* already */ }
+
+    this.sourceNode = this.audioContext.createMediaStreamSource(inputStream);
+    this.sourceNode.connect(this.sourceTarget);
+
+    console.log('[AudioProcessor] Input source swapped (chain intact, no reload)');
     return this.processedStream;
   }
 
@@ -655,6 +701,7 @@ export class AudioProcessor {
     this.analyserNode = null;
     this.destinationNode = null;
     this.processedStream = null;
+    this.sourceTarget = null;
 
     if (this.audioContext) {
       this.audioContext.close().catch(() => {});

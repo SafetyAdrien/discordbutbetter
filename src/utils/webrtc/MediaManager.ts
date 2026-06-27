@@ -664,25 +664,53 @@ export class MediaManager {
     const effective = (peerVol / 100) * this._masterOutputVolume; // 0..4
     const audio = this.remoteAudioElements.get(peerId);
     const remoteCtx = this.remoteAudioContexts.get(peerId);
+    const now = remoteCtx?.context.currentTime ?? 0;
+    // Short crossfade window (10 ms) to avoid clicks/pops when crossing the
+    // effective=1.0 boundary between the native <audio>.volume path and the
+    // gainNode → limiter path.
+    const RAMP = 0.01;
 
     if (effective <= 1) {
+      // Native path: ramp gainNode down then disconnect, then unmute native.
+      if (remoteCtx?.gainNode) {
+        try {
+          remoteCtx.gainNode.gain.cancelScheduledValues(now);
+          remoteCtx.gainNode.gain.setValueAtTime(remoteCtx.gainNode.gain.value, now);
+          remoteCtx.gainNode.gain.linearRampToValueAtTime(0.0001, now + RAMP);
+        } catch { /* node may be detached */ }
+        const gn = remoteCtx.gainNode;
+        const lim = remoteCtx.limiterNode;
+        setTimeout(() => {
+          try { gn.disconnect(); } catch { /* already */ }
+          if (lim) { try { lim.disconnect(); } catch { /* already */ } }
+        }, RAMP * 1000 + 5);
+        remoteCtx.gainNode = null;
+        remoteCtx.limiterNode = null;
+      }
       if (audio) {
         audio.volume = Math.max(0, effective);
         audio.muted = this.isDeafened || effective === 0;
       }
-      if (remoteCtx?.gainNode) {
-        try { remoteCtx.gainNode.disconnect(); } catch { /* already */ }
-        remoteCtx.gainNode = null;
-      }
     } else {
+      // Amplification path: mute native, then ramp gainNode up from near-zero.
       if (audio) { audio.volume = 0; audio.muted = true; }
       if (remoteCtx) {
-        if (!remoteCtx.gainNode) {
+        const freshNode = !remoteCtx.gainNode;
+        if (freshNode) {
           remoteCtx.gainNode = remoteCtx.context.createGain();
+          remoteCtx.gainNode.gain.value = 0.0001;
+          remoteCtx.limiterNode = this._createLimiter(remoteCtx.context);
           remoteCtx.source.connect(remoteCtx.gainNode);
-          remoteCtx.gainNode.connect(remoteCtx.context.destination);
+          remoteCtx.gainNode.connect(remoteCtx.limiterNode);
+          remoteCtx.limiterNode.connect(remoteCtx.context.destination);
         }
-        remoteCtx.gainNode.gain.value = effective;
+        try {
+          remoteCtx.gainNode!.gain.cancelScheduledValues(now);
+          remoteCtx.gainNode!.gain.setValueAtTime(remoteCtx.gainNode!.gain.value, now);
+          remoteCtx.gainNode!.gain.linearRampToValueAtTime(effective, now + RAMP);
+        } catch {
+          remoteCtx.gainNode!.gain.value = effective;
+        }
       }
     }
   }

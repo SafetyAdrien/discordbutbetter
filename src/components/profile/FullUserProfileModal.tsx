@@ -82,6 +82,7 @@ export function FullUserProfileModal({
   };
 
   const isOwnProfile = currentUser?.id === user?.id;
+  const bannerGuard = useImageGuardProps(isOwnProfile ? null : user?.id ?? null);
 
   const friendship = friends.find(
     (f) =>

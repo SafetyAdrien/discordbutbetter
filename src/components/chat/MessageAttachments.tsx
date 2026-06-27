@@ -211,9 +211,10 @@ function ImageCarousel({
   );
 }
 
-function VideoAttachment({ attachment }: { attachment: StoredAttachment }) {
+function VideoAttachment({ attachment, authorId }: { attachment: StoredAttachment; authorId?: string | null }) {
   const [revealed, setRevealed] = useState(!attachment.isSpoiler);
   const [isPlaying, setIsPlaying] = useState(false);
+  const guard = useImageGuardProps(authorId);
 
   if (attachment.isSpoiler && !revealed) {
     return (
@@ -230,11 +231,13 @@ function VideoAttachment({ attachment }: { attachment: StoredAttachment }) {
   }
 
   return (
-    <div className="relative group max-w-md">
+    <div className="relative group max-w-md" onContextMenu={guard.onContextMenu}>
       <video
         src={attachment.url}
         controls
+        controlsList={guard.draggable === false ? 'nodownload' : undefined}
         className="rounded-lg max-h-80"
+        onContextMenu={guard.onContextMenu}
         onPlay={() => setIsPlaying(true)}
         onPause={() => setIsPlaying(false)}
       >
@@ -256,7 +259,9 @@ function VideoAttachment({ attachment }: { attachment: StoredAttachment }) {
   );
 }
 
-function FileAttachment({ attachment }: { attachment: StoredAttachment }) {
+function FileAttachment({ attachment, authorId }: { attachment: StoredAttachment; authorId?: string | null }) {
+  const { canDownload, isLoading } = useCanDownload(authorId);
+  const showDownload = canDownload && !isLoading;
   return (
     <div className="flex items-center gap-3 bg-surface-hover rounded-lg p-3 max-w-sm group">
       <div className="w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -270,15 +275,17 @@ function FileAttachment({ attachment }: { attachment: StoredAttachment }) {
           {formatFileSize(attachment.size)}
         </p>
       </div>
-      <a
-        href={attachment.url}
-        download={attachment.name}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="p-2 rounded-md hover:bg-muted transition-colors opacity-0 group-hover:opacity-100"
-      >
-        <Download className="w-4 h-4 text-muted-foreground" />
-      </a>
+      {showDownload && (
+        <a
+          href={attachment.url}
+          download={attachment.name}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="p-2 rounded-md hover:bg-muted transition-colors opacity-0 group-hover:opacity-100"
+        >
+          <Download className="w-4 h-4 text-muted-foreground" />
+        </a>
+      )}
     </div>
   );
 }

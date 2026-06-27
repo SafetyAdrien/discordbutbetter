@@ -516,7 +516,17 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                 </div>
               ) : (
                 <>
-                  {messages.map((message, idx) => {
+                  {(() => {
+                    let pollCursor = 0;
+                    const flushPollsBefore = (ts: number) => {
+                      const out: JSX.Element[] = [];
+                      while (pollCursor < sortedPolls.length && new Date(sortedPolls[pollCursor].created_at).getTime() <= ts) {
+                        out.push(renderPoll(sortedPolls[pollCursor]));
+                        pollCursor++;
+                      }
+                      return out;
+                    };
+                    const messageNodes = messages.map((message, idx) => {
                     const currentDate = message.created_at ? new Date(message.created_at) : new Date();
                     const prevMessage = idx > 0 ? messages[idx - 1] : null;
                     const prevDate = prevMessage?.created_at ? new Date(prevMessage.created_at) : null;

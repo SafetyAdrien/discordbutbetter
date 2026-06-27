@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useEffect, useRef } from 'react';
 import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { isDirectMentionForUser } from '@/lib/mentions';
+import { isBeforeReadGuard } from '@/lib/readStateGuard';
 
 export interface ChannelUnreadInfo {
   hasUnread: boolean;
@@ -55,6 +56,8 @@ export function useChannelUnreadCounts(serverId: string | null) {
           const mention = payload.new as { channel_id?: string; message_id?: string };
           if (!mention.channel_id) return;
           if (serverChannelIds && !serverChannelIds.has(mention.channel_id)) return;
+          // Guard against mentions belonging to a message we already marked read.
+          if (isBeforeReadGuard(mention.channel_id, (payload.new as { created_at?: string })?.created_at)) return;
           if (mention.message_id) {
             if (countedMentionMessageIdsRef.current.has(mention.message_id)) return;
             countedMentionMessageIdsRef.current.add(mention.message_id);
@@ -62,7 +65,7 @@ export function useChannelUnreadCounts(serverId: string | null) {
           patchChannel(mention.channel_id, {
             mentionCount: ((queryClient.getQueryData<Record<string, ChannelUnreadInfo>>(['channel-unread-counts', serverId, user.id]) || {})[mention.channel_id]?.mentionCount || 0) + 1,
           });
-          queryClient.invalidateQueries({ queryKey: ['channel-unread-counts', serverId, user.id] });
+          // No invalidate — patch is authoritative.
         }
       )
       .on(
@@ -74,7 +77,6 @@ export function useChannelUnreadCounts(serverId: string | null) {
           if (serverChannelIds && !serverChannelIds.has(mention.channel_id)) return;
           const current = (queryClient.getQueryData<Record<string, ChannelUnreadInfo>>(['channel-unread-counts', serverId, user.id]) || {})[mention.channel_id];
           patchChannel(mention.channel_id, { mentionCount: Math.max(0, (current?.mentionCount || 0) - 1) });
-          queryClient.invalidateQueries({ queryKey: ['channel-unread-counts', serverId, user.id] });
         }
       )
       .subscribe();
@@ -85,10 +87,15 @@ export function useChannelUnreadCounts(serverId: string | null) {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages' },
         (payload) => {
-          const newMsg = payload.new as { id?: string; channel_id?: string; author_id?: string | null; content?: string | null };
+          const newMsg = payload.new as { id?: string; channel_id?: string; author_id?: string | null; content?: string | null; created_at?: string | null };
           const channelId = newMsg?.channel_id;
           if (serverChannelIds && channelId && !serverChannelIds.has(channelId)) return;
           if (!channelId || newMsg.author_id === user.id) return;
+
+          // Guard: ignore inserts older than (or equal to) the moment the user
+          // marked this channel read. Prevents a delayed broadcast of a
+          // pre-read message from resurrecting the unread badge.
+          if (isBeforeReadGuard(channelId, newMsg.created_at)) return;
 
           const isMention = isDirectMentionForUser(newMsg.content, user.id);
           const current = (queryClient.getQueryData<Record<string, ChannelUnreadInfo>>(['channel-unread-counts', serverId, user.id]) || {})[channelId];
@@ -98,7 +105,8 @@ export function useChannelUnreadCounts(serverId: string | null) {
             hasUnread: true,
             mentionCount: (current?.mentionCount || 0) + (shouldCountMention ? 1 : 0),
           });
-          queryClient.invalidateQueries({ queryKey: ['channel-unread-counts', serverId, user.id] });
+          // NOTE: no invalidate — the patch is authoritative; a refetch would
+          // race against channel_read_states replication lag.
         }
       )
       .subscribe();

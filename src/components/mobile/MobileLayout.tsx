@@ -442,13 +442,13 @@ export function MobileLayout({
           />
         );
       case 'media':
-        return <FullScreenWrapper name={channelForChat.name} onBack={handleBackToChannels}><MediaChannel {...commonProps} /></FullScreenWrapper>;
+        return <FullScreenWrapper name={channelForChat.name} onBack={handleBackToChannels}><MediaChannel {...commonProps} hideHeader /></FullScreenWrapper>;
       case 'forum':
-        return <FullScreenWrapper name={channelForChat.name} onBack={handleBackToChannels}><ForumChannel {...commonProps} serverId={(channelForChat as any).server_id} /></FullScreenWrapper>;
+        return <FullScreenWrapper name={channelForChat.name} onBack={handleBackToChannels}><ForumChannel {...commonProps} hideHeader serverId={(channelForChat as any).server_id} /></FullScreenWrapper>;
       case 'tasks':
-        return <FullScreenWrapper name={channelForChat.name} onBack={handleBackToChannels}><TasksChannel {...commonProps} /></FullScreenWrapper>;
+        return <FullScreenWrapper name={channelForChat.name} onBack={handleBackToChannels}><TasksChannel {...commonProps} hideHeader /></FullScreenWrapper>;
       case 'calendar':
-        return <FullScreenWrapper name={channelForChat.name} onBack={handleBackToChannels}><CalendarChannel {...commonProps} /></FullScreenWrapper>;
+        return <FullScreenWrapper name={channelForChat.name} onBack={handleBackToChannels}><CalendarChannel {...commonProps} hideHeader /></FullScreenWrapper>;
       case 'announcement':
         return (
           <MobileChatView
@@ -485,7 +485,7 @@ export function MobileLayout({
               onBack={handleBackToChannels}
             />
             <div className="flex-1 overflow-hidden">
-              <StageChannel {...commonProps} serverId={currentServer.id} />
+              <StageChannel {...commonProps} serverId={currentServer.id} hideHeader />
             </div>
           </div>
         );

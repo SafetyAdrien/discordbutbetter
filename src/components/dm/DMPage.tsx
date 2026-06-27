@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
+import { useScrollAwareContextMenuGuard } from '@/hooks/useScrollAwareContextMenuGuard';
 import { Users, Inbox } from 'lucide-react';
 import { DMList } from './DMList';
 import { DMConversation } from './DMConversation';
@@ -121,9 +122,7 @@ export function DMPage({
         </div>
 
         {/* Conversations List */}
-        <div className="flex-1 overflow-y-auto">
-          <DMList activeConversationId={activeDMId} onConversationSelect={handleOpenDM} />
-        </div>
+        <DMListScroll activeDMId={activeDMId} onOpen={handleOpenDM} />
 
         {/* Spacer reserving room for floating VoiceStatusBadge + UserProfileCard at Index level */}
         <div className={cn("shrink-0", isConnected && voiceState.channelName ? "h-[150px]" : "h-[64px]")} />
@@ -145,6 +144,21 @@ export function DMPage({
           onOpenDM={handleOpenDM}
         />
       )}
+    </div>
+  );
+}
+
+function DMListScroll({
+  activeDMId,
+  onOpen,
+}: {
+  activeDMId: string | null;
+  onOpen: (id: string) => void;
+}) {
+  const guard = useScrollAwareContextMenuGuard();
+  return (
+    <div className="flex-1 overflow-y-auto" {...guard}>
+      <DMList activeConversationId={activeDMId} onConversationSelect={onOpen} />
     </div>
   );
 }

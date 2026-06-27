@@ -790,8 +790,13 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                       </UniversalMessageContextMenu>
                       </>)}
                       </div>
-                    );
-                  })}
+                    </>);
+                  });
+                  return (<>
+                    {messageNodes}
+                    {sortedPolls.slice(pollCursor).map((p) => renderPoll(p))}
+                  </>);
+                  })()}
                   <div ref={messagesEndRef} />
                 </>
               )}

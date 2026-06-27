@@ -20,6 +20,7 @@ interface RemoteAudioContext {
   source: MediaStreamAudioSourceNode;
   gainNode: GainNode | null;
   limiterNode: DynamicsCompressorNode | null;
+  saturatorNode: WaveShaperNode | null;
 }
 
 /** Per-remote-peer spectral VAD state */
@@ -395,24 +396,29 @@ export class MediaManager {
       analyser.smoothingTimeConstant = 0.3;
       source.connect(analyser);
 
-      // GainNode + brick-wall limiter for amplification beyond 100%
-      // (taking master into account). Chain: source -> gain -> limiter -> destination
+      // GainNode + brick-wall limiter + tanh saturator for amplification > 100%
+      // Chain: source -> gain -> limiter -> saturator -> destination.
+      // The saturator (WaveShaperNode, tanh, oversample 4x) guarantees the
+      // final peak stays <= ~0.95 even if the limiter transient slips through.
       let gainNode: GainNode | null = null;
       let limiterNode: DynamicsCompressorNode | null = null;
+      let saturatorNode: WaveShaperNode | null = null;
       const effective = (savedVolume / 100) * this._masterOutputVolume;
       if (effective > 1) {
         gainNode = context.createGain();
         gainNode.gain.value = effective;
         limiterNode = this._createLimiter(context);
+        saturatorNode = this._createSaturator(context);
         source.connect(gainNode);
         gainNode.connect(limiterNode);
-        limiterNode.connect(context.destination);
+        limiterNode.connect(saturatorNode);
+        saturatorNode.connect(context.destination);
         // When using GainNode for amplification, mute the native element
         audio.volume = 0;
         audio.muted = true;
       }
 
-      this.remoteAudioContexts.set(peerId, { context, analyser, source, gainNode, limiterNode });
+      this.remoteAudioContexts.set(peerId, { context, analyser, source, gainNode, limiterNode, saturatorNode });
       this.remoteVADStates.set(peerId, { spectralHistory: [], speakingState: false, holdTimer: null });
       console.log('[MediaManager] Added remote audio for peer:', peerId, 'volume:', savedVolume);
     } catch (error) {
@@ -436,6 +442,9 @@ export class MediaManager {
       }
       if (audioContext.limiterNode) {
         try { audioContext.limiterNode.disconnect(); } catch { /* already disconnected */ }
+      }
+      if (audioContext.saturatorNode) {
+        try { audioContext.saturatorNode.disconnect(); } catch { /* already disconnected */ }
       }
       audioContext.context.close().catch(() => {});
       this.remoteAudioContexts.delete(peerId);
@@ -463,6 +472,30 @@ export class MediaManager {
     limiter.release.value = 0.1;     // 100 ms — natural decay
     return limiter;
   }
+
+  /**
+   * Create a tanh saturator (WaveShaperNode, oversample 4x) clamped at ±0.95.
+   * Placed AFTER the limiter as a final safety net: catches residual transient
+   * overshoots that slip through the 3 ms attack, guaranteeing peak <= ~0.95.
+   * 4x oversampling reduces aliasing introduced by the non-linearity.
+   */
+  private _createSaturator(context: AudioContext): WaveShaperNode {
+    const shaper = context.createWaveShaper();
+    const N = 4096;
+    const curve = new Float32Array(N);
+    const CLAMP = 0.95;
+    // y = CLAMP * tanh(x) — at x=±1 gives ~0.72; saturates smoothly above.
+    // The curve covers input [-2, +2] which is the maximum the limiter can
+    // momentarily emit given gain up to 4.0 and a 3 ms attack window.
+    for (let i = 0; i < N; i++) {
+      const x = (i / (N - 1)) * 4 - 2; // [-2, +2]
+      curve[i] = CLAMP * Math.tanh(x);
+    }
+    shaper.curve = curve;
+    shaper.oversample = '4x';
+    return shaper;
+  }
+
 
   getRemoteAudioLevel(peerId: string): number {
     const entry = this.remoteAudioContexts.get(peerId);
@@ -680,12 +713,15 @@ export class MediaManager {
         } catch { /* node may be detached */ }
         const gn = remoteCtx.gainNode;
         const lim = remoteCtx.limiterNode;
+        const sat = remoteCtx.saturatorNode;
         setTimeout(() => {
           try { gn.disconnect(); } catch { /* already */ }
           if (lim) { try { lim.disconnect(); } catch { /* already */ } }
+          if (sat) { try { sat.disconnect(); } catch { /* already */ } }
         }, RAMP * 1000 + 5);
         remoteCtx.gainNode = null;
         remoteCtx.limiterNode = null;
+        remoteCtx.saturatorNode = null;
       }
       if (audio) {
         audio.volume = Math.max(0, effective);
@@ -700,9 +736,11 @@ export class MediaManager {
           remoteCtx.gainNode = remoteCtx.context.createGain();
           remoteCtx.gainNode.gain.value = 0.0001;
           remoteCtx.limiterNode = this._createLimiter(remoteCtx.context);
+          remoteCtx.saturatorNode = this._createSaturator(remoteCtx.context);
           remoteCtx.source.connect(remoteCtx.gainNode);
           remoteCtx.gainNode.connect(remoteCtx.limiterNode);
-          remoteCtx.limiterNode.connect(remoteCtx.context.destination);
+          remoteCtx.limiterNode.connect(remoteCtx.saturatorNode);
+          remoteCtx.saturatorNode.connect(remoteCtx.context.destination);
         }
         try {
           remoteCtx.gainNode!.gain.cancelScheduledValues(now);

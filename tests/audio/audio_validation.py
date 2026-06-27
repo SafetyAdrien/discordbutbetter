@@ -24,6 +24,16 @@ async () => {
     l.attack.value = 0.003; l.release.value = 0.1;
     return l;
   }
+  function createSaturator(c) {
+    const s = c.createWaveShaper();
+    const N = 4096; const curve = new Float32Array(N); const CLAMP = 0.95;
+    for (let i = 0; i < N; i++) {
+      const x = (i / (N - 1)) * 4 - 2;
+      curve[i] = CLAMP * Math.tanh(x);
+    }
+    s.curve = curve; s.oversample = '4x';
+    return s;
+  }
   async function render(durationSec, schedule) {
     const sr = 48000;
     const ctx = new OfflineAudioContext(1, Math.ceil(durationSec * sr), sr);
@@ -31,8 +41,9 @@ async () => {
     const nativeGain = ctx.createGain(); nativeGain.gain.value = 0;
     const ampGain = ctx.createGain(); ampGain.gain.value = 0.0001;
     const limiter = createLimiter(ctx);
+    const saturator = createSaturator(ctx);
     osc.connect(nativeGain); nativeGain.connect(ctx.destination);
-    osc.connect(ampGain); ampGain.connect(limiter); limiter.connect(ctx.destination);
+    osc.connect(ampGain); ampGain.connect(limiter); limiter.connect(saturator); saturator.connect(ctx.destination);
     const RAMP = 0.01;
     for (const { t, volume } of schedule) {
       const effective = volume / 100;

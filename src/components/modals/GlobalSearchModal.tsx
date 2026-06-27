@@ -85,7 +85,7 @@ function AutocompleteSuggestions({
             className="flex items-center gap-2 w-full px-3 py-2 hover:bg-muted transition-colors text-left"
           >
             <Avatar className="w-6 h-6">
-              <AvatarImage src={member.avatar} />
+              <GuardedAvatarImg src={member.avatar} ownerId={member.id} />
               <AvatarFallback className="text-xs bg-primary/20 text-primary">
                 {member.displayName.charAt(0).toUpperCase()}
               </AvatarFallback>

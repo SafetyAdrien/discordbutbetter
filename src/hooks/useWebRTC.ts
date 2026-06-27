@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { PeerConnection, SignalData, ConnectionStats } from '@/utils/webrtc/PeerConnection';
 import { SignalingService } from '@/utils/webrtc/SignalingService';
 import { mediaManager, ScreenShareOptions } from '@/utils/webrtc/MediaManager';
+import { audioProcessor } from '@/utils/webrtc/AudioProcessor';
 
 interface PeerInfo {
   peerId: string;

@@ -129,8 +129,15 @@ var RnnoiseProcessor = class {
    * @returns {Float} Contains VAD score in the interval 0 - 1 i.e. 0.90 .
    */
   processAudioFrame(pcmFrame, shouldDenoise = false) {
+    // LOVABLE LOCAL PATCH (Fix I) — clamp Float32 input to [-1, 1] before
+    // scaling by 32768. Upstream @timephy/rnnoise-wasm assumes a normalized
+    // signal; without the clamp, any pre-gain (e.g. low-shelf boost) that
+    // pushes samples beyond ±1.0 produces out-of-range int16 values inside
+    // RNNoise, causing distortion / metallic artifacts. Preserve this patch
+    // across any future package update.
     for (let i = 0; i < RNNOISE_SAMPLE_LENGTH; i++) {
-      this._wasmInterface.HEAPF32[this._wasmPcmInputF32Index + i] = pcmFrame[i] * SHIFT_16_BIT_NR;
+      const s = Math.max(-1, Math.min(1, pcmFrame[i]));
+      this._wasmInterface.HEAPF32[this._wasmPcmInputF32Index + i] = s * SHIFT_16_BIT_NR;
     }
     const vadScore = this._wasmInterface._rnnoise_process_frame(this._context, this._wasmPcmInput, this._wasmPcmInput);
     if (shouldDenoise) {

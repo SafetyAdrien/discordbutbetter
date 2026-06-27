@@ -21,7 +21,7 @@ import { SummariesBar } from '@/components/summaries/SummariesBar';
 import { useSummaries } from '@/hooks/useSummaries';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
+
 import { FollowChannelModal } from '@/components/channels/announcement/FollowChannelModal';
 import { FollowSuccessModal } from '@/components/channels/announcement/FollowSuccessModal';
 import { usePermissions } from '@/hooks/usePermissions';

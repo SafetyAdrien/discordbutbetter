@@ -19,11 +19,24 @@ export function MicPermissionGate({ denied, onRequest, label }: MicPermissionGat
 
   if (denied) {
     return (
-      <div className="rounded-md bg-destructive/10 border border-destructive/20 p-2 flex items-start gap-2">
-        <MicOff className="w-3.5 h-3.5 text-destructive mt-0.5 flex-shrink-0" />
-        <p className="text-[11px] text-destructive leading-tight">
-          L'accès au micro est bloqué. Autorise-le dans les paramètres du
-          navigateur pour voir tes périphériques.
+      <div className="rounded-md bg-destructive/10 border border-destructive/20 p-2.5 space-y-1.5">
+        <div className="flex items-start gap-2">
+          <MicOff className="w-3.5 h-3.5 text-destructive mt-0.5 flex-shrink-0" />
+          <p className="text-[11px] font-semibold text-destructive leading-tight">
+            Accès au micro bloqué par le navigateur
+          </p>
+        </div>
+        <p className="text-[11px] text-muted-foreground leading-snug">
+          Pour le débloquer :
+        </p>
+        <ol className="text-[11px] text-muted-foreground leading-snug list-decimal pl-4 space-y-0.5">
+          <li>Clique sur l'icône <span className="font-semibold">🔒 cadenas</span> (ou ⓘ) à gauche de l'URL en haut de la page.</li>
+          <li>Trouve <span className="font-semibold">« Microphone »</span> dans la liste des permissions.</li>
+          <li>Passe-le sur <span className="font-semibold">« Autoriser »</span>.</li>
+          <li>Recharge l'onglet (F5).</li>
+        </ol>
+        <p className="text-[10px] text-muted-foreground/80 leading-tight pt-0.5">
+          Sur macOS, vérifie aussi <span className="font-semibold">Réglages Système → Confidentialité → Microphone</span> et active ton navigateur.
         </p>
       </div>
     );

@@ -183,14 +183,11 @@ export class AudioProcessor {
     lastNode.connect(this.deEsserFilter);
     lastNode = this.deEsserFilter;
 
-    // Low-shelf boost for voice warmth (+2dB at 200Hz)
-    this.lowShelfFilter = this.audioContext.createBiquadFilter();
-    this.lowShelfFilter.type = 'lowshelf';
-    this.lowShelfFilter.frequency.value = 200;
-    this.lowShelfFilter.gain.value = 2;
-    lastNode.connect(this.lowShelfFilter);
-    lastNode = this.lowShelfFilter;
-
+    // Fix H — RNNoise must see the cleanest, uncolored signal possible.
+    // The low-shelf voice-warmth boost is therefore applied *after* RNNoise,
+    // not before. Previously, boosting +2dB upstream could push samples past
+    // ±1.0, which made the worklet's Float32→int16 scaling saturate and
+    // produced distortion / metallic / muffled artifacts.
     // Save the tap point *before* RNNoise so we can bypass cleanly (Fix #1).
     this.preRNNoiseTap = lastNode;
 
@@ -201,7 +198,15 @@ export class AudioProcessor {
       const loaded = await this.loadRNNoise(this.audioContext);
       if (loaded) {
         try {
-          this.rnnoiseNode = new AudioWorkletNode(this.audioContext, NoiseSuppressorWorklet_Name);
+          // Fix J — explicit mono channel config on the RNNoise worklet so
+          // upstream stereo (or unexpected channel counts) can never silently
+          // change what the worklet processes.
+          this.rnnoiseNode = new AudioWorkletNode(this.audioContext, NoiseSuppressorWorklet_Name, {
+            channelCount: 1,
+            channelCountMode: 'explicit',
+            channelInterpretation: 'discrete',
+            outputChannelCount: [1],
+          });
           this.preRNNoiseTap.connect(this.rnnoiseNode);
           this.rnnoiseNode.connect(this.rnnoiseGainNode);
           this.rnnoiseGainNode.gain.value = this.config.noiseSuppression === 'low' ? 0.85 : 1.0;
@@ -225,6 +230,15 @@ export class AudioProcessor {
       this.rnnoiseBypassed = true;
     }
     lastNode = this.rnnoiseGainNode;
+
+    // Low-shelf boost for voice warmth (+2dB at 200Hz) — placed AFTER RNNoise
+    // so neural denoising operates on uncolored audio (Fix H).
+    this.lowShelfFilter = this.audioContext.createBiquadFilter();
+    this.lowShelfFilter.type = 'lowshelf';
+    this.lowShelfFilter.frequency.value = 200;
+    this.lowShelfFilter.gain.value = 2;
+    lastNode.connect(this.lowShelfFilter);
+    lastNode = this.lowShelfFilter;
 
     // Dynamic compressor
     if (this.config.enableCompression) {

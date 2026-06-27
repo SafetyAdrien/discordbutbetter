@@ -3793,6 +3793,10 @@ export type Database = {
         Args: { _owner_id: string; _viewer_id: string }
         Returns: boolean
       }
+      can_host_watch_together_topic: {
+        Args: { _topic: string }
+        Returns: boolean
+      }
       can_mention_everyone: {
         Args: { _server_id: string; _user_id: string }
         Returns: boolean

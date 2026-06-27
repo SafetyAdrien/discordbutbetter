@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { ScreenShareQualityModal } from './ScreenShareQualityModal';
 import { MicrophoneSettingsPopover } from './MicrophoneSettingsPopover';
+import { useVoice } from '@/contexts/VoiceContext';
 import type { ScreenShareOptions } from '@/utils/webrtc/MediaManager';
 import type { NoiseSuppressonMode, VADSensitivity } from '@/utils/webrtc/AudioProcessor';
 

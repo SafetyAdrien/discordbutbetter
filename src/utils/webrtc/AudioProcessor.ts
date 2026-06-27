@@ -268,12 +268,6 @@ export class AudioProcessor {
 
     this.processedStream = this.destinationNode.stream;
 
-    console.log('[AudioProcessor] Processing chain created (RNNoise:', this.rnnoiseNode ? 'ON' : 'OFF', ', NS mode:', this.config.noiseSuppression, ')');
-    return this.processedStream;
-  }
-
-    this.processedStream = this.destinationNode.stream;
-
     // Fix F — remember the first node downstream of sourceNode so we can
     // hot-swap the input MediaStream without recreating the AudioContext or
     // reloading the RNNoise WASM worklet on every device switch.

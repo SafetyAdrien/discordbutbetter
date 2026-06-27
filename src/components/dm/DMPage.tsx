@@ -147,3 +147,18 @@ export function DMPage({
     </div>
   );
 }
+
+function DMListScroll({
+  activeDMId,
+  onOpen,
+}: {
+  activeDMId: string | null;
+  onOpen: (id: string) => void;
+}) {
+  const guard = useScrollAwareContextMenuGuard();
+  return (
+    <div className="flex-1 overflow-y-auto" {...guard}>
+      <DMList activeConversationId={activeDMId} onConversationSelect={onOpen} />
+    </div>
+  );
+}

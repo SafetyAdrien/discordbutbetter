@@ -43,12 +43,30 @@ export function HeadphonesSettingsPopover({
   onOutputDeviceChange,
   outputSinkSupported,
   outputSinkPartial,
+  micPermission,
+  onRequestPermission,
+  onOpenRefresh,
 }: HeadphonesSettingsPopoverProps) {
   const showDeviceSelector =
     typeof onOutputDeviceChange === 'function' && Array.isArray(availableOutputs);
+  const realOutputs = (availableOutputs || []).filter(
+    (d) => d.deviceId && d.deviceId !== 'default' && d.label
+  );
+  const needsPermission =
+    showDeviceSelector &&
+    typeof onRequestPermission === 'function' &&
+    realOutputs.length === 0 &&
+    micPermission !== 'granted';
+
+  const handleOpenChange = (o: boolean) => {
+    if (o && typeof onOpenRefresh === 'function') {
+      void onOpenRefresh();
+    }
+    onOpenChange?.(o);
+  };
 
   return (
-    <Popover open={open} onOpenChange={onOpenChange}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>{children}</PopoverTrigger>
       <PopoverContent side="top" align="center" className="w-72 p-0">
         <div className="p-3 space-y-3">

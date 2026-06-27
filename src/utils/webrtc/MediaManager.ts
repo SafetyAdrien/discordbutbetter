@@ -19,6 +19,7 @@ interface RemoteAudioContext {
   analyser: AnalyserNode;
   source: MediaStreamAudioSourceNode;
   gainNode: GainNode | null;
+  limiterNode: DynamicsCompressorNode | null;
 }
 
 /** Per-remote-peer spectral VAD state */
@@ -394,20 +395,24 @@ export class MediaManager {
       analyser.smoothingTimeConstant = 0.3;
       source.connect(analyser);
 
-      // GainNode for amplification beyond 100% (taking master into account)
+      // GainNode + brick-wall limiter for amplification beyond 100%
+      // (taking master into account). Chain: source -> gain -> limiter -> destination
       let gainNode: GainNode | null = null;
+      let limiterNode: DynamicsCompressorNode | null = null;
       const effective = (savedVolume / 100) * this._masterOutputVolume;
       if (effective > 1) {
         gainNode = context.createGain();
         gainNode.gain.value = effective;
+        limiterNode = this._createLimiter(context);
         source.connect(gainNode);
-        gainNode.connect(context.destination);
+        gainNode.connect(limiterNode);
+        limiterNode.connect(context.destination);
         // When using GainNode for amplification, mute the native element
         audio.volume = 0;
         audio.muted = true;
       }
 
-      this.remoteAudioContexts.set(peerId, { context, analyser, source, gainNode });
+      this.remoteAudioContexts.set(peerId, { context, analyser, source, gainNode, limiterNode });
       this.remoteVADStates.set(peerId, { spectralHistory: [], speakingState: false, holdTimer: null });
       console.log('[MediaManager] Added remote audio for peer:', peerId, 'volume:', savedVolume);
     } catch (error) {
@@ -429,6 +434,9 @@ export class MediaManager {
       if (audioContext.gainNode) {
         try { audioContext.gainNode.disconnect(); } catch { /* already disconnected */ }
       }
+      if (audioContext.limiterNode) {
+        try { audioContext.limiterNode.disconnect(); } catch { /* already disconnected */ }
+      }
       audioContext.context.close().catch(() => {});
       this.remoteAudioContexts.delete(peerId);
     }
@@ -438,6 +446,22 @@ export class MediaManager {
       clearTimeout(vadState.holdTimer);
     }
     this.remoteVADStates.delete(peerId);
+  }
+
+  /**
+   * Create a brick-wall limiter (DynamicsCompressor at 20:1 with -1dB threshold).
+   * Used downstream of the per-peer gainNode to prevent clipping when the
+   * effective volume exceeds 1.0 (peerVolume * masterVolume can reach 4.0).
+   * No make-up gain → strictly limits output, no double-gain risk.
+   */
+  private _createLimiter(context: AudioContext): DynamicsCompressorNode {
+    const limiter = context.createDynamicsCompressor();
+    limiter.threshold.value = -1;   // dB — just below 0dBFS
+    limiter.knee.value = 0;          // hard knee for brick-wall behavior
+    limiter.ratio.value = 20;        // 20:1 ≈ limiter
+    limiter.attack.value = 0.003;    // 3 ms — catch transients fast
+    limiter.release.value = 0.1;     // 100 ms — natural decay
+    return limiter;
   }
 
   getRemoteAudioLevel(peerId: string): number {
@@ -640,25 +664,53 @@ export class MediaManager {
     const effective = (peerVol / 100) * this._masterOutputVolume; // 0..4
     const audio = this.remoteAudioElements.get(peerId);
     const remoteCtx = this.remoteAudioContexts.get(peerId);
+    const now = remoteCtx?.context.currentTime ?? 0;
+    // Short crossfade window (10 ms) to avoid clicks/pops when crossing the
+    // effective=1.0 boundary between the native <audio>.volume path and the
+    // gainNode → limiter path.
+    const RAMP = 0.01;
 
     if (effective <= 1) {
+      // Native path: ramp gainNode down then disconnect, then unmute native.
+      if (remoteCtx?.gainNode) {
+        try {
+          remoteCtx.gainNode.gain.cancelScheduledValues(now);
+          remoteCtx.gainNode.gain.setValueAtTime(remoteCtx.gainNode.gain.value, now);
+          remoteCtx.gainNode.gain.linearRampToValueAtTime(0.0001, now + RAMP);
+        } catch { /* node may be detached */ }
+        const gn = remoteCtx.gainNode;
+        const lim = remoteCtx.limiterNode;
+        setTimeout(() => {
+          try { gn.disconnect(); } catch { /* already */ }
+          if (lim) { try { lim.disconnect(); } catch { /* already */ } }
+        }, RAMP * 1000 + 5);
+        remoteCtx.gainNode = null;
+        remoteCtx.limiterNode = null;
+      }
       if (audio) {
         audio.volume = Math.max(0, effective);
         audio.muted = this.isDeafened || effective === 0;
       }
-      if (remoteCtx?.gainNode) {
-        try { remoteCtx.gainNode.disconnect(); } catch { /* already */ }
-        remoteCtx.gainNode = null;
-      }
     } else {
+      // Amplification path: mute native, then ramp gainNode up from near-zero.
       if (audio) { audio.volume = 0; audio.muted = true; }
       if (remoteCtx) {
-        if (!remoteCtx.gainNode) {
+        const freshNode = !remoteCtx.gainNode;
+        if (freshNode) {
           remoteCtx.gainNode = remoteCtx.context.createGain();
+          remoteCtx.gainNode.gain.value = 0.0001;
+          remoteCtx.limiterNode = this._createLimiter(remoteCtx.context);
           remoteCtx.source.connect(remoteCtx.gainNode);
-          remoteCtx.gainNode.connect(remoteCtx.context.destination);
+          remoteCtx.gainNode.connect(remoteCtx.limiterNode);
+          remoteCtx.limiterNode.connect(remoteCtx.context.destination);
         }
-        remoteCtx.gainNode.gain.value = effective;
+        try {
+          remoteCtx.gainNode!.gain.cancelScheduledValues(now);
+          remoteCtx.gainNode!.gain.setValueAtTime(remoteCtx.gainNode!.gain.value, now);
+          remoteCtx.gainNode!.gain.linearRampToValueAtTime(effective, now + RAMP);
+        } catch {
+          remoteCtx.gainNode!.gain.value = effective;
+        }
       }
     }
   }

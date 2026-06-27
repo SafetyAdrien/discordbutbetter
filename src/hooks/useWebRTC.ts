@@ -22,7 +22,7 @@ export interface UseWebRTCReturn {
   isMicrophoneActive: boolean;
   audioLevel: number;
   peers: Map<string, PeerInfo>;
-  connect: (channelId: string) => Promise<void>;
+  connect: (channelId: string, initial?: { muted: boolean; deafened: boolean }) => Promise<void>;
   disconnect: () => Promise<void>;
   setMuted: (muted: boolean) => void;
   setDeafened: (deafened: boolean) => void;
@@ -325,7 +325,7 @@ export function useWebRTC(): UseWebRTCReturn {
   }, []);
 
   // Connect to voice channel — uses mutex to prevent races
-  const connect = useCallback(async (channelId: string) => {
+  const connect = useCallback(async (channelId: string, initial?: { muted: boolean; deafened: boolean }) => {
     if (!user?.id) return;
 
     const op = operationPromiseRef.current.then(async () => {
@@ -350,6 +350,15 @@ export function useWebRTC(): UseWebRTCReturn {
 
         // Start signaling service
         signalingServiceRef.current = new SignalingService(channelId, user.id, handleSignalReceived);
+
+        // CRITICAL: push authoritative mute/deafen state from React Context into the
+        // singleton mediaManager BEFORE any remote peer can attach an audio track.
+        // This closes the race where stale singleton flags from a previous session
+        // would persist (e.g. audio.muted = true forever after a disconnect/reconnect).
+        if (initial) {
+          mediaManager.setMuted(initial.muted);
+          mediaManager.setDeafened(initial.deafened);
+        }
 
         // Parallelize: microphone init, signaling start, and participant query
         const [micSuccess, , participantsResult] = await Promise.all([

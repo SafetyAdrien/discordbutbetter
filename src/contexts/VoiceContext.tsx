@@ -356,7 +356,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
                 deafened: prevState.isDeafened,
               })
           ),
-        webrtc.connect(channelId),
+        webrtc.connect(channelId, { muted: prevState.isMuted, deafened: prevState.isDeafened }),
         profilePromise,
       ]);
 

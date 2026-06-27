@@ -3,6 +3,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { useImageGuardProps } from '@/hooks/useDownloadPermissions';
+
+function GuardedAvatarImg({ src, ownerId }: { src?: string; ownerId?: string | null }) {
+  const g = useImageGuardProps(ownerId ?? null);
+  return <AvatarImage src={src} draggable={g.draggable as any} onContextMenu={g.onContextMenu} />;
+}
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';

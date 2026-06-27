@@ -1,53 +1,94 @@
-# Plan — Confidentialité : Téléchargements & Détection capture (révisé)
 
-## 1. Téléchargement de mon contenu (liste d'autorisation)
+# Aperçus interactifs YouTube & Twitch
 
-### Backend (migration)
-- Table `public.download_permissions`
-  - `id uuid pk`, `owner_id uuid → auth.users`, `allowed_user_id uuid → auth.users`, `created_at timestamptz`
-  - `UNIQUE (owner_id, allowed_user_id)`, `CHECK owner_id <> allowed_user_id`
-- GRANT `SELECT, INSERT, DELETE` → `authenticated`, `ALL` → `service_role`
-- RLS :
-  - SELECT : `owner_id = auth.uid() OR allowed_user_id = auth.uid()` (nécessaire pour que le destinataire reçoive le payload Realtime)
-  - INSERT/DELETE : `owner_id = auth.uid()`
-- RPC `public.can_download_user_content(_owner_id uuid, _viewer_id uuid) returns boolean` — SECURITY DEFINER, STABLE
-- RPC `public.search_downloadable_candidates(_query text)` — SECURITY DEFINER, union amis acceptés + membres serveurs communs, exclut self et déjà autorisés
-- `ALTER PUBLICATION supabase_realtime ADD TABLE public.download_permissions`
+Remplace l'embed statique actuel (`LinkEmbed.tsx`) par un système de détection de provider qui rend un player inline simple, no-cookie, pour YouTube (vidéos + Shorts + Live) et Twitch (Live + Clips + VOD).
 
-### Frontend
-- Page `src/components/account-settings/DownloadPermissionsSettings.tsx` (recherche-filtre + bouton Add + liste avec icône X + texte d'aide capture d'écran)
-- `AddDownloadPermissionModal.tsx` : recherche via `search_downloadable_candidates`, clic = ajout direct
-- Hook `useDownloadPermissions.ts` : list (owner) / add / remove + `useCanDownload(ownerId)` (cache-first)
-- **2 souscriptions Realtime** sur `download_permissions` :
-  1. `filter: owner_id=eq.{uid}` → met à jour la liste affichée dans les paramètres (autre onglet)
-  2. `filter: allowed_user_id=eq.{uid}` → invalide les caches `can-download:{ownerId}` pour faire apparaître **immédiatement** le bouton "Télécharger" chez la personne qui vient d'être autorisée, sans refresh
-- Brancher la page dans `PrivacySettings.tsx`
-- Gardes UI sur contenu d'autrui uniquement (avatar, bannière, pièces jointes, lightboxes média/forum) : `if (!canDownload && authorId !== currentUserId) → masquer l'option`. Le contenu reste visible.
+## Périmètre
 
-## 2. Détection capture d'écran (DMs natifs uniquement)
+- **YouTube** : vidéos longues, Shorts, Live — détection via `youtube.com/watch`, `youtu.be/`, `youtube.com/shorts/`, `youtube.com/live/`.
+- **Twitch** : streams live (`twitch.tv/{channel}`), clips (`clips.twitch.tv/...` + `twitch.tv/{channel}/clip/...`), VOD (`twitch.tv/videos/...`).
+- Toute autre URL → fallback sur le `LinkEmbed` existant (inchangé).
 
-### Dépendance
-- `npm i @capacitor-community/privacy-screen` (sync Capacitor à faire par l'utilisateur)
+## Architecture
 
-### Backend (migration)
-- Colonne `profiles.notify_screenshot_capture boolean DEFAULT true`
-- Colonne `dm_messages.system_type text NULL` (valeurs : `'screenshot' | 'screen_recording_start' | 'screen_recording_stop'`)
-- **Confirmé** : `author_id` reste **rempli** avec l'ID du capteur (pas NULL). `system_type` sert uniquement à distinguer le rendu (ligne italique centrée) d'un message texte normal.
-- **Protection insertion** : trigger `BEFORE INSERT OR UPDATE` sur `dm_messages` qui rejette toute écriture où `system_type IS NOT NULL` si l'appel n'est pas SECURITY DEFINER. Pattern :
-  - Le trigger compare `current_setting('app.allow_system_type', true)` à `'1'`. S'il n'est pas posé → `RAISE EXCEPTION`.
-  - Le RPC `report_screen_capture` exécute `PERFORM set_config('app.allow_system_type', '1', true);` avant l'INSERT (scope transaction).
-  - Résultat : seul le RPC SECURITY DEFINER peut poser `system_type`. Les INSERT clients normaux (qui ne passent pas par le RPC) ne peuvent pas le faire, même en trichant côté client.
-- RPC `public.report_screen_capture(_conversation_id uuid, _event text) returns void` — SECURITY DEFINER
-  - Vérifie `is_dm_participant(auth.uid(), _conversation_id)`
-  - Lit `profiles.notify_screenshot_capture` du caller ; si `false`, return sans insérer
-  - `set_config('app.allow_system_type', '1', true)` puis `INSERT INTO dm_messages (conversation_id, author_id, system_type, content)` avec `author_id = auth.uid()` et `content = ''`
+```text
+src/components/chat/embeds/
+  ├── index.tsx                  # <SmartLinkEmbed url> : routeur provider → player
+  ├── YouTubeEmbed.tsx           # Vidéo / Short / Live (iframe nocookie)
+  ├── TwitchEmbed.tsx            # Live / Clip / VOD (iframe Twitch)
+  └── providers.ts               # parseYouTube(url), parseTwitch(url)
 
-### Frontend
-- Hook `src/hooks/useScreenCaptureDetection.ts` : guard `Capacitor.isNativePlatform()`, monté dans `DMConversation.tsx`, écoute `screenshotTaken` / `screenRecordingStarted` / `screenRecordingStopped`, appelle le RPC avec la conversation active
-- Rendu DM : `dm_messages` avec `system_type` non-null → ligne italique centrée "{author.display_name} a pris une capture d'écran." / "a démarré un enregistrement d'écran." / "a arrêté un enregistrement d'écran."
-- Toggle dans `PrivacySettings.tsx` lié à `profiles.notify_screenshot_capture` (par défaut ON)
+src/components/chat/LinkEmbed.tsx  # garde le fallback meta OG existant
+```
 
-## Fichiers
-- **Nouveaux** : `DownloadPermissionsSettings.tsx`, `AddDownloadPermissionModal.tsx`, `useDownloadPermissions.ts`, `useScreenCaptureDetection.ts`
-- **Modifiés** : `PrivacySettings.tsx` (utilisateur), `AccountSettingsModal.tsx`, `DMConversation.tsx`, `useDMMessages.ts` (rendu system), `FullUserProfileModal.tsx`, `UserProfilePopup.tsx`, `MessageAttachment.tsx` + lightboxes média/forum, `useCacheRehydrate.ts`
-- **Migrations** : table + RLS + RPCs + colonnes profiles/dm_messages + trigger anti-bypass + publication realtime
+`LinkEmbeds` (le wrapper qui itère sur les URLs détectées dans un message) appelle `SmartLinkEmbed` au lieu de `LinkEmbed` directement. Si le provider matche, on rend le player ; sinon on délègue au `LinkEmbed` actuel.
+
+## YouTube — comportement
+
+- Parse l'URL → `{ kind: 'video' | 'short' | 'live', id, start? }`.
+- Render :
+  - **Vidéo / Live** : carte 16:9 (max-width 520px, cohérent avec `LinkEmbed` actuel), `<iframe src="https://www.youtube-nocookie.com/embed/{id}?start={t}&rel=0&modestbranding=1">`.
+  - **Short** : carte 9:16 (max-width 280px), même iframe nocookie.
+- **Lazy mount** : avant clic, on affiche la thumbnail (`https://i.ytimg.com/vi/{id}/hqdefault.jpg`) + bouton play central. L'iframe n'est montée qu'après clic → zéro requête YouTube tant que personne ne lance la lecture (cohérent avec policy zéro collecte).
+- Pas de viewers temps réel ni chat (niveau d'interaction = simple).
+
+## Twitch — comportement
+
+- Parse l'URL → `{ kind: 'stream' | 'clip' | 'vod', value }`.
+- Render avec lazy-mount (thumbnail + bouton play, iframe au clic) :
+  - **Stream** : `<iframe src="https://player.twitch.tv/?channel={login}&parent={host}">`. Affiche aussi un badge LIVE rouge + nom du jeu + viewers, alimenté par une nouvelle edge function (voir ci-dessous). Si offline → carte profil chaîne, pas de player.
+  - **Clip** : `<iframe src="https://clips.twitch.tv/embed?clip={slug}&parent={host}">`.
+  - **VOD** : `<iframe src="https://player.twitch.tv/?video=v{id}&parent={host}&time={t}">` (avec deep-link timestamp si `?t=` dans l'URL).
+- `parent` = `window.location.hostname` (requis par Twitch ; supporte preview + custom domain).
+
+## Données live Twitch (Helix via connecteur)
+
+Nouvelle edge function `twitch-channel-status` (équivalent du pattern déjà utilisé pour `fetch-url-metadata`) :
+
+- Input : `{ login: string }` ou `{ video_id }` / `{ clip_slug }`.
+- Output : `{ isLive, title, game, viewers, thumbnail, startedAt, profileImage }`.
+- Implémentation : appel `GET https://connector-gateway.lovable.dev/twitch/streams?user_login={login}` puis `GET /users` pour le profil, en utilisant `LOVABLE_API_KEY` + `TWITCH_API_KEY` (connecteur Twitch déjà disponible côté workspace — à confirmer avec `list_connections` au moment du build, sinon proposer `connect`).
+- Cache côté client via React Query (clé `['twitch-status', login]`, `staleTime: 60s`). Pas de polling agressif.
+
+Hook : `useTwitchStatus(login)` calque `useUrlMetadata` (mémoire + IndexedDB + invalidation Realtime sur le canal `url-meta-broadcast` existant).
+
+## Confidentialité (zéro collecte)
+
+- `youtube-nocookie.com` uniquement, jamais `youtube.com/embed`.
+- Iframe **non montée** tant que l'utilisateur ne clique pas → aucun cookie/ping YouTube/Twitch lors du simple affichage du message.
+- Thumbnails servies depuis `i.ytimg.com` / `static-cdn.jtvnw.net` directement (pas de proxy, mais lecture seule, pas de tracking).
+- Aucun toggle utilisateur : strict pour tout le monde, conforme à la memory `privacy-policy-zero-data-collection`.
+
+## Intégration cache-first
+
+Comme `useUrlMetadata`, la résolution provider (YouTube/Twitch parse) est synchrone donc déjà instantanée. Pour Twitch live status, on hydrate depuis IndexedDB au montage pour éviter le flicker LIVE/offline, cohérent avec le pattern `useCacheRehydrate`.
+
+## Détails techniques
+
+- **Parsing** : regex côté `providers.ts`, testée pour `youtu.be/X`, `youtube.com/watch?v=X&t=42s`, `youtube.com/shorts/X`, `youtube.com/live/X`, `twitch.tv/{login}` (exclut `/videos/`, `/clip/`, `/directory/`, etc.), `twitch.tv/videos/{id}`, `clips.twitch.tv/{slug}`, `twitch.tv/{login}/clip/{slug}`.
+- **Sécurité iframe** : `sandbox="allow-scripts allow-same-origin allow-presentation"`, `allow="autoplay; encrypted-media; picture-in-picture"`, `referrerpolicy="strict-origin-when-cross-origin"`.
+- **A11y** : bouton play avec `aria-label`, focus visible, support clavier (Enter/Space pour mount).
+- **Mobile** : carte Short conserve son 9:16 ; sur très petit écran, max-width 100%.
+- **Fallback** : si le parse réussit mais l'iframe échoue (CSP, offline), on dégrade vers le `LinkEmbed` OG existant.
+
+## Fichiers touchés
+
+- **Nouveaux** :
+  - `src/components/chat/embeds/providers.ts`
+  - `src/components/chat/embeds/index.tsx` (SmartLinkEmbed)
+  - `src/components/chat/embeds/YouTubeEmbed.tsx`
+  - `src/components/chat/embeds/TwitchEmbed.tsx`
+  - `src/hooks/useTwitchStatus.ts`
+  - `supabase/functions/twitch-channel-status/index.ts`
+- **Modifiés** :
+  - `src/components/chat/LinkEmbed.tsx` : `LinkEmbeds` route vers `SmartLinkEmbed` ; `LinkEmbed` (single) inchangé comme fallback.
+  - `supabase/config.toml` : déclaration de la nouvelle edge function (verify_jwt = true).
+
+## Hors scope (volontairement reporté)
+
+- Watch-together / sync play-pause Realtime.
+- PiP / mini-player persistant entre salons.
+- Réactions emoji synchrones sur les embeds.
+- Chat Twitch / YouTube en panneau latéral.
+
+Ces briques pourront être ajoutées par-dessus `SmartLinkEmbed` dans une itération ultérieure sans refonte.

@@ -121,6 +121,54 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     catch { return 100; }
   });
 
+  // Output (headphones) volume — persisted, applied to all remote audio
+  const [outputVolume, setOutputVolumeState] = useState<number>(() => {
+    try { return parseInt(localStorage.getItem('voice-output-volume') || '100', 10); }
+    catch { return 100; }
+  });
+
+  // ---- Device selection state (Fix #6) ----
+  const [inputDeviceId, setInputDeviceIdState] = useState<string>(() => mediaManager.getInputDeviceId());
+  const [outputDeviceId, setOutputDeviceIdState] = useState<string>(() => mediaManager.getOutputDeviceId());
+  const [availableInputs, setAvailableInputs] = useState<MediaDeviceInfo[]>([]);
+  const [availableOutputs, setAvailableOutputs] = useState<MediaDeviceInfo[]>([]);
+  const outputSinkSupported = mediaManager.canRouteWebAudioToDevice() ||
+    (typeof HTMLMediaElement !== 'undefined' && 'setSinkId' in HTMLMediaElement.prototype);
+
+  // Enumerate devices on mount + when the system reports a device change.
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.enumerateDevices) return;
+    let cancelled = false;
+    const refresh = async () => {
+      try {
+        const list = await navigator.mediaDevices.enumerateDevices();
+        if (cancelled) return;
+        const ins = list.filter(d => d.kind === 'audioinput');
+        const outs = list.filter(d => d.kind === 'audiooutput');
+        setAvailableInputs(ins);
+        setAvailableOutputs(outs);
+        // If a persisted id no longer exists, fall back to 'default'.
+        if (inputDeviceId !== 'default' && !ins.some(d => d.deviceId === inputDeviceId)) {
+          mediaManager.setInputDeviceId('default');
+          setInputDeviceIdState('default');
+        }
+        if (outputDeviceId !== 'default' && !outs.some(d => d.deviceId === outputDeviceId)) {
+          await mediaManager.setOutputSinkId('default');
+          setOutputDeviceIdState('default');
+        }
+      } catch (e) {
+        console.warn('[VoiceContext] enumerateDevices failed:', e);
+      }
+    };
+    refresh();
+    navigator.mediaDevices.addEventListener?.('devicechange', refresh);
+    return () => {
+      cancelled = true;
+      navigator.mediaDevices.removeEventListener?.('devicechange', refresh);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [voiceState, setVoiceState] = useState<VoiceState>({
     channelId: null,
     channelName: null,

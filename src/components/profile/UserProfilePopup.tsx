@@ -207,6 +207,10 @@ export function UserProfilePopup({
   // Server profile override (Discord-style nickname/avatar/banner/bio per server)
   const { data: serverProfile } = useServerProfile(user?.id ?? null, serverId ?? null);
 
+  // Hook guard MUST be called before any early-return to keep hook order stable across renders.
+  const isOwnProfileForGuard = currentUser?.id === user?.id;
+  const bannerGuard = useImageGuardProps(isOwnProfileForGuard ? null : user?.id ?? null);
+
   if (!user) return null;
 
   // Apply server profile overrides on top of the global user when in a server context
@@ -221,8 +225,7 @@ export function UserProfilePopup({
       }
     : user;
 
-  const isOwnProfile = currentUser?.id === user.id;
-  const bannerGuard = useImageGuardProps(isOwnProfile ? null : user.id);
+  const isOwnProfile = isOwnProfileForGuard;
   const isInVoiceWithTarget = !isOwnProfile && !!voiceState.channelId && !!user;
   const targetVolume = user ? getUserVolume(user.id) : 100;
   const displayVolume = localVolume ?? targetVolume;

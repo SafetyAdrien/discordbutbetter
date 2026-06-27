@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useEffect, useRef } from 'react';
 import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { isDirectMentionForUser } from '@/lib/mentions';
-import { isBeforeReadGuard } from '@/lib/readStateGuard';
+import { isBeforeReadGuard, recordReadAt, getLastReadAt } from '@/lib/readStateGuard';
 
 export interface ChannelUnreadInfo {
   hasUnread: boolean;

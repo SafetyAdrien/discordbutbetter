@@ -30,6 +30,8 @@ interface MessageInputProps {
   channelId?: string | null;
   channelName?: string;
   threadId?: string | null;
+  // DM context : when set, the poll button opens a DM-poll modal
+  dmConversationId?: string | null;
   // Mention autocomplete data
   members?: MentionMember[];
   roles?: MentionRole[];

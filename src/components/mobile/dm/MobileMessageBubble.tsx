@@ -7,7 +7,7 @@ import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useLongPress } from '@/hooks/useLongPress';
 import { MarkdownText } from '@/lib/markdown';
 import { MessageAttachments, type StoredAttachment } from '@/components/chat/MessageAttachments';
-import { LinkEmbeds } from '@/components/chat/LinkEmbed';
+import { SmartLinkEmbeds as LinkEmbeds } from '@/components/chat/embeds';
 import { ReactionBar } from '@/components/chat/ReactionBar';
 import { RepliedLine } from '@/components/chat/RepliedLine';
 import { format } from 'date-fns';

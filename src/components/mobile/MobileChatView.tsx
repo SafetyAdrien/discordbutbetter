@@ -30,6 +30,7 @@ import { useMultipleChannelPermissions } from '@/hooks/useUserChannelPermissions
 import { useServers } from '@/hooks/useServers';
 import { MobileMoreActionsSheet, MobileMoreAction } from '@/components/mobile/MobileMoreActionsSheet';
 import { MobileChannelDetailSheet } from '@/components/mobile/MobileChannelDetailSheet';
+import { MobileChannelHeader } from '@/components/mobile/MobileChannelHeader';
 import type { Message, User } from '@/types/app';
 import { useMarkChannelAsRead } from '@/hooks/useMarkChannelAsRead';
 import type { MemberWithProfile } from '@/hooks/useMembers';

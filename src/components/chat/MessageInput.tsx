@@ -1049,7 +1049,13 @@ export function MessageInput({
 
       
       
-      {(channelId || threadId) && (
+      {dmConversationId ? (
+        <CreateDMPollModal
+          conversationId={dmConversationId}
+          open={pollModalOpen}
+          onOpenChange={setPollModalOpen}
+        />
+      ) : (channelId || threadId) ? (
         <CreatePollModal
           channelId={channelId || ''}
           serverId={serverId}
@@ -1057,7 +1063,7 @@ export function MessageInput({
           open={pollModalOpen}
           onOpenChange={setPollModalOpen}
         />
-      )}
+      ) : null}
 
       <MentionEveryoneWarningModal
         open={pendingEveryoneMention !== null}

@@ -1919,6 +1919,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                 {(message as any).attachments && (message as any).attachments.length > 0 && (
                                   <MessageAttachments
                                     attachments={(message as any).attachments as StoredAttachment[]}
+                                    authorId={(message as any).author_id ?? (message as any).user_id ?? null}
                                   />
                                 )}
 

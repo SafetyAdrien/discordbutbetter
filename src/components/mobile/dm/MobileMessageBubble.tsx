@@ -195,7 +195,7 @@ export function MobileMessageBubble({
                 className="block"
               >
                 <Avatar className="w-8 h-8">
-                  <AvatarImage src={message.author?.avatarUrl || undefined} />
+                  <AvatarImage src={message.author?.avatarUrl || undefined} draggable={avatarGuard.draggable as any} onContextMenu={avatarGuard.onContextMenu} />
                   <AvatarFallback className="bg-primary/20 text-primary text-xs">
                     {(message.author?.displayName || '?').charAt(0).toUpperCase()}
                   </AvatarFallback>

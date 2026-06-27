@@ -51,6 +51,9 @@ export interface UseWebRTCReturn {
   // Reconnection state
   isReconnecting: boolean;
   reconnectAttempts: number;
+  // Fix #6 — device hot-swap
+  switchInputDevice: (deviceId: string) => Promise<boolean>;
+  setOutputSinkId: (deviceId: string) => Promise<void>;
 }
 
 // Adaptive VAD state tracking

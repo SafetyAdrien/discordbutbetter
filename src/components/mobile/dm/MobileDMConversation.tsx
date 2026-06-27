@@ -212,6 +212,45 @@ export function MobileDMConversation({ conversationId, onBack }: Props) {
     });
   }, [messages, user, isGroup]);
 
+  // DM Polls
+  const { data: polls = [] } = useDMPolls(conversationId);
+  const deletePoll = useDeleteDMPoll();
+  const endPoll = useEndDMPoll();
+  const sortedPolls = useMemo(
+    () => [...polls].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()),
+    [polls],
+  );
+  const renderMobilePoll = (poll: DMPoll) => {
+    const isOwn = poll.author_id === user?.id;
+    return (
+      <div key={`poll-${poll.id}`} className="px-3 py-2">
+        <div className="rounded-2xl bg-[hsl(var(--surface-2))] p-3">
+          <div className="flex items-center gap-2 mb-2">
+            <BarChart2 className="w-3.5 h-3.5 text-primary" />
+            <span className="text-[11px] font-semibold text-primary">SONDAGE</span>
+            <span className="text-[10px] text-muted-foreground ml-1">
+              {poll.author?.display_name || 'Utilisateur'}
+            </span>
+            <span className="text-[10px] text-muted-foreground/60 ml-auto">
+              {format(new Date(poll.created_at), 'HH:mm', { locale: fr })}
+            </span>
+          </div>
+          <DMPollDisplay poll={poll} conversationId={conversationId} />
+          {isOwn && (
+            <div className="flex items-center gap-2 mt-2">
+              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => endPoll.mutate({ pollId: poll.id, conversationId })}>
+                Terminer
+              </Button>
+              <Button variant="ghost" size="sm" className="h-7 text-xs text-destructive" onClick={() => deletePoll.mutate({ pollId: poll.id, conversationId })}>
+                Supprimer
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const handleSend = async (
     attachmentsToSend?: { file: File; name: string; description: string; isSpoiler: boolean }[],
   ) => {

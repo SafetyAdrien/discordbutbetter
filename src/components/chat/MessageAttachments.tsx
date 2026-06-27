@@ -101,10 +101,12 @@ function ImageAttachment({
 
 function ImageCarousel({ 
   images, 
-  onOpenLightbox 
+  onOpenLightbox,
+  authorId,
 }: { 
   images: StoredAttachment[];
   onOpenLightbox: (index: number) => void;
+  authorId?: string | null;
 }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [scrollProgress, setScrollProgress] = useState(0);

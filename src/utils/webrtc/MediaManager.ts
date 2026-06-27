@@ -443,6 +443,9 @@ export class MediaManager {
       if (audioContext.limiterNode) {
         try { audioContext.limiterNode.disconnect(); } catch { /* already disconnected */ }
       }
+      if (audioContext.saturatorNode) {
+        try { audioContext.saturatorNode.disconnect(); } catch { /* already disconnected */ }
+      }
       audioContext.context.close().catch(() => {});
       this.remoteAudioContexts.delete(peerId);
     }
@@ -469,6 +472,30 @@ export class MediaManager {
     limiter.release.value = 0.1;     // 100 ms — natural decay
     return limiter;
   }
+
+  /**
+   * Create a tanh saturator (WaveShaperNode, oversample 4x) clamped at ±0.95.
+   * Placed AFTER the limiter as a final safety net: catches residual transient
+   * overshoots that slip through the 3 ms attack, guaranteeing peak <= ~0.95.
+   * 4x oversampling reduces aliasing introduced by the non-linearity.
+   */
+  private _createSaturator(context: AudioContext): WaveShaperNode {
+    const shaper = context.createWaveShaper();
+    const N = 4096;
+    const curve = new Float32Array(N);
+    const CLAMP = 0.95;
+    // y = CLAMP * tanh(x) — at x=±1 gives ~0.72; saturates smoothly above.
+    // The curve covers input [-2, +2] which is the maximum the limiter can
+    // momentarily emit given gain up to 4.0 and a 3 ms attack window.
+    for (let i = 0; i < N; i++) {
+      const x = (i / (N - 1)) * 4 - 2; // [-2, +2]
+      curve[i] = CLAMP * Math.tanh(x);
+    }
+    shaper.curve = curve;
+    shaper.oversample = '4x';
+    return shaper;
+  }
+
 
   getRemoteAudioLevel(peerId: string): number {
     const entry = this.remoteAudioContexts.get(peerId);

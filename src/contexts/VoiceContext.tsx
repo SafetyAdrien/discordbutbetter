@@ -66,6 +66,14 @@ interface VoiceContextType {
   // Output (headphones) volume
   outputVolume: number;
   setOutputVolume: (vol: number) => void;
+  // Device selection (Fix #6)
+  inputDeviceId: string;
+  outputDeviceId: string;
+  availableInputs: MediaDeviceInfo[];
+  availableOutputs: MediaDeviceInfo[];
+  setInputDeviceId: (id: string) => Promise<void>;
+  setOutputDeviceId: (id: string) => Promise<void>;
+  outputSinkSupported: boolean;
 }
 
 const VoiceContext = createContext<VoiceContextType | null>(null);

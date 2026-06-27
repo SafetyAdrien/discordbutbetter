@@ -730,6 +730,30 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     mediaManager.setMasterOutputVolume(vol);
   }, []);
 
+  // Fix #6 — input device setter. Hot-swaps the active mic via useWebRTC
+  // when connected; otherwise just persists the choice for the next session.
+  const setInputDeviceId = useCallback(async (id: string) => {
+    const next = id || 'default';
+    setInputDeviceIdState(next);
+    if (voiceState.channelId) {
+      const ok = await webrtc.switchInputDevice(next);
+      if (!ok) toast.error("Impossible d'utiliser ce périphérique d'entrée");
+    } else {
+      mediaManager.setInputDeviceId(next);
+    }
+  }, [voiceState.channelId, webrtc]);
+
+  // Fix #6 — output device setter. Works without a live call.
+  const setOutputDeviceId = useCallback(async (id: string) => {
+    const next = id || 'default';
+    setOutputDeviceIdState(next);
+    try { await webrtc.setOutputSinkId(next); }
+    catch (e) {
+      console.warn('[VoiceContext] setOutputSinkId failed:', e);
+      toast.error("Impossible d'utiliser ce périphérique de sortie");
+    }
+  }, [webrtc]);
+
   return (
     <VoiceContext.Provider
       value={{
@@ -777,6 +801,14 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         // Output volume
         outputVolume,
         setOutputVolume,
+        // Device selection (Fix #6)
+        inputDeviceId,
+        outputDeviceId,
+        availableInputs,
+        availableOutputs,
+        setInputDeviceId,
+        setOutputDeviceId,
+        outputSinkSupported,
       }}
     >
       {children}

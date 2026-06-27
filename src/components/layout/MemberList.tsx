@@ -561,6 +561,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
                 src={member.avatar}
                 alt={member.displayName}
                 fallback={member.displayName.charAt(0).toUpperCase()}
+                ownerId={member.id}
                 className={cn("w-8 h-8", member.status === "offline" && "opacity-50 grayscale")}
               />
               <StatusIndicator

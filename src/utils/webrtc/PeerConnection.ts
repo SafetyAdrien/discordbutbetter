@@ -307,8 +307,13 @@ export class PeerConnection {
   }
 
   /**
-   * Optimize Opus fmtp parameters for high-quality voice:
-   * - 96kbps bitrate, 48kHz, FEC, DTX
+  /**
+   * Optimize Opus fmtp parameters for voice (Discord-aligned):
+   * - 64 kbps target (lowered from 96), 48 kHz, FEC for packet-loss recovery.
+   * - DTX disabled (usedtx=0): deliberate — DTX causes audible
+   *   "syllable clipping" on silence→speech transitions, the exact symptom
+   *   reported as "voix qui sonne mal" par intermittence. Disabling DTX
+   *   removes that artifact at the cost of ~5 kbps of background bandwidth.
    */
   private optimizeSdpForOpus(sdp: string): string {
     return sdp.replace(
@@ -317,11 +322,11 @@ export class PeerConnection {
         const existingParams = params.split(';').map((p: string) => p.trim());
         const optimizations = [
           'stereo=0',
-          'maxaveragebitrate=96000',
+          'maxaveragebitrate=64000',
           'maxplaybackrate=48000',
           'sprop-maxcapturerate=48000',
           'useinbandfec=1',
-          'usedtx=1',
+          'usedtx=0',
         ];
         const newParams = [...existingParams];
         for (const opt of optimizations) {

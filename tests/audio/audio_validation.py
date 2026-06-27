@@ -41,8 +41,9 @@ async () => {
     const nativeGain = ctx.createGain(); nativeGain.gain.value = 0;
     const ampGain = ctx.createGain(); ampGain.gain.value = 0.0001;
     const limiter = createLimiter(ctx);
+    const saturator = createSaturator(ctx);
     osc.connect(nativeGain); nativeGain.connect(ctx.destination);
-    osc.connect(ampGain); ampGain.connect(limiter); limiter.connect(ctx.destination);
+    osc.connect(ampGain); ampGain.connect(limiter); limiter.connect(saturator); saturator.connect(ctx.destination);
     const RAMP = 0.01;
     for (const { t, volume } of schedule) {
       const effective = volume / 100;

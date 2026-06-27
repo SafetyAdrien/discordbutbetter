@@ -395,20 +395,24 @@ export class MediaManager {
       analyser.smoothingTimeConstant = 0.3;
       source.connect(analyser);
 
-      // GainNode for amplification beyond 100% (taking master into account)
+      // GainNode + brick-wall limiter for amplification beyond 100%
+      // (taking master into account). Chain: source -> gain -> limiter -> destination
       let gainNode: GainNode | null = null;
+      let limiterNode: DynamicsCompressorNode | null = null;
       const effective = (savedVolume / 100) * this._masterOutputVolume;
       if (effective > 1) {
         gainNode = context.createGain();
         gainNode.gain.value = effective;
+        limiterNode = this._createLimiter(context);
         source.connect(gainNode);
-        gainNode.connect(context.destination);
+        gainNode.connect(limiterNode);
+        limiterNode.connect(context.destination);
         // When using GainNode for amplification, mute the native element
         audio.volume = 0;
         audio.muted = true;
       }
 
-      this.remoteAudioContexts.set(peerId, { context, analyser, source, gainNode });
+      this.remoteAudioContexts.set(peerId, { context, analyser, source, gainNode, limiterNode });
       this.remoteVADStates.set(peerId, { spectralHistory: [], speakingState: false, holdTimer: null });
       console.log('[MediaManager] Added remote audio for peer:', peerId, 'volume:', savedVolume);
     } catch (error) {

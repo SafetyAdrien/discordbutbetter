@@ -119,7 +119,7 @@ export function useUnreadCounts() {
               return rest;
             });
           }
-          invalidate();
+          // Optimistic patch above is authoritative; intentionally no invalidate.
         },
       )
       .subscribe();
@@ -148,9 +148,13 @@ export function useUnreadCounts() {
       return conversationId;
     },
     onMutate: async (conversationId) => {
+      // Arm guard so any in-flight realtime INSERT/refetch with messages
+      // older than this moment cannot resurrect the badge.
+      markReadGuard(conversationId);
+
       await queryClient.cancelQueries({ queryKey: ['unread-counts', user?.id] });
       const previousCounts = queryClient.getQueryData<Record<string, number>>(['unread-counts', user?.id]);
-      
+
       queryClient.setQueryData<Record<string, number>>(['unread-counts', user?.id], old => {
         if (!old) return {};
         const { [conversationId]: _, ...rest } = old;
@@ -165,7 +169,7 @@ export function useUnreadCounts() {
           return rest;
         }
       );
-      
+
       return { previousCounts };
     },
     onError: (_, __, context) => {
@@ -173,10 +177,9 @@ export function useUnreadCounts() {
         queryClient.setQueryData(['unread-counts', user?.id], context.previousCounts);
       }
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['unread-counts'] });
-      queryClient.invalidateQueries({ queryKey: ['dm-mention-counts'] });
-    },
+    // NOTE: no onSettled invalidate — would race against replication lag and
+    // resurrect the badge. The optimistic patch + guard are authoritative;
+    // cross-device sync arrives via the dm_read_states realtime channel.
   });
 
   return {

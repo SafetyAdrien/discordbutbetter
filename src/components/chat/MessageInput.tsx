@@ -981,7 +981,7 @@ export function MessageInput({
                     <span>Ajouter une image</span>
                   </button>
                 )}
-                {(channelId || threadId) && canCreatePolls && (
+                {(channelId || threadId || dmConversationId) && canCreatePolls && (
                   <button
                     type="button"
                     className="flex items-center gap-2 w-full px-3 py-2 rounded-md hover:bg-muted transition-colors text-sm"

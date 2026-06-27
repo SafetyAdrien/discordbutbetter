@@ -214,6 +214,9 @@ export function VoiceControls({
               availableOutputs={availableOutputs}
               onOutputDeviceChange={setOutputDeviceId}
               outputSinkSupported={outputSinkSupported}
+              micPermission={micPermission}
+              onRequestPermission={requestMicPermission}
+              onOpenRefresh={refreshDevices}
             >
               <Button
                 size="sm"

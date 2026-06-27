@@ -456,6 +456,7 @@ export function UserProfilePopup({
               className="w-[72px] h-[72px] border-[5px] border-card"
               fallbackClassName="bg-primary/20 text-primary text-2xl"
               fallback={effectiveUser.displayName.charAt(0).toUpperCase()}
+              ownerId={user.id}
             />
 
             <StatusIndicator

@@ -429,7 +429,14 @@ export class MediaManager {
       audio.srcObject = stream;
       audio.autoplay = true;
       audio.muted = this.isDeafened;
-      
+
+      // Fix #6 — route this element to the persisted output device.
+      if (this._outputDeviceId && this._outputDeviceId !== 'default' &&
+          typeof (audio as any).setSinkId === 'function') {
+        (audio as any).setSinkId(this._outputDeviceId).catch((e: unknown) =>
+          console.warn('[MediaManager] initial setSinkId failed:', e));
+      }
+
       // Apply saved volume — clamp native volume to [0,1] (master applied below)
       const savedVolume = this.peerVolumes.get(peerId) ?? 100;
       this.peerVolumes.set(peerId, savedVolume);
@@ -454,8 +461,15 @@ export class MediaManager {
 
       this.remoteAudioElements.set(peerId, audio);
 
-      // Create audio context with GainNode for amplification > 100%
-      const context = new AudioContext();
+      // Fix #3 — 48 kHz interactive context to match the encoder rate and
+      // avoid the metallic resampling artifacts heard previously.
+      const context = new AudioContext({ sampleRate: 48000, latencyHint: 'interactive' });
+      // Fix #6 — route the high-gain Web Audio chain to the chosen sink when supported.
+      if (this._outputDeviceId && this._outputDeviceId !== 'default' &&
+          typeof (context as any).setSinkId === 'function') {
+        (context as any).setSinkId(this._outputDeviceId).catch((e: unknown) =>
+          console.warn('[MediaManager] AudioContext.setSinkId failed:', e));
+      }
       if (context.state === 'suspended') {
         context.resume().catch(() => {});
         const resumeCtx = () => {

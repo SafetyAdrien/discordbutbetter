@@ -790,7 +790,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                       </UniversalMessageContextMenu>
                       </>)}
                       </div>
-                    </>);
+                    </Fragment>);
                   });
                   return (<>
                     {messageNodes}

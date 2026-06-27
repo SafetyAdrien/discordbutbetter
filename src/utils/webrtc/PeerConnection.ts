@@ -65,6 +65,8 @@ export class PeerConnection {
   private pendingCandidates: RTCIceCandidateInit[] = [];
   private hasRemoteDescription = false;
   private audioSenders: Map<string, RTCRtpSender> = new Map();
+  /** Tracks the main microphone sender so we can hot-swap input devices. */
+  private micSender: RTCRtpSender | null = null;
   private videoSenders: Map<string, RTCRtpSender> = new Map();
   private isRestarting = false;
   private screenEncodingOptions: ScreenShareEncodingOptions | null = null;

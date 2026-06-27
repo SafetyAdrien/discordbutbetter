@@ -27,6 +27,9 @@ interface MicrophoneSettingsPopoverProps {
   inputDeviceId?: string;
   availableInputs?: MediaDeviceInfo[];
   onInputDeviceChange?: (id: string) => void | Promise<void>;
+  micPermission?: 'granted' | 'denied' | 'prompt' | 'unknown';
+  onRequestPermission?: () => Promise<boolean>;
+  onOpenRefresh?: () => Promise<void> | void;
   open?: boolean;
   onOpenChange?: (o: boolean) => void;
 }

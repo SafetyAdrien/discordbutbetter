@@ -74,7 +74,7 @@ export function VoiceActionBar({
   onAudioFilterChange,
 }: VoiceActionBarProps) {
   const [showScreenShareModal, setShowScreenShareModal] = useState(false);
-  const { inputDeviceId, availableInputs, setInputDeviceId } = useVoice();
+  const { inputDeviceId, availableInputs, setInputDeviceId, micPermission, refreshDevices, requestMicPermission } = useVoice();
 
 
   const handleScreenShareClick = () => {

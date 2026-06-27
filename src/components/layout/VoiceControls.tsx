@@ -168,6 +168,9 @@ export function VoiceControls({
               inputDeviceId={inputDeviceId}
               availableInputs={availableInputs}
               onInputDeviceChange={setInputDeviceId}
+              micPermission={micPermission}
+              onRequestPermission={requestMicPermission}
+              onOpenRefresh={refreshDevices}
             >
               <Button
                 size="sm"

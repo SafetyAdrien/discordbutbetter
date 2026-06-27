@@ -1064,6 +1064,129 @@ export type Database = {
           },
         ]
       }
+      dm_poll_options: {
+        Row: {
+          emoji: string | null
+          id: string
+          poll_id: string
+          position: number
+          text: string
+        }
+        Insert: {
+          emoji?: string | null
+          id?: string
+          poll_id: string
+          position?: number
+          text: string
+        }
+        Update: {
+          emoji?: string | null
+          id?: string
+          poll_id?: string
+          position?: number
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dm_poll_options_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "dm_polls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dm_poll_votes: {
+        Row: {
+          created_at: string
+          id: string
+          option_id: string
+          poll_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          option_id: string
+          poll_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          option_id?: string
+          poll_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dm_poll_votes_option_id_fkey"
+            columns: ["option_id"]
+            isOneToOne: false
+            referencedRelation: "dm_poll_options"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dm_poll_votes_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "dm_polls"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dm_poll_votes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dm_polls: {
+        Row: {
+          allow_multiple: boolean
+          author_id: string | null
+          conversation_id: string
+          created_at: string
+          expires_at: string | null
+          id: string
+          question: string
+        }
+        Insert: {
+          allow_multiple?: boolean
+          author_id?: string | null
+          conversation_id: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          question: string
+        }
+        Update: {
+          allow_multiple?: boolean
+          author_id?: string | null
+          conversation_id?: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          question?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dm_polls_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dm_polls_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "dm_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dm_read_states: {
         Row: {
           conversation_id: string

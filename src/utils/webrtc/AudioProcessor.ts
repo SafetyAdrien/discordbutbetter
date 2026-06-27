@@ -636,16 +636,20 @@ export class AudioProcessor {
     this.rnnoiseGainNode?.disconnect();
     this.compressorNode?.disconnect();
     this.gainNode?.disconnect();
+    this.gateGainNode?.disconnect();
     this.analyserNode?.disconnect();
-    
+
     this.sourceNode = null;
     this.highPassFilter = null;
     this.deEsserFilter = null;
     this.lowShelfFilter = null;
     this.rnnoiseNode = null;
     this.rnnoiseGainNode = null;
+    this.preRNNoiseTap = null;
+    this.rnnoiseBypassed = false;
     this.compressorNode = null;
     this.gainNode = null;
+    this.gateGainNode = null;
     this.analyserNode = null;
     this.destinationNode = null;
     this.processedStream = null;

@@ -478,22 +478,30 @@ export class AudioProcessor {
   }
 
   /**
-   * Apply noise gate (mute when below threshold)
+   * Fix #2 — actually gate the *transmitted* signal via the dedicated
+   * gateGainNode. Threshold scales with VAD sensitivity: high sensitivity
+   * opens the gate for quieter sounds, low sensitivity demands more volume.
    */
   applyNoiseGate(level: number): void {
-    if (!this.gainNode || !this.config.enableNoiseGate) return;
+    if (!this.gateGainNode || !this.audioContext || !this.config.enableNoiseGate) return;
 
-    const threshold = this.ambientNoiseLevel + 0.05;
+    const sensitivityOffset: Record<VADSensitivity, number> = {
+      low: 0.08,
+      medium: 0.05,
+      high: 0.02,
+    };
+    const threshold = this.ambientNoiseLevel + sensitivityOffset[this.config.vadSensitivity];
     const shouldOpen = level > threshold;
+    const now = this.audioContext.currentTime;
 
     if (shouldOpen && !this.isGateOpen) {
       this.isGateOpen = true;
-      this.gainNode.gain.cancelScheduledValues(this.audioContext!.currentTime);
-      this.gainNode.gain.linearRampToValueAtTime(
+      this.gateGainNode.gain.cancelScheduledValues(now);
+      this.gateGainNode.gain.setValueAtTime(this.gateGainNode.gain.value, now);
+      this.gateGainNode.gain.linearRampToValueAtTime(
         1,
-        this.audioContext!.currentTime + this.config.noiseGateAttack / 1000
+        now + this.config.noiseGateAttack / 1000
       );
-      
       if (this.gateHoldTimer) {
         clearTimeout(this.gateHoldTimer);
         this.gateHoldTimer = null;
@@ -502,10 +510,13 @@ export class AudioProcessor {
       if (!this.gateHoldTimer) {
         this.gateHoldTimer = setTimeout(() => {
           this.isGateOpen = false;
-          this.gainNode?.gain.cancelScheduledValues(this.audioContext!.currentTime);
-          this.gainNode?.gain.linearRampToValueAtTime(
+          if (!this.gateGainNode || !this.audioContext) return;
+          const t = this.audioContext.currentTime;
+          this.gateGainNode.gain.cancelScheduledValues(t);
+          this.gateGainNode.gain.setValueAtTime(this.gateGainNode.gain.value, t);
+          this.gateGainNode.gain.linearRampToValueAtTime(
             0,
-            this.audioContext!.currentTime + this.config.noiseGateRelease / 1000
+            t + this.config.noiseGateRelease / 1000
           );
           this.gateHoldTimer = null;
         }, 100);

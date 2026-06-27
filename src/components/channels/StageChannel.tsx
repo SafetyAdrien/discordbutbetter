@@ -52,9 +52,11 @@ interface StageChannelProps {
     description?: string;
   };
   serverId: string;
+  /** Hide the internal header bar when a parent shell already renders one. */
+  hideHeader?: boolean;
 }
 
-export function StageChannel({ channel, serverId }: StageChannelProps) {
+export function StageChannel({ channel, serverId, hideHeader = false }: StageChannelProps) {
   const { user } = useAuth();
   const [showAudience, setShowAudience] = useState(true);
   
@@ -193,10 +195,12 @@ export function StageChannel({ channel, serverId }: StageChannelProps) {
     return (
       <div className="flex-1 flex flex-col bg-[hsl(var(--surface-2)/0.3)]">
         {/* Header */}
+        {!hideHeader && (
         <div className="h-12 flex items-center px-4 bg-[hsl(var(--surface-2))]" style={{ borderBottom: "1px solid hsl(var(--border) / 0.5)", boxShadow: "var(--shadow-elevation-1)", borderRadius: "0 0 var(--radius-xl) var(--radius-xl)" }}>
           <Radio className="w-5 h-5 mr-2 text-muted-foreground" />
           <span className="font-semibold">{channel.name}</span>
         </div>
+        )}
         
         {/* Empty state */}
         <div className="flex-1 flex items-center justify-center">

@@ -292,6 +292,10 @@ export class MediaManager {
       }
 
       const rawStream = await navigator.mediaDevices.getUserMedia({ audio: constraints, video: false });
+      // Fix G — keep a durable reference to the physical input so we can
+      // release the device explicitly on stopMicrophone() even when the
+      // processed (output) stream is the one exposed as localAudioStream.
+      this.localRawStream = rawStream;
 
       // Pipe through AudioProcessor (RNNoise + processing chain)
       try {

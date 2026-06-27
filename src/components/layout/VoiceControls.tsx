@@ -162,6 +162,9 @@ export function VoiceControls({
               onToggleLowShelf={(v) => setAudioFilter('lowShelf', v)}
               enableHighPass={audioFilters.highPass}
               onToggleHighPass={(v) => setAudioFilter('highPass', v)}
+              inputDeviceId={inputDeviceId}
+              availableInputs={availableInputs}
+              onInputDeviceChange={setInputDeviceId}
             >
               <Button
                 size="sm"

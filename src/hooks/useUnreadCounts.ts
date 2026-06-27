@@ -94,6 +94,14 @@ export function useUnreadCounts() {
       });
     };
 
+    // Catchup: when a channel (re)joins SUBSCRIBED after a disconnect, replay
+    // any INSERTs we may have missed during the outage by refetching once.
+    // The first SUBSCRIBED is a no-op (the queryFn already runs on mount).
+    const wasSubscribedMessagesRef = { current: false };
+    const wasSubscribedReadsRef = { current: false };
+    const everSubscribedMessagesRef = { current: false };
+    const everSubscribedReadsRef = { current: false };
+
     const messagesChannel = supabase
       .channel(`unread-counts-dm-messages-${user.id}-${instanceIdRef.current}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'dm_messages' }, (payload) => {
@@ -104,7 +112,18 @@ export function useUnreadCounts() {
         patchUnread(msg.conversation_id, 1);
         // No invalidate — patch is authoritative; refetch races against replication lag.
       })
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          if (everSubscribedMessagesRef.current && !wasSubscribedMessagesRef.current) {
+            // Reconnect after a drop — rebuild counts from server.
+            queryClient.invalidateQueries({ queryKey: ['unread-counts', user.id] });
+          }
+          wasSubscribedMessagesRef.current = true;
+          everSubscribedMessagesRef.current = true;
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          wasSubscribedMessagesRef.current = false;
+        }
+      });
 
     const readsChannel = supabase
       .channel(`unread-counts-dm-reads-${user.id}-${instanceIdRef.current}`)
@@ -122,7 +141,17 @@ export function useUnreadCounts() {
           // Optimistic patch above is authoritative; intentionally no invalidate.
         },
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          if (everSubscribedReadsRef.current && !wasSubscribedReadsRef.current) {
+            queryClient.invalidateQueries({ queryKey: ['unread-counts', user.id] });
+          }
+          wasSubscribedReadsRef.current = true;
+          everSubscribedReadsRef.current = true;
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          wasSubscribedReadsRef.current = false;
+        }
+      });
 
     return () => {
       supabase.removeChannel(messagesChannel);

@@ -47,6 +47,17 @@ export function useChannelUnreadCounts(serverId: string | null) {
       );
     };
 
+    // Catchup refs: invalidate on reconnect to recover events missed during outage.
+    const wasMentionsRef = { current: false };
+    const everMentionsRef = { current: false };
+    const wasMessagesRef = { current: false };
+    const everMessagesRef = { current: false };
+
+    const triggerCatchup = () => {
+      queryClient.invalidateQueries({ queryKey: ['channel-unread-counts', serverId, user.id] });
+      queryClient.invalidateQueries({ queryKey: ['server-unread-counts'] });
+    };
+
     const mentionsChannel = supabase
       .channel(`channel-mentions-${serverId}`)
       .on(
@@ -79,7 +90,15 @@ export function useChannelUnreadCounts(serverId: string | null) {
           patchChannel(mention.channel_id, { mentionCount: Math.max(0, (current?.mentionCount || 0) - 1) });
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          if (everMentionsRef.current && !wasMentionsRef.current) triggerCatchup();
+          wasMentionsRef.current = true;
+          everMentionsRef.current = true;
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          wasMentionsRef.current = false;
+        }
+      });
 
     const messagesChannel = supabase
       .channel(`channel-messages-${serverId}`)
@@ -109,7 +128,15 @@ export function useChannelUnreadCounts(serverId: string | null) {
           // race against channel_read_states replication lag.
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          if (everMessagesRef.current && !wasMessagesRef.current) triggerCatchup();
+          wasMessagesRef.current = true;
+          everMessagesRef.current = true;
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          wasMessagesRef.current = false;
+        }
+      });
 
     return () => {
       supabase.removeChannel(mentionsChannel);
@@ -120,6 +147,10 @@ export function useChannelUnreadCounts(serverId: string | null) {
   // Realtime — listen to my own channel_read_states changes (cross-device sync)
   useEffect(() => {
     if (!user || !serverId) return;
+
+    const wasReadsRef = { current: false };
+    const everReadsRef = { current: false };
+
     const readChannel = supabase
       .channel(`channel-read-states-${serverId}-${user.id}`)
       .on(
@@ -141,11 +172,23 @@ export function useChannelUnreadCounts(serverId: string | null) {
               }
             );
           }
-          queryClient.invalidateQueries({ queryKey: ['channel-unread-counts', serverId, user.id] });
-          queryClient.invalidateQueries({ queryKey: ['server-unread-counts'] });
+          // Optimistic patch above is authoritative for the local mutation;
+          // cross-device updates rely on this realtime stream itself.
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          if (everReadsRef.current && !wasReadsRef.current) {
+            // Reconnect after drop — pull fresh server state to rebuild badges.
+            queryClient.invalidateQueries({ queryKey: ['channel-unread-counts', serverId, user.id] });
+            queryClient.invalidateQueries({ queryKey: ['server-unread-counts'] });
+          }
+          wasReadsRef.current = true;
+          everReadsRef.current = true;
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          wasReadsRef.current = false;
+        }
+      });
     return () => {
       supabase.removeChannel(readChannel);
     };

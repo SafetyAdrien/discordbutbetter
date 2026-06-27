@@ -56,6 +56,8 @@ export function useChannelUnreadCounts(serverId: string | null) {
           const mention = payload.new as { channel_id?: string; message_id?: string };
           if (!mention.channel_id) return;
           if (serverChannelIds && !serverChannelIds.has(mention.channel_id)) return;
+          // Guard against mentions belonging to a message we already marked read.
+          if (isBeforeReadGuard(mention.channel_id, (payload.new as { created_at?: string })?.created_at)) return;
           if (mention.message_id) {
             if (countedMentionMessageIdsRef.current.has(mention.message_id)) return;
             countedMentionMessageIdsRef.current.add(mention.message_id);
@@ -63,7 +65,7 @@ export function useChannelUnreadCounts(serverId: string | null) {
           patchChannel(mention.channel_id, {
             mentionCount: ((queryClient.getQueryData<Record<string, ChannelUnreadInfo>>(['channel-unread-counts', serverId, user.id]) || {})[mention.channel_id]?.mentionCount || 0) + 1,
           });
-          queryClient.invalidateQueries({ queryKey: ['channel-unread-counts', serverId, user.id] });
+          // No invalidate — patch is authoritative.
         }
       )
       .on(
@@ -75,7 +77,6 @@ export function useChannelUnreadCounts(serverId: string | null) {
           if (serverChannelIds && !serverChannelIds.has(mention.channel_id)) return;
           const current = (queryClient.getQueryData<Record<string, ChannelUnreadInfo>>(['channel-unread-counts', serverId, user.id]) || {})[mention.channel_id];
           patchChannel(mention.channel_id, { mentionCount: Math.max(0, (current?.mentionCount || 0) - 1) });
-          queryClient.invalidateQueries({ queryKey: ['channel-unread-counts', serverId, user.id] });
         }
       )
       .subscribe();

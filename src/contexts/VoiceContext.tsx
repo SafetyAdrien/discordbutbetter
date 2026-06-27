@@ -928,6 +928,9 @@ const defaultVoiceContext: VoiceContextType = {
   setOutputDeviceId: async () => {},
   outputSinkSupported: false,
   outputSinkPartial: false,
+  micPermission: 'unknown',
+  refreshDevices: async () => {},
+  requestMicPermission: async () => false,
 };
 
 export function useVoice() {

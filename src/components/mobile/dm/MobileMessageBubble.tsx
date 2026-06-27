@@ -256,7 +256,7 @@ export function MobileMessageBubble({
             )}
             {message.attachments.length > 0 && (
               <div className={cn(message.content ? 'mt-2' : '')}>
-                <MessageAttachments attachments={message.attachments} />
+                <MessageAttachments attachments={message.attachments} authorId={message.author?.id ?? null} />
               </div>
             )}
             {message.content && (

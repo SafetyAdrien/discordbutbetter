@@ -94,7 +94,7 @@ export function MobileChatView({
   const [moreOpen, setMoreOpen] = useState(false);
   const [pinnedOpen, setPinnedOpen] = useState(false);
   const [threadsOpen, setThreadsOpen] = useState(false);
-  const [membersOpen, setMembersOpen] = useState(false);
+  
 
   // Announcement follow permission
   const isAnnouncement = channel.type === 'announcement';

@@ -4,6 +4,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Volume2, Headphones } from 'lucide-react';
+import { MicPermissionGate } from './MicPermissionGate';
 
 interface OutputSettingsPopoverProps {
   children: React.ReactNode;
@@ -14,6 +15,9 @@ interface OutputSettingsPopoverProps {
   availableOutputs?: MediaDeviceInfo[];
   onOutputDeviceChange?: (id: string) => void | Promise<void>;
   outputSinkSupported?: boolean;
+  micPermission?: 'granted' | 'denied' | 'prompt' | 'unknown';
+  onRequestPermission?: () => Promise<boolean>;
+  onOpenRefresh?: () => Promise<void> | void;
 }
 
 export function OutputSettingsPopover({

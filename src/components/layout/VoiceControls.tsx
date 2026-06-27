@@ -56,6 +56,9 @@ export function VoiceControls({
     setInputDeviceId,
     setOutputDeviceId,
     outputSinkSupported,
+    micPermission,
+    refreshDevices,
+    requestMicPermission,
   } = useVoice();
 
   return (
@@ -165,6 +168,9 @@ export function VoiceControls({
               inputDeviceId={inputDeviceId}
               availableInputs={availableInputs}
               onInputDeviceChange={setInputDeviceId}
+              micPermission={micPermission}
+              onRequestPermission={requestMicPermission}
+              onOpenRefresh={refreshDevices}
             >
               <Button
                 size="sm"
@@ -208,6 +214,9 @@ export function VoiceControls({
               availableOutputs={availableOutputs}
               onOutputDeviceChange={setOutputDeviceId}
               outputSinkSupported={outputSinkSupported}
+              micPermission={micPermission}
+              onRequestPermission={requestMicPermission}
+              onOpenRefresh={refreshDevices}
             >
               <Button
                 size="sm"

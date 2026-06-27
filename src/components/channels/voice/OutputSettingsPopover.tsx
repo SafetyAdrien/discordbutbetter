@@ -4,6 +4,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Volume2, Headphones } from 'lucide-react';
+import { MicPermissionGate } from './MicPermissionGate';
 
 interface OutputSettingsPopoverProps {
   children: React.ReactNode;
@@ -14,6 +15,9 @@ interface OutputSettingsPopoverProps {
   availableOutputs?: MediaDeviceInfo[];
   onOutputDeviceChange?: (id: string) => void | Promise<void>;
   outputSinkSupported?: boolean;
+  micPermission?: 'granted' | 'denied' | 'prompt' | 'unknown';
+  onRequestPermission?: () => Promise<boolean>;
+  onOpenRefresh?: () => Promise<void> | void;
 }
 
 export function OutputSettingsPopover({
@@ -24,12 +28,23 @@ export function OutputSettingsPopover({
   availableOutputs,
   onOutputDeviceChange,
   outputSinkSupported,
+  micPermission,
+  onRequestPermission,
+  onOpenRefresh,
 }: OutputSettingsPopoverProps) {
   const showDeviceSelector =
     typeof onOutputDeviceChange === 'function' && Array.isArray(availableOutputs);
+  const realOutputs = (availableOutputs || []).filter(
+    (d) => d.deviceId && d.deviceId !== 'default' && d.label
+  );
+  const needsPermission =
+    showDeviceSelector &&
+    typeof onRequestPermission === 'function' &&
+    realOutputs.length === 0 &&
+    micPermission !== 'granted';
 
   return (
-    <Popover>
+    <Popover onOpenChange={(o) => { if (o) void onOpenRefresh?.(); }}>
       <PopoverTrigger asChild>{children}</PopoverTrigger>
       <PopoverContent side="top" align="center" className="w-72 p-0">
         <div className="p-3 space-y-3">
@@ -60,25 +75,31 @@ export function OutputSettingsPopover({
                   <Headphones className="w-3.5 h-3.5 text-muted-foreground" />
                   <Label className="text-xs text-muted-foreground">Périphérique de sortie</Label>
                 </div>
-                <Select
-                  value={outputDeviceId || 'default'}
-                  onValueChange={(v) => onOutputDeviceChange!(v)}
-                >
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue placeholder="Périphérique par défaut" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="default">Périphérique par défaut</SelectItem>
-                    {availableOutputs!
-                      .filter((d) => d.deviceId && d.deviceId !== 'default')
-                      .map((d) => (
+                {needsPermission ? (
+                  <MicPermissionGate
+                    denied={micPermission === 'denied'}
+                    onRequest={onRequestPermission!}
+                    label="Autoriser le micro pour lister les sorties audio"
+                  />
+                ) : (
+                  <Select
+                    value={outputDeviceId || 'default'}
+                    onValueChange={(v) => onOutputDeviceChange!(v)}
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="Périphérique par défaut" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="default">Périphérique par défaut</SelectItem>
+                      {realOutputs.map((d) => (
                         <SelectItem key={d.deviceId} value={d.deviceId}>
                           {d.label || `Sortie ${d.deviceId.slice(0, 6)}`}
                         </SelectItem>
                       ))}
-                  </SelectContent>
-                </Select>
-                {outputSinkSupported === false && (
+                    </SelectContent>
+                  </Select>
+                )}
+                {!needsPermission && outputSinkSupported === false && (
                   <p className="text-[10px] text-muted-foreground leading-tight">
                     Ce navigateur ne supporte pas pleinement le changement de sortie audio.
                   </p>

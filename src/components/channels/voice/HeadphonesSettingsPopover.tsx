@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { Headphones, Info } from 'lucide-react';
 import { DiscordHeadphones } from '@/components/icons/DiscordHeadphones';
 import { DiscordHeadphonesOff } from '@/components/icons/DiscordHeadphonesOff';
+import { MicPermissionGate } from './MicPermissionGate';
 
 interface HeadphonesSettingsPopoverProps {
   children: React.ReactNode;
@@ -23,6 +24,10 @@ interface HeadphonesSettingsPopoverProps {
   onOutputDeviceChange?: (id: string) => void | Promise<void>;
   outputSinkSupported?: boolean;
   outputSinkPartial?: boolean;
+  // Permission gating (audiooutput labels require mic permission on most browsers)
+  micPermission?: 'granted' | 'denied' | 'prompt' | 'unknown';
+  onRequestPermission?: () => Promise<boolean>;
+  onOpenRefresh?: () => Promise<void> | void;
 }
 
 export function HeadphonesSettingsPopover({
@@ -38,12 +43,30 @@ export function HeadphonesSettingsPopover({
   onOutputDeviceChange,
   outputSinkSupported,
   outputSinkPartial,
+  micPermission,
+  onRequestPermission,
+  onOpenRefresh,
 }: HeadphonesSettingsPopoverProps) {
   const showDeviceSelector =
     typeof onOutputDeviceChange === 'function' && Array.isArray(availableOutputs);
+  const realOutputs = (availableOutputs || []).filter(
+    (d) => d.deviceId && d.deviceId !== 'default' && d.label
+  );
+  const needsPermission =
+    showDeviceSelector &&
+    typeof onRequestPermission === 'function' &&
+    realOutputs.length === 0 &&
+    micPermission !== 'granted';
+
+  const handleOpenChange = (o: boolean) => {
+    if (o && typeof onOpenRefresh === 'function') {
+      void onOpenRefresh();
+    }
+    onOpenChange?.(o);
+  };
 
   return (
-    <Popover open={open} onOpenChange={onOpenChange}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>{children}</PopoverTrigger>
       <PopoverContent side="top" align="center" className="w-72 p-0">
         <div className="p-3 space-y-3">
@@ -78,30 +101,36 @@ export function HeadphonesSettingsPopover({
                   <Headphones className="w-3.5 h-3.5 text-muted-foreground" />
                   <Label className="text-xs text-muted-foreground">Périphérique de sortie</Label>
                 </div>
-                <Select
-                  value={outputDeviceId || 'default'}
-                  onValueChange={(v) => onOutputDeviceChange!(v)}
-                >
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue placeholder="Périphérique par défaut" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="default">Périphérique par défaut</SelectItem>
-                    {availableOutputs!
-                      .filter((d) => d.deviceId && d.deviceId !== 'default')
-                      .map((d) => (
+                {needsPermission ? (
+                  <MicPermissionGate
+                    denied={micPermission === 'denied'}
+                    onRequest={onRequestPermission!}
+                    label="Autoriser le micro pour lister les sorties audio"
+                  />
+                ) : (
+                  <Select
+                    value={outputDeviceId || 'default'}
+                    onValueChange={(v) => onOutputDeviceChange!(v)}
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="Périphérique par défaut" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="default">Périphérique par défaut</SelectItem>
+                      {realOutputs.map((d) => (
                         <SelectItem key={d.deviceId} value={d.deviceId}>
                           {d.label || `Sortie ${d.deviceId.slice(0, 6)}`}
                         </SelectItem>
                       ))}
-                  </SelectContent>
-                </Select>
-                {outputSinkSupported === false && (
+                    </SelectContent>
+                  </Select>
+                )}
+                {!needsPermission && outputSinkSupported === false && (
                   <p className="text-[10px] text-muted-foreground leading-tight">
                     Ce navigateur ne supporte pas pleinement le changement de sortie audio.
                   </p>
                 )}
-                {outputSinkSupported !== false && outputSinkPartial === true && (
+                {!needsPermission && outputSinkSupported !== false && outputSinkPartial === true && (
                   <p className="text-[10px] text-muted-foreground leading-tight">
                     Certains flux peuvent ignorer ce choix sur ce navigateur.
                   </p>
@@ -109,6 +138,7 @@ export function HeadphonesSettingsPopover({
               </div>
             </>
           )}
+
 
           <Separator />
 

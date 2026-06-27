@@ -1027,14 +1027,14 @@ export function AnnouncementChannel({
                                   <>
                                     {headerImage && (
                                       <div className="mb-2">
-                                        <MessageAttachments attachments={[headerImage]} />
+                                        <MessageAttachments attachments={[headerImage]} authorId={(message as any).author_id ?? (message as any).user_id ?? null} />
                                       </div>
                                     )}
                                      <div className="text-foreground break-words font-ginto">
                                        <MarkdownText variant="chat" content={message.content} />
                                      </div>
                                     {otherAttachments.length > 0 && (
-                                      <MessageAttachments attachments={otherAttachments} />
+                                      <MessageAttachments attachments={otherAttachments} authorId={(message as any).author_id ?? (message as any).user_id ?? null} />
                                     )}
                                   </>
                                 );
@@ -1119,7 +1119,7 @@ export function AnnouncementChannel({
                                   <>
                                     {headerImage && (
                                       <div className="mb-2">
-                                        <MessageAttachments attachments={[headerImage]} />
+                                        <MessageAttachments attachments={[headerImage]} authorId={(message as any).author_id ?? (message as any).user_id ?? null} />
                                       </div>
                                     )}
                                      <div className="text-foreground break-words font-ginto">
@@ -1129,7 +1129,7 @@ export function AnnouncementChannel({
                                       )}
                                     </div>
                                     {otherAttachments.length > 0 && (
-                                      <MessageAttachments attachments={otherAttachments} />
+                                      <MessageAttachments attachments={otherAttachments} authorId={(message as any).author_id ?? (message as any).user_id ?? null} />
                                     )}
                                   </>
                                 );

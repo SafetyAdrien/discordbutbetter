@@ -762,7 +762,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
 
                             {/* Message Attachments */}
                             {message.attachments && message.attachments.length > 0 && (
-                              <MessageAttachments attachments={message.attachments as StoredAttachment[]} />
+                              <MessageAttachments attachments={message.attachments as StoredAttachment[]} authorId={(message as any).author_id ?? (message as any).user_id ?? null} />
                             )}
 
                             {/* Link Embeds */}

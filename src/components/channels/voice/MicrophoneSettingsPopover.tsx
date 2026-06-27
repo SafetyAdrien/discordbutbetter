@@ -3,8 +3,9 @@ import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { ShieldCheck, AudioLines, SlidersHorizontal } from 'lucide-react';
+import { ShieldCheck, AudioLines, SlidersHorizontal, Mic } from 'lucide-react';
 import type { NoiseSuppressonMode, VADSensitivity } from '@/utils/webrtc/AudioProcessor';
 
 interface MicrophoneSettingsPopoverProps {

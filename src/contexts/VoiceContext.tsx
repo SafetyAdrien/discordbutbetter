@@ -874,6 +874,9 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         setOutputDeviceId,
         outputSinkSupported,
         outputSinkPartial,
+        micPermission,
+        refreshDevices,
+        requestMicPermission,
       }}
     >
       {children}

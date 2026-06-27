@@ -145,9 +145,32 @@ export class PeerConnection {
     stream.getAudioTracks().forEach((track) => {
       const sender = this.pc.addTrack(track, stream);
       this.audioSenders.set(track.id, sender);
+      // Remember the first non-screen audio sender as the mic sender for hot-swap.
+      if (!this.micSender) this.micSender = sender;
     });
     console.log('[PeerConnection] Added audio stream to peer:', this.peerId);
   }
+
+  /**
+   * Fix #6 — hot-swap the active microphone track without renegotiating SDP.
+   * Used when the user changes input device while connected.
+   */
+  async replaceAudioTrack(track: MediaStreamTrack): Promise<void> {
+    if (!this.micSender) {
+      // No existing sender — fall back to addTrack + renegotiation.
+      this.addAudioStream(new MediaStream([track]));
+      await this.createOffer();
+      return;
+    }
+    try {
+      await this.micSender.replaceTrack(track);
+    } catch (err) {
+      console.warn('[PeerConnection] replaceAudioTrack failed, renegotiating:', err);
+      this.addAudioStream(new MediaStream([track]));
+      await this.createOffer();
+    }
+  }
+
 
   setScreenShareEncoding(options: ScreenShareEncodingOptions): void {
     this.screenEncodingOptions = options;

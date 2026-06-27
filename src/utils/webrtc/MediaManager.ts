@@ -434,6 +434,9 @@ export class MediaManager {
       if (audioContext.gainNode) {
         try { audioContext.gainNode.disconnect(); } catch { /* already disconnected */ }
       }
+      if (audioContext.limiterNode) {
+        try { audioContext.limiterNode.disconnect(); } catch { /* already disconnected */ }
+      }
       audioContext.context.close().catch(() => {});
       this.remoteAudioContexts.delete(peerId);
     }
@@ -443,6 +446,22 @@ export class MediaManager {
       clearTimeout(vadState.holdTimer);
     }
     this.remoteVADStates.delete(peerId);
+  }
+
+  /**
+   * Create a brick-wall limiter (DynamicsCompressor at 20:1 with -1dB threshold).
+   * Used downstream of the per-peer gainNode to prevent clipping when the
+   * effective volume exceeds 1.0 (peerVolume * masterVolume can reach 4.0).
+   * No make-up gain → strictly limits output, no double-gain risk.
+   */
+  private _createLimiter(context: AudioContext): DynamicsCompressorNode {
+    const limiter = context.createDynamicsCompressor();
+    limiter.threshold.value = -1;   // dB — just below 0dBFS
+    limiter.knee.value = 0;          // hard knee for brick-wall behavior
+    limiter.ratio.value = 20;        // 20:1 ≈ limiter
+    limiter.attack.value = 0.003;    // 3 ms — catch transients fast
+    limiter.release.value = 0.1;     // 100 ms — natural decay
+    return limiter;
   }
 
   getRemoteAudioLevel(peerId: string): number {

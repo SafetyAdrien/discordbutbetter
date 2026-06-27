@@ -3,14 +3,60 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+  'Access-Control-Expose-Headers': 'x-cache, cache-control',
 };
 
+// ---- In-memory cache (per edge instance) ----
+interface CacheEntry {
+  payload: Record<string, unknown>;
+  expiresAt: number; // epoch ms
+}
+const CACHE = new Map<string, CacheEntry>();
+const CACHE_MAX = 500;
+const TTL_OK_MS = (parseInt(Deno.env.get('URL_METADATA_TTL_OK_SEC') || '3600', 10)) * 1000;
+const TTL_FAIL_MS = (parseInt(Deno.env.get('URL_METADATA_TTL_FAIL_SEC') || '300', 10)) * 1000;
+
+function cacheGet(key: string): CacheEntry | null {
+  const entry = CACHE.get(key);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) {
+    CACHE.delete(key);
+    return null;
+  }
+  // Touch (LRU): re-insert to bump order
+  CACHE.delete(key);
+  CACHE.set(key, entry);
+  return entry;
+}
+
+function cacheSet(key: string, payload: Record<string, unknown>, ttlMs: number) {
+  if (CACHE.size >= CACHE_MAX) {
+    const oldest = CACHE.keys().next().value;
+    if (oldest) CACHE.delete(oldest);
+  }
+  CACHE.set(key, { payload, expiresAt: Date.now() + ttlMs });
+}
+
+function jsonResponse(payload: Record<string, unknown>, status: number, extraHeaders: Record<string, string> = {}) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json', ...extraHeaders },
+  });
+}
+
+function cachedResponse(entry: CacheEntry) {
+  const remaining = Math.max(0, Math.floor((entry.expiresAt - Date.now()) / 1000));
+  return jsonResponse(entry.payload, 200, {
+    'X-Cache': 'HIT',
+    'Cache-Control': `public, max-age=${remaining}`,
+  });
+}
+
+// ---- HTML helpers ----
 function extractMeta(html: string, property: string): string | null {
-  // Try og: / twitter: property attribute
   const propRegex = new RegExp(`<meta[^>]+(?:property|name)=["']${property}["'][^>]+content=["']([^"']+)["']`, 'i');
   const match = propRegex.exec(html);
   if (match) return match[1];
-  // Try reversed order: content before property
   const revRegex = new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']${property}["']`, 'i');
   const revMatch = revRegex.exec(html);
   if (revMatch) return revMatch[1];
@@ -22,19 +68,84 @@ function extractTitle(html: string): string | null {
   return match ? match[1].trim() : null;
 }
 
+// ---- Retry helpers ----
+function parseRetryAfterMs(header: string | null): number | null {
+  if (!header) return null;
+  const trimmed = header.trim();
+  if (/^\d+$/.test(trimmed)) {
+    const secs = parseInt(trimmed, 10);
+    if (secs >= 0 && secs <= 60) return secs * 1000;
+    return null;
+  }
+  const date = Date.parse(trimmed);
+  if (!isNaN(date)) {
+    const delta = date - Date.now();
+    if (delta > 0 && delta <= 60_000) return delta;
+  }
+  return null;
+}
+
+const MAX_ATTEMPTS = 3;
+const BUDGET_MS = 5000;
+
+async function fetchWithRetry(target: string): Promise<Response | { upstreamStatus: number | null }> {
+  const startedAt = Date.now();
+  const controller = new AbortController();
+  const overallTimeout = setTimeout(() => controller.abort(), BUDGET_MS);
+
+  try {
+    let lastStatus: number | null = null;
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      try {
+        const res = await fetch(target, {
+          signal: controller.signal,
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (compatible; DiscordBot/2.0)',
+            'Accept': 'text/html',
+          },
+        });
+
+        if (res.status === 429 || res.status === 503) {
+          lastStatus = res.status;
+          // Drain body to free the connection
+          try { await res.body?.cancel(); } catch { /* noop */ }
+
+          if (attempt === MAX_ATTEMPTS - 1) break;
+
+          const retryAfterMs = parseRetryAfterMs(res.headers.get('retry-after'));
+          const expBackoff = Math.min(2000, 300 * Math.pow(2, attempt));
+          const jitter = expBackoff * (0.8 + Math.random() * 0.4);
+          const waitMs = retryAfterMs !== null && retryAfterMs <= 4000 ? retryAfterMs : jitter;
+
+          if (Date.now() - startedAt + waitMs >= BUDGET_MS) break;
+          await new Promise((r) => setTimeout(r, waitMs));
+          continue;
+        }
+
+        return res;
+      } catch (err) {
+        if (controller.signal.aborted) return { upstreamStatus: lastStatus };
+        if (attempt === MAX_ATTEMPTS - 1) return { upstreamStatus: lastStatus };
+        const wait = Math.min(2000, 300 * Math.pow(2, attempt));
+        if (Date.now() - startedAt + wait >= BUDGET_MS) return { upstreamStatus: lastStatus };
+        await new Promise((r) => setTimeout(r, wait));
+      }
+    }
+    return { upstreamStatus: lastStatus };
+  } finally {
+    clearTimeout(overallTimeout);
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Require authenticated caller (defense-in-depth alongside verify_jwt = true)
     const authHeader = req.headers.get('Authorization') || req.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Unauthorized' }, 401);
     }
     const supabaseAuth = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -43,37 +154,23 @@ Deno.serve(async (req) => {
     );
     const { data: userData, error: userError } = await supabaseAuth.auth.getUser();
     if (userError || !userData?.user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Unauthorized' }, 401);
     }
 
     const { url } = await req.json();
     if (!url || typeof url !== 'string') {
-      return new Response(JSON.stringify({ error: 'URL is required' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'URL is required' }, 400);
     }
 
-    // Validate URL
     let parsedUrl: URL;
     try {
       parsedUrl = new URL(url);
     } catch {
-      return new Response(JSON.stringify({ error: 'Invalid URL' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Invalid URL' }, 400);
     }
 
-    // SSRF protection: block private/internal IPs and non-http protocols
     if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
-      return new Response(JSON.stringify({ error: 'Invalid protocol' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Invalid protocol' }, 400);
     }
 
     const hostname = parsedUrl.hostname.toLowerCase();
@@ -99,49 +196,45 @@ Deno.serve(async (req) => {
       /^\[?fd[0-9a-f]{2}:/i.test(hostname);
 
     if (isPrivate) {
-      return new Response(JSON.stringify({ error: 'Invalid URL' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Invalid URL' }, 400);
     }
 
-    // Fetch with timeout
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
+    const cacheKey = parsedUrl.toString();
 
-    let response: Response;
-    try {
-      response = await fetch(parsedUrl.toString(), {
-        signal: controller.signal,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; DiscordBot/2.0)',
-          'Accept': 'text/html',
-        },
-      });
-    } catch (e) {
-      clearTimeout(timeout);
-      return new Response(JSON.stringify({ error: 'Failed to fetch URL' }), {
-        status: 502,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    // Cache lookup
+    const cached = cacheGet(cacheKey);
+    if (cached) return cachedResponse(cached);
+
+    // Fetch with retries
+    const result = await fetchWithRetry(parsedUrl.toString());
+
+    if (!(result instanceof Response)) {
+      const payload = {
+        empty: true,
+        error: result.upstreamStatus ? `HTTP ${result.upstreamStatus}` : 'Failed to fetch URL',
+        fallback: true,
+      };
+      cacheSet(cacheKey, payload, TTL_FAIL_MS);
+      return jsonResponse(payload, 200, { 'X-Cache': 'MISS' });
     }
-    clearTimeout(timeout);
+
+    const response = result;
 
     if (!response.ok) {
-      // Return 200 with empty:true so the client doesn't crash on rate limits / upstream errors
-      return new Response(
-        JSON.stringify({ empty: true, error: `HTTP ${response.status}`, fallback: response.status === 429 || response.status >= 500 }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      );
+      const payload = {
+        empty: true,
+        error: `HTTP ${response.status}`,
+        fallback: response.status === 429 || response.status >= 500,
+      };
+      cacheSet(cacheKey, payload, TTL_FAIL_MS);
+      return jsonResponse(payload, 200, { 'X-Cache': 'MISS' });
     }
 
-    // Only process HTML
     const contentType = response.headers.get('content-type') || '';
     if (!contentType.includes('text/html')) {
-      return new Response(JSON.stringify({ error: 'Not an HTML page' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      const payload = { error: 'Not an HTML page', empty: true };
+      cacheSet(cacheKey, payload, TTL_FAIL_MS);
+      return jsonResponse(payload, 200, { 'X-Cache': 'MISS' });
     }
 
     // Read only first 50KB to avoid memory issues
@@ -159,15 +252,13 @@ Deno.serve(async (req) => {
       reader.cancel();
     }
 
-    // Extract metadata
     const title = extractMeta(html, 'og:title') || extractMeta(html, 'twitter:title') || extractTitle(html);
     const description = extractMeta(html, 'og:description') || extractMeta(html, 'twitter:description') || extractMeta(html, 'description');
     const image = extractMeta(html, 'og:image') || extractMeta(html, 'twitter:image');
     const siteName = extractMeta(html, 'og:site_name') || parsedUrl.hostname;
     const themeColor = extractMeta(html, 'theme-color') || extractMeta(html, 'msapplication-TileColor') || extractMeta(html, 'og:theme_color');
 
-    // Resolve relative image URL
-    let resolvedImage = image;
+    let resolvedImage: string | null = image;
     if (image && !image.startsWith('http')) {
       try {
         resolvedImage = new URL(image, parsedUrl.origin).toString();
@@ -184,22 +275,19 @@ Deno.serve(async (req) => {
       themeColor: themeColor || null,
     };
 
-    // Don't return empty metadata
     if (!metadata.title && !metadata.description && !metadata.image) {
-      return new Response(JSON.stringify({ ...metadata, empty: true }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      const payload = { ...metadata, empty: true };
+      cacheSet(cacheKey, payload, TTL_FAIL_MS);
+      return jsonResponse(payload, 200, { 'X-Cache': 'MISS' });
     }
 
-    return new Response(JSON.stringify(metadata), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    cacheSet(cacheKey, metadata, TTL_OK_MS);
+    return jsonResponse(metadata, 200, {
+      'X-Cache': 'MISS',
+      'Cache-Control': `public, max-age=${Math.floor(TTL_OK_MS / 1000)}`,
     });
   } catch (error) {
     console.error('Error:', error);
-    return new Response(JSON.stringify({ error: 'Internal error' }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return jsonResponse({ error: 'Internal error' }, 500);
   }
 });

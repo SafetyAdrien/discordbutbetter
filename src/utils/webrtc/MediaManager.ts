@@ -159,8 +159,7 @@ export class MediaManager {
     // Constructor probe (one-shot, memoized).
     if (MediaManager._ctorSinkProbe === null) {
       try {
-        // @ts-ignore — option not in lib.dom yet
-        const probe = new AudioContext({ sinkId: '' });
+        const probe = new AudioContext({ sinkId: '' } as AudioContextOptions & { sinkId: string });
         MediaManager._ctorSinkProbe = true;
         probe.close().catch(() => {});
       } catch { MediaManager._ctorSinkProbe = false; }

@@ -109,36 +109,32 @@ export class AudioProcessor {
   }
 
   /**
-   * Load the RNNoise AudioWorklet module
+   * Load the RNNoise AudioWorklet module.
+   *
+   * The worklet is served from /rnnoise/ (copied from
+   * @timephy/rnnoise-wasm/dist via vite-plugin-static-copy at build time).
+   * Serving it at a stable absolute path is required because the worklet
+   * file contains relative ES imports (./polyfills, ./RnnoiseProcessor,
+   * ./generated/rnnoise-sync, ./math, ./index) that the browser resolves
+   * itself — AudioWorkletGlobalScope does NOT bundle dependencies.
+   *
+   * Earlier `new URL('@timephy/...', import.meta.url)` did not work because
+   * the browser URL constructor doesn't resolve bare specifiers; the SPA
+   * fallback returned index.html with a text/html MIME, breaking the load.
    */
   private async loadRNNoise(ctx: AudioContext): Promise<boolean> {
     if (this.rnnoiseLoaded) return true;
-    
+
     try {
-      const workletUrl = new URL(
-        '@timephy/rnnoise-wasm/NoiseSuppressorWorklet',
-        import.meta.url
-      ).href;
-      
-      await ctx.audioWorklet.addModule(workletUrl);
+      await ctx.audioWorklet.addModule('/rnnoise/NoiseSuppressorWorklet.js');
       this.rnnoiseLoaded = true;
       this.rnnoiseAvailable = true;
       console.log('[AudioProcessor] RNNoise WASM worklet loaded successfully');
       return true;
     } catch (error) {
-      console.warn('[AudioProcessor] Failed to load RNNoise worklet, falling back to native suppression:', error);
-      try {
-        const module = await import('@timephy/rnnoise-wasm/NoiseSuppressorWorklet?worker&url');
-        await ctx.audioWorklet.addModule(module.default);
-        this.rnnoiseLoaded = true;
-        this.rnnoiseAvailable = true;
-        console.log('[AudioProcessor] RNNoise WASM worklet loaded (alternate method)');
-        return true;
-      } catch (err2) {
-        console.warn('[AudioProcessor] RNNoise alternate load also failed:', err2);
-        this.rnnoiseAvailable = false;
-        return false;
-      }
+      console.warn('[AudioProcessor] RNNoise worklet load failed, continuing without RNNoise:', error);
+      this.rnnoiseAvailable = false;
+      return false;
     }
   }
 

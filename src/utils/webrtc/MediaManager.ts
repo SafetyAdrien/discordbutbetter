@@ -111,24 +111,89 @@ export class MediaManager {
 
   async initialize(): Promise<void> {
     if (!this.audioContext) {
-      this.audioContext = new AudioContext();
+      // Fix #3 — standardize at 48 kHz interactive across the app.
+      this.audioContext = new AudioContext({ sampleRate: 48000, latencyHint: 'interactive' });
+    }
+  }
+
+  // ==================== DEVICE SELECTION (Fix #6) ====================
+
+  /** Persisted input device id (default 'default'). */
+  private _inputDeviceId: string = (() => {
+    try { return localStorage.getItem('voice-input-device') || 'default'; } catch { return 'default'; }
+  })();
+  /** Persisted output device id (default 'default'). */
+  private _outputDeviceId: string = (() => {
+    try { return localStorage.getItem('voice-output-device') || 'default'; } catch { return 'default'; }
+  })();
+
+  getInputDeviceId(): string { return this._inputDeviceId; }
+  getOutputDeviceId(): string { return this._outputDeviceId; }
+
+  /** Update the stored input id. The active mic must be restarted to apply. */
+  setInputDeviceId(deviceId: string): void {
+    this._inputDeviceId = deviceId || 'default';
+    try { localStorage.setItem('voice-input-device', this._inputDeviceId); } catch {}
+  }
+
+  /** True when the browser supports routing the Web Audio chain to a specific sink. */
+  canRouteWebAudioToDevice(): boolean {
+    try {
+      return typeof AudioContext !== 'undefined' &&
+        // @ts-ignore — Chrome 110+
+        typeof (AudioContext.prototype as any).setSinkId === 'function';
+    } catch { return false; }
+  }
+
+  /** Apply an output sink to every active remote audio path. */
+  async setOutputSinkId(deviceId: string): Promise<void> {
+    this._outputDeviceId = deviceId || 'default';
+    try { localStorage.setItem('voice-output-device', this._outputDeviceId); } catch {}
+
+    // Path 1 — native <audio> elements (supported in Chromium for years).
+    for (const audio of this.remoteAudioElements.values()) {
+      if (typeof (audio as any).setSinkId === 'function') {
+        try { await (audio as any).setSinkId(this._outputDeviceId); }
+        catch (e) { console.warn('[MediaManager] <audio>.setSinkId failed:', e); }
+      }
+    }
+
+    // Path 2 — AudioContext (high-gain chain). Chromium 110+ exposes setSinkId.
+    if (this.canRouteWebAudioToDevice()) {
+      for (const entry of this.remoteAudioContexts.values()) {
+        const ctx: any = entry.context;
+        if (typeof ctx.setSinkId === 'function') {
+          try { await ctx.setSinkId(this._outputDeviceId); }
+          catch (e) { console.warn('[MediaManager] AudioContext.setSinkId failed:', e); }
+        }
+      }
     }
   }
 
   // ==================== MICROPHONE (with AudioProcessor / RNNoise) ====================
 
-  async tryStartMicrophone(): Promise<boolean> {
+  async tryStartMicrophone(deviceId?: string): Promise<boolean> {
     try {
-      const rawStream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-          sampleRate: 48000,
-          channelCount: 1,
-        },
-        video: false,
-      });
+      // If caller passed an explicit device, persist it before opening the stream.
+      if (deviceId) this.setInputDeviceId(deviceId);
+
+      // Fix #4 — disable browser-native NS/AGC because our AudioProcessor chain
+      // (RNNoise + de-esser + compressor + custom AGC via DynamicsCompressor)
+      // handles those steps. Stacking native + custom DSP produced the
+      // "double-processing" artifacts reported during the audit. EC is kept
+      // native (browser AEC is high quality and depends on the device).
+      const constraints: MediaTrackConstraints = {
+        echoCancellation: true,
+        noiseSuppression: false,
+        autoGainControl: false,
+        sampleRate: 48000,
+        channelCount: 1,
+      };
+      if (this._inputDeviceId && this._inputDeviceId !== 'default') {
+        (constraints as any).deviceId = { exact: this._inputDeviceId };
+      }
+
+      const rawStream = await navigator.mediaDevices.getUserMedia({ audio: constraints, video: false });
 
       // Pipe through AudioProcessor (RNNoise + processing chain)
       try {
@@ -147,7 +212,7 @@ export class MediaManager {
       if (this.audioContext && this.localAudioStream) {
         const source = this.audioContext.createMediaStreamSource(this.localAudioStream);
         this.analyser = this.audioContext.createAnalyser();
-        this.analyser.fftSize = 4096; // Better frequency resolution
+        this.analyser.fftSize = 4096;
         this.analyser.smoothingTimeConstant = 0.3;
         source.connect(this.analyser);
       }
@@ -160,7 +225,7 @@ export class MediaManager {
       }
 
       this._hasMicrophoneAccess = true;
-      console.log('[MediaManager] Microphone started successfully');
+      console.log('[MediaManager] Microphone started successfully (device:', this._inputDeviceId, ')');
       return true;
     } catch (error) {
       console.warn('[MediaManager] Failed to start microphone:', error);
@@ -168,6 +233,18 @@ export class MediaManager {
       return false;
     }
   }
+
+  /**
+   * Restart the microphone on a new input device, returning the new processed track.
+   * Used by useWebRTC.switchInputDevice to hot-swap senders without renegotiation.
+   */
+  async restartMicrophoneWith(deviceId: string): Promise<MediaStreamTrack | null> {
+    this.stopMicrophone();
+    const ok = await this.tryStartMicrophone(deviceId);
+    if (!ok || !this.localAudioStream) return null;
+    return this.localAudioStream.getAudioTracks()[0] || null;
+  }
+
 
   async startMicrophone(): Promise<MediaStream> {
     const success = await this.tryStartMicrophone();

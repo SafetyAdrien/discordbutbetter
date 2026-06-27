@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { FileIcon, Download, ExternalLink, Play, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { useImageGuardProps, useCanDownload } from '@/hooks/useDownloadPermissions';
 import { 
   Carousel, 
   CarouselContent, 
@@ -23,6 +24,8 @@ export interface StoredAttachment {
 
 interface MessageAttachmentsProps {
   attachments: StoredAttachment[];
+  /** Author id of the message — used to gate download/right-click/drag. */
+  authorId?: string | null;
 }
 
 function formatFileSize(bytes: number): string {

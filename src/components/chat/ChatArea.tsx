@@ -104,7 +104,7 @@ import { MessageAttachments, StoredAttachment } from "@/components/chat/MessageA
 import { useHasChannelPermission, useMultipleChannelPermissions } from "@/hooks/useUserChannelPermissions";
 import { usePermissions } from "@/hooks/usePermissions";
 import { ChannelSettingsModal } from "@/components/channel-settings/ChannelSettingsModal";
-import { LinkEmbeds } from "@/components/chat/LinkEmbed";
+import { SmartLinkEmbeds as LinkEmbeds } from "@/components/chat/embeds";
 import { useChannelDetails } from "@/hooks/useChannelSettings";
 import { extractUrls, fetchMetadata } from "@/hooks/useUrlMetadata";
 import { MobilePollActions } from "@/components/mobile/MobilePollActions";

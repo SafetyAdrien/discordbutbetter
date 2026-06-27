@@ -148,7 +148,9 @@ export class AudioProcessor {
    */
   async processStream(inputStream: MediaStream): Promise<MediaStream> {
     if (!this.audioContext) {
-      this.audioContext = new AudioContext({ sampleRate: 48000 });
+      // Fix #3 — pin to 48 kHz interactive context. Mismatching the OS default
+      // (often 44.1 kHz) produced the metallic resampling artifacts.
+      this.audioContext = new AudioContext({ sampleRate: 48000, latencyHint: 'interactive' });
     }
 
     if (this.audioContext.state === 'suspended') {
@@ -174,7 +176,7 @@ export class AudioProcessor {
     this.deEsserFilter.type = 'peaking';
     this.deEsserFilter.frequency.value = 6500;
     this.deEsserFilter.Q.value = 2.0;
-    this.deEsserFilter.gain.value = -4; // -4dB cut on sibilants
+    this.deEsserFilter.gain.value = -4;
     lastNode.connect(this.deEsserFilter);
     lastNode = this.deEsserFilter;
 
@@ -186,27 +188,40 @@ export class AudioProcessor {
     lastNode.connect(this.lowShelfFilter);
     lastNode = this.lowShelfFilter;
 
-    // RNNoise ML noise suppression (Krisp-like)
+    // Save the tap point *before* RNNoise so we can bypass cleanly (Fix #1).
+    this.preRNNoiseTap = lastNode;
+
+    // Always create rnnoiseGainNode so the bypass path has a stable shape.
+    this.rnnoiseGainNode = this.audioContext.createGain();
+
     if (this.config.noiseSuppression !== 'off' && this.config.enableRNNoise) {
       const loaded = await this.loadRNNoise(this.audioContext);
       if (loaded) {
         try {
           this.rnnoiseNode = new AudioWorkletNode(this.audioContext, NoiseSuppressorWorklet_Name);
-          lastNode.connect(this.rnnoiseNode);
-          lastNode = this.rnnoiseNode;
-
-          // RNNoise output gain (for low vs high mode)
-          this.rnnoiseGainNode = this.audioContext.createGain();
+          this.preRNNoiseTap.connect(this.rnnoiseNode);
+          this.rnnoiseNode.connect(this.rnnoiseGainNode);
           this.rnnoiseGainNode.gain.value = this.config.noiseSuppression === 'low' ? 0.85 : 1.0;
-          lastNode.connect(this.rnnoiseGainNode);
-          lastNode = this.rnnoiseGainNode;
-
+          this.rnnoiseBypassed = false;
           console.log('[AudioProcessor] RNNoise noise suppression active, mode:', this.config.noiseSuppression);
         } catch (error) {
           console.warn('[AudioProcessor] Failed to create RNNoise node:', error);
+          this.preRNNoiseTap.connect(this.rnnoiseGainNode);
+          this.rnnoiseGainNode.gain.value = 1;
+          this.rnnoiseBypassed = true;
         }
+      } else {
+        this.preRNNoiseTap.connect(this.rnnoiseGainNode);
+        this.rnnoiseGainNode.gain.value = 1;
+        this.rnnoiseBypassed = true;
       }
+    } else {
+      // Mode 'off' — straight dry path through rnnoiseGainNode at unity gain.
+      this.preRNNoiseTap.connect(this.rnnoiseGainNode);
+      this.rnnoiseGainNode.gain.value = 1;
+      this.rnnoiseBypassed = true;
     }
+    lastNode = this.rnnoiseGainNode;
 
     // Dynamic compressor
     if (this.config.enableCompression) {
@@ -220,15 +235,21 @@ export class AudioProcessor {
       lastNode = this.compressorNode;
     }
 
-    // Gain node (for noise gate control)
+    // Mic volume gain (user controlled, 0..2). Independent of the noise gate.
     this.gainNode = this.audioContext.createGain();
     this.gainNode.gain.value = 1;
     lastNode.connect(this.gainNode);
     lastNode = this.gainNode;
 
-    // Analyser for spectral VAD — larger FFT for better frequency resolution
+    // Noise gate gain — the VAD opens/closes this without touching mic volume (Fix #2).
+    this.gateGainNode = this.audioContext.createGain();
+    this.gateGainNode.gain.value = 1;
+    lastNode.connect(this.gateGainNode);
+    lastNode = this.gateGainNode;
+
+    // Analyser for spectral VAD
     this.analyserNode = this.audioContext.createAnalyser();
-    this.analyserNode.fftSize = 4096; // 2048 frequency bins, ~11.7Hz resolution at 48kHz
+    this.analyserNode.fftSize = 4096;
     this.analyserNode.smoothingTimeConstant = 0.3;
     lastNode.connect(this.analyserNode);
 

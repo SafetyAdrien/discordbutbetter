@@ -317,6 +317,9 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers, 
             inputDeviceId={voiceCtx.inputDeviceId}
             availableInputs={voiceCtx.availableInputs}
             onInputDeviceChange={voiceCtx.setInputDeviceId}
+            micPermission={voiceCtx.micPermission}
+            onRequestPermission={voiceCtx.requestMicPermission}
+            onOpenRefresh={voiceCtx.refreshDevices}
           >
             <button className="px-0.5 py-1 hover:bg-muted rounded-l-none rounded-r-md transition-colors border-l border-border/30">
               {micPopoverOpen ? <ChevronUp className="w-[15px] h-[15px] text-muted-foreground" /> : <ChevronDown className="w-[15px] h-[15px] text-muted-foreground" />}

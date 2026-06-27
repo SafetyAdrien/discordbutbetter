@@ -67,8 +67,15 @@ export class AudioProcessor {
   private deEsserFilter: BiquadFilterNode | null = null;
   private lowShelfFilter: BiquadFilterNode | null = null;
   private compressorNode: DynamicsCompressorNode | null = null;
+  /** User-controlled mic input gain (0..2). Decoupled from the noise gate. */
   private gainNode: GainNode | null = null;
+  /** Dedicated noise-gate gain so the VAD never overrides mic volume (Fix #2). */
+  private gateGainNode: GainNode | null = null;
   private rnnoiseGainNode: GainNode | null = null;
+  /** Node feeding into the RNNoise branch — kept so we can bypass cleanly (Fix #1). */
+  private preRNNoiseTap: AudioNode | null = null;
+  /** True when RNNoise is currently bypassed (mode=off). */
+  private rnnoiseBypassed = false;
   private destinationNode: MediaStreamAudioDestinationNode | null = null;
   private rnnoiseNode: AudioWorkletNode | null = null;
   private rnnoiseLoaded = false;

@@ -128,8 +128,11 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   const [outputDeviceId, setOutputDeviceIdState] = useState<string>(() => mediaManager.getOutputDeviceId());
   const [availableInputs, setAvailableInputs] = useState<MediaDeviceInfo[]>([]);
   const [availableOutputs, setAvailableOutputs] = useState<MediaDeviceInfo[]>([]);
-  const outputSinkSupported = mediaManager.canRouteWebAudioToDevice() ||
-    (typeof HTMLMediaElement !== 'undefined' && 'setSinkId' in HTMLMediaElement.prototype);
+  const canRouteNative = typeof HTMLMediaElement !== 'undefined' &&
+    'setSinkId' in HTMLMediaElement.prototype;
+  const canRouteWebAudio = mediaManager.canRouteWebAudioToDevice();
+  const outputSinkSupported = canRouteNative && canRouteWebAudio;
+  const outputSinkPartial = (canRouteNative || canRouteWebAudio) && !outputSinkSupported;
 
   // Enumerate devices on mount + when the system reports a device change.
   useEffect(() => {

@@ -681,7 +681,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                           />
                           {showAuthor && (
                             <Avatar className="w-9 h-9 flex-shrink-0">
-                              <AvatarImage src={message.author?.avatar_url || undefined} />
+                              <GuardedAvatarImg src={message.author?.avatar_url || undefined} ownerId={message.author?.id} />
                               <AvatarFallback className="bg-primary/20 text-primary text-sm">
                                 {message.author?.display_name?.charAt(0).toUpperCase() || '?'}
                               </AvatarFallback>

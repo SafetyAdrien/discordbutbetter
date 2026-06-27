@@ -132,45 +132,100 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   const [outputDeviceId, setOutputDeviceIdState] = useState<string>(() => mediaManager.getOutputDeviceId());
   const [availableInputs, setAvailableInputs] = useState<MediaDeviceInfo[]>([]);
   const [availableOutputs, setAvailableOutputs] = useState<MediaDeviceInfo[]>([]);
+  const [micPermission, setMicPermission] = useState<'granted' | 'denied' | 'prompt' | 'unknown'>('unknown');
   const canRouteNative = typeof HTMLMediaElement !== 'undefined' &&
     'setSinkId' in HTMLMediaElement.prototype;
   const canRouteWebAudio = mediaManager.canRouteWebAudioToDevice();
   const outputSinkSupported = canRouteNative && canRouteWebAudio;
   const outputSinkPartial = (canRouteNative || canRouteWebAudio) && !outputSinkSupported;
 
-  // Enumerate devices on mount + when the system reports a device change.
+  // ---- Device enumeration + permission detection ----
+  const inputDeviceIdRef = useRef(inputDeviceId);
+  const outputDeviceIdRef = useRef(outputDeviceId);
+  inputDeviceIdRef.current = inputDeviceId;
+  outputDeviceIdRef.current = outputDeviceId;
+
+  const refreshDevices = useCallback(async () => {
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.enumerateDevices) return;
+    try {
+      const list = await navigator.mediaDevices.enumerateDevices();
+      const ins = list.filter(d => d.kind === 'audioinput');
+      const outs = list.filter(d => d.kind === 'audiooutput');
+      setAvailableInputs(ins);
+      setAvailableOutputs(outs);
+
+      // Heuristic: if every audioinput has an empty deviceId & label, the
+      // browser hasn't unlocked devices (permission not granted yet).
+      const looksLikePromptState = ins.length > 0 && ins.every(d => !d.deviceId && !d.label);
+      setMicPermission(prev => {
+        if (prev === 'granted' || prev === 'denied') return prev;
+        return looksLikePromptState ? 'prompt' : (ins.some(d => d.deviceId && d.label) ? 'granted' : prev);
+      });
+
+      // Fallback: if a persisted id no longer exists, revert to 'default'.
+      const curIn = inputDeviceIdRef.current;
+      const curOut = outputDeviceIdRef.current;
+      if (curIn !== 'default' && !ins.some(d => d.deviceId === curIn)) {
+        mediaManager.setInputDeviceId('default');
+        setInputDeviceIdState('default');
+      }
+      if (curOut !== 'default' && !outs.some(d => d.deviceId === curOut)) {
+        await mediaManager.setOutputSinkId('default');
+        setOutputDeviceIdState('default');
+      }
+    } catch (e) {
+      console.warn('[VoiceContext] enumerateDevices failed:', e);
+    }
+  }, []);
+
+  const requestMicPermission = useCallback(async (): Promise<boolean> => {
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) return false;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Release immediately — we only wanted the permission grant.
+      stream.getTracks().forEach(t => { try { t.stop(); } catch {} });
+      setMicPermission('granted');
+      // Await refresh so callers can flip UI only once the list is populated.
+      await refreshDevices();
+      return true;
+    } catch (e) {
+      console.warn('[VoiceContext] requestMicPermission denied/failed:', e);
+      setMicPermission('denied');
+      return false;
+    }
+  }, [refreshDevices]);
+
   useEffect(() => {
     if (typeof navigator === 'undefined' || !navigator.mediaDevices?.enumerateDevices) return;
-    let cancelled = false;
-    const refresh = async () => {
-      try {
-        const list = await navigator.mediaDevices.enumerateDevices();
-        if (cancelled) return;
-        const ins = list.filter(d => d.kind === 'audioinput');
-        const outs = list.filter(d => d.kind === 'audiooutput');
-        setAvailableInputs(ins);
-        setAvailableOutputs(outs);
-        // If a persisted id no longer exists, fall back to 'default'.
-        if (inputDeviceId !== 'default' && !ins.some(d => d.deviceId === inputDeviceId)) {
-          mediaManager.setInputDeviceId('default');
-          setInputDeviceIdState('default');
+
+    // Probe Permissions API (Chrome/Firefox). Safari may throw — fall back to heuristic.
+    let permStatus: PermissionStatus | null = null;
+    const onPermChange = () => {
+      if (permStatus) {
+        setMicPermission(permStatus.state as 'granted' | 'denied' | 'prompt');
+        if (permStatus.state === 'granted') {
+          void refreshDevices();
         }
-        if (outputDeviceId !== 'default' && !outs.some(d => d.deviceId === outputDeviceId)) {
-          await mediaManager.setOutputSinkId('default');
-          setOutputDeviceIdState('default');
-        }
-      } catch (e) {
-        console.warn('[VoiceContext] enumerateDevices failed:', e);
       }
     };
-    refresh();
-    navigator.mediaDevices.addEventListener?.('devicechange', refresh);
+    try {
+      // @ts-expect-error — 'microphone' is valid but not in lib.dom types in all TS versions.
+      navigator.permissions?.query({ name: 'microphone' }).then((status: PermissionStatus) => {
+        permStatus = status;
+        setMicPermission(status.state as 'granted' | 'denied' | 'prompt');
+        status.addEventListener?.('change', onPermChange);
+        if (status.state === 'granted') void refreshDevices();
+      }).catch(() => {/* unsupported */});
+    } catch {/* unsupported */}
+
+    void refreshDevices();
+    navigator.mediaDevices.addEventListener?.('devicechange', refreshDevices);
     return () => {
-      cancelled = true;
-      navigator.mediaDevices.removeEventListener?.('devicechange', refresh);
+      navigator.mediaDevices.removeEventListener?.('devicechange', refreshDevices);
+      permStatus?.removeEventListener?.('change', onPermChange);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [refreshDevices]);
+
 
   const [voiceState, setVoiceState] = useState<VoiceState>({
     channelId: null,

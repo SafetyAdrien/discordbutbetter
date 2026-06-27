@@ -211,7 +211,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     try {
       // 'microphone' is valid per spec but missing from older lib.dom typings.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      navigator.permissions?.query({ name: 'microphone' }).then((status: PermissionStatus) => {
+      (navigator.permissions as any)?.query?.({ name: 'microphone' }).then((status: PermissionStatus) => {
         permStatus = status;
         setMicPermission(status.state as 'granted' | 'denied' | 'prompt');
         status.addEventListener?.('change', onPermChange);

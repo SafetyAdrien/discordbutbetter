@@ -112,7 +112,7 @@ export function MicrophoneSettingsPopover({
                   <Label className="text-xs text-muted-foreground">Périphérique d'entrée</Label>
                 </div>
                 {needsPermission ? (
-                  <PermissionGate
+                  <MicPermissionGate
                     denied={micPermission === 'denied'}
                     onRequest={onRequestPermission!}
                   />

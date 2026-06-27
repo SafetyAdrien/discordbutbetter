@@ -180,7 +180,10 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         hasActiveLocalSessionRef.current = true;
         webrtc.setMuted(dbVoiceState.muted || false);
         webrtc.setDeafened(dbVoiceState.deafened || false);
-        webrtc.connect(dbVoiceState.channel_id);
+        webrtc.connect(dbVoiceState.channel_id, {
+          muted: dbVoiceState.muted || false,
+          deafened: dbVoiceState.deafened || false,
+        });
       }
     }
   }, [dbVoiceState]);

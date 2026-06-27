@@ -492,7 +492,7 @@ export function GlobalSearchModal({
                         className="flex items-center gap-2 mb-1 w-full text-left"
                       >
                         <Avatar className="w-5 h-5">
-                          <AvatarImage src={message.author?.avatar_url || undefined} />
+                          <GuardedAvatarImg src={message.author?.avatar_url || undefined} ownerId={message.author?.id} />
                           <AvatarFallback className="text-[10px] bg-primary/20 text-primary">
                             {message.author?.display_name?.charAt(0).toUpperCase() || '?'}
                           </AvatarFallback>

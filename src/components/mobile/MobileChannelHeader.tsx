@@ -1,5 +1,5 @@
-import { ReactNode } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ReactNode, useState } from 'react';
+import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { StreamlineHash } from '@/components/icons/StreamlineHash';
 import { StreamlineVoice } from '@/components/icons/StreamlineVoice';
 import { StreamlineForum } from '@/components/icons/StreamlineForum';
@@ -8,6 +8,12 @@ import { StreamlineMedia } from '@/components/icons/StreamlineMedia';
 import { StreamlineCalendar } from '@/components/icons/StreamlineCalendar';
 import { StreamlineTasks } from '@/components/icons/StreamlineTasks';
 import { StreamlineStage } from '@/components/icons/StreamlineStage';
+import { Sheet, SheetContent, SheetTrigger, SheetClose } from '@/components/ui/sheet';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import { MemberList } from '@/components/layout/MemberList';
+import type { User } from '@/types/app';
+import type { MemberWithProfile } from '@/hooks/useMembers';
 
 const channelIcons: Record<string, React.ElementType> = {
   text: StreamlineHash,
@@ -23,25 +29,66 @@ const channelIcons: Record<string, React.ElementType> = {
 interface Props {
   channelName: string;
   channelType: string;
+  description?: string;
   onlineCount?: number;
   onBack: () => void;
+  /** Fallback handler if no members list is provided (legacy). */
   onOpenDetails?: () => void;
   rightSlot?: ReactNode;
+  /** When provided, tapping the title opens an integrated Members sheet. */
+  members?: (User & { roles?: MemberWithProfile['roles'] })[];
+  ownerId?: string;
+  serverId?: string;
+  onOpenDM?: (id: string) => void;
 }
 
 /**
- * Unified mobile channel header used by text, voice and stage channels.
- * Visually mirrors the chat header (back + icon + name + chevron + online count + right actions).
+ * Unified mobile channel header used by every channel type.
+ * Visually identical to the standard text-channel header: back + icon + name + chevron
+ * + online count, with the title block opening a Members sheet, plus a configurable rightSlot.
  */
 export function MobileChannelHeader({
   channelName,
   channelType,
+  description,
   onlineCount,
   onBack,
   onOpenDetails,
   rightSlot,
+  members,
+  ownerId,
+  serverId,
+  onOpenDM,
 }: Props) {
   const Icon = channelIcons[channelType] || StreamlineHash;
+  const [membersOpen, setMembersOpen] = useState(false);
+  const hasMembersSheet = Array.isArray(members);
+
+  const titleButton = (
+    <button
+      type="button"
+      onClick={hasMembersSheet ? undefined : onOpenDetails}
+      className="flex-1 min-w-0 flex items-center gap-2.5 px-1 py-1.5 rounded-xl active:bg-primary/8 transition-colors text-left"
+      aria-label={hasMembersSheet ? `Membres du salon ${channelName}` : `Détails du salon ${channelName}`}
+    >
+      <div className="w-9 h-9 rounded-full bg-muted/40 flex items-center justify-center flex-shrink-0">
+        <Icon className="w-[22px] h-[22px] text-muted-foreground" />
+      </div>
+      <div className="min-w-0 flex-1 leading-tight">
+        <div className="flex items-center gap-0.5 min-w-0">
+          <h2 className="font-semibold text-sm truncate">{channelName}</h2>
+          <ChevronRight className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0 -ml-0.5" />
+        </div>
+        {typeof onlineCount === 'number' && (
+          <div className="flex items-center gap-1 mt-0.5 text-[11px] text-muted-foreground">
+            <span className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--online))]" />
+            <span className="tabular-nums">{onlineCount}</span>
+            <span>En ligne</span>
+          </div>
+        )}
+      </div>
+    </button>
+  );
 
   return (
     <div
@@ -57,29 +104,40 @@ export function MobileChannelHeader({
         <ChevronLeft className="w-5 h-5" />
       </button>
 
-      <button
-        type="button"
-        onClick={onOpenDetails}
-        className="flex-1 min-w-0 flex items-center gap-2.5 px-1 py-1.5 rounded-xl active:bg-primary/8 transition-colors text-left"
-        aria-label={`Détails du salon ${channelName}`}
-      >
-        <div className="w-9 h-9 rounded-full bg-muted/40 flex items-center justify-center flex-shrink-0">
-          <Icon className="w-[22px] h-[22px] text-muted-foreground" />
-        </div>
-        <div className="min-w-0 flex-1 leading-tight">
-          <div className="flex items-center gap-0.5 min-w-0">
-            <h2 className="font-semibold text-sm truncate">{channelName}</h2>
-            <ChevronRight className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0 -ml-0.5" />
-          </div>
-          {typeof onlineCount === 'number' && (
-            <div className="flex items-center gap-1 mt-0.5 text-[11px] text-muted-foreground">
-              <span className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--online))]" />
-              <span className="tabular-nums">{onlineCount}</span>
-              <span>En ligne</span>
+      {hasMembersSheet ? (
+        <Sheet open={membersOpen} onOpenChange={setMembersOpen}>
+          <SheetTrigger asChild>{titleButton}</SheetTrigger>
+          <SheetContent
+            side="right"
+            className="w-[85vw] max-w-80 p-0 rounded-l-2xl bg-surface-1 [&>button.absolute]:hidden"
+          >
+            <div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
+              <h3 className="text-sm font-semibold text-foreground ml-1">Membres</h3>
+              <SheetClose asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8 mr-0.5 rounded-full" aria-label="Fermer">
+                  <X className="w-4 h-4" />
+                </Button>
+              </SheetClose>
             </div>
-          )}
-        </div>
-      </button>
+            {description && (
+              <>
+                <div className="px-3 py-2">
+                  <p className="text-xs text-muted-foreground">{description}</p>
+                </div>
+                <Separator />
+              </>
+            )}
+            <MemberList
+              members={members!}
+              ownerId={ownerId || ''}
+              serverId={serverId}
+              onOpenDM={onOpenDM || (() => {})}
+            />
+          </SheetContent>
+        </Sheet>
+      ) : (
+        titleButton
+      )}
 
       {rightSlot && <div className="flex items-center gap-1 flex-shrink-0">{rightSlot}</div>}
     </div>

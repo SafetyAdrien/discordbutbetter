@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
+import { markReadGuard, isBeforeReadGuard } from '@/lib/readStateGuard';
 import { useAuth } from '@/contexts/AuthContext';
 
 export interface UnreadCount {
@@ -93,20 +94,15 @@ export function useUnreadCounts() {
       });
     };
 
-    const invalidate = () => {
-      queryClient.invalidateQueries({ queryKey: ['unread-counts'] });
-      queryClient.invalidateQueries({ queryKey: ['dm-mention-counts'] });
-      queryClient.invalidateQueries({ queryKey: ['dm-conversations'] });
-    };
-
     const messagesChannel = supabase
       .channel(`unread-counts-dm-messages-${user.id}-${instanceIdRef.current}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'dm_messages' }, (payload) => {
-        const msg = payload.new as { conversation_id?: string; author_id?: string };
-        if (msg.conversation_id && msg.author_id !== user.id) {
-          patchUnread(msg.conversation_id, 1);
-        }
-        invalidate();
+        const msg = payload.new as { conversation_id?: string; author_id?: string; created_at?: string };
+        if (!msg.conversation_id || msg.author_id === user.id) return;
+        // Guard: skip messages older than the read moment to avoid resurrecting badges.
+        if (isBeforeReadGuard(msg.conversation_id, msg.created_at)) return;
+        patchUnread(msg.conversation_id, 1);
+        // No invalidate — patch is authoritative; refetch races against replication lag.
       })
       .subscribe();
 

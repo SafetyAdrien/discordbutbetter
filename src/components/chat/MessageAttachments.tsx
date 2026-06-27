@@ -176,6 +176,7 @@ function ImageCarousel({
                 attachment={img}
                 onOpenLightbox={() => onOpenLightbox(index)}
                 blurFactor={getBlurFactor(index)}
+                authorId={authorId}
               />
             </CarouselItem>
           ))}

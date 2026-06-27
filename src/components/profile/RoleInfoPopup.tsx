@@ -222,6 +222,7 @@ export function RoleInfoPopup({ roleId, serverId, children }: RoleInfoPopupProps
                       fallback={m.displayName[0]?.toUpperCase()}
                       fallbackClassName="text-[10px]"
                       className="h-6 w-6"
+                      ownerId={m.id}
                     />
                     <span
                       className={cn(

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { FileIcon, Download, ExternalLink, Play, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { useImageGuardProps, useCanDownload } from '@/hooks/useDownloadPermissions';
 import { 
   Carousel, 
   CarouselContent, 
@@ -23,6 +24,8 @@ export interface StoredAttachment {
 
 interface MessageAttachmentsProps {
   attachments: StoredAttachment[];
+  /** Author id of the message — used to gate download/right-click/drag. */
+  authorId?: string | null;
 }
 
 function formatFileSize(bytes: number): string {
@@ -36,14 +39,17 @@ function formatFileSize(bytes: number): string {
 function ImageAttachment({ 
   attachment, 
   onOpenLightbox,
-  blurFactor = 0 // 0 = net, 1 = flou max
+  blurFactor = 0, // 0 = net, 1 = flou max
+  authorId,
 }: { 
   attachment: StoredAttachment;
   onOpenLightbox: () => void;
   blurFactor?: number;
+  authorId?: string | null;
 }) {
   const [revealed, setRevealed] = useState(!attachment.isSpoiler);
   const [loaded, setLoaded] = useState(false);
+  const guard = useImageGuardProps(authorId);
 
   // Calculer les valeurs de style dynamiques basées sur blurFactor
   const blurValue = revealed ? blurFactor * 2 : 0; // 0-2px
@@ -54,6 +60,8 @@ function ImageAttachment({
       <img
         src={attachment.url}
         alt={attachment.description || attachment.name}
+        draggable={guard.draggable as any}
+        onContextMenu={guard.onContextMenu}
         className={cn(
           'rounded-lg cursor-pointer max-h-96 max-w-full object-contain',
           'transition-[filter,opacity] duration-150 ease-out',
@@ -93,10 +101,12 @@ function ImageAttachment({
 
 function ImageCarousel({ 
   images, 
-  onOpenLightbox 
+  onOpenLightbox,
+  authorId,
 }: { 
   images: StoredAttachment[];
   onOpenLightbox: (index: number) => void;
+  authorId?: string | null;
 }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [scrollProgress, setScrollProgress] = useState(0);
@@ -166,6 +176,7 @@ function ImageCarousel({
                 attachment={img}
                 onOpenLightbox={() => onOpenLightbox(index)}
                 blurFactor={getBlurFactor(index)}
+                authorId={authorId}
               />
             </CarouselItem>
           ))}
@@ -200,9 +211,10 @@ function ImageCarousel({
   );
 }
 
-function VideoAttachment({ attachment }: { attachment: StoredAttachment }) {
+function VideoAttachment({ attachment, authorId }: { attachment: StoredAttachment; authorId?: string | null }) {
   const [revealed, setRevealed] = useState(!attachment.isSpoiler);
   const [isPlaying, setIsPlaying] = useState(false);
+  const guard = useImageGuardProps(authorId);
 
   if (attachment.isSpoiler && !revealed) {
     return (
@@ -219,11 +231,13 @@ function VideoAttachment({ attachment }: { attachment: StoredAttachment }) {
   }
 
   return (
-    <div className="relative group max-w-md">
+    <div className="relative group max-w-md" onContextMenu={guard.onContextMenu}>
       <video
         src={attachment.url}
         controls
+        controlsList={guard.draggable === false ? 'nodownload' : undefined}
         className="rounded-lg max-h-80"
+        onContextMenu={guard.onContextMenu}
         onPlay={() => setIsPlaying(true)}
         onPause={() => setIsPlaying(false)}
       >
@@ -245,7 +259,9 @@ function VideoAttachment({ attachment }: { attachment: StoredAttachment }) {
   );
 }
 
-function FileAttachment({ attachment }: { attachment: StoredAttachment }) {
+function FileAttachment({ attachment, authorId }: { attachment: StoredAttachment; authorId?: string | null }) {
+  const { canDownload, isLoading } = useCanDownload(authorId);
+  const showDownload = canDownload && !isLoading;
   return (
     <div className="flex items-center gap-3 bg-surface-hover rounded-lg p-3 max-w-sm group">
       <div className="w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -259,20 +275,25 @@ function FileAttachment({ attachment }: { attachment: StoredAttachment }) {
           {formatFileSize(attachment.size)}
         </p>
       </div>
-      <a
-        href={attachment.url}
-        download={attachment.name}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="p-2 rounded-md hover:bg-muted transition-colors opacity-0 group-hover:opacity-100"
-      >
-        <Download className="w-4 h-4 text-muted-foreground" />
-      </a>
+      {showDownload && (
+        <a
+          href={attachment.url}
+          download={attachment.name}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="p-2 rounded-md hover:bg-muted transition-colors opacity-0 group-hover:opacity-100"
+        >
+          <Download className="w-4 h-4 text-muted-foreground" />
+        </a>
+      )}
     </div>
   );
 }
 
-export function MessageAttachments({ attachments }: MessageAttachmentsProps) {
+export function MessageAttachments({ attachments, authorId }: MessageAttachmentsProps) {
+  const lightboxGuard = useImageGuardProps(authorId);
+  const { canDownload: lightboxCanDownload, isLoading: lightboxLoading } = useCanDownload(authorId);
+  const showExternalLink = lightboxCanDownload && !lightboxLoading;
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   const images = attachments?.filter(a => a.type === 'image') ?? [];
@@ -319,6 +340,7 @@ export function MessageAttachments({ attachments }: MessageAttachmentsProps) {
           <ImageAttachment
             attachment={images[0]}
             onOpenLightbox={() => setLightboxIndex(0)}
+            authorId={authorId}
           />
         </div>
       )}
@@ -328,6 +350,7 @@ export function MessageAttachments({ attachments }: MessageAttachmentsProps) {
         <ImageCarousel 
           images={images}
           onOpenLightbox={setLightboxIndex}
+          authorId={authorId}
         />
       )}
 
@@ -335,7 +358,7 @@ export function MessageAttachments({ attachments }: MessageAttachmentsProps) {
       {videos.length > 0 && (
         <div className="space-y-2">
           {videos.map(video => (
-            <VideoAttachment key={video.id} attachment={video} />
+            <VideoAttachment key={video.id} attachment={video} authorId={authorId} />
           ))}
         </div>
       )}
@@ -344,7 +367,7 @@ export function MessageAttachments({ attachments }: MessageAttachmentsProps) {
       {files.length > 0 && (
         <div className="space-y-1">
           {files.map(file => (
-            <FileAttachment key={file.id} attachment={file} />
+            <FileAttachment key={file.id} attachment={file} authorId={authorId} />
           ))}
         </div>
       )}
@@ -385,6 +408,8 @@ export function MessageAttachments({ attachments }: MessageAttachmentsProps) {
             <img
               src={currentLightboxImage.url}
               alt={currentLightboxImage.description || currentLightboxImage.name}
+              draggable={lightboxGuard.draggable as any}
+              onContextMenu={lightboxGuard.onContextMenu}
               className="max-w-full max-h-[85vh] object-contain rounded-lg mx-auto"
             />
           )}
@@ -399,15 +424,17 @@ export function MessageAttachments({ attachments }: MessageAttachmentsProps) {
                 </span>
               )}
               
-              {/* External link */}
-              <a
-                href={currentLightboxImage.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-2 bg-background/80 rounded-full hover:bg-background transition-colors"
-              >
-                <ExternalLink className="w-5 h-5" />
-              </a>
+              {/* External link — hidden when viewer cannot download */}
+              {showExternalLink && (
+                <a
+                  href={currentLightboxImage.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2 bg-background/80 rounded-full hover:bg-background transition-colors"
+                >
+                  <ExternalLink className="w-5 h-5" />
+                </a>
+              )}
             </div>
           )}
         </DialogContent>

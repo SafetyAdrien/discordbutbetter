@@ -11,6 +11,12 @@ import { useUnreadCounts } from '@/hooks/useUnreadCounts';
 import { useDMCalls } from '@/hooks/useDMCalls';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { UserAvatarImage } from '@/components/ui/user-avatar-image';
+import { useImageGuardProps } from '@/hooks/useDownloadPermissions';
+
+function GuardedAvatarImg({ src, ownerId }: { src?: string; ownerId?: string | null }) {
+  const g = useImageGuardProps(ownerId ?? null);
+  return <AvatarImage src={src} draggable={g.draggable as any} onContextMenu={g.onContextMenu} />;
+}
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { MarkdownTextarea } from '@/components/chat/MarkdownTextarea';
@@ -681,7 +687,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                           />
                           {showAuthor && (
                             <Avatar className="w-9 h-9 flex-shrink-0">
-                              <AvatarImage src={message.author?.avatar_url || undefined} />
+                              <GuardedAvatarImg src={message.author?.avatar_url || undefined} ownerId={message.author?.id} />
                               <AvatarFallback className="bg-primary/20 text-primary text-sm">
                                 {message.author?.display_name?.charAt(0).toUpperCase() || '?'}
                               </AvatarFallback>
@@ -762,7 +768,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
 
                             {/* Message Attachments */}
                             {message.attachments && message.attachments.length > 0 && (
-                              <MessageAttachments attachments={message.attachments as StoredAttachment[]} />
+                              <MessageAttachments attachments={message.attachments as StoredAttachment[]} authorId={(message as any).author_id ?? (message as any).user_id ?? null} />
                             )}
 
                             {/* Link Embeds */}

@@ -7,6 +7,7 @@ import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useLongPress } from '@/hooks/useLongPress';
 import { MarkdownText } from '@/lib/markdown';
 import { MessageAttachments, type StoredAttachment } from '@/components/chat/MessageAttachments';
+import { useImageGuardProps } from '@/hooks/useDownloadPermissions';
 import { SmartLinkEmbeds as LinkEmbeds } from '@/components/chat/embeds';
 import { ReactionBar } from '@/components/chat/ReactionBar';
 import { RepliedLine } from '@/components/chat/RepliedLine';
@@ -65,6 +66,7 @@ export function MobileMessageBubble({
   onJumpToMessage,
 }: Props) {
   const reduced = useReducedMotion();
+  const avatarGuard = useImageGuardProps(message.author?.id ?? null);
   const [translateX, setTranslateX] = useState(0);
   const [showTimestamp, setShowTimestamp] = useState(false);
   const startX = useRef<number | null>(null);
@@ -193,7 +195,7 @@ export function MobileMessageBubble({
                 className="block"
               >
                 <Avatar className="w-8 h-8">
-                  <AvatarImage src={message.author?.avatarUrl || undefined} />
+                  <AvatarImage src={message.author?.avatarUrl || undefined} draggable={avatarGuard.draggable as any} onContextMenu={avatarGuard.onContextMenu} />
                   <AvatarFallback className="bg-primary/20 text-primary text-xs">
                     {(message.author?.displayName || '?').charAt(0).toUpperCase()}
                   </AvatarFallback>
@@ -256,7 +258,7 @@ export function MobileMessageBubble({
             )}
             {message.attachments.length > 0 && (
               <div className={cn(message.content ? 'mt-2' : '')}>
-                <MessageAttachments attachments={message.attachments} />
+                <MessageAttachments attachments={message.attachments} authorId={message.author?.id ?? null} />
               </div>
             )}
             {message.content && (

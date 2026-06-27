@@ -5,6 +5,7 @@ import { CustomStatusModal } from './CustomStatusModal';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { UserAvatarImage } from '@/components/ui/user-avatar-image';
+import { useImageGuardProps } from '@/hooks/useDownloadPermissions';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useMutualServers } from '@/hooks/useMutualServers';
@@ -81,6 +82,7 @@ export function FullUserProfileModal({
   };
 
   const isOwnProfile = currentUser?.id === user?.id;
+  const bannerGuard = useImageGuardProps(isOwnProfile ? null : user?.id ?? null);
 
   const friendship = friends.find(
     (f) =>
@@ -143,6 +145,7 @@ export function FullUserProfileModal({
               backgroundSize: 'cover',
               backgroundPosition: 'center',
             }}
+            {...bannerGuard}
           />
           <div className="px-6 -mt-14 relative z-10 flex items-end justify-between gap-3">
             <div className="relative min-w-0 shrink-0">
@@ -153,6 +156,7 @@ export function FullUserProfileModal({
                   className="w-28 h-28 ring-[5px] ring-background"
                   fallbackClassName="bg-primary/20 text-primary text-4xl font-semibold"
                   fallback={user.display_name?.charAt(0).toUpperCase()}
+                  ownerId={user.id}
                 />
 
                 <StatusIndicator

@@ -33,6 +33,7 @@ export function rememberProfileTrigger(e: React.MouseEvent | MouseEvent) {
 
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { UserAvatarImage } from '@/components/ui/user-avatar-image';
+import { useImageGuardProps } from '@/hooks/useDownloadPermissions';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
@@ -221,6 +222,7 @@ export function UserProfilePopup({
     : user;
 
   const isOwnProfile = currentUser?.id === user.id;
+  const bannerGuard = useImageGuardProps(isOwnProfile ? null : user.id);
   const isInVoiceWithTarget = !isOwnProfile && !!voiceState.channelId && !!user;
   const targetVolume = user ? getUserVolume(user.id) : 100;
   const displayVolume = localVolume ?? targetVolume;
@@ -377,6 +379,7 @@ export function UserProfilePopup({
         <div
           className="h-[88px] w-full bg-[hsl(var(--primary))]"
           style={getBannerStyle()}
+          {...bannerGuard}
         />
 
         {/* Header Actions */}
@@ -456,6 +459,7 @@ export function UserProfilePopup({
               className="w-[72px] h-[72px] border-[5px] border-card"
               fallbackClassName="bg-primary/20 text-primary text-2xl"
               fallback={effectiveUser.displayName.charAt(0).toUpperCase()}
+              ownerId={user.id}
             />
 
             <StatusIndicator

@@ -3,6 +3,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { useImageGuardProps } from '@/hooks/useDownloadPermissions';
+
+function GuardedAvatarImg({ src, ownerId }: { src?: string; ownerId?: string | null }) {
+  const g = useImageGuardProps(ownerId ?? null);
+  return <AvatarImage src={src} draggable={g.draggable as any} onContextMenu={g.onContextMenu} />;
+}
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
@@ -79,7 +85,7 @@ function AutocompleteSuggestions({
             className="flex items-center gap-2 w-full px-3 py-2 hover:bg-muted transition-colors text-left"
           >
             <Avatar className="w-6 h-6">
-              <AvatarImage src={member.avatar} />
+              <GuardedAvatarImg src={member.avatar} ownerId={member.id} />
               <AvatarFallback className="text-xs bg-primary/20 text-primary">
                 {member.displayName.charAt(0).toUpperCase()}
               </AvatarFallback>
@@ -486,7 +492,7 @@ export function GlobalSearchModal({
                         className="flex items-center gap-2 mb-1 w-full text-left"
                       >
                         <Avatar className="w-5 h-5">
-                          <AvatarImage src={message.author?.avatar_url || undefined} />
+                          <GuardedAvatarImg src={message.author?.avatar_url || undefined} ownerId={message.author?.id} />
                           <AvatarFallback className="text-[10px] bg-primary/20 text-primary">
                             {message.author?.display_name?.charAt(0).toUpperCase() || '?'}
                           </AvatarFallback>

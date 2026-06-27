@@ -66,6 +66,7 @@ export function MobileMessageBubble({
   onJumpToMessage,
 }: Props) {
   const reduced = useReducedMotion();
+  const avatarGuard = useImageGuardProps(message.author?.id ?? null);
   const [translateX, setTranslateX] = useState(0);
   const [showTimestamp, setShowTimestamp] = useState(false);
   const startX = useRef<number | null>(null);

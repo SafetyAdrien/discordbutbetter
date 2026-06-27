@@ -56,6 +56,9 @@ export function VoiceControls({
     setInputDeviceId,
     setOutputDeviceId,
     outputSinkSupported,
+    micPermission,
+    refreshDevices,
+    requestMicPermission,
   } = useVoice();
 
   return (

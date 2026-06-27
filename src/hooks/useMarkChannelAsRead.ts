@@ -25,6 +25,9 @@ export function useMarkChannelAsRead() {
 
       // Arm the guard FIRST so any in-flight realtime/refetch is filtered.
       markReadGuard(channelId);
+      // Register this read moment in the cross-device monotone registry so
+      // older read events broadcast from other devices can't rewind it.
+      recordReadAt(channelId, Date.now());
 
       // Optimistic cache update — channel-level
       if (serverId) {

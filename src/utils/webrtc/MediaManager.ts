@@ -340,11 +340,81 @@ export class MediaManager {
    * Restart the microphone on a new input device, returning the new processed track.
    * Used by useWebRTC.switchInputDevice to hot-swap senders without renegotiation.
    */
+  /**
+   * Restart the microphone on a new input device, returning the new processed track.
+   * Used by useWebRTC.switchInputDevice to hot-swap senders without renegotiation.
+   *
+   * Fix G — does NOT call stopMicrophone() (which would close the AudioContext
+   * and trigger a full RNNoise WASM reload). Instead we open the new raw
+   * stream, ask the AudioProcessor to swap *only* the source node, then stop
+   * the old raw tracks AFTER the new ones are wired (no audible gap).
+   */
   async restartMicrophoneWith(deviceId: string): Promise<MediaStreamTrack | null> {
-    this.stopMicrophone();
-    const ok = await this.tryStartMicrophone(deviceId);
-    if (!ok || !this.localAudioStream) return null;
-    return this.localAudioStream.getAudioTracks()[0] || null;
+    try {
+      this.setInputDeviceId(deviceId);
+
+      const constraints: MediaTrackConstraints = {
+        echoCancellation: true,
+        noiseSuppression: false,
+        autoGainControl: false,
+        sampleRate: 48000,
+        channelCount: 1,
+      };
+      if (this._inputDeviceId && this._inputDeviceId !== 'default') {
+        (constraints as any).deviceId = { exact: this._inputDeviceId };
+      }
+
+      const newRawStream = await navigator.mediaDevices.getUserMedia({ audio: constraints, video: false });
+
+      let newProcessedStream: MediaStream;
+      if (this._audioProcessorActive) {
+        // Hot-swap into the existing chain — no context close, no WASM reload.
+        newProcessedStream = await audioProcessor.swapInputStream(newRawStream);
+      } else {
+        // Processor wasn't running (fallback path). Try to bring it up now.
+        try {
+          newProcessedStream = await audioProcessor.processStream(newRawStream);
+          this._audioProcessorActive = true;
+        } catch (processingError) {
+          console.warn('[MediaManager] AudioProcessor failed during switch, using raw stream:', processingError);
+          newProcessedStream = newRawStream;
+          this._audioProcessorActive = false;
+        }
+      }
+
+      // Only NOW stop the old raw tracks — switching first avoids an audible gap.
+      const oldRaw = this.localRawStream;
+      this.localRawStream = newRawStream;
+      this.localAudioStream = newProcessedStream;
+      if (oldRaw) {
+        oldRaw.getTracks().forEach((t) => { try { t.stop(); } catch {} });
+      }
+
+      // Rebuild the local analyser on the new processed stream — same fix
+      // class as the remote-output analyser that froze after a sink switch.
+      await this.initialize();
+      if (this.audioContext && this.localAudioStream) {
+        try { this.analyser?.disconnect(); } catch {}
+        const source = this.audioContext.createMediaStreamSource(this.localAudioStream);
+        this.analyser = this.audioContext.createAnalyser();
+        this.analyser.fftSize = 4096;
+        this.analyser.smoothingTimeConstant = 0.3;
+        source.connect(this.analyser);
+      }
+
+      // Reapply mute state to the new tracks.
+      if (this.isMuted) {
+        this.localAudioStream.getAudioTracks().forEach((t) => { t.enabled = false; });
+      }
+
+      this._hasMicrophoneAccess = true;
+      console.log('[MediaManager] Microphone hot-swapped to device:', this._inputDeviceId);
+      return this.localAudioStream.getAudioTracks()[0] || null;
+    } catch (error) {
+      // Keep the previous mic active rather than tearing everything down.
+      console.warn('[MediaManager] restartMicrophoneWith failed, keeping previous mic:', error);
+      return null;
+    }
   }
 
 
@@ -364,6 +434,14 @@ export class MediaManager {
       this._audioProcessorActive = false;
       audioProcessor.cleanup();
       console.log('[MediaManager] Microphone stopped');
+    }
+    // Fix G — release the physical input device. localAudioStream is the
+    // processed (destination) stream; stopping its tracks does NOT free the
+    // underlying mic. Without this, the OS mic indicator would stay lit after
+    // a voice disconnect once hot-swap stopped closing the AudioContext.
+    if (this.localRawStream) {
+      this.localRawStream.getTracks().forEach((t) => { try { t.stop(); } catch {} });
+      this.localRawStream = null;
     }
   }
 

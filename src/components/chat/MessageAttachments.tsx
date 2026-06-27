@@ -408,6 +408,8 @@ export function MessageAttachments({ attachments, authorId }: MessageAttachments
             <img
               src={currentLightboxImage.url}
               alt={currentLightboxImage.description || currentLightboxImage.name}
+              draggable={lightboxGuard.draggable as any}
+              onContextMenu={lightboxGuard.onContextMenu}
               className="max-w-full max-h-[85vh] object-contain rounded-lg mx-auto"
             />
           )}
@@ -422,15 +424,17 @@ export function MessageAttachments({ attachments, authorId }: MessageAttachments
                 </span>
               )}
               
-              {/* External link */}
-              <a
-                href={currentLightboxImage.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-2 bg-background/80 rounded-full hover:bg-background transition-colors"
-              >
-                <ExternalLink className="w-5 h-5" />
-              </a>
+              {/* External link — hidden when viewer cannot download */}
+              {showExternalLink && (
+                <a
+                  href={currentLightboxImage.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2 bg-background/80 rounded-full hover:bg-background transition-colors"
+                >
+                  <ExternalLink className="w-5 h-5" />
+                </a>
+              )}
             </div>
           )}
         </DialogContent>

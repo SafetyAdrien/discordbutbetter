@@ -860,6 +860,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                 : `Envoyer un message à ${displayName}`
             }
             disabled={sendMessage.isPending}
+            dmConversationId={conversationId}
             isSending={sendMessage.isPending}
             onTypingStart={startTyping}
             onTypingStop={stopTyping}

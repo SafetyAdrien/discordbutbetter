@@ -28,3 +28,27 @@ export function isBeforeReadGuard(id: string, isoOrMs: string | number | null | 
 export function clearReadGuard(id: string) {
   guard.delete(id);
 }
+
+/**
+ * Cross-device last_read_at registry (in-memory, monotone).
+ * Arbitrates realtime events on channel_read_states / dm_read_states so a
+ * stale or replayed event from another device cannot rewind a more recent
+ * local read. Distinct from `guard` above which filters message INSERTs
+ * older than a same-device read.
+ *
+ * Monotone: recordReadAt never lowers the stored value. Cleared on reload —
+ * authoritative state is rebuilt by the queryFn at that point.
+ */
+const lastReadAtMap = new Map<string, number>();
+
+export function recordReadAt(id: string, atMs: number): boolean {
+  if (!Number.isFinite(atMs)) return false;
+  const current = lastReadAtMap.get(id) ?? 0;
+  if (atMs <= current) return false;
+  lastReadAtMap.set(id, atMs);
+  return true;
+}
+
+export function getLastReadAt(id: string): number | undefined {
+  return lastReadAtMap.get(id);
+}

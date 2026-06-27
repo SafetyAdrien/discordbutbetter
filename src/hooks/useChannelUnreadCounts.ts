@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useEffect, useRef } from 'react';
 import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { isDirectMentionForUser } from '@/lib/mentions';
-import { isBeforeReadGuard } from '@/lib/readStateGuard';
+import { isBeforeReadGuard, recordReadAt, getLastReadAt } from '@/lib/readStateGuard';
 
 export interface ChannelUnreadInfo {
   hasUnread: boolean;
@@ -162,16 +162,24 @@ export function useChannelUnreadCounts(serverId: string | null) {
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
-          const channelId = ((payload.new || payload.old) as { channel_id?: string })?.channel_id;
-          if (channelId) {
-            queryClient.setQueryData<Record<string, ChannelUnreadInfo>>(
-              ['channel-unread-counts', serverId, user.id],
-              (old = {}) => {
-                const { [channelId]: _, ...rest } = old;
-                return rest;
-              }
-            );
-          }
+          const row = (payload.new || payload.old) as { channel_id?: string; last_read_at?: string } | null;
+          const channelId = row?.channel_id;
+          if (!channelId) return;
+          // Cross-device arbitration: only apply if the event's last_read_at
+          // is strictly newer than what we already know locally. Stale or
+          // out-of-order events from other devices are ignored.
+          const incoming = row?.last_read_at ? Date.parse(row.last_read_at) : NaN;
+          if (!Number.isFinite(incoming)) return;
+          const known = getLastReadAt(channelId) ?? 0;
+          if (incoming <= known) return;
+          recordReadAt(channelId, incoming);
+          queryClient.setQueryData<Record<string, ChannelUnreadInfo>>(
+            ['channel-unread-counts', serverId, user.id],
+            (old = {}) => {
+              const { [channelId]: _, ...rest } = old;
+              return rest;
+            }
+          );
           // Optimistic patch above is authoritative for the local mutation;
           // cross-device updates rely on this realtime stream itself.
         }

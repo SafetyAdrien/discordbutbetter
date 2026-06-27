@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
-import { markReadGuard, isBeforeReadGuard } from '@/lib/readStateGuard';
+import { markReadGuard, isBeforeReadGuard, recordReadAt, getLastReadAt } from '@/lib/readStateGuard';
 import { useAuth } from '@/contexts/AuthContext';
 
 export interface UnreadCount {
@@ -131,13 +131,21 @@ export function useUnreadCounts() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'dm_read_states', filter: `user_id=eq.${user.id}` },
         (payload) => {
-          const conversationId = ((payload.new || payload.old) as { conversation_id?: string })?.conversation_id;
-          if (conversationId) {
-            queryClient.setQueryData<Record<string, number>>(['unread-counts', user.id], (old = {}) => {
-              const { [conversationId]: _, ...rest } = old;
-              return rest;
-            });
-          }
+          const row = (payload.new || payload.old) as { conversation_id?: string; last_read_at?: string } | null;
+          const conversationId = row?.conversation_id;
+          if (!conversationId) return;
+          // Cross-device arbitration: only apply if the event's last_read_at is
+          // strictly newer than what we already know locally. Stale replays or
+          // out-of-order deliveries from other devices are silently ignored.
+          const incoming = row?.last_read_at ? Date.parse(row.last_read_at) : NaN;
+          if (!Number.isFinite(incoming)) return;
+          const known = getLastReadAt(conversationId) ?? 0;
+          if (incoming <= known) return;
+          recordReadAt(conversationId, incoming);
+          queryClient.setQueryData<Record<string, number>>(['unread-counts', user.id], (old = {}) => {
+            const { [conversationId]: _, ...rest } = old;
+            return rest;
+          });
           // Optimistic patch above is authoritative; intentionally no invalidate.
         },
       )
@@ -180,6 +188,9 @@ export function useUnreadCounts() {
       // Arm guard so any in-flight realtime INSERT/refetch with messages
       // older than this moment cannot resurrect the badge.
       markReadGuard(conversationId);
+      // Register this read moment in the cross-device monotone registry so
+      // older read events broadcast from other devices can't rewind it.
+      recordReadAt(conversationId, Date.now());
 
       await queryClient.cancelQueries({ queryKey: ['unread-counts', user?.id] });
       const previousCounts = queryClient.getQueryData<Record<string, number>>(['unread-counts', user?.id]);

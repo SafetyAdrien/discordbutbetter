@@ -131,13 +131,21 @@ export function useUnreadCounts() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'dm_read_states', filter: `user_id=eq.${user.id}` },
         (payload) => {
-          const conversationId = ((payload.new || payload.old) as { conversation_id?: string })?.conversation_id;
-          if (conversationId) {
-            queryClient.setQueryData<Record<string, number>>(['unread-counts', user.id], (old = {}) => {
-              const { [conversationId]: _, ...rest } = old;
-              return rest;
-            });
-          }
+          const row = (payload.new || payload.old) as { conversation_id?: string; last_read_at?: string } | null;
+          const conversationId = row?.conversation_id;
+          if (!conversationId) return;
+          // Cross-device arbitration: only apply if the event's last_read_at is
+          // strictly newer than what we already know locally. Stale replays or
+          // out-of-order deliveries from other devices are silently ignored.
+          const incoming = row?.last_read_at ? Date.parse(row.last_read_at) : NaN;
+          if (!Number.isFinite(incoming)) return;
+          const known = getLastReadAt(conversationId) ?? 0;
+          if (incoming <= known) return;
+          recordReadAt(conversationId, incoming);
+          queryClient.setQueryData<Record<string, number>>(['unread-counts', user.id], (old = {}) => {
+            const { [conversationId]: _, ...rest } = old;
+            return rest;
+          });
           // Optimistic patch above is authoritative; intentionally no invalidate.
         },
       )

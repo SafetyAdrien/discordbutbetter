@@ -64,13 +64,32 @@ export function MicrophoneSettingsPopover({
   inputDeviceId,
   availableInputs,
   onInputDeviceChange,
+  micPermission,
+  onRequestPermission,
+  onOpenRefresh,
   open,
   onOpenChange,
 }: MicrophoneSettingsPopoverProps) {
   const showInputSelector =
     typeof onInputDeviceChange === 'function' && Array.isArray(availableInputs);
+  const realInputs = (availableInputs || []).filter(
+    (d) => d.deviceId && d.deviceId !== 'default' && d.label
+  );
+  const needsPermission =
+    showInputSelector &&
+    typeof onRequestPermission === 'function' &&
+    realInputs.length === 0 &&
+    micPermission !== 'granted';
+
+  const handleOpenChange = (o: boolean) => {
+    if (o && typeof onOpenRefresh === 'function') {
+      void onOpenRefresh();
+    }
+    onOpenChange?.(o);
+  };
+
   return (
-    <Popover open={open} onOpenChange={onOpenChange}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         {children}
       </PopoverTrigger>
@@ -91,28 +110,35 @@ export function MicrophoneSettingsPopover({
                   <Mic className="w-3.5 h-3.5 text-muted-foreground" />
                   <Label className="text-xs text-muted-foreground">Périphérique d'entrée</Label>
                 </div>
-                <Select
-                  value={inputDeviceId || 'default'}
-                  onValueChange={(v) => onInputDeviceChange!(v)}
-                >
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue placeholder="Micro par défaut" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="default">Micro par défaut</SelectItem>
-                    {availableInputs!
-                      .filter((d) => d.deviceId && d.deviceId !== 'default')
-                      .map((d) => (
+                {needsPermission ? (
+                  <PermissionGate
+                    denied={micPermission === 'denied'}
+                    onRequest={onRequestPermission!}
+                  />
+                ) : (
+                  <Select
+                    value={inputDeviceId || 'default'}
+                    onValueChange={(v) => onInputDeviceChange!(v)}
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="Micro par défaut" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="default">Micro par défaut</SelectItem>
+                      {realInputs.map((d) => (
                         <SelectItem key={d.deviceId} value={d.deviceId}>
                           {d.label || `Micro ${d.deviceId.slice(0, 6)}`}
                         </SelectItem>
                       ))}
-                  </SelectContent>
-                </Select>
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
               <Separator />
             </>
           )}
+
+
 
 
           {/* Mic Volume */}

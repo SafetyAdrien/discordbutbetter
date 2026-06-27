@@ -864,6 +864,7 @@ const defaultVoiceContext: VoiceContextType = {
   setInputDeviceId: async () => {},
   setOutputDeviceId: async () => {},
   outputSinkSupported: false,
+  outputSinkPartial: false,
 };
 
 export function useVoice() {

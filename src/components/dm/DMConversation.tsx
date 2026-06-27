@@ -541,7 +541,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
 
                     const msgTs = currentDate.getTime();
                     const pollsBefore = flushPollsBefore(msgTs);
-                    return (<>
+                    return (<Fragment key={message.id}>
                       {pollsBefore}
                       <div
                         key={message.id}

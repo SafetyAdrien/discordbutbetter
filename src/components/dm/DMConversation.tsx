@@ -136,6 +136,54 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
   const { data: reactionsData = {} } = useDMMessageReactions(messageIds);
   const toggleReaction = useToggleDMReaction();
 
+  // DM Polls
+  const { data: polls = [] } = useDMPolls(conversationId);
+  const deletePoll = useDeleteDMPoll();
+  const endPoll = useEndDMPoll();
+  const sortedPolls = useMemo(
+    () => [...polls].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()),
+    [polls],
+  );
+
+  const renderPoll = (poll: DMPoll) => {
+    const isOwn = poll.author_id === user?.id;
+    return (
+      <div key={`poll-${poll.id}`} className="px-4 py-2 group">
+        <div className="flex items-start gap-3">
+          <Avatar className="w-9 h-9 flex-shrink-0">
+            <AvatarImage src={poll.author?.avatar_url || undefined} />
+            <AvatarFallback className="bg-primary/20 text-primary text-sm">
+              {poll.author?.display_name?.charAt(0).toUpperCase() || '?'}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="font-semibold text-sm">{poll.author?.display_name || 'Utilisateur'}</span>
+              <span className="text-[.625rem] text-muted-foreground/60">
+                {format(new Date(poll.created_at), 'HH:mm', { locale: fr })}
+              </span>
+              <div className="flex items-center gap-1 text-primary text-[10px] font-medium bg-primary/10 px-1.5 py-0.5 rounded">
+                <BarChart2 className="w-3 h-3" />
+                SONDAGE
+              </div>
+              {isOwn && (
+                <div className="ml-auto flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => endPoll.mutate({ pollId: poll.id, conversationId })}>
+                    Terminer
+                  </Button>
+                  <Button variant="ghost" size="sm" className="h-6 text-xs text-destructive hover:text-destructive" onClick={() => deletePoll.mutate({ pollId: poll.id, conversationId })}>
+                    Supprimer
+                  </Button>
+                </div>
+              )}
+            </div>
+            <DMPollDisplay poll={poll} conversationId={conversationId} />
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const conversation = conversations.find((c) => c.id === conversationId);
   const participantFromList = conversation?.participants[0] ?? null;
 

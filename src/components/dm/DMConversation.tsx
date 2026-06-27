@@ -11,6 +11,12 @@ import { useUnreadCounts } from '@/hooks/useUnreadCounts';
 import { useDMCalls } from '@/hooks/useDMCalls';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { UserAvatarImage } from '@/components/ui/user-avatar-image';
+import { useImageGuardProps } from '@/hooks/useDownloadPermissions';
+
+function GuardedAvatarImg({ src, ownerId }: { src?: string; ownerId?: string | null }) {
+  const g = useImageGuardProps(ownerId ?? null);
+  return <AvatarImage src={src} draggable={g.draggable as any} onContextMenu={g.onContextMenu} />;
+}
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { MarkdownTextarea } from '@/components/chat/MarkdownTextarea';

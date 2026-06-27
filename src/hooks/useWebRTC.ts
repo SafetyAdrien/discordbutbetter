@@ -22,7 +22,7 @@ export interface UseWebRTCReturn {
   isMicrophoneActive: boolean;
   audioLevel: number;
   peers: Map<string, PeerInfo>;
-  connect: (channelId: string) => Promise<void>;
+  connect: (channelId: string, initial?: { muted: boolean; deafened: boolean }) => Promise<void>;
   disconnect: () => Promise<void>;
   setMuted: (muted: boolean) => void;
   setDeafened: (deafened: boolean) => void;

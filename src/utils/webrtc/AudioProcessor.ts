@@ -701,6 +701,7 @@ export class AudioProcessor {
     this.analyserNode = null;
     this.destinationNode = null;
     this.processedStream = null;
+    this.sourceTarget = null;
 
     if (this.audioContext) {
       this.audioContext.close().catch(() => {});

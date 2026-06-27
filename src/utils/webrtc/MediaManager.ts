@@ -136,14 +136,38 @@ export class MediaManager {
     try { localStorage.setItem('voice-input-device', this._inputDeviceId); } catch {}
   }
 
-  /** True when the browser supports routing the Web Audio chain to a specific sink. */
-  canRouteWebAudioToDevice(): boolean {
+  /** True when native <audio> elements can route to a specific sink. */
+  canRouteNativeAudioToDevice(): boolean {
     try {
-      return typeof AudioContext !== 'undefined' &&
-        // @ts-ignore — Chrome 110+
-        typeof (AudioContext.prototype as any).setSinkId === 'function';
+      return typeof HTMLMediaElement !== 'undefined' &&
+        'setSinkId' in HTMLMediaElement.prototype;
     } catch { return false; }
   }
+
+  /**
+   * True when the Web Audio chain can route to a specific sink, either via
+   * AudioContext.prototype.setSinkId (Chromium 110+) OR via the constructor
+   * fallback `new AudioContext({ sinkId })` (some Chromium variants ship one
+   * without the other).
+   */
+  canRouteWebAudioToDevice(): boolean {
+    if (typeof AudioContext === 'undefined') return false;
+    try {
+      // @ts-ignore — Chrome 110+ method form
+      if (typeof (AudioContext.prototype as any).setSinkId === 'function') return true;
+    } catch {}
+    // Constructor probe (one-shot, memoized).
+    if (MediaManager._ctorSinkProbe === null) {
+      try {
+        // @ts-ignore — option not in lib.dom yet
+        const probe = new AudioContext({ sinkId: '' });
+        MediaManager._ctorSinkProbe = true;
+        probe.close().catch(() => {});
+      } catch { MediaManager._ctorSinkProbe = false; }
+    }
+    return MediaManager._ctorSinkProbe === true;
+  }
+  private static _ctorSinkProbe: boolean | null = null;
 
   /** Apply an output sink to every active remote audio path. */
   async setOutputSinkId(deviceId: string): Promise<void> {
@@ -158,8 +182,14 @@ export class MediaManager {
       }
     }
 
-    // Path 2 — AudioContext (high-gain chain). Chromium 110+ exposes setSinkId.
-    if (this.canRouteWebAudioToDevice()) {
+    // Path 2 — AudioContext (high-gain chain).
+    // 2a — Chromium 110+ method form.
+    const hasMethod =
+      typeof AudioContext !== 'undefined' &&
+      // @ts-ignore
+      typeof (AudioContext.prototype as any).setSinkId === 'function';
+
+    if (hasMethod) {
       for (const entry of this.remoteAudioContexts.values()) {
         const ctx: any = entry.context;
         if (typeof ctx.setSinkId === 'function') {
@@ -167,6 +197,69 @@ export class MediaManager {
           catch (e) { console.warn('[MediaManager] AudioContext.setSinkId failed:', e); }
         }
       }
+      return;
+    }
+
+    // 2b — Fallback: recreate AudioContext via constructor `{ sinkId }` for
+    // peers whose voie 2 (high-gain chain) is actually wired — i.e. gainNode
+    // is non-null. Peers without amplification already use voie 1 (native
+    // <audio>) which was rerouted above; recreating their context would only
+    // perturb the analyser (anneau "qui parle") for no audible benefit.
+    if (!this.canRouteWebAudioToDevice()) return;
+
+    for (const [peerId, entry] of this.remoteAudioContexts.entries()) {
+      if (!entry.gainNode) continue; // skip non-amplified peers
+
+      const stream = entry.source.mediaStream;
+      const savedGain = entry.gainNode.gain.value;
+      const oldContext = entry.context;
+
+      let newCtx: AudioContext;
+      try {
+        // @ts-ignore — { sinkId } not in lib.dom yet
+        newCtx = new AudioContext({
+          sinkId: this._outputDeviceId,
+          sampleRate: 48000,
+          latencyHint: 'interactive',
+        });
+      } catch (e) {
+        console.warn('[MediaManager] AudioContext({sinkId}) recreation failed for peer:', peerId, e);
+        continue;
+      }
+
+      // Rebuild BOTH branches on the new context: analyser (level meter) +
+      // amplification chain. The analyser is mandatory — without it,
+      // getRemoteSpeakingLevel() would freeze for this peer after switching sinks.
+      const newSource = newCtx.createMediaStreamSource(stream);
+      const newAnalyser = newCtx.createAnalyser();
+      newAnalyser.fftSize = 2048;                  // identical to L.486
+      newAnalyser.smoothingTimeConstant = 0.3;     // identical to L.487
+      const newGain = newCtx.createGain();
+      newGain.gain.value = savedGain;
+      const newLimiter = this._createLimiter(newCtx);
+      const newSaturator = this._createSaturator(newCtx);
+
+      newSource.connect(newAnalyser);
+      newSource.connect(newGain);
+      newGain.connect(newLimiter);
+      newLimiter.connect(newSaturator);
+      newSaturator.connect(newCtx.destination);
+
+      // Disconnect & close old context.
+      try { entry.source.disconnect(); } catch {}
+      try { entry.gainNode.disconnect(); } catch {}
+      try { entry.limiterNode?.disconnect(); } catch {}
+      try { entry.saturatorNode?.disconnect(); } catch {}
+      try { await oldContext.close(); } catch {}
+
+      this.remoteAudioContexts.set(peerId, {
+        context: newCtx,
+        analyser: newAnalyser,
+        source: newSource,
+        gainNode: newGain,
+        limiterNode: newLimiter,
+        saturatorNode: newSaturator,
+      });
     }
   }
 

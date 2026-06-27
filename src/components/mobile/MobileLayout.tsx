@@ -19,6 +19,9 @@ import { TasksChannel } from '@/components/channels/TasksChannel';
 import { CalendarChannel } from '@/components/channels/CalendarChannel';
 import { AnnouncementChannel } from '@/components/channels/AnnouncementChannel';
 import { ExternalLinkWarningModal } from '@/components/modals/ExternalLinkWarningModal';
+import { GlobalSearchModal } from '@/components/modals/GlobalSearchModal';
+import { Search, CalendarDays } from 'lucide-react';
+
 import { DiscoverModal } from '@/components/modals/DiscoverModal';
 import { CreateServerModal } from '@/components/modals/CreateServerModal';
 import { ServerSettingsModal } from '@/components/server-settings/ServerSettingsModal';
@@ -92,6 +95,9 @@ export function MobileLayout({
   const [settingsInitialTab, setSettingsInitialTab] = useState<string | undefined>(undefined);
   const [externalLinkUrl, setExternalLinkUrl] = useState<string | null>(null);
   const [voicePreJoin, setVoicePreJoin] = useState<{ serverId: string; channel: { id: string; name: string } } | null>(null);
+  const [specialSearchOpen, setSpecialSearchOpen] = useState(false);
+  const [calendarJumpSignal, setCalendarJumpSignal] = useState(0);
+
 
   const openServerSettings = (serverId: string, initialTab?: string) => {
     setSettingsInitialTab(initialTab);
@@ -441,14 +447,6 @@ export function MobileLayout({
             onBack={handleBackToChannels}
           />
         );
-      case 'media':
-        return <FullScreenWrapper name={channelForChat.name} onBack={handleBackToChannels}><MediaChannel {...commonProps} hideHeader /></FullScreenWrapper>;
-      case 'forum':
-        return <FullScreenWrapper name={channelForChat.name} onBack={handleBackToChannels}><ForumChannel {...commonProps} hideHeader serverId={(channelForChat as any).server_id} /></FullScreenWrapper>;
-      case 'tasks':
-        return <FullScreenWrapper name={channelForChat.name} onBack={handleBackToChannels}><TasksChannel {...commonProps} hideHeader /></FullScreenWrapper>;
-      case 'calendar':
-        return <FullScreenWrapper name={channelForChat.name} onBack={handleBackToChannels}><CalendarChannel {...commonProps} hideHeader /></FullScreenWrapper>;
       case 'announcement':
         return (
           <MobileChatView
@@ -476,19 +474,88 @@ export function MobileLayout({
             )}
           />
         );
-      case 'stage':
+      case 'media':
+
+      case 'forum':
+      case 'tasks':
+      case 'calendar':
+      case 'stage': {
+        const onlineCount = memberListData.filter((m: any) => {
+          const s = m.status;
+          return s === 'online' || s === 'idle' || s === 'dnd';
+        }).length;
+
+        const searchButton = (
+          <button
+            onClick={() => setSpecialSearchOpen(true)}
+            aria-label="Rechercher dans ce salon"
+            title="Rechercher"
+            className="p-2 rounded-full active:bg-muted transition-colors text-muted-foreground min-h-[44px] min-w-[44px] flex items-center justify-center"
+          >
+            <Search className="w-5 h-5" />
+          </button>
+        );
+
+        const todayButton = (
+          <button
+            onClick={() => setCalendarJumpSignal(n => n + 1)}
+            aria-label="Aller à aujourd'hui"
+            title="Aujourd'hui"
+            className="p-2 rounded-full active:bg-muted transition-colors text-muted-foreground min-h-[44px] min-w-[44px] flex items-center justify-center"
+          >
+            <CalendarDays className="w-5 h-5" />
+          </button>
+        );
+
+        let rightSlot: ReactNode = null;
+        let body: ReactNode = null;
+        switch (channelForChat.type) {
+          case 'media':
+            rightSlot = searchButton;
+            body = <MediaChannel {...commonProps} hideHeader />;
+            break;
+          case 'forum':
+            rightSlot = searchButton;
+            body = <ForumChannel {...commonProps} hideHeader serverId={(channelForChat as any).server_id} />;
+            break;
+          case 'tasks':
+            rightSlot = searchButton;
+            body = <TasksChannel {...commonProps} hideHeader />;
+            break;
+          case 'calendar':
+            rightSlot = todayButton;
+            body = <CalendarChannel {...commonProps} hideHeader jumpToTodaySignal={calendarJumpSignal} />;
+            break;
+          case 'stage':
+            rightSlot = null;
+            body = <StageChannel {...commonProps} serverId={currentServer.id} hideHeader />;
+            break;
+        }
+
         return (
           <div className="flex flex-col h-full">
             <MobileChannelHeader
               channelName={channelForChat.name}
-              channelType="stage"
+              channelType={channelForChat.type}
+              description={channelForChat.description}
+              onlineCount={onlineCount}
               onBack={handleBackToChannels}
+              members={memberListData}
+              ownerId={currentServer.owner_id || ''}
+              serverId={currentServer.id}
+              onOpenDM={onOpenDM}
+              rightSlot={rightSlot}
             />
-            <div className="flex-1 overflow-hidden">
-              <StageChannel {...commonProps} serverId={currentServer.id} hideHeader />
-            </div>
+            <div className="flex-1 overflow-hidden">{body}</div>
+            <GlobalSearchModal
+              open={specialSearchOpen}
+              onClose={() => setSpecialSearchOpen(false)}
+              serverId={currentServer.id}
+            />
           </div>
         );
+      }
+
       case 'link': {
         // Safety net: a link channel reached the chat view — open the external URL modal and bounce back
         const url = (channelForChat.description as string | undefined) || '';

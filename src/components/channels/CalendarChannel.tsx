@@ -32,9 +32,11 @@ export interface CalendarChannelProps {
   showMembers?: boolean;
   /** Hide the internal header bar when a parent shell already renders one. */
   hideHeader?: boolean;
+  /** Incremented externally (e.g. by mobile header) to request a jump to today. */
+  jumpToTodaySignal?: number;
 }
 
-export function CalendarChannel({ channel, onToggleMembers, showMembers, hideHeader = false }: CalendarChannelProps) {
+export function CalendarChannel({ channel, onToggleMembers, showMembers, hideHeader = false, jumpToTodaySignal }: CalendarChannelProps) {
   const { isMobile } = useBreakpoint();
   const { data: canManageEvents = false } = useHasChannelPermission(channel.id, 'manage_events');
   // Tout membre voyant le salon peut créer un événement (gate RLS = view_channel).
@@ -47,6 +49,16 @@ export function CalendarChannel({ channel, onToggleMembers, showMembers, hideHea
   const [modalInitialDate, setModalInitialDate] = useState<Date | null>(null);
   const [editing, setEditing] = useState<ChannelCalendarEvent | null>(null);
   const [serverId, setServerId] = useState<string | null>(null);
+
+  // Jump-to-today: react to external trigger from parent header.
+  useEffect(() => {
+    if (jumpToTodaySignal === undefined) return;
+    const today = new Date();
+    setCurrentMonth(today);
+    setSelectedDate(today);
+  }, [jumpToTodaySignal]);
+
+
 
   const { events, remove } = useChannelCalendarEvents(channel.id);
 

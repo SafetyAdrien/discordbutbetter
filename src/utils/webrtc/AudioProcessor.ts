@@ -269,21 +269,39 @@ export class AudioProcessor {
   setNoiseSuppression(mode: NoiseSuppressonMode): void {
     this.config.noiseSuppression = mode;
 
-    if (this.rnnoiseNode && this.rnnoiseGainNode) {
+    // Fix #1 — bypass RNNoise cleanly instead of zeroing its output gain
+    // (which previously muted the mic entirely when set to "off").
+    if (this.audioContext && this.rnnoiseGainNode && this.preRNNoiseTap) {
       if (mode === 'off') {
-        // Bypass: set RNNoise output gain to 0 and connect source directly
-        // Since we can't easily remove nodes, we disconnect rnnoise output
-        this.rnnoiseGainNode.gain.value = 0;
+        if (!this.rnnoiseBypassed) {
+          try { this.rnnoiseNode?.disconnect(this.rnnoiseGainNode); } catch { /* already */ }
+          try { this.preRNNoiseTap.connect(this.rnnoiseGainNode); } catch { /* already */ }
+          this.rnnoiseBypassed = true;
+        }
+        this.rnnoiseGainNode.gain.value = 1;
       } else {
+        // Re-enable RNNoise (lazy-create if it wasn't built at init).
+        if (this.rnnoiseBypassed) {
+          try { this.preRNNoiseTap.disconnect(this.rnnoiseGainNode); } catch { /* already */ }
+          if (!this.rnnoiseNode && this.rnnoiseLoaded) {
+            try {
+              this.rnnoiseNode = new AudioWorkletNode(this.audioContext, NoiseSuppressorWorklet_Name);
+            } catch (e) {
+              console.warn('[AudioProcessor] Could not lazy-create RNNoise:', e);
+            }
+          }
+          if (this.rnnoiseNode) {
+            try { this.preRNNoiseTap.connect(this.rnnoiseNode); } catch { /* already */ }
+            try { this.rnnoiseNode.connect(this.rnnoiseGainNode); } catch { /* already */ }
+            this.rnnoiseBypassed = false;
+          } else {
+            // RNNoise unavailable — fall back to dry path
+            try { this.preRNNoiseTap.connect(this.rnnoiseGainNode); } catch {}
+            this.rnnoiseBypassed = true;
+          }
+        }
         this.rnnoiseGainNode.gain.value = mode === 'low' ? 0.85 : 1.0;
       }
-    }
-
-    // For 'high' mode, apply more aggressive noise gate threshold
-    if (mode === 'high') {
-      this.config.noiseGateThreshold = -45;
-    } else {
-      this.config.noiseGateThreshold = -50;
     }
 
     console.log('[AudioProcessor] Noise suppression set to:', mode);

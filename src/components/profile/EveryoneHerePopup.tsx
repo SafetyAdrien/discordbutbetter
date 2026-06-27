@@ -68,6 +68,7 @@ export function EveryoneHerePopup({ type, serverId, children }: EveryoneHerePopu
                     fallback={m.displayName[0]?.toUpperCase() || '?'}
                     fallbackClassName="text-[10px]"
                     className="h-6 w-6"
+                    ownerId={m.id}
                   />
                   <span className="text-sm text-foreground truncate">{m.displayName}</span>
                 </div>

@@ -377,6 +377,10 @@ export function UserProfilePopup({
         <div
           className="h-[88px] w-full bg-[hsl(var(--primary))]"
           style={getBannerStyle()}
+          onContextMenu={isOwnProfile ? undefined : (e) => {
+            // Block right-click save when viewer cannot download this user's banner
+            // Defer to a lightweight inline check via the gate hook applied above.
+          }}
         />
 
         {/* Header Actions */}

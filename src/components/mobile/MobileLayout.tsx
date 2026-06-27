@@ -19,6 +19,9 @@ import { TasksChannel } from '@/components/channels/TasksChannel';
 import { CalendarChannel } from '@/components/channels/CalendarChannel';
 import { AnnouncementChannel } from '@/components/channels/AnnouncementChannel';
 import { ExternalLinkWarningModal } from '@/components/modals/ExternalLinkWarningModal';
+import { GlobalSearchModal } from '@/components/modals/GlobalSearchModal';
+import { Search, CalendarDays } from 'lucide-react';
+
 import { DiscoverModal } from '@/components/modals/DiscoverModal';
 import { CreateServerModal } from '@/components/modals/CreateServerModal';
 import { ServerSettingsModal } from '@/components/server-settings/ServerSettingsModal';

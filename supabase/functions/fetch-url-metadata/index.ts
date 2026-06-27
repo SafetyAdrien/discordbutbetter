@@ -128,10 +128,11 @@ Deno.serve(async (req) => {
     clearTimeout(timeout);
 
     if (!response.ok) {
-      return new Response(JSON.stringify({ error: `HTTP ${response.status}` }), {
-        status: 502,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      // Return 200 with empty:true so the client doesn't crash on rate limits / upstream errors
+      return new Response(
+        JSON.stringify({ empty: true, error: `HTTP ${response.status}`, fallback: response.status === 429 || response.status >= 500 }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
     }
 
     // Only process HTML

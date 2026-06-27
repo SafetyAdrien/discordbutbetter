@@ -447,7 +447,35 @@ export function MobileLayout({
             onBack={handleBackToChannels}
           />
         );
+      case 'announcement':
+        return (
+          <MobileChatView
+            channel={channelForChat}
+            messages={messagesData}
+            onSendMessage={handleSendMessage}
+            memberRoles={memberRolesMap}
+            members={searchMembers}
+            memberListData={memberListData}
+            ownerId={currentServer.owner_id || ''}
+            serverId={currentServer.id}
+            onBack={handleBackToChannels}
+            onOpenDM={onOpenDM}
+            onSelectThread={(threadId) => {
+              setMobileView({
+                type: 'thread',
+                serverId: mobileView.serverId,
+                channelId: mobileView.channelId,
+                threadId,
+                channelName: channelForChat.name,
+              });
+            }}
+            renderCustomContent={() => (
+              <AnnouncementChannel {...commonProps} hideHeader />
+            )}
+          />
+        );
       case 'media':
+
       case 'forum':
       case 'tasks':
       case 'calendar':

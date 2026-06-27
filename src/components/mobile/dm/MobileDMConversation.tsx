@@ -346,40 +346,63 @@ export function MobileDMConversation({ conversationId, onBack }: Props) {
               </p>
             </div>
           ) : (
-            grouped.map(({ raw, bubble, showAvatar, showAuthorName, isLastOfBurst, showDateSeparator }) => (
-              <div
-                key={raw.id}
-                ref={(el) => {
-                  if (el) messageRefs.current.set(raw.id, el);
-                  else messageRefs.current.delete(raw.id);
-                }}
-              >
-                {showDateSeparator && (
-                  <div className="sticky top-0 z-10 my-2 flex items-center justify-center">
-                    <span className="px-3 py-1 text-[11px] font-medium text-muted-foreground bg-[hsl(var(--surface-2))]/80 backdrop-blur rounded-full">
-                      {formatDateLabel(new Date(raw.created_at || Date.now()))}
-                    </span>
-                  </div>
-                )}
-                <MobileMessageBubble
-                  message={bubble}
-                  showAvatar={showAvatar}
-                  showAuthorName={showAuthorName}
-                  isLastOfBurst={isLastOfBurst}
-                  isGroup={isGroup}
-                  reactions={reactionsData[raw.id] || []}
-                  currentUserId={user?.id ?? null}
-                  onReply={() => setReplyingTo(raw)}
-                  onLongPress={() => setActionMessage(raw)}
-                  onToggleReaction={handleToggleReaction}
-                  onAvatarTap={(uid) => {
-                    setProfileUserId(uid);
-                    setShowProfile(true);
-                  }}
-                  onJumpToMessage={handleJumpToMessage}
-                />
-              </div>
-            ))
+            (() => {
+              let pollCursor = 0;
+              const flushPollsBefore = (ts: number) => {
+                const out: JSX.Element[] = [];
+                while (pollCursor < sortedPolls.length && new Date(sortedPolls[pollCursor].created_at).getTime() <= ts) {
+                  out.push(renderMobilePoll(sortedPolls[pollCursor]));
+                  pollCursor++;
+                }
+                return out;
+              };
+              const items = grouped.map(({ raw, bubble, showAvatar, showAuthorName, isLastOfBurst, showDateSeparator }) => {
+                const ts = new Date(raw.created_at || Date.now()).getTime();
+                const before = flushPollsBefore(ts);
+                return (
+                  <Fragment key={raw.id}>
+                    {before}
+                    <div
+                      ref={(el) => {
+                        if (el) messageRefs.current.set(raw.id, el);
+                        else messageRefs.current.delete(raw.id);
+                      }}
+                    >
+                      {showDateSeparator && (
+                        <div className="sticky top-0 z-10 my-2 flex items-center justify-center">
+                          <span className="px-3 py-1 text-[11px] font-medium text-muted-foreground bg-[hsl(var(--surface-2))]/80 backdrop-blur rounded-full">
+                            {formatDateLabel(new Date(raw.created_at || Date.now()))}
+                          </span>
+                        </div>
+                      )}
+                      <MobileMessageBubble
+                        message={bubble}
+                        showAvatar={showAvatar}
+                        showAuthorName={showAuthorName}
+                        isLastOfBurst={isLastOfBurst}
+                        isGroup={isGroup}
+                        reactions={reactionsData[raw.id] || []}
+                        currentUserId={user?.id ?? null}
+                        onReply={() => setReplyingTo(raw)}
+                        onLongPress={() => setActionMessage(raw)}
+                        onToggleReaction={handleToggleReaction}
+                        onAvatarTap={(uid) => {
+                          setProfileUserId(uid);
+                          setShowProfile(true);
+                        }}
+                        onJumpToMessage={handleJumpToMessage}
+                      />
+                    </div>
+                  </Fragment>
+                );
+              });
+              return (
+                <>
+                  {items}
+                  {sortedPolls.slice(pollCursor).map((p) => renderMobilePoll(p))}
+                </>
+              );
+            })()
           )}
 
           {/* Typing indicator bubble */}

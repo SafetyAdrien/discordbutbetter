@@ -89,7 +89,7 @@ describe("MediaManager — reconnect audio invariant (Bug #2 regression)", () =>
     // Session 1: user deafened themselves.
     mm.setDeafened(true);
     mm.addRemoteAudioStream("peer-old", new FakeMediaStream() as unknown as MediaStream);
-    expect(lastAudioElement().muted).toBe(true);
+    expect(audioFor(mm, "PEER").muted).toBe(true);
 
     // Disconnect — cleanup removes peers but the singleton state survives.
     mm.removeRemoteAudioStream("peer-old");
@@ -100,7 +100,7 @@ describe("MediaManager — reconnect audio invariant (Bug #2 regression)", () =>
     mm.setMuted(false);
     mm.addRemoteAudioStream("peer-new", new FakeMediaStream() as unknown as MediaStream);
 
-    expect(lastAudioElement().muted).toBe(false);
+    expect(audioFor(mm, "PEER").muted).toBe(false);
   });
 
   it("B: stale hearing singleton + reconnect deafened → new <audio> is muted", async () => {
@@ -108,14 +108,14 @@ describe("MediaManager — reconnect audio invariant (Bug #2 regression)", () =>
 
     mm.setDeafened(false);
     mm.addRemoteAudioStream("peer-old", new FakeMediaStream() as unknown as MediaStream);
-    expect(lastAudioElement().muted).toBe(false);
+    expect(audioFor(mm, "PEER").muted).toBe(false);
 
     mm.removeRemoteAudioStream("peer-old");
 
     mm.setDeafened(true);
     mm.addRemoteAudioStream("peer-new", new FakeMediaStream() as unknown as MediaStream);
 
-    expect(lastAudioElement().muted).toBe(true);
+    expect(audioFor(mm, "PEER").muted).toBe(true);
   });
 
   it("C: contract pin — attaching a stream WITHOUT first pushing state inherits singleton flag", async () => {
@@ -128,6 +128,6 @@ describe("MediaManager — reconnect audio invariant (Bug #2 regression)", () =>
     // Intentionally NO push of fresh state before adding the stream.
     mm.addRemoteAudioStream("peer", new FakeMediaStream() as unknown as MediaStream);
 
-    expect(lastAudioElement().muted).toBe(true);
+    expect(audioFor(mm, "PEER").muted).toBe(true);
   });
 });

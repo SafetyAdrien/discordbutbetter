@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { markReadGuard } from '@/lib/readStateGuard';
 import type { ChannelUnreadInfo } from '@/hooks/useChannelUnreadCounts';
 import type { ServerUnreadInfo } from '@/hooks/useServerUnreadCounts';
 
@@ -11,6 +12,8 @@ import type { ServerUnreadInfo } from '@/hooks/useServerUnreadCounts';
  *  - Clears the user's pending channel_mentions for that channel.
  *  - Optimistically updates the channel-unread and server-unread caches so
  *    badges disappear instantly without waiting for the realtime refetch.
+ *  - Arms a read-guard so any realtime INSERT or refetch surfacing messages
+ *    older than the read moment cannot resurrect the badge (race fix).
  */
 export function useMarkChannelAsRead() {
   const { user } = useAuth();
@@ -19,6 +22,9 @@ export function useMarkChannelAsRead() {
   return useCallback(
     async (channelId: string, serverId: string | null) => {
       if (!user || !channelId) return;
+
+      // Arm the guard FIRST so any in-flight realtime/refetch is filtered.
+      markReadGuard(channelId);
 
       // Optimistic cache update — channel-level
       if (serverId) {
@@ -34,9 +40,6 @@ export function useMarkChannelAsRead() {
         const serverKey = ['server-unread-counts', user.id];
         queryClient.setQueryData<Record<string, ServerUnreadInfo>>(serverKey, (old) => {
           if (!old || !old[serverId]) return old;
-          // Check the channel-unread cache (after the patch above) — if no
-          // channel in this server has unread/mentions anymore, drop the
-          // server badge entirely.
           const channelCache =
             queryClient.getQueryData<Record<string, ChannelUnreadInfo>>([
               'channel-unread-counts',
@@ -68,17 +71,16 @@ export function useMarkChannelAsRead() {
             .eq('user_id', user.id)
             .eq('channel_id', channelId),
         ]);
-      } finally {
-        // Reconcile with server eventually
-        if (serverId) {
-          queryClient.invalidateQueries({
-            queryKey: ['channel-unread-counts', serverId, user.id],
-          });
-        }
-        queryClient.invalidateQueries({ queryKey: ['server-unread-counts'] });
-        queryClient.invalidateQueries({ queryKey: ['server-unread-mentions'] });
+      } catch {
+        // Swallow — optimistic patch already applied; cross-device sync will
+        // reconcile on next mount via the read_states realtime channel.
       }
+      // NOTE: intentionally no invalidateQueries here. The optimistic patch +
+      // armed guard prevent the badge from re-appearing; a forced refetch
+      // races against the upsert's replication lag and was the documented
+      // root cause of the "never-clears" bug.
     },
     [user, queryClient]
   );
 }
+

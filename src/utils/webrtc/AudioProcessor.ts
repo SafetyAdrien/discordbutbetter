@@ -79,6 +79,13 @@ export class AudioProcessor {
   private destinationNode: MediaStreamAudioDestinationNode | null = null;
   private rnnoiseNode: AudioWorkletNode | null = null;
   private rnnoiseLoaded = false;
+  /**
+   * Fix F — first node downstream of sourceNode in the processing chain.
+   * Captured at the end of processStream() so swapInputStream() can rewire
+   * a fresh MediaStreamAudioSourceNode without rebuilding any other node
+   * (RNNoise, gate, analyser, compressor, …) or closing the AudioContext.
+   */
+  private sourceTarget: AudioNode | null = null;
   
   private config: AudioProcessorConfig;
   private processedStream: MediaStream | null = null;

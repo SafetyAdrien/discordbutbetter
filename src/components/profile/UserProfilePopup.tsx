@@ -221,6 +221,7 @@ export function UserProfilePopup({
     : user;
 
   const isOwnProfile = currentUser?.id === user.id;
+  const bannerGuard = useImageGuardProps(isOwnProfile ? null : user.id);
   const isInVoiceWithTarget = !isOwnProfile && !!voiceState.channelId && !!user;
   const targetVolume = user ? getUserVolume(user.id) : 100;
   const displayVolume = localVolume ?? targetVolume;

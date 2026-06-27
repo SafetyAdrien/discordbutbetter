@@ -290,7 +290,10 @@ function FileAttachment({ attachment, authorId }: { attachment: StoredAttachment
   );
 }
 
-export function MessageAttachments({ attachments }: MessageAttachmentsProps) {
+export function MessageAttachments({ attachments, authorId }: MessageAttachmentsProps) {
+  const lightboxGuard = useImageGuardProps(authorId);
+  const { canDownload: lightboxCanDownload, isLoading: lightboxLoading } = useCanDownload(authorId);
+  const showExternalLink = lightboxCanDownload && !lightboxLoading;
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   const images = attachments?.filter(a => a.type === 'image') ?? [];

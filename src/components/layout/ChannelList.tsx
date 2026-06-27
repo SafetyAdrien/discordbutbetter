@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { uuidToSnowflake } from "@/lib/snowflake";
+import { useScrollAwareContextMenuGuard } from "@/hooks/useScrollAwareContextMenuGuard";
 import {
   ChevronDown,
   Settings,
@@ -2171,3 +2172,23 @@ function VoiceParticipantsSidebar({
     </div>
   );
 }
+
+function ChannelListScrollContainer({
+  onScroll,
+  children,
+}: {
+  onScroll: React.UIEventHandler<HTMLDivElement>;
+  children: React.ReactNode;
+}) {
+  const guard = useScrollAwareContextMenuGuard();
+  return (
+    <div
+      className="flex-1 overflow-y-auto scrollbar-thin py-2 px-1 relative"
+      onScroll={onScroll}
+      {...guard}
+    >
+      {children}
+    </div>
+  );
+}
+

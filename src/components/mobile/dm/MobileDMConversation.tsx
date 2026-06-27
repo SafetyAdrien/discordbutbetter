@@ -464,6 +464,7 @@ export function MobileDMConversation({ conversationId, onBack }: Props) {
           onTypingStart={startTyping}
           onTypingStop={stopTyping}
           channelId={null}
+          dmConversationId={conversationId}
           channelName={displayName}
           compact
         />

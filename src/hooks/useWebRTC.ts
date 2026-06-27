@@ -749,5 +749,8 @@ export function useWebRTC(): UseWebRTCReturn {
     // Reconnection state
     isReconnecting,
     reconnectAttempts,
+    // Device hot-swap
+    switchInputDevice,
+    setOutputSinkId,
   };
 }

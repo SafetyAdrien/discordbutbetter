@@ -39,14 +39,17 @@ function formatFileSize(bytes: number): string {
 function ImageAttachment({ 
   attachment, 
   onOpenLightbox,
-  blurFactor = 0 // 0 = net, 1 = flou max
+  blurFactor = 0, // 0 = net, 1 = flou max
+  authorId,
 }: { 
   attachment: StoredAttachment;
   onOpenLightbox: () => void;
   blurFactor?: number;
+  authorId?: string | null;
 }) {
   const [revealed, setRevealed] = useState(!attachment.isSpoiler);
   const [loaded, setLoaded] = useState(false);
+  const guard = useImageGuardProps(authorId);
 
   // Calculer les valeurs de style dynamiques basées sur blurFactor
   const blurValue = revealed ? blurFactor * 2 : 0; // 0-2px
@@ -57,6 +60,8 @@ function ImageAttachment({
       <img
         src={attachment.url}
         alt={attachment.description || attachment.name}
+        draggable={guard.draggable as any}
+        onContextMenu={guard.onContextMenu}
         className={cn(
           'rounded-lg cursor-pointer max-h-96 max-w-full object-contain',
           'transition-[filter,opacity] duration-150 ease-out',

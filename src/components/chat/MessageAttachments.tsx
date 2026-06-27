@@ -340,6 +340,7 @@ export function MessageAttachments({ attachments, authorId }: MessageAttachments
           <ImageAttachment
             attachment={images[0]}
             onOpenLightbox={() => setLightboxIndex(0)}
+            authorId={authorId}
           />
         </div>
       )}
@@ -349,6 +350,7 @@ export function MessageAttachments({ attachments, authorId }: MessageAttachments
         <ImageCarousel 
           images={images}
           onOpenLightbox={setLightboxIndex}
+          authorId={authorId}
         />
       )}
 
@@ -356,7 +358,7 @@ export function MessageAttachments({ attachments, authorId }: MessageAttachments
       {videos.length > 0 && (
         <div className="space-y-2">
           {videos.map(video => (
-            <VideoAttachment key={video.id} attachment={video} />
+            <VideoAttachment key={video.id} attachment={video} authorId={authorId} />
           ))}
         </div>
       )}
@@ -365,7 +367,7 @@ export function MessageAttachments({ attachments, authorId }: MessageAttachments
       {files.length > 0 && (
         <div className="space-y-1">
           {files.map(file => (
-            <FileAttachment key={file.id} attachment={file} />
+            <FileAttachment key={file.id} attachment={file} authorId={authorId} />
           ))}
         </div>
       )}

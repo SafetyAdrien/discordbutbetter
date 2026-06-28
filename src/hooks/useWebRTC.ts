@@ -107,6 +107,47 @@ export function useWebRTC(): UseWebRTCReturn {
   // === Signal queue: buffer signals arriving before peer is ready ===
   const signalQueueRef = useRef<Map<string, SignalData[]>>(new Map());
 
+  // Refactored health check (Fix M) — usable by interval + visibilitychange
+  const checkPeersHealth = useCallback(async () => {
+    const firstPeer = peersRef.current.values().next().value;
+    if (!firstPeer) return;
+    try {
+      const stats = await firstPeer.getStats();
+      setConnectionStats(stats);
+      if (stats.iceState === 'failed' || stats.iceState === 'disconnected') {
+        console.log('[useWebRTC] Detected connection issue, attempting ICE restart');
+        for (const [peerId, pc] of peersRef.current.entries()) {
+          try {
+            await pc.restartIce();
+            console.log('[useWebRTC] ICE restart initiated for peer:', peerId);
+          } catch (e) {
+            console.error('[useWebRTC] ICE restart failed for peer:', peerId, e);
+          }
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  // Fix M — on tab visibility restore, ensure signaling channel is alive + peers healthy
+  useEffect(() => {
+    const handleVisibility = async () => {
+      if (document.visibilityState !== 'visible') return;
+      if (!channelIdRef.current) return; // only when in a voice session
+      const sig = signalingServiceRef.current;
+      if (sig && !sig.isConnected) {
+        console.warn('[useWebRTC] Signaling channel stale, reconnecting');
+        await sig.stop();
+        await sig.start();
+      }
+      await checkPeersHealth();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [checkPeersHealth]);
+
+
   // Set up remote stream callbacks
   useEffect(() => {
     mediaManager.setRemoteStreamCallbacks(

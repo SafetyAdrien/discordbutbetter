@@ -60,7 +60,7 @@ interface MessageInputProps {
 }
 
 interface MentionState {
-  type: 'user' | 'channel';
+  type: 'user' | 'channel' | 'color';
   query: string;
   startIndex: number;
   triggerLength: number;

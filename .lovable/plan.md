@@ -1,71 +1,57 @@
-# Plan — Vérification voice_signals (3 scénarios + comparatif audience)
+## Plan — Diagnostic ciblé : confirmer que `UserProfileCard.tsx` est bien le composant rendu
 
-## Confirmé en audit (avant test)
+Objectif : valider/invalider que le fichier qu'on modifie depuis le début est réellement celui qui affiche la bannière en bas à gauche. Aucun fix dans ce tour.
 
-- **Salon vocal** → `voice_signals.channel_id = channels.id` → policy stricte `has_channel_permission(channel_id, 'connect_voice')` ✅ alignée.
-- **DM** → `dm_call_signals`, table dédiée, hors scope.
-- **Stage** → `useStageWebRTC.ts:112` passe `sessionId` (`stage_sessions.id`) en `channel_id` à `SignalingService`. La policy stricte appelle `has_channel_permission` sur cet UUID → retourne `false` → **toute insertion `voice_signals` côté Stage est rejetée** (speaker ET audience).
+### Étape 1 — Tag DOM sur `UserProfileCard.tsx`
 
-Conséquence côté audience : WebRTC nécessite un échange offer/answer/ICE même pour un peer purement receveur. Si le signaling de l'audience est bloqué, **l'audience n'entend rien** — pas seulement "ne peut pas parler".
+Ajout temporaire d'un attribut `data-component="UserProfileCard-DIAG"` sur le `<div>` racine retourné par le composant (ligne ~113, le conteneur avec `className="h-full mx-2 mb-2 px-3 py-1 …"`).
 
-## Scénarios de test
-
-### Scénario 1 — Salon vocal standard
-A et B rejoignent un salon `type=voice`. Attendu : tous les POST `/voice_signals` en 201, échange ICE/SDP complet, audio bidirectionnel OK.
-
-### Scénario 2 — Stage speaker + audience (état actuel)
-- A démarre une `stage_session`, passe `speaker`.
-- B rejoint en `audience`.
-- Capture du premier POST `/voice_signals` côté A **et** côté B.
-- Attendu actuel : 403/42501 des deux côtés → confirme la régression.
-- **Vérification audio explicite côté B (audience)** : capture des connexion-states de `RTCPeerConnection` et vérifie qu'aucun `remote audio track` n'arrive (la cible du test, c'est ça — pas juste le code HTTP).
-
-### Scénario 3 — Stage speaker ↔ speaker
-A et B tous deux speakers. Vérifie le P2P entre speakers.
-
-## Décision migration : NE PAS écrire de SQL maintenant
-
-Si Stage est confirmé KO, on **repasse en plan** avec les résultats avant d'écrire la migration. Deux variantes à comparer en test, pas à choisir à l'aveugle :
-
-### Variante A — Permissive (audience peut signaler)
-```sql
-WITH CHECK (
-  auth.uid() = from_user_id
-  AND (
-    has_channel_permission(auth.uid(), channel_id, 'connect_voice')
-    OR EXISTS (
-      SELECT 1 FROM public.stage_sessions s
-      WHERE s.id = voice_signals.channel_id
-        AND has_channel_permission(auth.uid(), s.channel_id, 'connect_voice')
-    )
-  )
-);
+```diff
+ <div
++  data-component="UserProfileCard-DIAG"
+   className={cn(
+     "h-full mx-2 mb-2 px-3 py-1 flex items-center gap-2.5 …",
 ```
 
-### Variante B — Stricte (signaling réservé speaker/moderator)
-Comme A, mais avec jointure `stage_participants` filtrant `role IN ('speaker','moderator')` sur la branche Stage.
+### Étape 2 — Log de rendu (pas useEffect)
 
-### Test comparatif (après confirmation Stage KO)
-Appliquer A **en sandbox locale du test** (via une migration temporaire ou un toggle de policy dans un schéma de test), rejouer Scénarios 2 et 3, mesurer :
-- Audio reçu côté audience (oui/non) sous A.
-- Audio reçu côté audience sous B (en bloquant son signaling sortant).
-- Risque d'abus identifié sous A (audience peut-elle spammer des signaux non sollicités vers speakers ?).
+Juste avant le `return`, ajout d'un `console.log` synchrone à chaque render, throttlé à 500 ms pour ne pas noyer la console :
 
-Décision finale tranchée sur la base de ces mesures, pas sur une hypothèse.
+```ts
+const _now = performance.now();
+const _w = window as unknown as { __upcRenderLogTs?: number };
+if (_now - (_w.__upcRenderLogTs ?? 0) > 500) {
+  _w.__upcRenderLogTs = _now;
+  console.log('[DIAG UserProfileCard render]', {
+    isSpeakingSelf,
+    profileId: profile?.id,
+    speakingUsersSize: speakingUsers?.size,
+    speakingUsersHas: profile?.id ? speakingUsers?.has(profile.id) : null,
+  });
+}
+```
 
-## Méthode de test (Playwright)
+### Étape 3 — Vérification utilisateur
 
-- 2 contextes browser headless, sessions Supabase injectées.
-- Hooks console + response sur `/rest/v1/voice_signals`.
-- Pour Stage : instrumentation supplémentaire des `RTCPeerConnection.connectionState` et présence/absence de `RTCRtpReceiver` audio actif côté audience.
-- Snapshot DB après chaque phase.
-- Si une seule session Supabase injectée → STOP, demander un 2e compte de test.
+1. Inspecter la bannière en bas à gauche → chercher `data-component="UserProfileCard-DIAG"`.
+2. Pendant que tu parles, vérifier les logs `[DIAG UserProfileCard render]` :
+   - Si `isSpeakingSelf: true` apparaît mais le halo ne s'affiche pas → bug CSS / classe `ring-…` non appliquée.
+   - Si `isSpeakingSelf` reste à `false` alors que `[DIAG VoiceContext.speakingUsers]` montre `willAddLocal: true` → décalage d'ID ou Set figé en aval.
+   - Si **aucun** log `[DIAG UserProfileCard render]` n'apparaît pendant que tu parles → le composant n'est pas re-rendu (chaîne de propagation cassée malgré l'audit précédent, ou le composant rendu est un autre).
 
-## Sortie
+### Étape 4 — Si l'attribut DOM est absent
 
-Rapport en chat (pas de SQL appliqué) :
-- Matrice 3 scénarios × {HTTP signaling, ICE complet, audio bidirectionnel, audio reçu audience}.
-- Recommandation A vs B argumentée par les mesures du test comparatif.
-- Demande de validation explicite avant d'écrire la migration corrective.
+Recherche systématique du composant réellement rendu :
 
-Approuvé : je passe en build mode pour exécuter les 3 scénarios + comparatif A/B, puis je reviens en plan avec les résultats.
+```bash
+rg -n "avatar.*mic.*headphone|UserAvatarImage.*toggleMute|h-\[60px\]" src/
+rg -n "voiceCtx\.toggleMute|toggleDeafen.*voiceCtx" src/components/
+```
+
+Cibles candidates : `src/components/mobile/*`, `src/components/layout/VoiceControls.tsx`, `src/components/layout/VoiceStatusBadge.tsx`, ou une version desktop séparée.
+
+### Fichiers à modifier
+
+- `src/components/profile/UserProfileCard.tsx` — ajout `data-component` + log render throttlé.
+
+Aucun autre fichier touché. Logs et attribut à retirer une fois le diagnostic terminé.

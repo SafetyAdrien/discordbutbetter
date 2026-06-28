@@ -13,7 +13,7 @@ import {
   ColorSwatchToken,
 } from '@/components/chat/mentions/MentionComponents';
 import { snowflakeToUuid, isValidSnowflake, uuidToSnowflake } from '@/lib/snowflake';
-import { nearestColorName } from '@/lib/colorNames';
+
 
 // ============================================
 // TYPES

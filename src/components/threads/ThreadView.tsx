@@ -693,7 +693,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                                   </TooltipTrigger>
                                   <TooltipContent side="top">Copier le lien</TooltipContent>
                                 </Tooltip>
-                                {isOwnPoll && (
+                                {canModeratePoll && (
                                   <>
                                     <Tooltip>
                                       <TooltipTrigger asChild>
@@ -732,7 +732,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                             <MobilePollActions
                               open={mobilePollSheetId === poll.id}
                               onOpenChange={(open) => setMobilePollSheetId(open ? poll.id : null)}
-                              isOwnPoll={isOwnPoll}
+                              isOwnPoll={canModeratePoll}
                               isPollExpired={isPollExpired}
                               onCopyLink={() => handleCopyPollLink(poll.id)}
                               onCopyId={() => handleCopyId(poll.id)}
@@ -793,7 +793,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                             <Hash className="w-4 h-4 mr-2" />
                             Copier l'ID
                           </ContextMenuItem>
-                          {isOwnPoll && (
+                          {canModeratePoll && (
                             <>
                               <ContextMenuSeparator />
                               {!isPollExpired && (

@@ -309,7 +309,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     const newAudioLevels = new Map<string, number>();
     
     // Check if local user is speaking (audio level > threshold and not muted)
-    if (webrtc.audioLevel > 0.05 && !voiceState.isMuted && user?.id) {
+    if (webrtc.localIsSpeaking && !voiceState.isMuted && user?.id) {
       newSpeaking.add(user.id);
     }
     if (user?.id) {

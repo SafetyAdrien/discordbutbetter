@@ -12,6 +12,7 @@ import {
   EveryoneMention 
 } from '@/components/chat/mentions/MentionComponents';
 import { snowflakeToUuid, isValidSnowflake, uuidToSnowflake } from '@/lib/snowflake';
+import { nearestColorName } from '@/lib/colorNames';
 
 // ============================================
 // TYPES
@@ -22,7 +23,8 @@ interface MarkdownToken {
     | 'code' | 'spoiler' | 'boldItalic' | 'underlineBold' 
     | 'underlineItalic' | 'underlineBoldItalic' | 'link' | 'codeBlock'
     | 'userMention' | 'roleMention' | 'channelMention' | 'specialMention'
-    | 'everyoneMention' | 'messageLinkEmbed' | 'timestamp' | 'autoLink';
+    | 'everyoneMention' | 'messageLinkEmbed' | 'timestamp' | 'autoLink'
+    | 'colorSwatch';
   content: string | MarkdownToken[];
   url?: string;
   language?: string;
@@ -30,6 +32,7 @@ interface MarkdownToken {
   mentionType?: 'guide' | 'browse' | 'customize' | 'everyone' | 'here';
   timestamp?: number;
   timestampFormat?: string;
+  colorHex?: string;
   embedData?: {
     serverId: string;
     channelId: string;
@@ -129,6 +132,8 @@ const MENTION_PATTERNS = {
   messageLink: /https?:\/\/(?:discord\.com|discordapp\.com)\/channels\/(\d{18}|[0-9a-f-]+)\/(\d{18}|[0-9a-f-]+)\/(\d{18}|[0-9a-f-]+)/gi,
 };
 
+const COLOR_SWATCH_PATTERN = /<color:#([0-9a-fA-F]{6})>/g;
+
 function tokenizeInline(text: string): MarkdownToken[] {
   const tokens: MarkdownToken[] = [];
   let processedText = text.replace(/\\([*_~|`#\->\[\]\\<@])/g, '\uE000$1\uE001');
@@ -187,6 +192,18 @@ function tokenizeInline(text: string): MarkdownToken[] {
     if (timestampMatch && (earliestMatch === null || timestampMatch.index < earliestMatch.index)) {
       earliestMatch = { index: timestampMatch.index, length: timestampMatch[0].length, content: timestampMatch[0], type: 'timestamp', timestamp: parseInt(timestampMatch[1], 10), timestampFormat: timestampMatch[2] };
     }
+
+    COLOR_SWATCH_PATTERN.lastIndex = 0;
+    const colorMatch = COLOR_SWATCH_PATTERN.exec(remaining);
+    if (colorMatch && (earliestMatch === null || colorMatch.index < earliestMatch.index)) {
+      earliestMatch = {
+        index: colorMatch.index,
+        length: colorMatch[0].length,
+        content: colorMatch[0],
+        type: 'colorSwatch',
+        colorHex: '#' + colorMatch[1].toLowerCase(),
+      };
+    }
     
     for (const { regex, type } of INLINE_PATTERNS) {
       regex.lastIndex = 0;
@@ -208,7 +225,7 @@ function tokenizeInline(text: string): MarkdownToken[] {
         tokens.push({ type: 'text', content: remaining.slice(0, earliestMatch.index) });
       }
       
-      if (['link', 'autoLink', 'code', 'userMention', 'roleMention', 'channelMention', 'specialMention', 'everyoneMention', 'messageLinkEmbed', 'timestamp'].includes(earliestMatch.type)) {
+      if (['link', 'autoLink', 'code', 'userMention', 'roleMention', 'channelMention', 'specialMention', 'everyoneMention', 'messageLinkEmbed', 'timestamp', 'colorSwatch'].includes(earliestMatch.type)) {
         tokens.push({
           type: earliestMatch.type,
           content: earliestMatch.content,
@@ -218,6 +235,7 @@ function tokenizeInline(text: string): MarkdownToken[] {
           embedData: earliestMatch.embedData,
           timestamp: earliestMatch.timestamp,
           timestampFormat: earliestMatch.timestampFormat,
+          colorHex: earliestMatch.colorHex,
         });
       } else {
         const innerTokens = tokenizeInline(earliestMatch.content);
@@ -346,6 +364,18 @@ function renderInlineToken(token: MarkdownToken, key: number, context: MarkdownC
     case 'specialMention': return <SpecialMention key={key} type={token.mentionType as any} />;
     case 'everyoneMention': return <EveryoneMention key={key} type={token.mentionType as any} serverId={context.serverId} />;
     case 'messageLinkEmbed': return token.embedData ? <MessageLinkEmbed key={key} serverId={token.embedData.serverId} channelId={token.embedData.channelId} messageId={token.embedData.messageId} onJump={() => context.onMessageJump?.(token.embedData!.serverId, token.embedData!.channelId, token.embedData!.messageId)} /> : null;
+    case 'colorSwatch': {
+      const hex = (token.colorHex || '#000000').toLowerCase();
+      return (
+        <span key={key} className="inline-flex items-center gap-1 align-middle">
+          <span
+            className="inline-block w-[0.9em] h-[0.9em] rounded-[3px] border border-black/10"
+            style={{ backgroundColor: hex }}
+          />
+          <span>{nearestColorName(hex)}</span>
+        </span>
+      );
+    }
     case 'timestamp': {
       const ts = token.timestamp; if (!ts) return <React.Fragment key={key}>{token.content as string}</React.Fragment>;
       const date = new Date(ts * 1000); const fmt = token.timestampFormat || 'f'; const locale = 'fr-FR'; let formatted: string;

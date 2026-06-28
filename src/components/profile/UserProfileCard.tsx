@@ -129,9 +129,8 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers, 
   return (
     <div
       className={cn(
-        "h-full mx-2 mb-2 px-3 py-1 flex items-center gap-2.5 bg-[hsl(var(--surface-2))] border transition-colors",
+        "h-full mx-2 mb-2 px-3 py-1 flex items-center gap-2.5 bg-[hsl(var(--surface-2))] border border-border/40 transition-colors",
         connectedToVoice ? "rounded-b-2xl rounded-t-none border-t-0" : "rounded-2xl",
-        isSpeakingSelf ? "border-[hsl(var(--online))]" : "border-border/40"
       )}
       style={{ boxShadow: connectedToVoice ? undefined : 'var(--shadow-elevation-2)' }}
     >
@@ -142,7 +141,10 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers, 
               <UserAvatarImage
                 src={profile?.avatar_url}
                 alt={profile?.display_name}
-                className="w-8 h-8 ring-2 ring-primary/30"
+                className={cn(
+                  "w-8 h-8 ring-2 transition-colors",
+                  isSpeakingSelf ? "ring-[hsl(var(--online))]" : "ring-primary/30",
+                )}
                 fallbackClassName="bg-primary/20 text-primary text-sm"
                 fallback={profile?.display_name?.charAt(0).toUpperCase() || '?'}
               />

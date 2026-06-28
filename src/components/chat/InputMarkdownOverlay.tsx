@@ -155,10 +155,10 @@ function pillClassFor(kind: MentionEntry['kind']): string {
   return 'rounded-[3px] bg-primary/30 text-[#dee0fc]';
 }
 
-function renderMentionEntry(entry: MentionEntry, key: number): ReactNode {
+function renderMentionEntry(entry: MentionEntry, key: number, entryIndex: number): ReactNode {
   if (entry.kind === 'color' && entry.color) {
     return (
-      <span key={key} style={{ color: entry.color }}>
+      <span key={key} data-color-entry-index={entryIndex} style={{ color: entry.color }}>
         {entry.display}
       </span>
     );

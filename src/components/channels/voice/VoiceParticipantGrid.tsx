@@ -5,7 +5,7 @@ import { ChevronDown, ChevronRight, Monitor, X, Maximize2 } from 'lucide-react';
 import { DiscordMicOff as MicOff } from '@/components/icons/DiscordMicOff';
 import { DiscordHeadphonesOff as HeadphoneOff } from '@/components/icons/DiscordHeadphonesOff';
 import { VoiceVideoTile } from './VoiceVideoTile';
-import { VoiceParticipantPopover } from './VoiceParticipantPopover';
+// VoiceParticipantPopover replaced by VoiceParticipantContextMenu (Fix L)
 import { VoiceParticipantContextMenu } from './VoiceParticipantContextMenu';
 import { AudioLevelIndicator } from './AudioLevelIndicator';
 import { useAuth } from '@/contexts/AuthContext';
@@ -72,7 +72,7 @@ export function VoiceParticipantGrid({
   canModerate = false,
 }: VoiceParticipantGridProps) {
   const { user } = useAuth();
-  const { getUserVolume, setUserVolume, serverMuteUser, serverDeafenUser } = useVoiceUserSettings();
+  const { serverMuteUser, serverDeafenUser } = useVoiceUserSettings();
   
   const [screensOpen, setScreensOpen] = useState(true);
   const [participantsOpen, setParticipantsOpen] = useState(true);
@@ -352,18 +352,27 @@ export function VoiceParticipantGrid({
                 ? localCameraStream 
                 : remoteVideoStreams.get(participant.user_id);
 
+              const commonMenuProps = {
+                participantUserId: participant.user_id,
+                participantName: participant.profile.display_name,
+                onViewProfile: () => handleOpenProfile(participant),
+                isLocal,
+                canModerate: canModerate && !isLocal,
+                serverMuted: participant.server_muted,
+                serverDeafened: participant.server_deafened,
+                onServerMute: (muted: boolean) =>
+                  serverMuteUser.mutate({ channelId, targetUserId: participant.user_id, muted }),
+                onServerDeafen: (deafened: boolean) =>
+                  serverDeafenUser.mutate({ channelId, targetUserId: participant.user_id, deafened }),
+                channelId,
+              };
+
               if (hasCameraStream && cameraStream) {
                 return (
-                  <VoiceParticipantContextMenu
-                    key={participant.user_id}
-                    participantUserId={participant.user_id}
-                    participantName={participant.profile.display_name}
-                    onViewProfile={() => handleOpenProfile(participant)}
-                  >
+                  <VoiceParticipantContextMenu key={participant.user_id} {...commonMenuProps}>
                     <div
                       className="relative group cursor-pointer rounded-xl overflow-hidden"
-                      onClick={(e) => handleOpenProfile(participant, e)}
-                      onDoubleClick={() => handleFocus({ type: 'participant', userId: participant.user_id })}
+                      onClick={() => handleFocus({ type: 'participant', userId: participant.user_id })}
                     >
                       <VoiceVideoTile
                         stream={cameraStream}
@@ -382,40 +391,22 @@ export function VoiceParticipantGrid({
               }
 
               return (
-                <VoiceParticipantContextMenu
-                  key={participant.user_id}
-                  participantUserId={participant.user_id}
-                  participantName={participant.profile.display_name}
-                  onViewProfile={() => handleOpenProfile(participant)}
-                >
-                  <VoiceParticipantPopover
-                    participant={participant}
-                    canModerate={canModerate && !isLocal}
-                    volume={getUserVolume(participant.user_id)}
-                    onVolumeChange={(vol) => setUserVolume.mutate({ targetUserId: participant.user_id, volume: vol })}
-                    onServerMute={(muted) => serverMuteUser.mutate({ channelId, targetUserId: participant.user_id, muted })}
-                    onServerDeafen={(deafened) => serverDeafenUser.mutate({ channelId, targetUserId: participant.user_id, deafened })}
+                <VoiceParticipantContextMenu key={participant.user_id} {...commonMenuProps}>
+                  <div
+                    className="cursor-pointer group relative"
+                    onClick={() => handleFocus({ type: 'participant', userId: participant.user_id })}
                   >
-                    <div 
-                      className="cursor-pointer group relative"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleOpenProfile(participant, e);
-                      }}
-                      onDoubleClick={() => handleFocus({ type: 'participant', userId: participant.user_id })}
-                    >
-                      <VoiceParticipantCard
-                        participant={participant}
-                        isSpeaking={speakingUsers.has(participant.user_id)}
-                        audioLevel={audioLevels.get(participant.user_id) || 0}
-                        gradientIndex={index % PARTICIPANT_GRADIENTS.length}
-                        compact={hasScreenShares}
-                      />
-                      <div className="absolute inset-0 rounded-2xl bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                        <Maximize2 className="w-6 h-6 text-white drop-shadow-lg" />
-                      </div>
+                    <VoiceParticipantCard
+                      participant={participant}
+                      isSpeaking={speakingUsers.has(participant.user_id)}
+                      audioLevel={audioLevels.get(participant.user_id) || 0}
+                      gradientIndex={index % PARTICIPANT_GRADIENTS.length}
+                      compact={hasScreenShares}
+                    />
+                    <div className="absolute inset-0 rounded-2xl bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                      <Maximize2 className="w-6 h-6 text-white drop-shadow-lg" />
                     </div>
-                  </VoiceParticipantPopover>
+                  </div>
                 </VoiceParticipantContextMenu>
               );
             })}
@@ -459,10 +450,9 @@ function VoiceParticipantCard({ participant, isSpeaking, audioLevel = 0, gradien
   return (
     <div 
       className={cn(
-        'relative aspect-video rounded-2xl overflow-hidden bg-gradient-to-br',
+        'relative aspect-video rounded-2xl overflow-hidden bg-gradient-to-br border-2 transition-colors duration-150',
         gradient,
-        'transition-all duration-300',
-        isSpeaking && 'ring-4 ring-[hsl(var(--online))] voice-speaking-glow',
+        isSpeaking ? 'border-[hsl(var(--online))]' : 'border-transparent',
         compact && 'rounded-xl'
       )}
     >
@@ -471,15 +461,9 @@ function VoiceParticipantCard({ participant, isSpeaking, audioLevel = 0, gradien
       
       {/* Avatar centered */}
       <div className="absolute inset-0 flex items-center justify-center">
-        <div className={cn(
-          'relative transition-transform duration-200',
-          isSpeaking && 'scale-105'
-        )}>
+        <div className="relative">
           <Avatar className={cn(
-            'transition-all duration-150',
-            isSpeaking 
-              ? 'ring-4 ring-[hsl(var(--online))] voice-speaking-ring border-4 border-[hsl(var(--online))]' 
-              : 'border-4 border-white/20',
+            'border-4 border-white/20',
             compact ? 'w-12 h-12' : 'w-20 h-20'
           )}>
             <AvatarImage src={participant.profile.avatar_url || undefined} />

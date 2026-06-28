@@ -126,6 +126,8 @@ export function MessageInput({
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
   const [pollModalOpen, setPollModalOpen] = useState(false);
+  const [colorPickerOpen, setColorPickerOpen] = useState(false);
+  const [draftColor, setDraftColor] = useState('#5865F2');
   // Markdown formatting bar: collapsed by default on mobile/tablet to save horizontal space
   const [markdownBarOpen, setMarkdownBarOpen] = useState(!isMobile && !isTablet);
   const canSubmitMessage = !!value.trim() || attachments.length > 0;

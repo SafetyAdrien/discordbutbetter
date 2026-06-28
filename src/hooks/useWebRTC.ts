@@ -432,28 +432,8 @@ export function useWebRTC(): UseWebRTCReturn {
         }, 50);
 
         // Start connection stats monitoring
-        statsIntervalRef.current = setInterval(async () => {
-          const firstPeer = peersRef.current.values().next().value;
-          if (firstPeer) {
-            try {
-              const stats = await firstPeer.getStats();
-              setConnectionStats(stats);
-              
-              if (stats.iceState === 'failed' || stats.iceState === 'disconnected') {
-                console.log('[useWebRTC] Detected connection issue, attempting ICE restart');
-                for (const [peerId, pc] of peersRef.current.entries()) {
-                  try {
-                    await pc.restartIce();
-                    console.log('[useWebRTC] ICE restart initiated for peer:', peerId);
-                  } catch (e) {
-                    console.error('[useWebRTC] ICE restart failed for peer:', peerId, e);
-                  }
-                }
-              }
-            } catch (e) {
-              // Ignore stats errors
-            }
-          }
+        statsIntervalRef.current = setInterval(() => {
+          checkPeersHealth();
         }, 2000);
 
         // Connect to existing participants

@@ -1,31 +1,13 @@
-## Avertissement self-XSS dans la console (DevTools)
+Plan de mise à jour de `src/lib/colorNames.ts` :
 
-### Voie retenue
-**Aucun i18n existant** dans le projet → solution autonome via `navigator.language` (slice 2 chars), avec dictionnaire FR + EN inline et fallback EN si la langue n'est pas couverte. Aucune dépendance ajoutée.
+1. Remplacer l'intégralité de la table `NAMED_COLORS` par les 148 noms de couleurs CSS Level 4 en anglais standard, organisés par familles (reds, oranges, yellows, etc.). La logique `nearestColorName()` reste inchangée.
 
-### Fichier à créer : `src/lib/self-xss-warning.ts`
+2. Insérer une entrée supplémentaire hors liste standard, en début de table, avant les couleurs CSS : `{ hex: '#5865F2', name: 'Blurple' }`. Le match exact (d === 0) dans `nearestColorName()` court-circuite la recherche, donc `#5865F2` exact retournera "Blurple" en priorité.
 
-Module exportant `logSelfXssWarning()` :
-- Dictionnaire `translations` (FR + EN) avec les 4 clés : `title`, `warning`, `info1`, `info2` (textes exacts fournis dans la consigne).
-- `getLang()` interne : lit `navigator.language?.slice(0,2).toLowerCase()`, retombe sur `'en'` si non couvert.
-- 4 `console.log` stylisés successifs :
-  1. **Title** — très gros (`font-size: 60px`), gras, rouge `#ff3838`, `text-shadow`.
-  2. **Warning** — gros (`font-size: 22px`), rouge `#ff3838`, gras.
-  3. **Info1** — taille normale (`font-size: 16px`), foreground neutre.
-  4. **Info2** — taille normale, lien Trust optionnel.
-- Garde-fous :
-  - No-op si `import.meta.env.DEV` (pas de bruit en dev).
-  - No-op si `typeof window === 'undefined'` (SSR safety, even si non utilisé ici).
-  - Flag `__selfXssWarned` sur `window` pour ne logger qu'une fois par session.
+3. Vérification après modification :
+   - `nearestColorName('#5865F2')` → "Blurple"
+   - `nearestColorName('#5865F0')` → nom anglais le plus proche (probablement "Blurple" si la distance est plus courte, sinon le CSS standard le plus proche)
 
-### Branchement : `src/main.tsx`
+4. Vérifier le build TypeScript (`tsgo --noEmit`) après modification.
 
-Ajouter un import + appel `logSelfXssWarning()` après la création du root React (en bas du fichier), pour que l'avertissement s'affiche dès l'ouverture de la console en production.
-
-### Hors-scope
-- Pas de modification de `index.html`, du serveur, ni d'autres composants.
-- Pas de page Trust additionnelle (déjà présente à `/trust` si besoin de lien futur).
-- Pas de détection de `navigator.languages[]` étendue — slice 2 chars suffit pour FR/EN.
-
-### Réponse finale après implémentation
-Je fournirai le diff des 2 fichiers (`src/lib/self-xss-warning.ts` créé, `src/main.tsx` modifié) et confirmerai la voie prise (navigator.language, pas d'i18n réutilisé car aucun système présent).
+Aucun autre fichier n'est concerné.

@@ -162,6 +162,14 @@ const Index = () => {
     prevNavKey.current = key;
   }, [activeServerId, activeChannelId, activeDMId, activeThreadId, isMobile, pushView]);
 
+  // Re-print Discord-style self-XSS warning on every active channel/DM/thread change.
+  useEffect(() => {
+    if (!activeChannelId && !activeDMId && !activeThreadId) return;
+    void import('@/lib/self-xss-warning').then(({ logSelfXssRepeating }) => {
+      logSelfXssRepeating();
+    });
+  }, [activeChannelId, activeDMId, activeThreadId]);
+
   // Data hooks
   const { data: servers = [], isLoading: serversLoading, isPending: serversPending } = useServers();
   const { data: publicServers = [] } = usePublicServers();

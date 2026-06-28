@@ -1,6 +1,6 @@
 import { createRoot } from "react-dom/client";
 import { warmCache, purgeAllCaches, enforceCacheSchemaVersionSync } from "./lib/cache";
-import { logSelfXssWarning } from "./lib/self-xss-warning";
+import { logSelfXssRepeating, logSelfXssClosing } from "./lib/self-xss-warning";
 import App from "./App.tsx";
 import "./index.css";
 
@@ -16,7 +16,8 @@ void warmCache().catch((e) => {
 createRoot(document.getElementById("root")!).render(<App />);
 
 // Self-XSS warning in the production DevTools console.
-logSelfXssWarning();
+logSelfXssRepeating();
+logSelfXssClosing();
 
 /**
  * Hard-refresh shortcuts (Ctrl/Cmd+R, Ctrl/Cmd+Shift+R, Ctrl+F5) must wipe

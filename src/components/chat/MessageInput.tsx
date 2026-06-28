@@ -1001,7 +1001,58 @@ export function MessageInput({
                   ta.setSelectionRange(s, en);
                 }
               }}
-
+              onClick={(e) => {
+                const ta = e.currentTarget;
+                const entries = mentionEntriesRef.current;
+                if (entries.length === 0) return;
+                let cur = 0;
+                const ranges: Array<{ start: number; end: number; index: number }> = [];
+                for (let i = 0; i < entries.length; i++) {
+                  const entry = entries[i];
+                  if (!entry.display) continue;
+                  const at = value.indexOf(entry.display, cur);
+                  if (at === -1) continue;
+                  ranges.push({ start: at, end: at + entry.display.length, index: i });
+                  cur = at + entry.display.length;
+                }
+                const s = ta.selectionStart;
+                if (s !== ta.selectionEnd) return;
+                const hit = ranges.find((r) => s >= r.start && s <= r.end);
+                if (!hit) return;
+                const entry = entries[hit.index];
+                if (entry.kind !== 'color' || !entry.color) return;
+                const span = overlayRef.current?.querySelector<HTMLElement>(`[data-color-entry-index="${hit.index}"]`);
+                if (!span) return;
+                const r = span.getBoundingClientRect();
+                const normalized = normalizeHex(entry.color) ?? '#000000';
+                setColorEditor({
+                  entryIndex: hit.index,
+                  hex: normalized,
+                  rect: { left: r.left, top: r.top, width: r.width, height: r.height },
+                });
+                setColorEditorDraft(normalized);
+              }}
+              onMouseMove={(e) => {
+                const ta = e.currentTarget;
+                const cx = e.clientX;
+                const cy = e.clientY;
+                if (cursorRafRef.current != null) return;
+                cursorRafRef.current = requestAnimationFrame(() => {
+                  cursorRafRef.current = null;
+                  const overlay = overlayRef.current;
+                  if (!overlay) { ta.style.cursor = ''; return; }
+                  const spans = overlay.querySelectorAll<HTMLElement>('[data-color-entry-index]');
+                  let hover = false;
+                  for (const sp of Array.from(spans)) {
+                    const r = sp.getBoundingClientRect();
+                    if (cx >= r.left && cx <= r.right && cy >= r.top && cy <= r.bottom) {
+                      hover = true; break;
+                    }
+                  }
+                  ta.style.cursor = hover ? 'pointer' : '';
+                });
+              }}
+              onMouseLeave={(e) => { e.currentTarget.style.cursor = ''; }}
               onPaste={handlePaste}
               onScroll={() => { if (overlayRef.current && textareaRef.current) overlayRef.current.scrollTop = textareaRef.current.scrollTop; }}
               placeholder={placeholder}

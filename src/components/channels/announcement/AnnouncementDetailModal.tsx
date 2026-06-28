@@ -27,6 +27,11 @@ interface AnnouncementDetailModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   announcement: Announcement;
+  /**
+   * Optional override. When omitted, edit/delete visibility is derived from
+   * the real RLS proxy: author OR `manage_channels` on the parent channel
+   * (matches the announcements UPDATE/DELETE policy in the database).
+   */
   canEdit?: boolean;
   categories: AnnouncementCategory[];
 }
@@ -45,11 +50,16 @@ export function AnnouncementDetailModal({
   open,
   onOpenChange,
   announcement,
-  canEdit = false,
+  canEdit,
   categories,
 }: AnnouncementDetailModalProps) {
   const { user } = useAuth();
   const [editModalOpen, setEditModalOpen] = useState(false);
+  // Mirror the RLS policy: manage_channels on the channel grants edit/delete.
+  const { data: canManageChannel = false } = useHasChannelPermission(
+    announcement.channel_id,
+    'manage_channels'
+  );
 
   const { data: comments = [] } = useAnnouncementComments(announcement.id);
   const { data: reactions = [] } = useAnnouncementReactions(announcement.id);

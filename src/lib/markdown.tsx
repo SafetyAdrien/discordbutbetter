@@ -198,12 +198,13 @@ function tokenizeInline(text: string): MarkdownToken[] {
     COLOR_SWATCH_PATTERN.lastIndex = 0;
     const colorMatch = COLOR_SWATCH_PATTERN.exec(remaining);
     if (colorMatch && (earliestMatch === null || colorMatch.index < earliestMatch.index)) {
+      const normalized = normalizeHex('#' + colorMatch[1]) ?? ('#' + colorMatch[1].toLowerCase());
       earliestMatch = {
         index: colorMatch.index,
         length: colorMatch[0].length,
         content: colorMatch[0],
         type: 'colorSwatch',
-        colorHex: '#' + colorMatch[1].toLowerCase(),
+        colorHex: normalized,
       };
     }
     

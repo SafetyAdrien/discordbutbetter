@@ -132,6 +132,8 @@ const MENTION_PATTERNS = {
   messageLink: /https?:\/\/(?:discord\.com|discordapp\.com)\/channels\/(\d{18}|[0-9a-f-]+)\/(\d{18}|[0-9a-f-]+)\/(\d{18}|[0-9a-f-]+)/gi,
 };
 
+const COLOR_SWATCH_PATTERN = /<color:#([0-9a-fA-F]{6})>/g;
+
 function tokenizeInline(text: string): MarkdownToken[] {
   const tokens: MarkdownToken[] = [];
   let processedText = text.replace(/\\([*_~|`#\->\[\]\\<@])/g, '\uE000$1\uE001');

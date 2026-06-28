@@ -2175,17 +2175,19 @@ function VoiceParticipantsSidebar({
               className="flex items-center gap-2 px-2 py-1 text-sm text-muted-foreground rounded-md hover:bg-muted/50 cursor-pointer transition-colors"
               onClick={(e) => handleOpenProfile(participant, e)}
             >
-              <Avatar
+              <div
                 className={cn(
-                  "w-5 h-5 transition-all",
-                  isSpeaking ? "ring-2 ring-[hsl(var(--voice-active))] voice-active-ring" : "ring-1 ring-border"
+                  "rounded-full border-2 transition-colors p-0",
+                  isSpeaking ? "border-[hsl(var(--online))]" : "border-transparent"
                 )}
               >
-                <AvatarImage src={participant.profile.avatar_url || undefined} />
-                <AvatarFallback className="text-[10px] bg-primary/20 text-primary">
-                  {participant.profile.display_name.charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
+                <Avatar className="w-5 h-5">
+                  <AvatarImage src={participant.profile.avatar_url || undefined} />
+                  <AvatarFallback className="text-[10px] bg-primary/20 text-primary">
+                    {participant.profile.display_name.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+              </div>
               <span className="truncate flex-1 text-xs">{participant.profile.display_name}</span>
               {participant.camera && <VideoIcon className="w-3 h-3 text-muted-foreground" />}
               {participant.streaming && (

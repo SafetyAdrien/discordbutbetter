@@ -129,6 +129,13 @@ export function MessageInput({
   const [pollModalOpen, setPollModalOpen] = useState(false);
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const [draftColor, setDraftColor] = useState('#5865F2');
+  const [colorEditor, setColorEditor] = useState<{
+    entryIndex: number;
+    hex: string;
+    rect: { left: number; top: number; width: number; height: number };
+  } | null>(null);
+  const [colorEditorDraft, setColorEditorDraft] = useState('');
+  const cursorRafRef = useRef<number | null>(null);
   // Markdown formatting bar: collapsed by default on mobile/tablet to save horizontal space
   const [markdownBarOpen, setMarkdownBarOpen] = useState(!isMobile && !isTablet);
   const canSubmitMessage = !!value.trim() || attachments.length > 0;

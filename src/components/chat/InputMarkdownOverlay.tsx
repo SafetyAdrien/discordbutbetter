@@ -156,6 +156,13 @@ function pillClassFor(kind: MentionEntry['kind']): string {
 }
 
 function renderMentionEntry(entry: MentionEntry, key: number): ReactNode {
+  if (entry.kind === 'color' && entry.color) {
+    return (
+      <span key={key} style={{ color: entry.color }}>
+        {entry.display}
+      </span>
+    );
+  }
   if (entry.kind === 'role' && entry.color) {
     const bg = `${entry.color}4D`;
     return (

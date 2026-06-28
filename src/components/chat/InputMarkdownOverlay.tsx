@@ -200,7 +200,7 @@ function consumeEntryMentions(text: string, consumer: MentionConsumer, keyStart:
     const at = text.indexOf(entry.display, cursor);
     if (at === -1) break; // try next line
     if (at > cursor) {
-      nodes.push(<span key={key++}>{text.slice(cursor, at)}</span>);
+      nodes.push(text.slice(cursor, at));
     }
     nodes.push(renderMentionEntry(entry, key++, consumer.idx));
     cursor = at + entry.display.length;
@@ -209,7 +209,7 @@ function consumeEntryMentions(text: string, consumer: MentionConsumer, keyStart:
   }
   if (!consumed) return { nodes: [], consumed: false, nextKey: keyStart };
   if (cursor < text.length) {
-    nodes.push(<span key={key++}>{text.slice(cursor)}</span>);
+    nodes.push(text.slice(cursor));
   }
   return { nodes, consumed: true, nextKey: key };
 }

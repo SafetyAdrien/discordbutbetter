@@ -157,9 +157,17 @@ function pillClassFor(kind: MentionEntry['kind']): string {
 
 function renderMentionEntry(entry: MentionEntry, key: number, entryIndex: number): ReactNode {
   if (entry.kind === 'color' && entry.color) {
+    const bg = 'hsl(var(--surface-elevated))';
+    const first = entry.display.charAt(0);
+    const rest = entry.display.slice(1);
     return (
-      <span key={key} data-color-entry-index={entryIndex} style={{ color: entry.color }}>
-        {entry.display}
+      <span
+        key={key}
+        data-color-entry-index={entryIndex}
+        className="rounded-[3px]"
+        style={{ backgroundColor: bg, boxShadow: `${sideShadow(bg)}, 0 0 0 1px hsl(var(--border) / 0.65)` }}
+      >
+        <span style={{ color: entry.color }}>{first}</span>{rest}
       </span>
     );
   }

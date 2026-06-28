@@ -1,57 +1,49 @@
-## Plan — Diagnostic ciblé : confirmer que `UserProfileCard.tsx` est bien le composant rendu
+## Cause confirmée
+Le halo `isSpeakingSelf` n'est jamais visible sur l'avatar de la bannière du bas parce que Tailwind `ring-2` rend un `box-shadow` outset (dessiné hors de la box), et le wrapper racine de `UserAvatarImage` porte en dur `overflow-hidden rounded-full` (`src/components/ui/user-avatar-image.tsx` l.62-66). Le shadow est immédiatement clippé. `VoiceVideoTile` fonctionne parce qu'il utilise `border-2` (bordure interne, non clippée).
 
-Objectif : valider/invalider que le fichier qu'on modifie depuis le début est réellement celui qui affiche la bannière en bas à gauche. Aucun fix dans ce tour.
+## Correctif — Fix O
+Remplacer la technique `ring-*` par une vraie **bordure** sur le wrapper de l'avatar dans `UserProfileCard.tsx`, sans toucher à `UserAvatarImage` (composant partagé).
 
-### Étape 1 — Tag DOM sur `UserProfileCard.tsx`
+### Modification ciblée — `src/components/profile/UserProfileCard.tsx`
+Dans le JSX de l'avatar de la bannière du bas (autour des lignes 163-172), remplacer :
 
-Ajout temporaire d'un attribut `data-component="UserProfileCard-DIAG"` sur le `<div>` racine retourné par le composant (ligne ~113, le conteneur avec `className="h-full mx-2 mb-2 px-3 py-1 …"`).
-
-```diff
- <div
-+  data-component="UserProfileCard-DIAG"
-   className={cn(
-     "h-full mx-2 mb-2 px-3 py-1 flex items-center gap-2.5 …",
+```tsx
+<UserAvatarImage
+  ...
+  className={cn(
+    "w-8 h-8 ring-2 transition-colors",
+    isSpeakingSelf ? "ring-[hsl(var(--online))]" : "ring-primary/30",
+  )}
+  ...
+/>
 ```
 
-### Étape 2 — Log de rendu (pas useEffect)
+par un wrapper qui porte la bordure (et conserve le rond), pendant que `UserAvatarImage` reste à la taille intérieure correspondante :
 
-Juste avant le `return`, ajout d'un `console.log` synchrone à chaque render, throttlé à 500 ms pour ne pas noyer la console :
-
-```ts
-const _now = performance.now();
-const _w = window as unknown as { __upcRenderLogTs?: number };
-if (_now - (_w.__upcRenderLogTs ?? 0) > 500) {
-  _w.__upcRenderLogTs = _now;
-  console.log('[DIAG UserProfileCard render]', {
-    isSpeakingSelf,
-    profileId: profile?.id,
-    speakingUsersSize: speakingUsers?.size,
-    speakingUsersHas: profile?.id ? speakingUsers?.has(profile.id) : null,
-  });
-}
+```tsx
+<div
+  className={cn(
+    "rounded-full border-2 transition-colors",
+    isSpeakingSelf ? "border-[hsl(var(--online))]" : "border-primary/30",
+  )}
+>
+  <UserAvatarImage
+    src={profile?.avatar_url}
+    alt={profile?.display_name}
+    className="w-8 h-8"
+    fallbackClassName="bg-primary/20 text-primary text-sm"
+    fallback={profile?.display_name?.charAt(0).toUpperCase() || '?'}
+  />
+</div>
 ```
 
-### Étape 3 — Vérification utilisateur
+La bordure est interne au wrapper externe (pas affectée par le `overflow-hidden` interne du composant `UserAvatarImage`), et le passage à `hsl(var(--online))` quand `isSpeakingSelf` est true sera réellement visible.
 
-1. Inspecter la bannière en bas à gauche → chercher `data-component="UserProfileCard-DIAG"`.
-2. Pendant que tu parles, vérifier les logs `[DIAG UserProfileCard render]` :
-   - Si `isSpeakingSelf: true` apparaît mais le halo ne s'affiche pas → bug CSS / classe `ring-…` non appliquée.
-   - Si `isSpeakingSelf` reste à `false` alors que `[DIAG VoiceContext.speakingUsers]` montre `willAddLocal: true` → décalage d'ID ou Set figé en aval.
-   - Si **aucun** log `[DIAG UserProfileCard render]` n'apparaît pendant que tu parles → le composant n'est pas re-rendu (chaîne de propagation cassée malgré l'audit précédent, ou le composant rendu est un autre).
+### Nettoyage diagnostic
+Une fois le halo confirmé visible :
+- Retirer le bloc `[DIAG UserProfileCard render]` (l.139-151 environ).
+- Retirer `data-component="UserProfileCard-DIAG"`.
+- Retirer les logs throttlés ajoutés dans `MediaManager.ts`, `useWebRTC.ts`, `VoiceContext.tsx`.
 
-### Étape 4 — Si l'attribut DOM est absent
-
-Recherche systématique du composant réellement rendu :
-
-```bash
-rg -n "avatar.*mic.*headphone|UserAvatarImage.*toggleMute|h-\[60px\]" src/
-rg -n "voiceCtx\.toggleMute|toggleDeafen.*voiceCtx" src/components/
-```
-
-Cibles candidates : `src/components/mobile/*`, `src/components/layout/VoiceControls.tsx`, `src/components/layout/VoiceStatusBadge.tsx`, ou une version desktop séparée.
-
-### Fichiers à modifier
-
-- `src/components/profile/UserProfileCard.tsx` — ajout `data-component` + log render throttlé.
-
-Aucun autre fichier touché. Logs et attribut à retirer une fois le diagnostic terminé.
+### Hors-scope
+Pas de modification de `UserAvatarImage`, `VoiceVideoTile`, `VoiceContext`, VAD, `MediaManager` ni `AudioProcessor`. La logique VAD (Fix N) reste intacte — seule l'expression CSS du halo change.

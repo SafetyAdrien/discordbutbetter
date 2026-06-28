@@ -242,7 +242,7 @@ export function ModernColorPicker({ value, onChange, className }: Props) {
   return (
     <div
       className={cn(
-        'rounded-2xl border border-border bg-card p-3 space-y-3 select-none',
+        'w-full min-w-0 rounded-2xl border border-border bg-card p-3 space-y-3 select-none',
         className,
       )}
     >

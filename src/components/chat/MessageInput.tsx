@@ -1113,7 +1113,7 @@ export function MessageInput({
       </form>
 
       <Dialog open={colorPickerOpen} onOpenChange={setColorPickerOpen}>
-        <DialogContent className="sm:max-w-[320px]">
+        <DialogContent className="sm:max-w-[320px] overflow-hidden">
           <DialogHeader>
             <DialogTitle>Insérer une couleur</DialogTitle>
           </DialogHeader>

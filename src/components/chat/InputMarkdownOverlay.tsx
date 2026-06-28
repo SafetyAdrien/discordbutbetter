@@ -12,7 +12,7 @@ export interface MentionLookupData {
 export interface MentionEntry {
   display: string;
   token: string;
-  kind: 'user' | 'role' | 'channel';
+  kind: 'user' | 'role' | 'channel' | 'color';
   color?: string;
 }
 

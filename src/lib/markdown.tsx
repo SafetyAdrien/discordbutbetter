@@ -365,18 +365,7 @@ function renderInlineToken(token: MarkdownToken, key: number, context: MarkdownC
     case 'specialMention': return <SpecialMention key={key} type={token.mentionType as any} />;
     case 'everyoneMention': return <EveryoneMention key={key} type={token.mentionType as any} serverId={context.serverId} />;
     case 'messageLinkEmbed': return token.embedData ? <MessageLinkEmbed key={key} serverId={token.embedData.serverId} channelId={token.embedData.channelId} messageId={token.embedData.messageId} onJump={() => context.onMessageJump?.(token.embedData!.serverId, token.embedData!.channelId, token.embedData!.messageId)} /> : null;
-    case 'colorSwatch': {
-      const hex = (token.colorHex || '#000000').toLowerCase();
-      return (
-        <span key={key} className="inline-flex items-center gap-1 align-middle">
-          <span
-            className="inline-block w-[0.9em] h-[0.9em] rounded-[3px] border border-black/10"
-            style={{ backgroundColor: hex }}
-          />
-          <span>{nearestColorName(hex)}</span>
-        </span>
-      );
-    }
+    case 'colorSwatch': return <ColorSwatchToken key={key} hex={(token.colorHex || '#000000').toLowerCase()} />;
     case 'timestamp': {
       const ts = token.timestamp; if (!ts) return <React.Fragment key={key}>{token.content as string}</React.Fragment>;
       const date = new Date(ts * 1000); const fmt = token.timestampFormat || 'f'; const locale = 'fr-FR'; let formatted: string;

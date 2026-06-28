@@ -13,8 +13,17 @@ export interface NamedColor {
 }
 
 export const NAMED_COLORS: NamedColor[] = [
-  // Custom brand
+  // Discord brand palette (priority on exact / nearest match)
   { hex: '#5865F2', name: 'Blurple' },
+  { hex: '#57F287', name: 'Green' },
+  { hex: '#FEE75C', name: 'Yellow' },
+  { hex: '#EB459E', name: 'Fuchsia' },
+  { hex: '#ED4245', name: 'Red' },
+  { hex: '#FFFFFF', name: 'White' },
+  { hex: '#000000', name: 'Black' },
+  { hex: '#99AAB5', name: 'Greyple' },
+  { hex: '#2C2F33', name: 'Dark But Not Black' },
+  { hex: '#23272A', name: 'Not Quite Black' },
 
   // Pinks / Reds
   { hex: '#ffb6c1', name: 'LightPink' },

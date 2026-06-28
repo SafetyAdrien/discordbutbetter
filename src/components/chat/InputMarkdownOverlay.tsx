@@ -166,7 +166,7 @@ function renderMentionEntry(entry: MentionEntry, key: number, entryIndex: number
         key={key}
         data-color-entry-index={entryIndex}
         className="rounded-[3px]"
-        style={{ backgroundColor: bg, boxShadow: `${sideShadow(bg)}, 0 0 0 1px hsl(var(--border) / 0.65)` }}
+        style={{ backgroundColor: bg, boxShadow: sideShadow(bg), outline: '1px solid hsl(var(--border) / 0.65)', outlineOffset: '0px' }}
       >
         <span style={{ color: entry.color }}>{first}</span>{rest}
       </span>

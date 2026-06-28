@@ -150,7 +150,7 @@ interface MentionConsumer {
 // We fake the side padding with a horizontal-only box-shadow which is purely
 // visual and does not affect layout.
 const PRIMARY_PILL_BG = 'hsl(var(--primary) / 0.30)';
-const sideShadow = (color: string) => `${color} 2px 0 0 0, ${color} -2px 0 0 0`;
+const sideShadow = (color: string) => `${color} 3px 0 0 0, ${color} -3px 0 0 0`;
 
 function pillClassFor(kind: MentionEntry['kind']): string {
   return 'rounded-[3px] bg-primary/30 text-[#dee0fc]';

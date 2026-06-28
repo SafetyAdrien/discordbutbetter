@@ -1,6 +1,6 @@
 import { createRoot } from "react-dom/client";
 import { warmCache, purgeAllCaches, enforceCacheSchemaVersionSync } from "./lib/cache";
-import { logSelfXssWarning } from "./lib/self-xss-warning";
+import { logSelfXssRepeating, logSelfXssClosing } from "./lib/self-xss-warning";
 import App from "./App.tsx";
 import "./index.css";
 

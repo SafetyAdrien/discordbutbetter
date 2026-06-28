@@ -327,7 +327,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     setSpeakingUsers(newSpeaking);
     setAudioLevels(newAudioLevels);
     setLocalAudioLevel(webrtc.audioLevel);
-  }, [webrtc.peers, webrtc.audioLevel, voiceState.isMuted, user?.id]);
+  }, [webrtc.peers, webrtc.audioLevel, webrtc.localIsSpeaking, voiceState.isMuted, user?.id]);
 
   // Show toast when microphone access fails
   useEffect(() => {

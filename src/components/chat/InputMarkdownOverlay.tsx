@@ -154,6 +154,7 @@ const sideShadow = (color: string) => `${color} 3px 0 0 0, ${color} -3px 0 0 0`;
 const ringShadow = (fill: string, border: string) =>
   `${sideShadow(fill)}, ${border} 0 0 0 1px, ${border} 3px 0 0 1px, ${border} -3px 0 0 1px`;
 const PILL_BORDER = 'hsl(var(--border) / 0.65)';
+const COLOR_SQUARE_NUDGE = 'translateY(1px)';
 
 function pillClassFor(kind: MentionEntry['kind']): string {
   return 'rounded-[3px] bg-primary/30 text-[#dee0fc]';
@@ -171,7 +172,7 @@ function renderMentionEntry(entry: MentionEntry, key: number, entryIndex: number
         className="rounded-[3px]"
         style={{ backgroundColor: bg, boxShadow: ringShadow(bg, PILL_BORDER) }}
       >
-        <span style={{ color: entry.color, position: 'relative', top: '1px' }}>{first}</span>{rest}
+        <span style={{ color: entry.color, transform: COLOR_SQUARE_NUDGE }}>{first}</span>{rest}
       </span>
     );
   }
@@ -255,7 +256,7 @@ function renderLegacyAndSpecialMentions(text: string, mentionData: MentionLookup
             boxShadow: ringShadow(bg, PILL_BORDER),
           }}
         >
-          <span style={{ color: hex, position: 'relative', top: '1px' }}>■</span> {name}
+          <span style={{ color: hex, transform: COLOR_SQUARE_NUDGE }}>■</span> {name}
         </span>
       );
     } else if (match[3] !== undefined) {

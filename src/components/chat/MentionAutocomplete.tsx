@@ -171,7 +171,7 @@ export function MentionAutocomplete({
   return (
     <div
       ref={containerRef}
-      className="absolute bottom-full left-0 right-0 mb-1 bg-[#272e4e] border border-border rounded-lg shadow-lg overflow-hidden z-50"
+      className="absolute bottom-full left-0 right-0 mb-1 bg-popover border border-border rounded-lg shadow-lg overflow-hidden z-50"
     >
       <ScrollArea className="max-h-[280px]">
         <div className="p-1">
@@ -191,7 +191,7 @@ export function MentionAutocomplete({
                       onMouseEnter={() => onIndexChange(index)}
                       className={cn(
                         "flex items-center gap-2 w-full px-2 py-1.5 rounded text-sm transition-colors",
-                        index === selectedIndex ? "bg-[#5865f2] text-white" : "hover:bg-muted",
+                        index === selectedIndex ? "bg-white/10" : "hover:bg-muted",
                       )}
                     >
                       <Avatar className="w-6 h-6">
@@ -227,11 +227,11 @@ export function MentionAutocomplete({
                         onMouseEnter={() => onIndexChange(globalIndex)}
                         className={cn(
                           "flex items-center gap-2 w-full px-2 py-1.5 rounded text-sm transition-colors",
-                          globalIndex === selectedIndex ? "bg-[#5865f2] text-white" : "hover:bg-muted",
+                          globalIndex === selectedIndex ? "bg-white/10" : "hover:bg-muted",
                         )}
                       >
                         <AtSign className="w-4 h-4" style={{ color: role.color || "#99aab5" }} />
-                        <span style={{ color: globalIndex === selectedIndex ? "white" : role.color || "#99aab5" }}>
+                        <span style={{ color: role.color || "#99aab5" }}>
                           {role.name}
                         </span>
                       </button>
@@ -256,7 +256,7 @@ export function MentionAutocomplete({
                     onMouseEnter={() => onIndexChange(index)}
                     className={cn(
                       "flex items-center gap-2 w-full px-2 py-1.5 rounded text-sm transition-colors",
-                      index === selectedIndex ? "bg-[#5865f2] text-white" : "hover:bg-muted",
+                      index === selectedIndex ? "bg-white/10" : "hover:bg-muted",
                     )}
                   >
                     <ChannelIcon className="w-4 h-4 text-muted-foreground" />
@@ -280,7 +280,7 @@ export function MentionAutocomplete({
                     onMouseEnter={() => onIndexChange(index)}
                     className={cn(
                       "flex items-center gap-2 w-full px-2 py-1.5 rounded text-sm transition-colors",
-                      index === selectedIndex ? "bg-[#5865f2] text-white" : "hover:bg-muted",
+                      index === selectedIndex ? "bg-white/10" : "hover:bg-muted",
                     )}
                   >
                     <span

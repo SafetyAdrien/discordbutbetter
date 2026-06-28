@@ -67,7 +67,7 @@ export function logSelfXssRepeating(): void {
   try {
     console.log(
       `%c${t.title}`,
-      'color: #ff3838; font-size: 60px; font-weight: 900; text-shadow: 2px 2px 0 rgba(0,0,0,0.25);'
+      'color: #5865F2; font-size: 60px; font-weight: 900; text-shadow: 2px 2px 0 rgba(0,0,0,0.25);'
     );
     console.log(
       `%c${t.info1}`,

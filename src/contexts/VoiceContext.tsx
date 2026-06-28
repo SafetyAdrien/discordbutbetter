@@ -378,6 +378,22 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     };
   }, [voiceState.channelId, user?.id]);
 
+  // Fix M — resume AudioContext when returning to the tab during an active voice session
+  useEffect(() => {
+    if (!voiceState.channelId) return;
+    const handleVisibility = async () => {
+      if (document.visibilityState !== 'visible') return;
+      try {
+        await audioProcessor.resumeAudioContext();
+        await mediaManager.resumeAudioContext();
+      } catch (e) {
+        console.error('[VoiceContext] resumeAudioContext failed', e);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [voiceState.channelId]);
+
   const joinChannel = useCallback(async (channelId: string, channelName: string, serverName: string) => {
     if (!user) throw new Error('Not authenticated');
 

@@ -685,6 +685,13 @@ export class AudioProcessor {
   /**
    * Clean up all resources
    */
+  async resumeAudioContext(): Promise<void> {
+    if (this.audioContext && this.audioContext.state === 'suspended') {
+      await this.audioContext.resume();
+      console.log('[AudioProcessor] AudioContext resumed');
+    }
+  }
+
   cleanup(): void {
     if (this.gateHoldTimer) {
       clearTimeout(this.gateHoldTimer);

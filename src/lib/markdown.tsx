@@ -134,7 +134,7 @@ const MENTION_PATTERNS = {
   messageLink: /https?:\/\/(?:discord\.com|discordapp\.com)\/channels\/(\d{18}|[0-9a-f-]+)\/(\d{18}|[0-9a-f-]+)\/(\d{18}|[0-9a-f-]+)/gi,
 };
 
-const COLOR_SWATCH_PATTERN = /<c:#([0-9a-fA-F]{6})>/g;
+const COLOR_SWATCH_PATTERN = /<c:#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})>/g;
 
 function tokenizeInline(text: string): MarkdownToken[] {
   const tokens: MarkdownToken[] = [];

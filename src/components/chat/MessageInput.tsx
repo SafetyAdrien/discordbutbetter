@@ -8,7 +8,7 @@ import { CreateDMPollModal } from './CreateDMPollModal';
 import { InputMarkdownOverlay, hasOverlayMarkdown, OVERLAY_FONT_SIZE, OVERLAY_LINE_HEIGHT, INPUT_FONT_FAMILY, MentionEntry } from './InputMarkdownOverlay';
 import { ModernColorPicker } from '@/components/profile/calendar/ModernColorPicker';
 import { MentionAutocomplete, MentionMember, MentionRole, MentionChannel } from './MentionAutocomplete';
-import { NAMED_COLORS } from '@/lib/colorNames';
+import { NAMED_COLORS, normalizeHex } from '@/lib/colorNames';
 import { AttachmentStagingArea } from './upload/AttachmentStagingArea';
 import { PendingAttachment } from '@/hooks/usePendingAttachments';
 import { normalizeForSearch } from '@/lib/utils';
@@ -129,6 +129,13 @@ export function MessageInput({
   const [pollModalOpen, setPollModalOpen] = useState(false);
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const [draftColor, setDraftColor] = useState('#5865F2');
+  const [colorEditor, setColorEditor] = useState<{
+    entryIndex: number;
+    hex: string;
+    rect: { left: number; top: number; width: number; height: number };
+  } | null>(null);
+  const [colorEditorDraft, setColorEditorDraft] = useState('');
+  const cursorRafRef = useRef<number | null>(null);
   // Markdown formatting bar: collapsed by default on mobile/tablet to save horizontal space
   const [markdownBarOpen, setMarkdownBarOpen] = useState(!isMobile && !isTablet);
   const canSubmitMessage = !!value.trim() || attachments.length > 0;
@@ -994,7 +1001,58 @@ export function MessageInput({
                   ta.setSelectionRange(s, en);
                 }
               }}
-
+              onClick={(e) => {
+                const ta = e.currentTarget;
+                const entries = mentionEntriesRef.current;
+                if (entries.length === 0) return;
+                let cur = 0;
+                const ranges: Array<{ start: number; end: number; index: number }> = [];
+                for (let i = 0; i < entries.length; i++) {
+                  const entry = entries[i];
+                  if (!entry.display) continue;
+                  const at = value.indexOf(entry.display, cur);
+                  if (at === -1) continue;
+                  ranges.push({ start: at, end: at + entry.display.length, index: i });
+                  cur = at + entry.display.length;
+                }
+                const s = ta.selectionStart;
+                if (s !== ta.selectionEnd) return;
+                const hit = ranges.find((r) => s >= r.start && s <= r.end);
+                if (!hit) return;
+                const entry = entries[hit.index];
+                if (entry.kind !== 'color' || !entry.color) return;
+                const span = overlayRef.current?.querySelector<HTMLElement>(`[data-color-entry-index="${hit.index}"]`);
+                if (!span) return;
+                const r = span.getBoundingClientRect();
+                const normalized = normalizeHex(entry.color) ?? '#000000';
+                setColorEditor({
+                  entryIndex: hit.index,
+                  hex: normalized,
+                  rect: { left: r.left, top: r.top, width: r.width, height: r.height },
+                });
+                setColorEditorDraft(normalized);
+              }}
+              onMouseMove={(e) => {
+                const ta = e.currentTarget;
+                const cx = e.clientX;
+                const cy = e.clientY;
+                if (cursorRafRef.current != null) return;
+                cursorRafRef.current = requestAnimationFrame(() => {
+                  cursorRafRef.current = null;
+                  const overlay = overlayRef.current;
+                  if (!overlay) { ta.style.cursor = ''; return; }
+                  const spans = overlay.querySelectorAll<HTMLElement>('[data-color-entry-index]');
+                  let hover = false;
+                  for (const sp of Array.from(spans)) {
+                    const r = sp.getBoundingClientRect();
+                    if (cx >= r.left && cx <= r.right && cy >= r.top && cy <= r.bottom) {
+                      hover = true; break;
+                    }
+                  }
+                  ta.style.cursor = hover ? 'pointer' : '';
+                });
+              }}
+              onMouseLeave={(e) => { e.currentTarget.style.cursor = ''; }}
               onPaste={handlePaste}
               onScroll={() => { if (overlayRef.current && textareaRef.current) overlayRef.current.scrollTop = textareaRef.current.scrollTop; }}
               placeholder={placeholder}
@@ -1130,6 +1188,72 @@ export function MessageInput({
           </Button>
         </DialogContent>
       </Dialog>
+
+      {colorEditor && (() => {
+        const draft = colorEditorDraft;
+        const v = draft.trim();
+        const fromHex = normalizeHex(v);
+        let resolved: string | null = fromHex;
+        if (!resolved && v) {
+          const lc = v.toLowerCase();
+          const named = NAMED_COLORS.find((c) => c.name.toLowerCase() === lc);
+          if (named) resolved = normalizeHex(named.hex);
+        }
+        const close = () => setColorEditor(null);
+        const apply = () => {
+          if (!resolved) return;
+          const idx = colorEditor.entryIndex;
+          const list = mentionEntriesRef.current.slice();
+          const e = list[idx];
+          if (!e) { close(); return; }
+          list[idx] = { ...e, color: resolved, token: `<c:${resolved}>` };
+          mentionEntriesRef.current = list;
+          setMentionRev((r) => r + 1);
+          close();
+        };
+        const POP_W = 280;
+        const POP_H_EST = 380;
+        let left = colorEditor.rect.left + colorEditor.rect.width / 2 - POP_W / 2;
+        left = Math.max(8, Math.min(window.innerWidth - POP_W - 8, left));
+        let top = colorEditor.rect.top - POP_H_EST - 8;
+        if (top < 8) top = colorEditor.rect.top + colorEditor.rect.height + 8;
+        return (
+          <>
+            <div className="fixed inset-0 z-40" onClick={close} onContextMenu={(e) => { e.preventDefault(); close(); }} />
+            <div
+              role="dialog"
+              className="fixed z-50 rounded-xl border border-border bg-popover shadow-xl p-3 space-y-3"
+              style={{ left, top, width: POP_W }}
+              onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); close(); } }}
+            >
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Couleur (hex ou nom)</label>
+                <input
+                  autoFocus
+                  value={colorEditorDraft}
+                  onChange={(e) => setColorEditorDraft(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && resolved) { e.preventDefault(); apply(); } }}
+                  placeholder="#ff00aa ou Red"
+                  className={`w-full bg-background border rounded-md px-2 py-1.5 text-sm font-mono outline-none ${resolved ? 'border-border' : 'border-destructive'}`}
+                />
+                {!resolved && colorEditorDraft.trim() && (
+                  <p className="text-[11px] text-destructive">Hex ou nom de couleur invalide</p>
+                )}
+              </div>
+              <ModernColorPicker
+                value={resolved ?? colorEditor.hex}
+                onChange={(h) => setColorEditorDraft(h)}
+              />
+              <div className="flex justify-end gap-2">
+                <Button size="sm" variant="ghost" onClick={close}>Annuler</Button>
+                <Button size="sm" disabled={!resolved} onClick={apply}>Éditer</Button>
+              </div>
+            </div>
+          </>
+        );
+      })()}
+
+
       
       {dmConversationId ? (
         <CreateDMPollModal

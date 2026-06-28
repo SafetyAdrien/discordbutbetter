@@ -166,7 +166,7 @@ export function MentionAutocomplete({
 
   const handleSelectColor = (color: MentionColor) => {
     const hex = color.hex.startsWith('#') ? color.hex : `#${color.hex}`;
-    onSelect(`<c:${hex.toLowerCase()}>`, '\u25A0');
+    onSelect(`<c:${hex.toLowerCase()}>`, `\u25A0 ${nearestColorName(hex)}`);
   };
 
   return (

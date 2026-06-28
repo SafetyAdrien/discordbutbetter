@@ -192,6 +192,18 @@ function tokenizeInline(text: string): MarkdownToken[] {
     if (timestampMatch && (earliestMatch === null || timestampMatch.index < earliestMatch.index)) {
       earliestMatch = { index: timestampMatch.index, length: timestampMatch[0].length, content: timestampMatch[0], type: 'timestamp', timestamp: parseInt(timestampMatch[1], 10), timestampFormat: timestampMatch[2] };
     }
+
+    COLOR_SWATCH_PATTERN.lastIndex = 0;
+    const colorMatch = COLOR_SWATCH_PATTERN.exec(remaining);
+    if (colorMatch && (earliestMatch === null || colorMatch.index < earliestMatch.index)) {
+      earliestMatch = {
+        index: colorMatch.index,
+        length: colorMatch[0].length,
+        content: colorMatch[0],
+        type: 'colorSwatch',
+        colorHex: '#' + colorMatch[1].toLowerCase(),
+      };
+    }
     
     for (const { regex, type } of INLINE_PATTERNS) {
       regex.lastIndex = 0;

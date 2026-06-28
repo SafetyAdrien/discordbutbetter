@@ -126,24 +126,8 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers, 
 
   const isSpeakingSelf = !!(profile?.id && speakingUsers?.has(profile.id));
 
-  // [DIAG] Log de rendu throttlé (à retirer après diagnostic)
-  {
-    const _now = performance.now();
-    const _w = window as unknown as { __upcRenderLogTs?: number };
-    if (_now - (_w.__upcRenderLogTs ?? 0) > 500) {
-      _w.__upcRenderLogTs = _now;
-      console.log('[DIAG UserProfileCard render]', {
-        isSpeakingSelf,
-        profileId: profile?.id,
-        speakingUsersSize: speakingUsers?.size,
-        speakingUsersHas: profile?.id ? speakingUsers?.has(profile.id) : null,
-      });
-    }
-  }
-
   return (
     <div
-      data-component="UserProfileCard-DIAG"
       className={cn(
         "h-full mx-2 mb-2 px-3 py-1 flex items-center gap-2.5 bg-[hsl(var(--surface-2))] border border-border/40 transition-colors",
         connectedToVoice ? "rounded-b-2xl rounded-t-none border-t-0" : "rounded-2xl",
@@ -154,16 +138,20 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers, 
         <PopoverTrigger asChild>
           <button className="flex items-center gap-2 flex-1 min-w-0 hover:bg-muted rounded-md p-1 transition-colors">
             <div className="relative">
-              <UserAvatarImage
-                src={profile?.avatar_url}
-                alt={profile?.display_name}
+              <div
                 className={cn(
-                  "w-8 h-8 ring-2 transition-colors",
-                  isSpeakingSelf ? "ring-[hsl(var(--online))]" : "ring-primary/30",
+                  "rounded-full border-2 transition-colors",
+                  isSpeakingSelf ? "border-[hsl(var(--online))]" : "border-primary/30",
                 )}
-                fallbackClassName="bg-primary/20 text-primary text-sm"
-                fallback={profile?.display_name?.charAt(0).toUpperCase() || '?'}
-              />
+              >
+                <UserAvatarImage
+                  src={profile?.avatar_url}
+                  alt={profile?.display_name}
+                  className="w-8 h-8"
+                  fallbackClassName="bg-primary/20 text-primary text-sm"
+                  fallback={profile?.display_name?.charAt(0).toUpperCase() || '?'}
+                />
+              </div>
 
               <StatusIndicator
                 status={currentStatus}

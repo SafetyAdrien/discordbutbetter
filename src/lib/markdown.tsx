@@ -225,7 +225,7 @@ function tokenizeInline(text: string): MarkdownToken[] {
         tokens.push({ type: 'text', content: remaining.slice(0, earliestMatch.index) });
       }
       
-      if (['link', 'autoLink', 'code', 'userMention', 'roleMention', 'channelMention', 'specialMention', 'everyoneMention', 'messageLinkEmbed', 'timestamp'].includes(earliestMatch.type)) {
+      if (['link', 'autoLink', 'code', 'userMention', 'roleMention', 'channelMention', 'specialMention', 'everyoneMention', 'messageLinkEmbed', 'timestamp', 'colorSwatch'].includes(earliestMatch.type)) {
         tokens.push({
           type: earliestMatch.type,
           content: earliestMatch.content,
@@ -235,6 +235,7 @@ function tokenizeInline(text: string): MarkdownToken[] {
           embedData: earliestMatch.embedData,
           timestamp: earliestMatch.timestamp,
           timestampFormat: earliestMatch.timestampFormat,
+          colorHex: earliestMatch.colorHex,
         });
       } else {
         const innerTokens = tokenizeInline(earliestMatch.content);

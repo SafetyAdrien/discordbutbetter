@@ -1,68 +1,93 @@
-## Cause racine identifiée (lecture du code, pas besoin de re-tester)
+## Lecture seule — réponses aux 2 points
 
-`InputMarkdownOverlay.tsx`, `consumeEntryMentions()` lignes 192–215.
+### 1. Espace entre deux pills couleur consécutifs (picker / autocomplete `<`)
 
-Quand une entry trackée est consommée, les segments de texte autour
-(avant/entre/après) sont poussés dans `nodes` **encapsulés dans des
-`<span>`** :
+`handleMentionSelect` (`MessageInput.tsx:526-567`) construit :
 
 ```ts
-nodes.push(<span key={key++}>{text.slice(cursor, at)}</span>);     // gap
-nodes.push(renderMentionEntry(entry, ...));                          // pill
-nodes.push(<span key={key++}>{text.slice(cursor)}</span>);          // tail
+const after = value.slice(end).replace(/^[ \t]+/, '');
+const newValue = before + inserted + ' ' + after;
 ```
 
-Puis `renderInlineMarkdown()` ligne 304 itère sur `workingNodes` et
-**discrimine uniquement string vs ReactElement** :
+→ Un **espace réel** ` ` est systématiquement ajouté après chaque
+insertion via le picker `<`. Deux pills consécutifs insérés via
+l'autocomplete donnent donc `■ White ■ White` avec **un vrai U+0020
+entre eux**. Caret final positionné `start + inserted.length + 1`
+(après l'espace).
 
-- `typeof node === 'string'` → passe par `renderLegacyAndSpecialMentions`
-  (qui matche `<c:#…>` et produit le pill).
-- ReactElement → branche ligne 326 : vérifie className, puis si
-  `props.children` est string → `renderInlineMarkdownOnly(props.children)`,
-  qui **n'a aucune logique mention/token legacy**.
+Note hors scope : le bouton Palette → "Insérer" (`insertColor`,
+`MessageInput.tsx:307-325`) n'ajoute **pas** d'espace de séparation.
+Pas concerné par la question, mais signalé.
 
-Donc dans le scénario "pill trackée suivi de ` | <c:#ffffff>`", le
-segment ` | <c:#ffffff>` arrive en ReactElement → court-circuit du
-parseur legacy → token brut affiché en clair.
+### 2. Ordre actuel des box-shadow sur le pill couleur
 
-C'est cohérent avec le fait que l'E2E précédent fonctionnait : ces tests
-n'avaient JAMAIS d'entry trackée en amont (donc `consumeEntryMentions`
-retournait `consumed: false` ligne 210, et le texte restait une string
-pure traitée par `renderLegacyAndSpecialMentions`).
+`InputMarkdownOverlay.tsx` ligne 169 (`renderMentionEntry`, kind
+'color') et ligne 252 (`renderLegacyAndSpecialMentions`, branche
+`match[5]`) :
 
-## Correction (1 seul changement minimal)
+```ts
+boxShadow: `${sideShadow(bg)}, 0 0 0 1px hsl(var(--border) / 0.65)`
+```
 
-Dans `consumeEntryMentions()` :
+→ **sideShadow d'abord, puis le ring de bordure** dans la même
+propriété `boxShadow`. C'est exactement la collision décrite : les
+deux côtés horizontaux du ring sont masqués par les deux ombres pleine
+couleur de `sideShadow` (qui dépassent de 2px latéralement), donc le
+ring n'est visible qu'en haut et en bas.
 
-- Remplacer les `nodes.push(<span …>{slice}</span>)` (lignes 203 et 212)
-  par `nodes.push(slice)` — pousser des **strings brutes**.
+---
 
-Effet : chaque gap entre entries trackées redevient une string dans
-`workingNodes`, donc `renderInlineMarkdown` ligne 305 prend bien la
-branche `typeof node === 'string'` et applique
-`renderLegacyAndSpecialMentions` qui matche `<c:#…>`, `<@…>`, `<#…>`,
-`@everyone`, `@here` sur le segment.
+## Fix — bordure via `outline` au lieu de `box-shadow`
 
-C'est strictement plus correct : le wrapping `<span>` était cosmétique
-(aucune class, aucun style), juste un artefact d'implémentation qui
-masquait par accident l'éligibilité au pass legacy.
+Aucun changement nécessaire côté insertion (point 1 OK pour le picker).
+Une seule modification, appliquée aux **deux endroits** :
 
-## Vérification
+### Touchpoint unique : `src/components/chat/InputMarkdownOverlay.tsx`
 
-1. Playwright sur `localhost:8080`, hard reload + purge SW/caches.
-2. Scénario A : picker `<` → "White" → taper ` | <c:#ffffff>` → screenshot
-   `1_pill_then_raw.png` → attendu : 2 pills "■ White" séparés par " | ".
-3. Scénario B (sens inverse) : taper `<c:#ffffff> | ` → picker → "White" →
-   screenshot `2_raw_then_pill.png` → attendu : 2 pills.
-4. Scénario C (sandwich) : pill + ` <c:#ff0000> ` + pill → screenshot
-   `3_sandwich.png` → attendu : 3 pills.
+**Ligne 169** (`renderMentionEntry`, kind === 'color') :
+
+```tsx
+// avant
+style={{ backgroundColor: bg, boxShadow: `${sideShadow(bg)}, 0 0 0 1px hsl(var(--border) / 0.65)` }}
+
+// après
+style={{
+  backgroundColor: bg,
+  boxShadow: sideShadow(bg),
+  outline: '1px solid hsl(var(--border) / 0.65)',
+  outlineOffset: '0px',
+}}
+```
+
+**Lignes 247-256** (`renderLegacyAndSpecialMentions`, branche
+`match[5]`) : même substitution sur le `style` du `<span>` pill.
+
+Pourquoi `outline` :
+- couche de rendu séparée de `box-shadow`, aucun empilement avec
+  `sideShadow` → les 4 côtés sont visibles uniformément ;
+- `outline` ne participe pas au box model → la largeur de boîte ne
+  change pas, donc l'alignement caret/overlay reste intact ;
+- `outline-offset: 0` colle l'outline pile sur le bord visuel du pill
+  (qui inclut déjà les 2px de `sideShadow` à gauche/droite).
+
+### Hors scope explicitement
+
+- `insertColor` (bouton Palette) : pas touché, la question 1 ciblait
+  uniquement le picker `<`.
+- Aucun autre pill (mention, role, channel) n'utilise actuellement de
+  ring border → rien à modifier sur eux.
+
+---
+
+## Vérification (après bascule en build mode)
+
+1. Préview localhost:8080, hard reload + purge SW/caches.
+2. Insérer deux pills via picker `<` consécutivement → screenshot
+   `1_two_pills_outline.png` : bordure visible **uniformément sur les
+   4 côtés** des deux pills, vrai espace entre eux (pas de
+   soulignement orthographique rouge).
+3. Cliquer juste avant puis juste après un pill → caret pile au bord
+   visuel (pas de décalage de 1-2px).
+4. Taper `<c:#ff0000>` manuellement entre deux pills → même rendu
+   uniforme via la branche `match[5]`.
 5. `bunx tsgo --noEmit` → 0 erreur.
-
-Captures livrées dans la réponse via `<artifact>`. Si l'une montre du
-texte brut, je ne déclare pas "corrigé".
-
-## Touchpoint
-
-- `src/components/chat/InputMarkdownOverlay.tsx` — 2 lignes modifiées
-  dans `consumeEntryMentions` (`<span>` wrap → string brute). Rien
-  d'autre.

@@ -238,10 +238,23 @@ function renderLegacyAndSpecialMentions(text: string, mentionData: MentionLookup
       );
     } else if (match[5] !== undefined) {
       const raw = match[5];
-      const hex = raw.length === 3
+      const hex = normalizeHex(raw) ?? (raw.length === 3
         ? '#' + raw.split('').map(c => c + c).join('').toLowerCase()
-        : '#' + raw.toLowerCase();
-      parts.push(<span key={key++} style={{ color: hex }}>{full}</span>);
+        : '#' + raw.toLowerCase());
+      const name = nearestColorName(hex);
+      const bg = 'hsl(var(--surface-elevated))';
+      parts.push(
+        <span
+          key={key++}
+          className="rounded-[3px]"
+          style={{
+            backgroundColor: bg,
+            boxShadow: `${sideShadow(bg)}, 0 0 0 1px hsl(var(--border) / 0.65)`,
+          }}
+        >
+          <span style={{ color: hex }}>■</span> {name}
+        </span>
+      );
     } else if (match[3] !== undefined) {
       const uuid = snowflakeToUuid(match[3]);
       const member = uuid ? mentionData?.members?.find(m => m.id === uuid) : undefined;

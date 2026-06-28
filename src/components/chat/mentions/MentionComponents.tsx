@@ -292,3 +292,92 @@ export function EveryoneMention({ type, serverId }: EveryoneMentionProps) {
     </EveryoneHerePopup>
   );
 }
+
+// ============================================
+// COLOR SWATCH TOKEN
+// ============================================
+type CopiedField = 'hex' | 'rgb' | 'hsl' | 'hsv' | null;
+
+export function ColorSwatchToken({ hex }: { hex: string }) {
+  const [open, setOpen] = useState(false);
+  const [copied, setCopied] = useState<CopiedField>(null);
+
+  const safeHex = (hex || '#000000').toLowerCase();
+  const name = nearestColorName(safeHex);
+  const { r, g, b } = hexToRgb(safeHex);
+  const hsl = rgbToHsl(r, g, b);
+  const hsvRaw = rgbToHsv(r, g, b);
+  const hsv = {
+    h: Math.round(hsvRaw.h),
+    s: Math.round(hsvRaw.s * 100),
+    v: Math.round(hsvRaw.v * 100),
+  };
+
+  const hexStr = safeHex.toUpperCase();
+  const rgbStr = `rgb(${r}, ${g}, ${b})`;
+  const hslStr = `hsl(${hsl.h}, ${hsl.s}%, ${hsl.l}%)`;
+  const hsvStr = `hsv(${hsv.h}, ${hsv.s}%, ${hsv.v}%)`;
+
+  const copy = async (field: Exclude<CopiedField, null>, value: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(field);
+      setTimeout(() => setCopied((c) => (c === field ? null : c)), 1500);
+    } catch {
+      /* noop */
+    }
+  };
+
+  const Row = ({ field, label, value }: { field: Exclude<CopiedField, null>; label: string; value: string }) => (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        copy(field, value);
+      }}
+      className="w-full flex items-center justify-between gap-2 px-2 py-1 rounded hover:bg-muted text-left transition-colors"
+    >
+      <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold w-8">{label}</span>
+      <span className="flex-1 min-w-0 truncate font-mono text-xs text-foreground">{value}</span>
+      {copied === field ? (
+        <Check className="w-3.5 h-3.5 text-green-500 shrink-0" />
+      ) : (
+        <Copy className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+      )}
+    </button>
+  );
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <span
+          className="inline-flex items-center gap-1.5 align-middle px-1.5 py-0.5 rounded-[4px] bg-[hsl(var(--surface-elevated))] border border-black/10 cursor-pointer hover:brightness-110 transition-all"
+        >
+          <span
+            className="inline-block w-[0.9em] h-[0.9em] rounded-[3px] border border-black/10"
+            style={{ backgroundColor: safeHex }}
+          />
+          <span>{name}</span>
+        </span>
+      </PopoverTrigger>
+      <PopoverContent side="top" className="w-56 p-3 space-y-2">
+        <div className="flex items-center gap-3">
+          <div
+            className="w-12 h-12 rounded border border-border shrink-0"
+            style={{ backgroundColor: safeHex }}
+          />
+          <div className="min-w-0">
+            <div className="font-semibold text-sm truncate">{name}</div>
+            <div className="text-xs text-muted-foreground font-mono">{hexStr}</div>
+          </div>
+        </div>
+        <div className="space-y-0.5">
+          <Row field="hex" label="Hex" value={hexStr} />
+          <Row field="rgb" label="RGB" value={rgbStr} />
+          <Row field="hsl" label="HSL" value={hslStr} />
+          <Row field="hsv" label="HSV" value={hsvStr} />
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}

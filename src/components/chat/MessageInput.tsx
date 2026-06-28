@@ -491,8 +491,8 @@ export function MessageInput({
     // Channel: <#SNOWFLAKE>
     m = token.match(/^<#(\d{18})>$/);
     if (m) return { display: displayText, token, kind: 'channel' };
-    // Color: <color:#rrggbb>
-    m = token.match(/^<color:(#[0-9a-fA-F]{6})>$/);
+    // Color: <c:#rrggbb>
+    m = token.match(/^<c:(#[0-9a-fA-F]{6})>$/);
     if (m) return { display: displayText, token, kind: 'color', color: m[1] };
     return null;
   }, [roles]);

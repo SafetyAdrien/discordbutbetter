@@ -71,7 +71,7 @@ export function ForumPostSidePanel({ post, hasVoted, onClose }: Props) {
   const toggleVote = useToggleForumVote(post.channel_id);
   const [replyText, setReplyText] = useState('');
 
-  const canManageForum = useHasChannelPermission(post.channel_id, 'manage_forum_posts');
+  const canManageForum = useHasChannelPermission(post.channel_id, 'manage_forum_posts').data;
   const isAuthor = user?.id === post.author_id;
   const canDeletePost = isAuthor || canManageForum;
 

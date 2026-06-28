@@ -108,7 +108,7 @@ export function MediaPostSidePanel({ post, channelId, serverId = null, onClose, 
   const commentCount = comments.length;
 
   const isAuthor = user?.id === post.author_id;
-  const canManageMedia = useHasChannelPermission(channelId, 'manage_media');
+  const canManageMedia = useHasChannelPermission(channelId, 'manage_media').data;
 
 
 

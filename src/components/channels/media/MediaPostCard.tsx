@@ -139,7 +139,7 @@ export function MediaPostCard({ post, channelId, serverId = null, onOpenDetail, 
   };
 
   const isAuthor = user?.id === post.author_id;
-  const canManageMedia = useHasChannelPermission(channelId, 'manage_media');
+  const canManageMedia = useHasChannelPermission(channelId, 'manage_media').data;
   const descShort = post.description && post.description.length > 140 && !descExpanded;
 
   // ---- Front face ----

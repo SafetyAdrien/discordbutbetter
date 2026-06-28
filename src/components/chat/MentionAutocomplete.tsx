@@ -50,12 +50,18 @@ export interface MentionChannel {
   type: string;
 }
 
+export interface MentionColor {
+  hex: string;
+  name: string;
+}
+
 interface MentionAutocompleteProps {
-  type: "user" | "channel";
+  type: "user" | "channel" | "color";
   query: string;
   members?: MentionMember[];
   roles?: MentionRole[];
   channels?: MentionChannel[];
+  colors?: MentionColor[];
   onSelect: (mention: string, displayText: string) => void;
   onClose: () => void;
   selectedIndex: number;

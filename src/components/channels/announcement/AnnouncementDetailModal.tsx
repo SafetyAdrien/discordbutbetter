@@ -22,6 +22,7 @@ import {
   type AnnouncementCategory,
 } from '@/hooks/useAnnouncements';
 import { useAuth } from '@/contexts/AuthContext';
+import { useHasChannelPermission } from '@/hooks/useUserChannelPermissions';
 
 interface AnnouncementDetailModalProps {
   open: boolean;

@@ -1188,6 +1188,72 @@ export function MessageInput({
           </Button>
         </DialogContent>
       </Dialog>
+
+      {colorEditor && (() => {
+        const draft = colorEditorDraft;
+        const v = draft.trim();
+        const fromHex = normalizeHex(v);
+        let resolved: string | null = fromHex;
+        if (!resolved && v) {
+          const lc = v.toLowerCase();
+          const named = NAMED_COLORS.find((c) => c.name.toLowerCase() === lc);
+          if (named) resolved = normalizeHex(named.hex);
+        }
+        const close = () => setColorEditor(null);
+        const apply = () => {
+          if (!resolved) return;
+          const idx = colorEditor.entryIndex;
+          const list = mentionEntriesRef.current.slice();
+          const e = list[idx];
+          if (!e) { close(); return; }
+          list[idx] = { ...e, color: resolved, token: `<c:${resolved}>` };
+          mentionEntriesRef.current = list;
+          setMentionRev((r) => r + 1);
+          close();
+        };
+        const POP_W = 280;
+        const POP_H_EST = 380;
+        let left = colorEditor.rect.left + colorEditor.rect.width / 2 - POP_W / 2;
+        left = Math.max(8, Math.min(window.innerWidth - POP_W - 8, left));
+        let top = colorEditor.rect.top - POP_H_EST - 8;
+        if (top < 8) top = colorEditor.rect.top + colorEditor.rect.height + 8;
+        return (
+          <>
+            <div className="fixed inset-0 z-40" onClick={close} onContextMenu={(e) => { e.preventDefault(); close(); }} />
+            <div
+              role="dialog"
+              className="fixed z-50 rounded-xl border border-border bg-popover shadow-xl p-3 space-y-3"
+              style={{ left, top, width: POP_W }}
+              onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); close(); } }}
+            >
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Couleur (hex ou nom)</label>
+                <input
+                  autoFocus
+                  value={colorEditorDraft}
+                  onChange={(e) => setColorEditorDraft(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && resolved) { e.preventDefault(); apply(); } }}
+                  placeholder="#ff00aa ou Red"
+                  className={`w-full bg-background border rounded-md px-2 py-1.5 text-sm font-mono outline-none ${resolved ? 'border-border' : 'border-destructive'}`}
+                />
+                {!resolved && colorEditorDraft.trim() && (
+                  <p className="text-[11px] text-destructive">Hex ou nom de couleur invalide</p>
+                )}
+              </div>
+              <ModernColorPicker
+                value={resolved ?? colorEditor.hex}
+                onChange={(h) => setColorEditorDraft(h)}
+              />
+              <div className="flex justify-end gap-2">
+                <Button size="sm" variant="ghost" onClick={close}>Annuler</Button>
+                <Button size="sm" disabled={!resolved} onClick={apply}>Éditer</Button>
+              </div>
+            </div>
+          </>
+        );
+      })()}
+
+
       
       {dmConversationId ? (
         <CreateDMPollModal

@@ -17,6 +17,10 @@ export class SignalingService {
     this.instanceId = crypto.randomUUID();
   }
 
+  get isConnected(): boolean {
+    return (this.subscription as unknown as { state?: string } | null)?.state === 'joined';
+  }
+
   async start(): Promise<void> {
     console.log('[SignalingService] Starting for channel:', this.channelId, 'instance:', this.instanceId);
 

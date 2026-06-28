@@ -99,7 +99,7 @@ export function hasInlineMarkdown(content: string): boolean {
 
 export function hasInlineMentions(content: string, entries?: MentionEntry[]): boolean {
   if (!content) return false;
-  if (/<@&?\d{18}>|<#\d{18}>|@everyone|@here/.test(content)) return true;
+  if (/<@&?\d{18}>|<#\d{18}>|@everyone|@here|<c:#[0-9a-fA-F]{3,6}>/.test(content)) return true;
   if (entries && entries.length > 0) {
     return entries.some(e => content.includes(e.display));
   }

@@ -5,13 +5,13 @@ import { EmojiStickerPicker } from './EmojiStickerPicker';
 import { CreatePollModal } from './CreatePollModal';
 import { CreateDMPollModal } from './CreateDMPollModal';
 import { InputMarkdownOverlay, hasOverlayMarkdown, OVERLAY_FONT_SIZE, OVERLAY_LINE_HEIGHT, INPUT_FONT_FAMILY, MentionEntry } from './InputMarkdownOverlay';
-
+import { ModernColorPicker } from '@/components/profile/calendar/ModernColorPicker';
 import { MentionAutocomplete, MentionMember, MentionRole, MentionChannel } from './MentionAutocomplete';
 import { NAMED_COLORS } from '@/lib/colorNames';
 import { AttachmentStagingArea } from './upload/AttachmentStagingArea';
 import { PendingAttachment } from '@/hooks/usePendingAttachments';
 import { normalizeForSearch } from '@/lib/utils';
-import { PlusCircle, Image, BarChart2, Sticker, Smile, Send, ChevronLeft, ChevronRight, Bold, Italic, Underline, Strikethrough, Code, Quote, List, Link as LinkIcon, EyeOff, Heading1, Heading2, Heading3, Type, ListOrdered, TextQuote, SquareCode, Info, Lightbulb, MessageSquareWarning, TriangleAlert, OctagonAlert } from 'lucide-react';
+import { PlusCircle, Image, BarChart2, Sticker, Smile, Send, Palette, ChevronLeft, ChevronRight, Bold, Italic, Underline, Strikethrough, Code, Quote, List, Link as LinkIcon, EyeOff, Heading1, Heading2, Heading3, Type, ListOrdered, TextQuote, SquareCode, Info, Lightbulb, MessageSquareWarning, TriangleAlert, OctagonAlert } from 'lucide-react';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { toast } from 'sonner';
 import { MentionEveryoneWarningModal, EveryoneMentionType, detectEveryoneMention } from './MentionEveryoneWarningModal';
@@ -126,6 +126,8 @@ export function MessageInput({
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
   const [pollModalOpen, setPollModalOpen] = useState(false);
+  const [colorPickerOpen, setColorPickerOpen] = useState(false);
+  const [draftColor, setDraftColor] = useState('#5865F2');
   // Markdown formatting bar: collapsed by default on mobile/tablet to save horizontal space
   const [markdownBarOpen, setMarkdownBarOpen] = useState(!isMobile && !isTablet);
   const canSubmitMessage = !!value.trim() || attachments.length > 0;
@@ -296,6 +298,26 @@ export function MessageInput({
     } else {
       onChange(value + emoji);
     }
+  }, [value, onChange]);
+
+  const insertColor = useCallback((hex: string) => {
+    const glyph = '■';
+    const textarea = textareaRef.current;
+    const insertAt = textarea ? textarea.selectionStart : value.length;
+    const insertEnd = textarea ? textarea.selectionEnd : value.length;
+    const newValue = value.slice(0, insertAt) + glyph + value.slice(insertEnd);
+    mentionEntriesRef.current = [
+      ...mentionEntriesRef.current,
+      { display: glyph, token: `<c:${hex}>`, kind: 'color', color: hex },
+    ];
+    setMentionRev(r => r + 1);
+    onChange(newValue);
+    setTimeout(() => {
+      if (textarea) {
+        textarea.selectionStart = textarea.selectionEnd = insertAt + glyph.length;
+        textarea.focus();
+      }
+    }, 0);
   }, [value, onChange]);
 
 
@@ -1069,6 +1091,30 @@ export function MessageInput({
                   </button>
                 }
               />
+              <Popover open={colorPickerOpen} onOpenChange={setColorPickerOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="Insérer une couleur"
+                    className={`text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-full transition-all duration-150 active:scale-95 flex items-center justify-center ${compact ? 'h-8 w-8' : 'h-9 w-9'}`}
+                  >
+                    <Palette className={compact ? 'w-4 h-4' : 'w-[18px] h-[18px]'} />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent side="top" align="end" className="w-auto p-3">
+                  <ModernColorPicker
+                    value={draftColor}
+                    onChange={setDraftColor}
+                  />
+                  <Button
+                    size="sm"
+                    className="w-full mt-2"
+                    onClick={() => { insertColor(draftColor); setColorPickerOpen(false); }}
+                  >
+                    Insérer
+                  </Button>
+                </PopoverContent>
+              </Popover>
               <button
                 type="submit"
                 disabled={disabled || !canSubmitMessage}

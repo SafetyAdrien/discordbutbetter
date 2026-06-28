@@ -1091,6 +1091,30 @@ export function MessageInput({
                   </button>
                 }
               />
+              <Popover open={colorPickerOpen} onOpenChange={setColorPickerOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="Insérer une couleur"
+                    className={`text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-full transition-all duration-150 active:scale-95 flex items-center justify-center ${compact ? 'h-8 w-8' : 'h-9 w-9'}`}
+                  >
+                    <Palette className={compact ? 'w-4 h-4' : 'w-[18px] h-[18px]'} />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent side="top" align="end" className="w-auto p-3">
+                  <ModernColorPicker
+                    value={draftColor}
+                    onChange={setDraftColor}
+                  />
+                  <Button
+                    size="sm"
+                    className="w-full mt-2"
+                    onClick={() => { insertColor(draftColor); setColorPickerOpen(false); }}
+                  >
+                    Insérer
+                  </Button>
+                </PopoverContent>
+              </Popover>
               <button
                 type="submit"
                 disabled={disabled || !canSubmitMessage}

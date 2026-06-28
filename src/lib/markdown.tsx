@@ -23,7 +23,8 @@ interface MarkdownToken {
     | 'code' | 'spoiler' | 'boldItalic' | 'underlineBold' 
     | 'underlineItalic' | 'underlineBoldItalic' | 'link' | 'codeBlock'
     | 'userMention' | 'roleMention' | 'channelMention' | 'specialMention'
-    | 'everyoneMention' | 'messageLinkEmbed' | 'timestamp' | 'autoLink';
+    | 'everyoneMention' | 'messageLinkEmbed' | 'timestamp' | 'autoLink'
+    | 'colorSwatch';
   content: string | MarkdownToken[];
   url?: string;
   language?: string;
@@ -31,6 +32,7 @@ interface MarkdownToken {
   mentionType?: 'guide' | 'browse' | 'customize' | 'everyone' | 'here';
   timestamp?: number;
   timestampFormat?: string;
+  colorHex?: string;
   embedData?: {
     serverId: string;
     channelId: string;

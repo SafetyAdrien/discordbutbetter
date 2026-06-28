@@ -154,7 +154,7 @@ const sideShadow = (color: string) => `${color} 3px 0 0 0, ${color} -3px 0 0 0`;
 const ringShadow = (fill: string, border: string) =>
   `${sideShadow(fill)}, ${border} 0 0 0 1px, ${border} 3px 0 0 1px, ${border} -3px 0 0 1px`;
 const PILL_BORDER = 'hsl(var(--border) / 0.65)';
-const COLOR_SQUARE_NUDGE = 'translateY(1px)';
+const COLOR_SQUARE_SIZE = '0.7em';
 
 function pillClassFor(kind: MentionEntry['kind']): string {
   return 'rounded-[3px] bg-primary/30 text-[#dee0fc]';
@@ -172,7 +172,23 @@ function renderMentionEntry(entry: MentionEntry, key: number, entryIndex: number
         className="rounded-[3px]"
         style={{ backgroundColor: bg, boxShadow: ringShadow(bg, PILL_BORDER) }}
       >
-        <span style={{ color: entry.color, transform: COLOR_SQUARE_NUDGE }}>{first}</span>{rest}
+        <span style={{ position: 'relative', display: 'inline-block' }}>
+          <span style={{ color: 'transparent' }}>{first}</span>
+          <span
+            aria-hidden
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: COLOR_SQUARE_SIZE,
+              height: COLOR_SQUARE_SIZE,
+              backgroundColor: entry.color,
+              borderRadius: '1px',
+            }}
+          />
+        </span>
+        {rest}
       </span>
     );
   }
@@ -256,7 +272,23 @@ function renderLegacyAndSpecialMentions(text: string, mentionData: MentionLookup
             boxShadow: ringShadow(bg, PILL_BORDER),
           }}
         >
-          <span style={{ color: hex, transform: COLOR_SQUARE_NUDGE }}>■</span> {name}
+          <span style={{ position: 'relative', display: 'inline-block' }}>
+            <span style={{ color: 'transparent' }}>■</span>
+            <span
+              aria-hidden
+              style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                width: COLOR_SQUARE_SIZE,
+                height: COLOR_SQUARE_SIZE,
+                backgroundColor: hex,
+                borderRadius: '1px',
+              }}
+            />
+          </span>
+          {' '}{name}
         </span>
       );
     } else if (match[3] !== undefined) {

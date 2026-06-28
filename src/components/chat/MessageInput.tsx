@@ -135,10 +135,6 @@ export function MessageInput({
   const markdownButtonClass = `shrink-0 text-muted-foreground hover:text-primary rounded-full transition-colors flex items-center justify-center ${
     compact ? 'p-1' : (isMobile || isTablet) ? 'p-2 min-w-[40px] min-h-[40px]' : 'p-1.5'
   }`;
-  const rightActionsWidthClass = compact
-    ? (isMobile ? 'w-[4.5rem]' : 'w-[6.75rem]')
-    : (isMobile ? 'w-[4.75rem]' : 'w-[7.5rem]');
-
   const applyMarkdown = useCallback((prefix: string, suffix: string = prefix, isLinePrefix: boolean = false, blockWrap: boolean = false) => {
     const ta = textareaRef.current;
     if (!ta) return;
@@ -1013,7 +1009,7 @@ export function MessageInput({
           </div>
 
           {/* Action bar - bottom */}
-          <div className={`grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-1 border-t border-border/40 ${compact ? 'px-1.5 py-1' : 'px-2 py-1.5'}`}>
+          <div className={`flex items-center justify-between gap-1 border-t border-border/40 ${compact ? 'px-1.5 py-1' : 'px-2 py-1.5'}`}>
             <Popover open={plusMenuOpen} onOpenChange={setPlusMenuOpen}>
               <PopoverTrigger asChild>
                 <button
@@ -1060,7 +1056,7 @@ export function MessageInput({
             {/* Markdown formatting bar removed — guide available in user settings → Aide · Markdown */}
 
 
-            <div className={`flex items-center justify-end gap-1 shrink-0 ${rightActionsWidthClass}`}>
+            <div className="flex items-center justify-end gap-1 shrink-0">
               {!isMobile && (
                 <EmojiStickerPicker
                   serverId={serverId}

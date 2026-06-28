@@ -71,6 +71,7 @@ export function useWebRTC(): UseWebRTCReturn {
   const [isConnecting, setIsConnecting] = useState(false);
   const [isMicrophoneActive, setIsMicrophoneActive] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
+  const [localIsSpeaking, setLocalIsSpeaking] = useState(false);
   const [peers, setPeers] = useState<Map<string, PeerInfo>>(new Map());
   const [microphoneError, setMicrophoneError] = useState(false);
   const [hasMicrophoneAccess, setHasMicrophoneAccess] = useState(false);

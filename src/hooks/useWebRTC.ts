@@ -353,6 +353,7 @@ export function useWebRTC(): UseWebRTCReturn {
     mediaManager.cleanup();
     setIsMicrophoneActive(false);
     setAudioLevel(0);
+    setLocalIsSpeaking(false);
     setMicrophoneError(false);
     setHasMicrophoneAccess(false);
     setIsCameraActive(false);

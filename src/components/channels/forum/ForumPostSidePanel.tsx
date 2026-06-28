@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useForumComments, useCreateForumComment, useDeleteForumComment } from '@/hooks/useForumComments';
 import { useDeleteForumPost, useToggleForumVote, type ForumPost } from '@/hooks/useForumPosts';
+import { useHasChannelPermission } from '@/hooks/useUserChannelPermissions';
 
 function useProfile(userId: string | undefined) {
   return useQuery({
@@ -70,7 +71,9 @@ export function ForumPostSidePanel({ post, hasVoted, onClose }: Props) {
   const toggleVote = useToggleForumVote(post.channel_id);
   const [replyText, setReplyText] = useState('');
 
+  const canManageForum = useHasChannelPermission(post.channel_id, 'manage_forum_posts');
   const isAuthor = user?.id === post.author_id;
+  const canDeletePost = isAuthor || canManageForum;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -113,7 +116,7 @@ export function ForumPostSidePanel({ post, hasVoted, onClose }: Props) {
             <ArrowUp className={cn('w-3.5 h-3.5', hasVoted && 'fill-current')} />
             {post.upvote_count}
           </Button>
-          {isAuthor && (
+          {canDeletePost && (
             <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => { if (confirm('Supprimer ce sujet ?')) { deletePost.mutate(post.id); onClose(); } }}>
               <Trash2 className="w-4 h-4" />
             </Button>
@@ -137,7 +140,7 @@ export function ForumPostSidePanel({ post, hasVoted, onClose }: Props) {
         </div>
         <div className="px-1 pb-3">
           {comments.map((c) => (
-            <CommentRow key={c.id} comment={c} postId={post.id} canDelete={user?.id === c.author_id} />
+            <CommentRow key={c.id} comment={c} postId={post.id} canDelete={user?.id === c.author_id || canManageForum} />
           ))}
           {comments.length === 0 && (
             <p className="px-3 py-6 text-center text-sm text-muted-foreground">Aucune réponse pour le moment.</p>

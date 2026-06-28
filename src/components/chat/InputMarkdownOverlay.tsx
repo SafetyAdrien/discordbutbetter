@@ -272,7 +272,23 @@ function renderLegacyAndSpecialMentions(text: string, mentionData: MentionLookup
             boxShadow: ringShadow(bg, PILL_BORDER),
           }}
         >
-          <span style={{ color: hex, transform: COLOR_SQUARE_NUDGE }}>■</span> {name}
+          <span style={{ position: 'relative', display: 'inline-block' }}>
+            <span style={{ color: 'transparent' }}>■</span>
+            <span
+              aria-hidden
+              style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                width: COLOR_SQUARE_SIZE,
+                height: COLOR_SQUARE_SIZE,
+                backgroundColor: hex,
+                borderRadius: '1px',
+              }}
+            />
+          </span>
+          {' '}{name}
         </span>
       );
     } else if (match[3] !== undefined) {

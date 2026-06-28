@@ -75,6 +75,7 @@ export function MentionAutocomplete({
   members = [],
   roles = [],
   channels = [],
+  colors = [],
   onSelect,
   onClose,
   selectedIndex,
@@ -114,8 +115,22 @@ export function MentionAutocomplete({
         })()
       : [];
 
+  const filteredColors =
+    type === "color"
+      ? (() => {
+          const normalizedQuery = normalizeForSearch(query);
+          return colors
+            .filter((c) => normalizeForSearch(c.name).includes(normalizedQuery))
+            .slice(0, 10);
+        })()
+      : [];
+
   const totalCount =
-    type === "user" ? filteredMembers.length + rolesAndGlobal.length : filteredChannels.length;
+    type === "user"
+      ? filteredMembers.length + rolesAndGlobal.length
+      : type === "channel"
+        ? filteredChannels.length
+        : filteredColors.length;
 
   // Scroll selected item into view
   useEffect(() => {

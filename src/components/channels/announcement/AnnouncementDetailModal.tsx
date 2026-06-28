@@ -90,7 +90,7 @@ export function AnnouncementDetailModal({
   };
 
   const isAuthor = announcement.author.id === user?.id;
-  const showActions = canEdit || isAuthor;
+  const showActions = (canEdit ?? canManageChannel) || isAuthor;
 
   return (
     <>

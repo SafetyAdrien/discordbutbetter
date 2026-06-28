@@ -13,6 +13,7 @@ import {
   ColorSwatchToken,
 } from '@/components/chat/mentions/MentionComponents';
 import { snowflakeToUuid, isValidSnowflake, uuidToSnowflake } from '@/lib/snowflake';
+import { normalizeHex } from '@/lib/colorNames';
 
 
 // ============================================

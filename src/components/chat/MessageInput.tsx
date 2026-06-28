@@ -914,6 +914,7 @@ export function MessageInput({
             members={members}
             roles={roles}
             channels={channels}
+            colors={NAMED_COLORS}
             onSelect={handleMentionSelect}
             onClose={() => setMentionState(null)}
             selectedIndex={mentionSelectedIndex}

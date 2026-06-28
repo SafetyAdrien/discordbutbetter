@@ -249,7 +249,9 @@ function renderLegacyAndSpecialMentions(text: string, mentionData: MentionLookup
           className="rounded-[3px]"
           style={{
             backgroundColor: bg,
-            boxShadow: `${sideShadow(bg)}, 0 0 0 1px hsl(var(--border) / 0.65)`,
+            boxShadow: sideShadow(bg),
+            outline: '1px solid hsl(var(--border) / 0.65)',
+            outlineOffset: '0px',
           }}
         >
           <span style={{ color: hex }}>■</span> {name}

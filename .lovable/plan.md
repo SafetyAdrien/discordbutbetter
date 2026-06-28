@@ -1,13 +1,27 @@
-Plan de mise à jour de `src/lib/colorNames.ts` :
+## Diagnostic
+Le `DialogContent` mesure 320 px (border-box, padding 24/24 → 272 px de contenu), mais la racine `ModernColorPicker` mesure 345 px et déborde de **49 px à droite** (gauche OK à 24 px). Cause : le dialog est en `grid` ; le track se cale sur le **min-content** du picker, qui n'a ni `w-full` ni `min-w-0`. La barre du bas contient un `<input>` sans `min-w-0` (taille intrinsèque ~20 chars) + bouton format `min-w-[80px]`, ce qui gonfle le min-content à 345 px.
 
-1. Remplacer l'intégralité de la table `NAMED_COLORS` par les 148 noms de couleurs CSS Level 4 en anglais standard, organisés par familles (reds, oranges, yellows, etc.). La logique `nearestColorName()` reste inchangée.
+## Correctifs (parité gauche/droite stricte, aucune autre régression)
 
-2. Insérer une entrée supplémentaire hors liste standard, en début de table, avant les couleurs CSS : `{ hex: '#5865F2', name: 'Blurple' }`. Le match exact (d === 0) dans `nearestColorName()` court-circuite la recherche, donc `#5865F2` exact retournera "Blurple" en priorité.
+### Fix 1 — `src/components/profile/calendar/ModernColorPicker.tsx`
+Sur la racine, ajouter `w-full min-w-0` au début du `cn(...)` :
+```diff
+- 'rounded-2xl border border-border bg-card p-3 space-y-3 select-none',
++ 'w-full min-w-0 rounded-2xl border border-border bg-card p-3 space-y-3 select-none',
+```
+Sur l'`<input>` de la barre du bas, ajouter `min-w-0` (sur l'input lui-même, pas seulement son wrapper) — déjà présent via `flex-1 min-w-0`, mais l'input HTML a une taille intrinsèque ; passer aussi `size={1}` ou laisser le `min-w-0` actuel suffira une fois la racine corrigée.
 
-3. Vérification après modification :
-   - `nearestColorName('#5865F2')` → "Blurple"
-   - `nearestColorName('#5865F0')` → nom anglais le plus proche (probablement "Blurple" si la distance est plus courte, sinon le CSS standard le plus proche)
+### Fix 2 (défensif) — `src/components/chat/MessageInput.tsx`
+Sur le `<DialogContent>` du picker, ajouter `overflow-hidden` à la classe pour garantir qu'aucun overflow visuel ne fuit même si un futur enfant grandit :
+```diff
+- <DialogContent className="sm:max-w-[320px]">
++ <DialogContent className="sm:max-w-[320px] overflow-hidden">
+```
 
-4. Vérifier le build TypeScript (`tsgo --noEmit`) après modification.
-
-Aucun autre fichier n'est concerné.
+## Vérification après build
+Re-mesurer en preview :
+- `DialogContent.getBoundingClientRect().width` = 320
+- `picker.getBoundingClientRect().left - dialog.left` = 24
+- `dialog.right - picker.getBoundingClientRect().right` = 24
+- Plus aucun overflow horizontal (`scrollWidth === clientWidth` sur le dialog).
+- `tsgo --noEmit` : 0 erreur.

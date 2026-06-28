@@ -5,7 +5,7 @@ import { ChevronDown, ChevronRight, Monitor, X, Maximize2 } from 'lucide-react';
 import { DiscordMicOff as MicOff } from '@/components/icons/DiscordMicOff';
 import { DiscordHeadphonesOff as HeadphoneOff } from '@/components/icons/DiscordHeadphonesOff';
 import { VoiceVideoTile } from './VoiceVideoTile';
-import { VoiceParticipantPopover } from './VoiceParticipantPopover';
+// VoiceParticipantPopover replaced by VoiceParticipantContextMenu (Fix L)
 import { VoiceParticipantContextMenu } from './VoiceParticipantContextMenu';
 import { AudioLevelIndicator } from './AudioLevelIndicator';
 import { useAuth } from '@/contexts/AuthContext';
@@ -72,7 +72,7 @@ export function VoiceParticipantGrid({
   canModerate = false,
 }: VoiceParticipantGridProps) {
   const { user } = useAuth();
-  const { getUserVolume, setUserVolume, serverMuteUser, serverDeafenUser } = useVoiceUserSettings();
+  const { serverMuteUser, serverDeafenUser } = useVoiceUserSettings();
   
   const [screensOpen, setScreensOpen] = useState(true);
   const [participantsOpen, setParticipantsOpen] = useState(true);

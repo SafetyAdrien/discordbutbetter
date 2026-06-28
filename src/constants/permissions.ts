@@ -3,10 +3,10 @@ import type { Database } from '@/integrations/supabase/types';
 type DBPermission = Database['public']['Enums']['server_permission'];
 
 // Extended permissions type that includes all new permissions
-export type ServerPermission = DBPermission | 
+export type ServerPermission = DBPermission |
   // General
-  'view_channel' | 'create_instant_invite' | 'change_nickname' | 'manage_nicknames' | 
-  'manage_emojis' | 'manage_stickers' | 'view_audit_log' | 'view_server_insights' | 
+  'view_channel' | 'create_instant_invite' | 'change_nickname' | 'manage_nicknames' |
+  'manage_emojis' | 'manage_stickers' | 'view_audit_log' | 'view_server_insights' |
   'manage_webhooks' | 'manage_guild_expressions' |
   // Text
   'add_reactions' | 'use_slash_commands' | 'use_external_emojis' | 'use_external_stickers' |
@@ -25,6 +25,8 @@ export type ServerPermission = DBPermission |
   'lock_forum_posts' | 'add_forum_tags' | 'manage_forum_tags' | 'moderate_forum' |
   // Announcement (only extras beyond text)
   'publish_messages' | 'follow_announcements' |
+  'manage_announcements' | 'create_announcements' | 'edit_announcements' | 'delete_announcements' |
+  'pin_announcements' | 'feature_announcements' | 'moderate_announcements' | 'view_announcement_analytics' |
   // Media
   'upload_media' | 'download_media' | 'manage_media' | 'create_albums' | 'delete_albums' |
   'organize_media' | 'tag_media' | 'share_media' | 'moderate_media' | 'view_media_analytics' |
@@ -57,19 +59,29 @@ export type ChannelType = 'text' | 'voice' | 'forum' | 'announcement' | 'media' 
 // Permission categories with all permissions
 export const PERMISSION_CATEGORIES: PermissionCategory[] = [
   {
+    id: 'administration',
+    label: 'Administration',
+    permissions: [
+      { key: 'administrator', label: 'Administrateur', description: 'Tous les droits, contourne toutes les restrictions' },
+      { key: 'manage_server', label: 'Gérer le serveur', description: 'Modifier les paramètres du serveur' },
+      { key: 'manage_roles', label: 'Gérer les permissions', description: 'Modifier les permissions et les rôles' },
+      { key: 'manage_channels', label: 'Gérer les salons', description: 'Créer, modifier et supprimer les salons' },
+      { key: 'manage_webhooks', label: 'Gérer les webhooks', description: 'Créer et gérer les webhooks' },
+      { key: 'manage_emojis', label: 'Gérer les emojis', description: 'Ajouter et supprimer des emojis personnalisés' },
+      { key: 'manage_stickers', label: 'Gérer les stickers', description: 'Ajouter et supprimer des stickers' },
+      { key: 'manage_guild_expressions', label: 'Gérer les expressions', description: 'Gérer emojis, stickers et sons du serveur' },
+      { key: 'view_audit_log', label: 'Voir le journal d\'audit', description: 'Consulter l\'historique des actions' },
+      { key: 'view_server_insights', label: 'Voir les statistiques', description: 'Accéder aux statistiques du serveur' },
+    ],
+  },
+  {
     id: 'general',
     label: 'Général',
     permissions: [
       { key: 'view_channel', label: 'Voir le salon', description: 'Permet de voir ce salon et son contenu' },
-      { key: 'manage_channels', label: 'Gérer les salons', description: 'Modifier les paramètres et supprimer le salon' },
-      { key: 'manage_roles', label: 'Gérer les permissions', description: 'Modifier les permissions du salon' },
       { key: 'create_instant_invite', label: 'Créer des invitations', description: 'Créer des liens d\'invitation vers le serveur' },
-      { key: 'manage_webhooks', label: 'Gérer les webhooks', description: 'Créer et gérer les webhooks du salon' },
-      { key: 'manage_nicknames', label: 'Gérer les pseudos', description: 'Modifier les pseudos des autres membres' },
       { key: 'change_nickname', label: 'Changer son pseudo', description: 'Modifier son propre pseudo' },
-      { key: 'view_audit_log', label: 'Voir le journal d\'audit', description: 'Consulter l\'historique des actions' },
-      { key: 'view_server_insights', label: 'Voir les statistiques', description: 'Accéder aux statistiques du serveur' },
-      { key: 'administrator', label: 'Administrateur', description: 'Tous les droits, contourne toutes les restrictions' },
+      { key: 'use_application_commands', label: 'Commandes d\'application', description: 'Utiliser les commandes des applications' },
     ],
   },
   {
@@ -78,14 +90,19 @@ export const PERMISSION_CATEGORIES: PermissionCategory[] = [
     permissions: [
       { key: 'kick_members', label: 'Expulser des membres', description: 'Expulser des membres du serveur' },
       { key: 'ban_members', label: 'Bannir des membres', description: 'Bannir définitivement des membres' },
+      { key: 'manage_nicknames', label: 'Gérer les pseudos', description: 'Modifier les pseudos des autres membres' },
       { key: 'mute_members', label: 'Rendre muet', description: 'Rendre muet des membres en vocal' },
       { key: 'deafen_members', label: 'Rendre sourd', description: 'Mettre en sourdine des membres' },
       { key: 'move_members', label: 'Déplacer des membres', description: 'Déplacer des membres entre les salons vocaux' },
       { key: 'manage_messages', label: 'Gérer les messages', description: 'Supprimer et épingler les messages des autres' },
       { key: 'manage_threads', label: 'Gérer les fils', description: 'Gérer et supprimer les fils de discussion' },
-      { key: 'manage_server', label: 'Gérer le serveur', description: 'Modifier les paramètres du serveur' },
-      { key: 'manage_emojis', label: 'Gérer les emojis', description: 'Ajouter et supprimer des emojis personnalisés' },
-      { key: 'manage_stickers', label: 'Gérer les stickers', description: 'Ajouter et supprimer des stickers' },
+      // moderate_* duplicated here AND in their vertical category (shared enum key → shared state)
+      { key: 'moderate_forum', label: 'Modérer le forum', description: 'Modération complète du forum' },
+      { key: 'moderate_media', label: 'Modérer les médias', description: 'Supprimer le contenu inapproprié' },
+      { key: 'moderate_events', label: 'Modérer les événements', description: 'Modération du calendrier' },
+      { key: 'moderate_polls', label: 'Modérer les sondages', description: 'Modération des sondages' },
+      { key: 'moderate_stage', label: 'Modérer la scène', description: 'Gérer les orateurs et l\'audience' },
+      { key: 'moderate_announcements', label: 'Modérer les annonces', description: 'Modération du salon Annonces' },
     ],
   },
   {
@@ -126,9 +143,7 @@ export const PERMISSION_CATEGORIES: PermissionCategory[] = [
       { key: 'stream', label: 'Diffuser', description: 'Partager son écran' },
       { key: 'use_voice_activity', label: 'Détection vocale', description: 'Utiliser la détection automatique de la voix' },
       { key: 'priority_speaker', label: 'Orateur prioritaire', description: 'Être entendu plus clairement' },
-      { key: 'mute_members', label: 'Rendre muet', description: 'Couper le micro des autres membres' },
-      { key: 'deafen_members', label: 'Rendre sourd', description: 'Couper le son des autres membres' },
-      { key: 'move_members', label: 'Déplacer des membres', description: 'Déplacer des membres vers d\'autres salons' },
+      // mute/deafen/move_members live in Modération (single source of display) — voice/stage rely on the same enum key
       { key: 'use_soundboard', label: 'Soundboard', description: 'Utiliser les effets sonores' },
       { key: 'use_external_sounds', label: 'Sons externes', description: 'Utiliser des sons d\'autres serveurs' },
       { key: 'use_embedded_activities', label: 'Activités', description: 'Utiliser les activités intégrées' },
@@ -144,8 +159,6 @@ export const PERMISSION_CATEGORIES: PermissionCategory[] = [
       { key: 'request_to_speak', label: 'Demander la parole', description: 'Lever la main pour parler' },
       { key: 'invite_stage_speaker', label: 'Inviter des orateurs', description: 'Inviter des membres à parler' },
       { key: 'moderate_stage', label: 'Modérer la scène', description: 'Gérer les orateurs et l\'audience' },
-      { key: 'mute_members', label: 'Rendre muet', description: 'Couper le micro des orateurs' },
-      { key: 'move_members', label: 'Déplacer des membres', description: 'Déplacer entre scène et audience' },
       { key: 'start_embedded_activities', label: 'Activités de scène', description: 'Lancer des activités partagées' },
       { key: 'connect_voice', label: 'Rejoindre l\'audience', description: 'Rejoindre en tant que spectateur' },
     ],
@@ -170,6 +183,14 @@ export const PERMISSION_CATEGORIES: PermissionCategory[] = [
     id: 'announcement',
     label: 'Annonces',
     permissions: [
+      { key: 'view_announcement_analytics', label: 'Voir les statistiques', description: 'Accéder aux analytics des annonces' },
+      { key: 'create_announcements', label: 'Créer des annonces', description: 'Rédiger de nouvelles annonces' },
+      { key: 'edit_announcements', label: 'Modifier les annonces', description: 'Éditer les annonces existantes' },
+      { key: 'delete_announcements', label: 'Supprimer des annonces', description: 'Retirer des annonces' },
+      { key: 'pin_announcements', label: 'Épingler des annonces', description: 'Mettre en avant des annonces' },
+      { key: 'feature_announcements', label: 'Mettre en avant', description: 'Highlight d\'annonce' },
+      { key: 'manage_announcements', label: 'Gérer les annonces', description: 'Administration complète des annonces' },
+      { key: 'moderate_announcements', label: 'Modérer les annonces', description: 'Modération du salon Annonces' },
       { key: 'publish_messages', label: 'Publier vers d\'autres serveurs', description: 'Diffuser vers les serveurs suiveurs' },
       { key: 'follow_announcements', label: 'Suivre les annonces', description: 'Configurer le suivi des annonces' },
     ],
@@ -242,23 +263,23 @@ export const PERMISSION_CATEGORIES: PermissionCategory[] = [
 
 // Map channel types to relevant permission categories
 export const CHANNEL_TYPE_CATEGORIES: Record<ChannelType, string[]> = {
-  text: ['general', 'text', 'threads', 'polls'],
-  voice: ['general', 'voice', 'text'],
-  forum: ['general', 'forum', 'threads'],
-  announcement: ['general', 'text', 'announcement', 'threads', 'polls'],
-  media: ['general', 'media'],
-  calendar: ['general', 'calendar'],
-  tasks: ['general', 'tasks'],
-  stage: ['general', 'stage', 'voice'],
+  text: ['general', 'moderation', 'text', 'threads', 'polls'],
+  voice: ['general', 'moderation', 'voice', 'text'],
+  forum: ['general', 'moderation', 'forum', 'threads'],
+  announcement: ['general', 'moderation', 'text', 'announcement', 'threads', 'polls'],
+  media: ['general', 'moderation', 'media'],
+  calendar: ['general', 'moderation', 'calendar'],
+  tasks: ['general', 'moderation', 'tasks'],
+  stage: ['general', 'moderation', 'stage', 'voice'],
   link: ['general'],
 };
 
-// Category permissions use general + moderation categories
-export const CATEGORY_PERMISSION_CATEGORIES = ['general', 'moderation', 'text', 'voice'];
+// Category permissions use general + moderation + admin categories
+export const CATEGORY_PERMISSION_CATEGORIES = ['administration', 'general', 'moderation', 'text', 'voice'];
 
 // Role permissions use all categories
 export const ROLE_PERMISSION_CATEGORIES = [
-  'general', 'moderation', 'text', 'threads', 'voice', 'stage', 
+  'administration', 'general', 'moderation', 'text', 'threads', 'voice', 'stage',
   'forum', 'announcement', 'media', 'calendar', 'tasks', 'polls'
 ];
 

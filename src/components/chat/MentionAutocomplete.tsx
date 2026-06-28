@@ -171,7 +171,7 @@ export function MentionAutocomplete({
   return (
     <div
       ref={containerRef}
-      className="absolute bottom-full left-0 right-0 mb-1 bg-[#272e4e] border border-border rounded-lg shadow-lg overflow-hidden z-50"
+      className="absolute bottom-full left-0 right-0 mb-1 bg-popover border border-border rounded-lg shadow-lg overflow-hidden z-50"
     >
       <ScrollArea className="max-h-[280px]">
         <div className="p-1">

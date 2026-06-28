@@ -8,7 +8,7 @@ import { CreateDMPollModal } from './CreateDMPollModal';
 import { InputMarkdownOverlay, hasOverlayMarkdown, OVERLAY_FONT_SIZE, OVERLAY_LINE_HEIGHT, INPUT_FONT_FAMILY, MentionEntry } from './InputMarkdownOverlay';
 import { ModernColorPicker } from '@/components/profile/calendar/ModernColorPicker';
 import { MentionAutocomplete, MentionMember, MentionRole, MentionChannel } from './MentionAutocomplete';
-import { NAMED_COLORS, normalizeHex } from '@/lib/colorNames';
+import { NAMED_COLORS, normalizeHex, nearestColorName } from '@/lib/colorNames';
 import { AttachmentStagingArea } from './upload/AttachmentStagingArea';
 import { PendingAttachment } from '@/hooks/usePendingAttachments';
 import { normalizeForSearch } from '@/lib/utils';
@@ -305,7 +305,7 @@ export function MessageInput({
   }, [value, onChange]);
 
   const insertColor = useCallback((hex: string) => {
-    const glyph = '■';
+    const glyph = `\u25A0 ${nearestColorName(hex)}`;
     const textarea = textareaRef.current;
     const insertAt = textarea ? textarea.selectionStart : value.length;
     const insertEnd = textarea ? textarea.selectionEnd : value.length;
@@ -1206,8 +1206,24 @@ export function MessageInput({
           const list = mentionEntriesRef.current.slice();
           const e = list[idx];
           if (!e) { close(); return; }
-          list[idx] = { ...e, color: resolved, token: `<c:${resolved}>` };
+          const newDisplay = `\u25A0 ${nearestColorName(resolved)}`;
+          // Locate the old display in value at its sequential position.
+          let cur = 0;
+          let oldAt = -1;
+          for (let i = 0; i <= idx; i++) {
+            const en = list[i];
+            if (!en?.display) continue;
+            const at = value.indexOf(en.display, cur);
+            if (at === -1) break;
+            if (i === idx) { oldAt = at; break; }
+            cur = at + en.display.length;
+          }
+          list[idx] = { ...e, display: newDisplay, color: resolved, token: `<c:${resolved}>` };
           mentionEntriesRef.current = list;
+          if (oldAt !== -1) {
+            const newValue = value.slice(0, oldAt) + newDisplay + value.slice(oldAt + e.display.length);
+            onChange(newValue);
+          }
           setMentionRev((r) => r + 1);
           close();
         };

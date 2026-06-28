@@ -14,6 +14,7 @@ import { cn, normalizeForSearch, formatChannelName } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { uuidToSnowflake } from "@/lib/snowflake";
+import { nearestColorName } from "@/lib/colorNames";
 
 const channelTypeIconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   text: StreamlineHash,
@@ -165,7 +166,7 @@ export function MentionAutocomplete({
 
   const handleSelectColor = (color: MentionColor) => {
     const hex = color.hex.startsWith('#') ? color.hex : `#${color.hex}`;
-    onSelect(`<c:${hex.toLowerCase()}>`, '\u25A0');
+    onSelect(`<c:${hex.toLowerCase()}>`, `\u25A0 ${nearestColorName(hex)}`);
   };
 
   return (

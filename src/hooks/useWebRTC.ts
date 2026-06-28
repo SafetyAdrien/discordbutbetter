@@ -22,6 +22,7 @@ export interface UseWebRTCReturn {
   isConnecting: boolean;
   isMicrophoneActive: boolean;
   audioLevel: number;
+  localIsSpeaking: boolean;
   peers: Map<string, PeerInfo>;
   connect: (channelId: string, initial?: { muted: boolean; deafened: boolean }) => Promise<void>;
   disconnect: () => Promise<void>;
@@ -70,6 +71,7 @@ export function useWebRTC(): UseWebRTCReturn {
   const [isConnecting, setIsConnecting] = useState(false);
   const [isMicrophoneActive, setIsMicrophoneActive] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
+  const [localIsSpeaking, setLocalIsSpeaking] = useState(false);
   const [peers, setPeers] = useState<Map<string, PeerInfo>>(new Map());
   const [microphoneError, setMicrophoneError] = useState(false);
   const [hasMicrophoneAccess, setHasMicrophoneAccess] = useState(false);
@@ -351,6 +353,7 @@ export function useWebRTC(): UseWebRTCReturn {
     mediaManager.cleanup();
     setIsMicrophoneActive(false);
     setAudioLevel(0);
+    setLocalIsSpeaking(false);
     setMicrophoneError(false);
     setHasMicrophoneAccess(false);
     setIsCameraActive(false);
@@ -435,6 +438,7 @@ export function useWebRTC(): UseWebRTCReturn {
         audioLevelIntervalRef.current = setInterval(() => {
           const localVAD = mediaManager.getLocalVADState();
           setAudioLevel(localVAD.level);
+          setLocalIsSpeaking(localVAD.isSpeaking);
           // Fix #2 — actually gate the transmitted signal based on VAD level.
           audioProcessor.applyNoiseGate(localVAD.level);
 
@@ -741,6 +745,7 @@ export function useWebRTC(): UseWebRTCReturn {
     isConnecting,
     isMicrophoneActive,
     audioLevel,
+    localIsSpeaking,
     peers,
     connect,
     disconnect,

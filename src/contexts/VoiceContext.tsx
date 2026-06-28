@@ -309,7 +309,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     const newAudioLevels = new Map<string, number>();
     
     // Check if local user is speaking (audio level > threshold and not muted)
-    if (webrtc.audioLevel > 0.05 && !voiceState.isMuted && user?.id) {
+    if (webrtc.localIsSpeaking && !voiceState.isMuted && user?.id) {
       newSpeaking.add(user.id);
     }
     if (user?.id) {
@@ -327,7 +327,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     setSpeakingUsers(newSpeaking);
     setAudioLevels(newAudioLevels);
     setLocalAudioLevel(webrtc.audioLevel);
-  }, [webrtc.peers, webrtc.audioLevel, voiceState.isMuted, user?.id]);
+  }, [webrtc.peers, webrtc.audioLevel, webrtc.localIsSpeaking, voiceState.isMuted, user?.id]);
 
   // Show toast when microphone access fails
   useEffect(() => {

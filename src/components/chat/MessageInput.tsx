@@ -1035,6 +1035,8 @@ export function MessageInput({
                 let s = ta.selectionStart;
                 let en = ta.selectionEnd;
                 const collapsed = s === en;
+                const sBefore = s;
+                const enBefore = en;
                 let changed = false;
                 for (const r of ranges) {
                   if (collapsed) {
@@ -1050,9 +1052,13 @@ export function MessageInput({
                 }
                 if (changed) {
                   if (s > en) { const t = s; s = en; en = t; }
+                  console.log('[colorDbg] onSelect SNAP', { sBefore, enBefore, sAfter: s, enAfter: en, ranges });
                   ta.setSelectionRange(s, en);
+                } else {
+                  console.log('[colorDbg] onSelect no-snap', { s: sBefore, en: enBefore, ranges });
                 }
               }}
+
               onClick={(e) => {
                 const ta = e.currentTarget;
                 const entries = mentionEntriesRef.current;

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { EmojiStickerPicker } from './EmojiStickerPicker';
 import { CreatePollModal } from './CreatePollModal';
@@ -1047,6 +1048,17 @@ export function MessageInput({
                     <span>Créer un sondage</span>
                   </button>
                 )}
+                <button
+                  type="button"
+                  className="flex items-center gap-2 w-full px-3 py-2 rounded-md hover:bg-muted transition-colors text-sm"
+                  onClick={() => {
+                    setPlusMenuOpen(false);
+                    setColorPickerOpen(true);
+                  }}
+                >
+                  <Palette className="w-4 h-4" />
+                  <span>Couleur</span>
+                </button>
                 {!canAttachFiles && !canCreatePolls && (
                   <span className="text-xs text-muted-foreground px-3 py-2 block">Aucune action disponible</span>
                 )}
@@ -1087,30 +1099,6 @@ export function MessageInput({
                   </button>
                 }
               />
-              <Popover open={colorPickerOpen} onOpenChange={setColorPickerOpen}>
-                <PopoverTrigger asChild>
-                  <button
-                    type="button"
-                    aria-label="Insérer une couleur"
-                    className={`text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-full transition-all duration-150 active:scale-95 flex items-center justify-center ${compact ? 'h-8 w-8' : 'h-9 w-9'}`}
-                  >
-                    <Palette className={compact ? 'w-4 h-4' : 'w-[18px] h-[18px]'} />
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent side="top" align="end" className="w-auto p-3">
-                  <ModernColorPicker
-                    value={draftColor}
-                    onChange={setDraftColor}
-                  />
-                  <Button
-                    size="sm"
-                    className="w-full mt-2"
-                    onClick={() => { insertColor(draftColor); setColorPickerOpen(false); }}
-                  >
-                    Insérer
-                  </Button>
-                </PopoverContent>
-              </Popover>
               <button
                 type="submit"
                 disabled={disabled || !canSubmitMessage}
@@ -1124,7 +1112,24 @@ export function MessageInput({
         </div>
       </form>
 
-      
+      <Dialog open={colorPickerOpen} onOpenChange={setColorPickerOpen}>
+        <DialogContent className="sm:max-w-[320px]">
+          <DialogHeader>
+            <DialogTitle>Insérer une couleur</DialogTitle>
+          </DialogHeader>
+          <ModernColorPicker
+            value={draftColor}
+            onChange={setDraftColor}
+          />
+          <Button
+            size="sm"
+            className="w-full mt-4"
+            onClick={() => { insertColor(draftColor); setColorPickerOpen(false); }}
+          >
+            Insérer
+          </Button>
+        </DialogContent>
+      </Dialog>
       
       {dmConversationId ? (
         <CreateDMPollModal

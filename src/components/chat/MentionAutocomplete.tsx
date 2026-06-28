@@ -163,6 +163,11 @@ export function MentionAutocomplete({
     onSelect(`<#${snowflakeId}>`, `#${formattedName}`);
   };
 
+  const handleSelectColor = (color: MentionColor) => {
+    const hex = color.hex.startsWith('#') ? color.hex : `#${color.hex}`;
+    onSelect(`<color:${hex.toLowerCase()}>`, '\u25A0');
+  };
+
   return (
     <div
       ref={containerRef}

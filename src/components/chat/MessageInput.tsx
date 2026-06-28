@@ -300,6 +300,26 @@ export function MessageInput({
     }
   }, [value, onChange]);
 
+  const insertColor = useCallback((hex: string) => {
+    const glyph = '■';
+    const textarea = textareaRef.current;
+    const insertAt = textarea ? textarea.selectionStart : value.length;
+    const insertEnd = textarea ? textarea.selectionEnd : value.length;
+    const newValue = value.slice(0, insertAt) + glyph + value.slice(insertEnd);
+    mentionEntriesRef.current = [
+      ...mentionEntriesRef.current,
+      { display: glyph, token: `<c:${hex}>`, kind: 'color', color: hex },
+    ];
+    setMentionRev(r => r + 1);
+    onChange(newValue);
+    setTimeout(() => {
+      if (textarea) {
+        textarea.selectionStart = textarea.selectionEnd = insertAt + glyph.length;
+        textarea.focus();
+      }
+    }, 0);
+  }, [value, onChange]);
+
 
 
   // Handle file input change

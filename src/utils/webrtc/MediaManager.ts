@@ -1031,6 +1031,13 @@ export class MediaManager {
 
   // ==================== CLEANUP ====================
 
+  async resumeAudioContext(): Promise<void> {
+    if (this.audioContext && this.audioContext.state === 'suspended') {
+      await this.audioContext.resume();
+      console.log('[MediaManager] AudioContext resumed');
+    }
+  }
+
   cleanup(): void {
     this.stopMicrophone();
     this.stopCamera();

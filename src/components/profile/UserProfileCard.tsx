@@ -124,11 +124,14 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers, 
     setShowStatusMenu(false);
   };
 
+  const isSpeakingSelf = !!(profile?.id && speakingUsers?.has(profile.id));
+
   return (
     <div
       className={cn(
-        "h-full mx-2 mb-2 px-3 py-1 flex items-center gap-2.5 bg-[hsl(var(--surface-2))] border border-border/40",
-        connectedToVoice ? "rounded-b-2xl rounded-t-none border-t-0" : "rounded-2xl"
+        "h-full mx-2 mb-2 px-3 py-1 flex items-center gap-2.5 bg-[hsl(var(--surface-2))] border transition-colors",
+        connectedToVoice ? "rounded-b-2xl rounded-t-none border-t-0" : "rounded-2xl",
+        isSpeakingSelf ? "border-[hsl(var(--online))]" : "border-border/40"
       )}
       style={{ boxShadow: connectedToVoice ? undefined : 'var(--shadow-elevation-2)' }}
     >
@@ -139,12 +142,7 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers, 
               <UserAvatarImage
                 src={profile?.avatar_url}
                 alt={profile?.display_name}
-                className={cn(
-                  "w-8 h-8 transition-all",
-                  profile?.id && speakingUsers?.has(profile.id)
-                    ? "ring-2 ring-[hsl(var(--voice-active))] voice-active-ring"
-                    : "ring-2 ring-primary/30",
-                )}
+                className="w-8 h-8 ring-2 ring-primary/30"
                 fallbackClassName="bg-primary/20 text-primary text-sm"
                 fallback={profile?.display_name?.charAt(0).toUpperCase() || '?'}
               />

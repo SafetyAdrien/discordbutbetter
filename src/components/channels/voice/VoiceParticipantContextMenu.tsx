@@ -6,17 +6,26 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 import { Volume2, VolumeX, RotateCcw, UserCircle } from 'lucide-react';
+import { DiscordMicOff as MicOff } from '@/components/icons/DiscordMicOff';
 import { DiscordHeadphonesOff as HeadphoneOff } from '@/components/icons/DiscordHeadphonesOff';
 import { useVoiceUserSettings } from '@/hooks/useVoiceUserSettings';
 import { useAuth } from '@/contexts/AuthContext';
 import { Slider } from '@/components/ui/slider';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface VoiceParticipantContextMenuProps {
   participantUserId: string;
   participantName: string;
   onViewProfile: () => void;
   children: React.ReactNode;
+  // Server-side moderation (optional)
+  canModerate?: boolean;
+  serverMuted?: boolean;
+  serverDeafened?: boolean;
+  onServerMute?: (muted: boolean) => void;
+  onServerDeafen?: (deafened: boolean) => void;
+  channelId?: string;
+  isLocal?: boolean;
 }
 
 export function VoiceParticipantContextMenu({
@@ -24,15 +33,27 @@ export function VoiceParticipantContextMenu({
   participantName,
   onViewProfile,
   children,
+  canModerate = false,
+  serverMuted = false,
+  serverDeafened = false,
+  onServerMute,
+  onServerDeafen,
+  isLocal,
 }: VoiceParticipantContextMenuProps) {
   const { user } = useAuth();
   const { getUserVolume, setUserVolume } = useVoiceUserSettings();
-  const isOwnUser = user?.id === participantUserId;
+  const isOwnUser = isLocal ?? (user?.id === participantUserId);
   const currentVolume = getUserVolume(participantUserId);
   const [localVolume, setLocalVolume] = useState(currentVolume);
 
+  // Keep local in sync if external volume changes between menu openings
+  useEffect(() => {
+    setLocalVolume(currentVolume);
+  }, [currentVolume]);
+
   const handleMuteUser = () => {
     setUserVolume.mutate({ targetUserId: participantUserId, volume: 0 });
+    setLocalVolume(0);
   };
 
   const handleResetVolume = () => {
@@ -48,6 +69,13 @@ export function VoiceParticipantContextMenu({
     setUserVolume.mutate({ targetUserId: participantUserId, volume: values[0] });
   };
 
+  // Stop pointer/click propagation so Radix ContextMenu does not auto-close
+  // when the user drags the slider. The slider lives inside a plain <div>,
+  // not a ContextMenuItem, so there is no onSelect to intercept.
+  const stopMenuClose = (e: React.SyntheticEvent) => {
+    e.stopPropagation();
+  };
+
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
@@ -56,8 +84,13 @@ export function VoiceParticipantContextMenu({
       <ContextMenuContent className="w-64">
         {!isOwnUser && (
           <>
-            {/* Volume Slider */}
-            <div className="px-3 py-2 space-y-2">
+            {/* Volume Slider — non-Item wrapper to prevent menu auto-close on drag */}
+            <div
+              className="px-3 py-2 space-y-2"
+              onPointerDown={stopMenuClose}
+              onMouseDown={stopMenuClose}
+              onClick={stopMenuClose}
+            >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium text-foreground">Volume utilisateur</span>
                 <span className="text-xs text-muted-foreground">{localVolume}%</span>
@@ -70,29 +103,48 @@ export function VoiceParticipantContextMenu({
                 onValueCommit={handleVolumeCommit}
                 className="w-full"
               />
+              {localVolume > 100 && (
+                <p className="text-[10px] text-warning">Volume amplifié au-delà de 100%</p>
+              )}
             </div>
             <ContextMenuSeparator />
-            <ContextMenuItem
-              onClick={handleMuteUser}
-              className="gap-2"
-            >
+            <ContextMenuItem onClick={handleMuteUser} className="gap-2">
               <VolumeX className="w-4 h-4" />
               {currentVolume === 0 ? 'Déjà muté' : 'Muter cet utilisateur'}
             </ContextMenuItem>
-            <ContextMenuItem
-              onClick={handleResetVolume}
-              className="gap-2"
-            >
+            <ContextMenuItem onClick={handleResetVolume} className="gap-2">
               <RotateCcw className="w-4 h-4" />
               Réinitialiser le volume
             </ContextMenuItem>
+
+            {/* Server-side moderation */}
+            {canModerate && (onServerMute || onServerDeafen) && (
+              <>
+                <ContextMenuSeparator />
+                {onServerMute && (
+                  <ContextMenuItem
+                    onClick={() => onServerMute(!serverMuted)}
+                    className="gap-2"
+                  >
+                    <MicOff className="w-4 h-4" />
+                    {serverMuted ? 'Réactiver le micro (serveur)' : 'Couper le micro (serveur)'}
+                  </ContextMenuItem>
+                )}
+                {onServerDeafen && (
+                  <ContextMenuItem
+                    onClick={() => onServerDeafen(!serverDeafened)}
+                    className="gap-2"
+                  >
+                    <HeadphoneOff className="w-4 h-4" />
+                    {serverDeafened ? 'Réactiver le son (serveur)' : 'Rendre sourd (serveur)'}
+                  </ContextMenuItem>
+                )}
+              </>
+            )}
             <ContextMenuSeparator />
           </>
         )}
-        <ContextMenuItem
-          onClick={onViewProfile}
-          className="gap-2"
-        >
+        <ContextMenuItem onClick={onViewProfile} className="gap-2">
           <UserCircle className="w-4 h-4" />
           Voir le profil
         </ContextMenuItem>

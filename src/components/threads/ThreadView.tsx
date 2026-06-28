@@ -201,6 +201,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
     'create_polls',
     'mention_everyone',
     'manage_threads',
+    'manage_polls',
   ]);
   
   // Use send_messages_in_threads, fallback to send_messages
@@ -210,6 +211,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
   const canCreatePolls = canPerm('create_polls');
   const canMentionEveryone = canPerm('mention_everyone');
   const canManageThreads = canPerm('manage_threads');
+  const canManagePolls = canPerm('manage_polls');
   
   // Thread locked/closed state
   const isThreadLocked = thread?.locked && !canManageThreads;
@@ -648,6 +650,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                       (prevItem.data as Poll).author?.id !== poll.author?.id ||
                       (item.timestamp.getTime() - prevItem.timestamp.getTime()) > 300000;
                     const isOwnPoll = user?.id === poll.author_id;
+                    const canModeratePoll = isOwnPoll || canManagePolls;
                     const isPollExpired = poll.expires_at ? new Date(poll.expires_at) <= new Date() : false;
 
                     return (

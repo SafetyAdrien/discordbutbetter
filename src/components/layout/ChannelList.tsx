@@ -356,29 +356,41 @@ function SortableCategory({
             </div>
           </ContextMenuTrigger>
           <ContextMenuContent className="w-52">
-            <ContextMenuItem onClick={onCreateChannel}>
-              <Plus className="w-4 h-4 mr-2" />
-              Créer un salon
-            </ContextMenuItem>
-            <ContextMenuSeparator />
+            {canManageChannels && (
+              <>
+                <ContextMenuItem onClick={onCreateChannel}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Créer un salon
+                </ContextMenuItem>
+                <ContextMenuSeparator />
+              </>
+            )}
             <ChannelNotificationMenu categoryId={category.id} serverId={serverId} />
-            <ContextMenuSeparator />
-            <ContextMenuItem onClick={onEdit}>
-              <Pencil className="w-4 h-4 mr-2" />
-              Modifier la catégorie
-            </ContextMenuItem>
+            {canManageChannels && (
+              <>
+                <ContextMenuSeparator />
+                <ContextMenuItem onClick={onEdit}>
+                  <Pencil className="w-4 h-4 mr-2" />
+                  Modifier la catégorie
+                </ContextMenuItem>
+              </>
+            )}
             <ContextMenuItem onClick={() => copyToClipboard(uuidToSnowflake(category.id), "ID de catégorie copié")}>
               <Copy className="w-4 h-4 mr-2" />
               Copier l'ID
             </ContextMenuItem>
-            <ContextMenuSeparator />
-            <ContextMenuItem
-              className="text-destructive focus:text-destructive"
-              onClick={() => setShowDeleteConfirm(true)}>
+            {canManageChannels && (
+              <>
+                <ContextMenuSeparator />
+                <ContextMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onClick={() => setShowDeleteConfirm(true)}>
 
-              <Trash2 className="w-4 h-4 mr-2" />
-              Supprimer la catégorie
-            </ContextMenuItem>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Supprimer la catégorie
+                </ContextMenuItem>
+              </>
+            )}
           </ContextMenuContent>
         </ContextMenu>
       </div>
@@ -472,7 +484,11 @@ const ThreadContextMenuList: React.FC<ThreadContextMenuListProps> = ({
         {filteredThreads.map((thread, index) => {
           const isLast = index === filteredThreads.length - 1;
           const isSingle = filteredThreads.length === 1;
+          // NOTE: `manage_channels` est utilisé volontairement comme proxy de modération des fils.
+          // La RLS sur `threads` (UPDATE/DELETE) accepte aussi `manage_channels` plutôt que `manage_threads`
+          // — confirmé en Phase 1. Garder ce comportement aligné backend ↔ UI.
           const canManage = canManageChannels || thread.created_by === user?.id;
+
 
           return (
             <div key={thread.id} className="flex items-stretch w-full px-2">
@@ -633,6 +649,7 @@ interface SortableChannelProps {
   onThreadSelect?: (threadId: string) => void;
   showArchivedThreads?: boolean;
   canManageChannels?: boolean;
+  canCreateInvite?: boolean;
   isVoiceLocked?: boolean;
   onOpenChat?: () => void;
 }
@@ -661,6 +678,7 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
     onThreadSelect,
     showArchivedThreads = false,
     canManageChannels = false,
+    canCreateInvite = false,
     isVoiceLocked = false,
     onOpenChat
   },
@@ -797,30 +815,38 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
                 <Copy className="w-4 h-4 mr-2" />
                 Copier l'ID
               </ContextMenuItem>
-              <ContextMenuItem onClick={onCreateInvite}>
-                <UserPlus className="w-4 h-4 mr-2" />
-                Créer une invitation
-              </ContextMenuItem>
-              <ContextMenuSeparator />
-              <ContextMenuItem onClick={onOpenSettings}>
-                <Settings className="w-4 h-4 mr-2" />
-                Modifier le channel
-              </ContextMenuItem>
-              {canManageChannels &&
-              <ContextMenuItem onClick={onDuplicate}>
-                  <Copy className="w-4 h-4 mr-2" />
-                  Dupliquer le salon
+              {canCreateInvite && (
+                <ContextMenuItem onClick={onCreateInvite}>
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Créer une invitation
                 </ContextMenuItem>
-              }
+              )}
+              {canManageChannels && (
+                <>
+                  <ContextMenuSeparator />
+                  <ContextMenuItem onClick={onOpenSettings}>
+                    <Settings className="w-4 h-4 mr-2" />
+                    Modifier le channel
+                  </ContextMenuItem>
+                  <ContextMenuItem onClick={onDuplicate}>
+                    <Copy className="w-4 h-4 mr-2" />
+                    Dupliquer le salon
+                  </ContextMenuItem>
+                </>
+              )}
               <ChannelNotificationMenu channelId={channel.id} serverId={serverId} />
-              <ContextMenuSeparator />
-              <ContextMenuItem
-                className="text-destructive focus:text-destructive"
-                onClick={() => setShowDeleteConfirm(true)}>
+              {canManageChannels && (
+                <>
+                  <ContextMenuSeparator />
+                  <ContextMenuItem
+                    className="text-destructive focus:text-destructive"
+                    onClick={() => setShowDeleteConfirm(true)}>
 
-                <Trash2 className="w-4 h-4 mr-2" />
-                Supprimer le channel
-              </ContextMenuItem>
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Supprimer le channel
+                  </ContextMenuItem>
+                </>
+              )}
             </ContextMenuContent>
           </ContextMenu>
 
@@ -1001,6 +1027,8 @@ export function ChannelList({
   // Check if user can manage channels
   const { hasPermission, isGod } = usePermissions(server.id);
   const canManageChannels = isGod || hasPermission("manage_channels") || hasPermission("administrator");
+  // Create-invite is gated server-side by owner/admin (RLS on `invites`), not the unused `create_invites` permission enum.
+  const canCreateInvite = isGod || hasPermission("administrator");
 
   // Check if user is the owner (cannot leave, must delete)
   const isOwner = profile?.id === server.ownerId;
@@ -1837,6 +1865,7 @@ threads={threadsByChannel[channel.id] || []}
                     onThreadSelect={onThreadSelect}
                     showArchivedThreads={showArchivedThreads}
                     canManageChannels={canManageChannels}
+                    canCreateInvite={canCreateInvite}
                     isVoiceLocked={
                     (channel.type === "voice" || channel.type === "stage") && isVoiceChannelLocked(channel.id)
                     }
@@ -1905,6 +1934,7 @@ threads={threadsByChannel[channel.id] || []}
                           onThreadSelect={onThreadSelect}
                           showArchivedThreads={showArchivedThreads}
                           canManageChannels={canManageChannels}
+                          canCreateInvite={canCreateInvite}
                           isVoiceLocked={
                           (channel.type === "voice" || channel.type === "stage") &&
                           isVoiceChannelLocked(channel.id)
@@ -1964,22 +1994,30 @@ threads={threadsByChannel[channel.id] || []}
           </ChannelListScrollContainer>
         </ContextMenuTrigger>
         <ContextMenuContent className="w-52">
-          <ContextMenuItem
-            onClick={() =>
-            setCreateChannelForCategory({
-              id: null,
-              name: "Sans catégorie",
-              showSelector: true
-            })
-            }>
+          {canManageChannels ? (
+            <>
+              <ContextMenuItem
+                onClick={() =>
+                setCreateChannelForCategory({
+                  id: null,
+                  name: "Sans catégorie",
+                  showSelector: true
+                })
+                }>
 
-            <Plus className="w-4 h-4 mr-2" />
-            Créer un salon
-          </ContextMenuItem>
-          <ContextMenuItem onClick={() => setShowCreateCategory(true)}>
-            <FolderPlus className="w-4 h-4 mr-2" />
-            Créer une catégorie
-          </ContextMenuItem>
+                <Plus className="w-4 h-4 mr-2" />
+                Créer un salon
+              </ContextMenuItem>
+              <ContextMenuItem onClick={() => setShowCreateCategory(true)}>
+                <FolderPlus className="w-4 h-4 mr-2" />
+                Créer une catégorie
+              </ContextMenuItem>
+            </>
+          ) : (
+            <ContextMenuItem disabled className="text-muted-foreground">
+              Aucune action disponible
+            </ContextMenuItem>
+          )}
         </ContextMenuContent>
       </ContextMenu>
 

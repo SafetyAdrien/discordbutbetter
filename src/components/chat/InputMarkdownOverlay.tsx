@@ -193,7 +193,7 @@ function consumeEntryMentions(text: string, consumer: MentionConsumer, keyStart:
     if (at > cursor) {
       nodes.push(<span key={key++}>{text.slice(cursor, at)}</span>);
     }
-    nodes.push(renderMentionEntry(entry, key++));
+    nodes.push(renderMentionEntry(entry, key++, consumer.idx));
     cursor = at + entry.display.length;
     consumer.idx++;
     consumed = true;

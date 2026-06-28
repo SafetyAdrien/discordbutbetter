@@ -680,6 +680,7 @@ export function MessageInput({
       if (ta && ta.selectionStart === ta.selectionEnd) {
         const caret = ta.selectionStart;
         const entries = mentionEntriesRef.current;
+        console.log('[colorDbg] KEYDOWN', e.key, { caret, value, entries: entries.map(en => ({ d: en.display, k: en.kind, t: en.token })) });
         if (entries.length > 0) {
           let cursor = 0;
           for (const entry of entries) {
@@ -688,7 +689,9 @@ export function MessageInput({
             const end = at + entry.display.length;
             // Inside a color pill -> explode to raw token
             if (entry.kind === 'color' && caret > at && caret < end) {
+              console.log('[colorDbg] EXPLODE entry', { at, end, caret, token: entry.token, display: entry.display });
               e.preventDefault();
+
               const newValue = value.slice(0, at) + entry.token + value.slice(end);
               mentionEntriesRef.current = entries.filter(x => x !== entry);
               setMentionRev(r => r + 1);

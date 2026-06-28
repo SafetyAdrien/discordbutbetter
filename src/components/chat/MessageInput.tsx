@@ -561,6 +561,10 @@ export function MessageInput({
       const normalizedQuery = normalizeForSearch(mentionState.query);
       return channels.filter(c => normalizeForSearch(c.name).includes(normalizedQuery)).slice(0, 10).length;
     }
+    if (mentionState.type === 'color') {
+      const normalizedQuery = normalizeForSearch(mentionState.query);
+      return NAMED_COLORS.filter(c => normalizeForSearch(c.name).includes(normalizedQuery)).slice(0, 10).length;
+    }
     return 0;
   }, [mentionState, members, roles, channels, canMentionEveryone]);
 

@@ -1,49 +1,31 @@
-## Cause confirmée
-Le halo `isSpeakingSelf` n'est jamais visible sur l'avatar de la bannière du bas parce que Tailwind `ring-2` rend un `box-shadow` outset (dessiné hors de la box), et le wrapper racine de `UserAvatarImage` porte en dur `overflow-hidden rounded-full` (`src/components/ui/user-avatar-image.tsx` l.62-66). Le shadow est immédiatement clippé. `VoiceVideoTile` fonctionne parce qu'il utilise `border-2` (bordure interne, non clippée).
+## Avertissement self-XSS dans la console (DevTools)
 
-## Correctif — Fix O
-Remplacer la technique `ring-*` par une vraie **bordure** sur le wrapper de l'avatar dans `UserProfileCard.tsx`, sans toucher à `UserAvatarImage` (composant partagé).
+### Voie retenue
+**Aucun i18n existant** dans le projet → solution autonome via `navigator.language` (slice 2 chars), avec dictionnaire FR + EN inline et fallback EN si la langue n'est pas couverte. Aucune dépendance ajoutée.
 
-### Modification ciblée — `src/components/profile/UserProfileCard.tsx`
-Dans le JSX de l'avatar de la bannière du bas (autour des lignes 163-172), remplacer :
+### Fichier à créer : `src/lib/self-xss-warning.ts`
 
-```tsx
-<UserAvatarImage
-  ...
-  className={cn(
-    "w-8 h-8 ring-2 transition-colors",
-    isSpeakingSelf ? "ring-[hsl(var(--online))]" : "ring-primary/30",
-  )}
-  ...
-/>
-```
+Module exportant `logSelfXssWarning()` :
+- Dictionnaire `translations` (FR + EN) avec les 4 clés : `title`, `warning`, `info1`, `info2` (textes exacts fournis dans la consigne).
+- `getLang()` interne : lit `navigator.language?.slice(0,2).toLowerCase()`, retombe sur `'en'` si non couvert.
+- 4 `console.log` stylisés successifs :
+  1. **Title** — très gros (`font-size: 60px`), gras, rouge `#ff3838`, `text-shadow`.
+  2. **Warning** — gros (`font-size: 22px`), rouge `#ff3838`, gras.
+  3. **Info1** — taille normale (`font-size: 16px`), foreground neutre.
+  4. **Info2** — taille normale, lien Trust optionnel.
+- Garde-fous :
+  - No-op si `import.meta.env.DEV` (pas de bruit en dev).
+  - No-op si `typeof window === 'undefined'` (SSR safety, even si non utilisé ici).
+  - Flag `__selfXssWarned` sur `window` pour ne logger qu'une fois par session.
 
-par un wrapper qui porte la bordure (et conserve le rond), pendant que `UserAvatarImage` reste à la taille intérieure correspondante :
+### Branchement : `src/main.tsx`
 
-```tsx
-<div
-  className={cn(
-    "rounded-full border-2 transition-colors",
-    isSpeakingSelf ? "border-[hsl(var(--online))]" : "border-primary/30",
-  )}
->
-  <UserAvatarImage
-    src={profile?.avatar_url}
-    alt={profile?.display_name}
-    className="w-8 h-8"
-    fallbackClassName="bg-primary/20 text-primary text-sm"
-    fallback={profile?.display_name?.charAt(0).toUpperCase() || '?'}
-  />
-</div>
-```
-
-La bordure est interne au wrapper externe (pas affectée par le `overflow-hidden` interne du composant `UserAvatarImage`), et le passage à `hsl(var(--online))` quand `isSpeakingSelf` est true sera réellement visible.
-
-### Nettoyage diagnostic
-Une fois le halo confirmé visible :
-- Retirer le bloc `[DIAG UserProfileCard render]` (l.139-151 environ).
-- Retirer `data-component="UserProfileCard-DIAG"`.
-- Retirer les logs throttlés ajoutés dans `MediaManager.ts`, `useWebRTC.ts`, `VoiceContext.tsx`.
+Ajouter un import + appel `logSelfXssWarning()` après la création du root React (en bas du fichier), pour que l'avertissement s'affiche dès l'ouverture de la console en production.
 
 ### Hors-scope
-Pas de modification de `UserAvatarImage`, `VoiceVideoTile`, `VoiceContext`, VAD, `MediaManager` ni `AudioProcessor`. La logique VAD (Fix N) reste intacte — seule l'expression CSS du halo change.
+- Pas de modification de `index.html`, du serveur, ni d'autres composants.
+- Pas de page Trust additionnelle (déjà présente à `/trust` si besoin de lien futur).
+- Pas de détection de `navigator.languages[]` étendue — slice 2 chars suffit pour FR/EN.
+
+### Réponse finale après implémentation
+Je fournirai le diff des 2 fichiers (`src/lib/self-xss-warning.ts` créé, `src/main.tsx` modifié) et confirmerai la voie prise (navigator.language, pas d'i18n réutilisé car aucun système présent).

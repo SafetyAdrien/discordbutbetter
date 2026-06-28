@@ -99,7 +99,7 @@ export function hasInlineMarkdown(content: string): boolean {
 
 export function hasInlineMentions(content: string, entries?: MentionEntry[]): boolean {
   if (!content) return false;
-  if (/<@&?\d{18}>|<#\d{18}>|@everyone|@here/.test(content)) return true;
+  if (/<@&?\d{18}>|<#\d{18}>|@everyone|@here|<c:#[0-9a-fA-F]{3,6}>/.test(content)) return true;
   if (entries && entries.length > 0) {
     return entries.some(e => content.includes(e.display));
   }
@@ -207,7 +207,7 @@ function consumeEntryMentions(text: string, consumer: MentionConsumer, keyStart:
 
 // Render legacy <@SNOWFLAKE>, <#…>, <@&…> tokens and @everyone/@here in a single text segment.
 function renderLegacyAndSpecialMentions(text: string, mentionData: MentionLookupData | undefined, keyStart: number): { nodes: ReactNode[]; found: boolean; nextKey: number } {
-  const mentionRegex = /(<@&(\d{18})>|<@(\d{18})>|<#(\d{18})>|@everyone|@here)/g;
+  const mentionRegex = /(<@&(\d{18})>|<@(\d{18})>|<#(\d{18})>|<c:#([0-9a-fA-F]{3,6})>|@everyone|@here)/g;
   const parts: ReactNode[] = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;
@@ -227,6 +227,12 @@ function renderLegacyAndSpecialMentions(text: string, mentionData: MentionLookup
           {full}
         </span>
       );
+    } else if (match[5] !== undefined) {
+      const raw = match[5];
+      const hex = raw.length === 3
+        ? '#' + raw.split('').map(c => c + c).join('').toLowerCase()
+        : '#' + raw.toLowerCase();
+      parts.push(<span key={key++} style={{ color: hex }}>{full}</span>);
     } else if (match[3] !== undefined) {
       const uuid = snowflakeToUuid(match[3]);
       const member = uuid ? mentionData?.members?.find(m => m.id === uuid) : undefined;

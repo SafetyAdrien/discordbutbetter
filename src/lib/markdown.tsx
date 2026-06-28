@@ -13,6 +13,7 @@ import {
   ColorSwatchToken,
 } from '@/components/chat/mentions/MentionComponents';
 import { snowflakeToUuid, isValidSnowflake, uuidToSnowflake } from '@/lib/snowflake';
+import { normalizeHex } from '@/lib/colorNames';
 
 
 // ============================================
@@ -133,7 +134,7 @@ const MENTION_PATTERNS = {
   messageLink: /https?:\/\/(?:discord\.com|discordapp\.com)\/channels\/(\d{18}|[0-9a-f-]+)\/(\d{18}|[0-9a-f-]+)\/(\d{18}|[0-9a-f-]+)/gi,
 };
 
-const COLOR_SWATCH_PATTERN = /<c:#([0-9a-fA-F]{6})>/g;
+const COLOR_SWATCH_PATTERN = /<c:#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})>/g;
 
 function tokenizeInline(text: string): MarkdownToken[] {
   const tokens: MarkdownToken[] = [];
@@ -197,12 +198,13 @@ function tokenizeInline(text: string): MarkdownToken[] {
     COLOR_SWATCH_PATTERN.lastIndex = 0;
     const colorMatch = COLOR_SWATCH_PATTERN.exec(remaining);
     if (colorMatch && (earliestMatch === null || colorMatch.index < earliestMatch.index)) {
+      const normalized = normalizeHex('#' + colorMatch[1]) ?? ('#' + colorMatch[1].toLowerCase());
       earliestMatch = {
         index: colorMatch.index,
         length: colorMatch[0].length,
         content: colorMatch[0],
         type: 'colorSwatch',
-        colorHex: '#' + colorMatch[1].toLowerCase(),
+        colorHex: normalized,
       };
     }
     

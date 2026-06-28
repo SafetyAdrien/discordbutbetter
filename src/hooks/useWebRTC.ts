@@ -439,15 +439,9 @@ export function useWebRTC(): UseWebRTCReturn {
           const localVAD = mediaManager.getLocalVADState();
           setAudioLevel(localVAD.level);
           setLocalIsSpeaking(localVAD.isSpeaking);
-          // [DIAG] throttled log — remove after fix
-          const _now = performance.now();
-          const _w = window as unknown as { __useWebRTCVadLogTs?: number };
-          if (_now - (_w.__useWebRTCVadLogTs ?? 0) > 500) {
-            _w.__useWebRTCVadLogTs = _now;
-            console.log('[DIAG useWebRTC.localIsSpeaking]', { localIsSpeaking: localVAD.isSpeaking, level: localVAD.level });
-          }
           // Fix #2 — actually gate the transmitted signal based on VAD level.
           audioProcessor.applyNoiseGate(localVAD.level);
+
 
 
 

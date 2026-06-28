@@ -308,6 +308,18 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     const newSpeaking = new Set<string>();
     const newAudioLevels = new Map<string, number>();
     
+    // [DIAG] throttled log — remove after fix
+    const _now = performance.now();
+    const _w = window as unknown as { __voiceCtxSpeakLogTs?: number };
+    if (_now - (_w.__voiceCtxSpeakLogTs ?? 0) > 500) {
+      _w.__voiceCtxSpeakLogTs = _now;
+      console.log('[DIAG VoiceContext.speakingUsers]', {
+        localIsSpeaking: webrtc.localIsSpeaking,
+        isMuted: voiceState.isMuted,
+        userId: user?.id,
+        willAddLocal: !!(webrtc.localIsSpeaking && !voiceState.isMuted && user?.id),
+      });
+    }
     // Check if local user is speaking (audio level > threshold and not muted)
     if (webrtc.localIsSpeaking && !voiceState.isMuted && user?.id) {
       newSpeaking.add(user.id);

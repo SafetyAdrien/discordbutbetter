@@ -15,6 +15,7 @@ import { MediaDuelStatsBack } from './MediaDuelStatsBack';
 import { MediaPostActionsMenu } from './MediaPostActionsMenu';
 import { EditMediaPostModal } from './EditMediaPostModal';
 import { MediaPostStatsModal } from './MediaPostStatsModal';
+import { useHasChannelPermission } from '@/hooks/useUserChannelPermissions';
 
 interface Props {
   post: MediaPost;
@@ -138,6 +139,7 @@ export function MediaPostCard({ post, channelId, serverId = null, onOpenDetail, 
   };
 
   const isAuthor = user?.id === post.author_id;
+  const canManageMedia = useHasChannelPermission(channelId, 'manage_media').data;
   const descShort = post.description && post.description.length > 140 && !descExpanded;
 
   // ---- Front face ----
@@ -172,7 +174,7 @@ export function MediaPostCard({ post, channelId, serverId = null, onOpenDetail, 
           channelId={channelId}
           serverId={serverId}
           isAuthor={isAuthor}
-          canDelete={isAuthor}
+          canDelete={isAuthor || canManageMedia}
           onEdit={() => setEditOpen(true)}
           onReply={() => onReply?.(post)}
           onShowStats={() => setStatsOpen(true)}

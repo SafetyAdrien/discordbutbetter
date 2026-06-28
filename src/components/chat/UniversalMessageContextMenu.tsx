@@ -301,7 +301,7 @@ export function UniversalMessageContextMenu({
               Copier le texte
             </ContextMenuItem>
           )}
-          {onPin && (
+          {onPin && canManageMessages && (
             <ContextMenuItem onClick={onPin}>
               <Pin className="w-4 h-4 mr-2" />
               {isPinned ? 'Désépingler' : 'Épingler'}

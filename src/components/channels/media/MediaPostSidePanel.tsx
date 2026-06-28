@@ -9,6 +9,7 @@ import { CanvasLiveOverlay } from './CanvasLiveOverlay';
 import { MediaPostActionsMenu } from './MediaPostActionsMenu';
 import { EditMediaPostModal } from './EditMediaPostModal';
 import { MediaPostStatsModal } from './MediaPostStatsModal';
+import { useHasChannelPermission } from '@/hooks/useUserChannelPermissions';
 import { InfiniteZoomImage } from '@/components/channels/shared/InfiniteZoomImage';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMediaPostReactions, useToggleMediaReaction } from '@/hooks/useMediaReactions';
@@ -107,6 +108,7 @@ export function MediaPostSidePanel({ post, channelId, serverId = null, onClose, 
   const commentCount = comments.length;
 
   const isAuthor = user?.id === post.author_id;
+  const canManageMedia = useHasChannelPermission(channelId, 'manage_media').data;
 
 
 
@@ -129,7 +131,7 @@ export function MediaPostSidePanel({ post, channelId, serverId = null, onClose, 
           channelId={channelId}
           serverId={serverId}
           isAuthor={isAuthor}
-          canDelete={isAuthor}
+          canDelete={isAuthor || canManageMedia}
           onEdit={() => setEditOpen(true)}
           onShowStats={() => setStatsOpen(true)}
           onReply={() => onReply?.(post)}

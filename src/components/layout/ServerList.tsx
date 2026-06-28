@@ -103,7 +103,9 @@ function SortableServerIcon({
   onLeave: () => void;
 }) {
   const { data: voiceParticipants } = useServerVoiceParticipants(server.id);
-  const { isGod } = usePermissions(server.id);
+  const { isGod, hasPermission } = usePermissions(server.id);
+  const canCreateInvite = isGod || hasPermission('administrator');
+  const canOpenSettings = isGod || hasPermission('manage_server') || hasPermission('administrator');
   const {
     attributes,
     listeners,
@@ -225,15 +227,21 @@ function SortableServerIcon({
             <CheckCircle className="w-4 h-4 mr-2" />
             Marquer comme lu
           </ContextMenuItem>
-          <ContextMenuItem onSelect={onInvite}>
-            <UserPlus className="w-4 h-4 mr-2" />
-            Inviter des personnes
-          </ContextMenuItem>
-          <ContextMenuSeparator />
-          <ContextMenuItem onSelect={onOpenSettings}>
-            <Settings className="w-4 h-4 mr-2" />
-            Paramètres du serveur
-          </ContextMenuItem>
+          {canCreateInvite && (
+            <ContextMenuItem onSelect={onInvite}>
+              <UserPlus className="w-4 h-4 mr-2" />
+              Inviter des personnes
+            </ContextMenuItem>
+          )}
+          {canOpenSettings && (
+            <>
+              <ContextMenuSeparator />
+              <ContextMenuItem onSelect={onOpenSettings}>
+                <Settings className="w-4 h-4 mr-2" />
+                Paramètres du serveur
+              </ContextMenuItem>
+            </>
+          )}
           <ContextMenuItem onSelect={onCopyId}>
             <Hash className="w-4 h-4 mr-2" />
             Copier l'ID

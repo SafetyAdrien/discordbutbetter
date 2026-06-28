@@ -887,11 +887,24 @@ export class MediaManager {
   }
 
   getLocalVADState() {
+    let result;
     if (this._audioProcessorActive) {
-      return audioProcessor.getVADState();
+      result = audioProcessor.getVADState();
+    } else {
+      const level = this.getAudioLevel();
+      result = { isSpeaking: level > 0.05, level, adaptiveThreshold: 0.05, spectralVoiceScore: 0 };
     }
-    const level = this.getAudioLevel();
-    return { isSpeaking: level > 0.05, level, adaptiveThreshold: 0.05, spectralVoiceScore: 0 };
+    // [DIAG] throttled log — remove after fix
+    const now = performance.now();
+    const self = this as unknown as { _vadLogTs?: number };
+    if (now - (self._vadLogTs ?? 0) > 500) {
+      self._vadLogTs = now;
+      console.log('[DIAG MediaManager.getLocalVADState]', {
+        audioProcessorActive: this._audioProcessorActive,
+        ...result,
+      });
+    }
+    return result;
   }
 
   addRemoteVideoStream(peerId: string, stream: MediaStream, type: 'camera' | 'screen'): void {

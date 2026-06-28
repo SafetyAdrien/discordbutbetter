@@ -396,6 +396,32 @@ export function MessageInput({
       }
     }
 
+    // Check for color autocomplete (`<` prefix) — `<` must be at start or after whitespace.
+    let ltIndex = -1;
+    {
+      let i = beforeCursor.lastIndexOf('<');
+      while (i !== -1) {
+        if (!inReserved(i)) { ltIndex = i; break; }
+        if (i === 0) break;
+        i = beforeCursor.lastIndexOf('<', i - 1);
+      }
+    }
+    if (ltIndex !== -1) {
+      const charBefore = ltIndex === 0 ? '' : beforeCursor[ltIndex - 1];
+      if (ltIndex === 0 || charBefore === ' ' || charBefore === '\n' || charBefore === '\t') {
+        const query = beforeCursor.slice(ltIndex + 1);
+        // Only valid name-ish characters; bail as soon as we see `>` `:` `#` etc.
+        if (/^[a-zA-Z]*$/.test(query)) {
+          return {
+            type: 'color' as const,
+            query,
+            startIndex: ltIndex,
+            triggerLength: 1,
+          };
+        }
+      }
+    }
+
     return null;
   }, [channels]);
 

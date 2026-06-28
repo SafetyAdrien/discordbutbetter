@@ -1,6 +1,7 @@
 import { useMemo, forwardRef, ReactNode, useState } from 'react';
 import { Copy, Check } from 'lucide-react';
 import { snowflakeToUuid } from '@/lib/snowflake';
+import { nearestColorName, normalizeHex } from '@/lib/colorNames';
 import { MentionMember, MentionRole, MentionChannel } from './MentionAutocomplete';
 
 export interface MentionLookupData {

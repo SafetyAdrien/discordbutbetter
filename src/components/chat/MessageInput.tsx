@@ -7,6 +7,7 @@ import { CreateDMPollModal } from './CreateDMPollModal';
 import { InputMarkdownOverlay, hasOverlayMarkdown, OVERLAY_FONT_SIZE, OVERLAY_LINE_HEIGHT, INPUT_FONT_FAMILY, MentionEntry } from './InputMarkdownOverlay';
 
 import { MentionAutocomplete, MentionMember, MentionRole, MentionChannel } from './MentionAutocomplete';
+import { NAMED_COLORS } from '@/lib/colorNames';
 import { AttachmentStagingArea } from './upload/AttachmentStagingArea';
 import { PendingAttachment } from '@/hooks/usePendingAttachments';
 import { normalizeForSearch } from '@/lib/utils';

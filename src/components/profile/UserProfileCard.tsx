@@ -126,8 +126,24 @@ export function UserProfileCard({ onOpenSettings, onOpenProfile, speakingUsers, 
 
   const isSpeakingSelf = !!(profile?.id && speakingUsers?.has(profile.id));
 
+  // [DIAG] Log de rendu throttlé (à retirer après diagnostic)
+  {
+    const _now = performance.now();
+    const _w = window as unknown as { __upcRenderLogTs?: number };
+    if (_now - (_w.__upcRenderLogTs ?? 0) > 500) {
+      _w.__upcRenderLogTs = _now;
+      console.log('[DIAG UserProfileCard render]', {
+        isSpeakingSelf,
+        profileId: profile?.id,
+        speakingUsersSize: speakingUsers?.size,
+        speakingUsersHas: profile?.id ? speakingUsers?.has(profile.id) : null,
+      });
+    }
+  }
+
   return (
     <div
+      data-component="UserProfileCard-DIAG"
       className={cn(
         "h-full mx-2 mb-2 px-3 py-1 flex items-center gap-2.5 bg-[hsl(var(--surface-2))] border border-border/40 transition-colors",
         connectedToVoice ? "rounded-b-2xl rounded-t-none border-t-0" : "rounded-2xl",

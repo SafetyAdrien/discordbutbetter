@@ -305,7 +305,7 @@ export function MessageInput({
   }, [value, onChange]);
 
   const insertColor = useCallback((hex: string) => {
-    const glyph = '■';
+    const glyph = `\u25A0 ${nearestColorName(hex)}`;
     const textarea = textareaRef.current;
     const insertAt = textarea ? textarea.selectionStart : value.length;
     const insertEnd = textarea ? textarea.selectionEnd : value.length;

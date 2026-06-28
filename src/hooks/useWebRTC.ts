@@ -745,6 +745,7 @@ export function useWebRTC(): UseWebRTCReturn {
     isConnecting,
     isMicrophoneActive,
     audioLevel,
+    localIsSpeaking,
     peers,
     connect,
     disconnect,

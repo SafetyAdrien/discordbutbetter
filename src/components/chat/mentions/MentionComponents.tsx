@@ -1,9 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Hash, BookOpen, Search, List, MessageSquare } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Hash, BookOpen, Search, List, MessageSquare, Copy, Check } from 'lucide-react';
 import { RoleInfoPopup } from '@/components/profile/RoleInfoPopup';
 import { EveryoneHerePopup } from '@/components/profile/EveryoneHerePopup';
+import { nearestColorName } from '@/lib/colorNames';
+import { hexToRgb, rgbToHsl, rgbToHsv } from '@/lib/colorMath';
 
 // ============================================
 // USER MENTION COMPONENT

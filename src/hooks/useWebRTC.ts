@@ -437,6 +437,7 @@ export function useWebRTC(): UseWebRTCReturn {
         audioLevelIntervalRef.current = setInterval(() => {
           const localVAD = mediaManager.getLocalVADState();
           setAudioLevel(localVAD.level);
+          setLocalIsSpeaking(localVAD.isSpeaking);
           // Fix #2 — actually gate the transmitted signal based on VAD level.
           audioProcessor.applyNoiseGate(localVAD.level);
 

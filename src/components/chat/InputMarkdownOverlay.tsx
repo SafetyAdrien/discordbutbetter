@@ -252,12 +252,10 @@ function renderLegacyAndSpecialMentions(text: string, mentionData: MentionLookup
           className="rounded-[3px]"
           style={{
             backgroundColor: bg,
-            boxShadow: sideShadow(bg),
-            outline: '1px solid hsl(var(--border) / 0.65)',
-            outlineOffset: '0px',
+            boxShadow: ringShadow(bg, PILL_BORDER),
           }}
         >
-          <span style={{ color: hex }}>■</span> {name}
+          <span style={{ color: hex, position: 'relative', top: '1px' }}>■</span> {name}
         </span>
       );
     } else if (match[3] !== undefined) {

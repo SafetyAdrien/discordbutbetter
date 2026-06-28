@@ -1,8 +1,10 @@
 /**
  * Self-XSS warning displayed in the browser DevTools console.
  *
- * Discourages users from pasting attacker-supplied code into the console
- * (a classic social-engineering vector that can hijack the session).
+ * Mirrors Discord's real behavior (verified via comparative console export):
+ * - The title + "scam" line + "pasting" line REPEAT on each channel switch.
+ * - The closing "unless you understand..." line is printed only once per
+ *   session, right after the very first repeating block at app boot.
  *
  * No i18n framework is present in this project, so the language is
  * detected directly from `navigator.language` with an English fallback.
@@ -48,9 +50,44 @@ function getLang(): Lang {
   return 'en';
 }
 
-export function logSelfXssWarning(): void {
-  if (typeof window === 'undefined') return;
-  if (import.meta.env.DEV) return;
+function isDisabled(): boolean {
+  if (typeof window === 'undefined') return true;
+  if (import.meta.env.DEV) return true;
+  return false;
+}
+
+/**
+ * Repeating block: title + scam line + pasting warning.
+ * Called on initial load AND on every active channel/route change.
+ */
+export function logSelfXssRepeating(): void {
+  if (isDisabled()) return;
+  const t = translations[getLang()];
+
+  try {
+    console.log(
+      `%c${t.title}`,
+      'color: #ff3838; font-size: 60px; font-weight: 900; text-shadow: 2px 2px 0 rgba(0,0,0,0.25);'
+    );
+    console.log(
+      `%c${t.info1}`,
+      'color: inherit; font-size: 16px;'
+    );
+    console.log(
+      `%c${t.warning}`,
+      'color: #ff3838; font-size: 22px; font-weight: 700;'
+    );
+  } catch {
+    /* console may be unavailable in some embedded contexts */
+  }
+}
+
+/**
+ * Closing line ("unless you understand..."): printed at most once per
+ * session, right after the very first repeating block at boot.
+ */
+export function logSelfXssClosing(): void {
+  if (isDisabled()) return;
 
   const w = window as unknown as { __selfXssWarned?: boolean };
   if (w.__selfXssWarned) return;
@@ -60,22 +97,10 @@ export function logSelfXssWarning(): void {
 
   try {
     console.log(
-      `%c${t.title}`,
-      'color: #ff3838; font-size: 60px; font-weight: 900; text-shadow: 2px 2px 0 rgba(0,0,0,0.25);'
-    );
-    console.log(
-      `%c${t.warning}`,
-      'color: #ff3838; font-size: 22px; font-weight: 700;'
-    );
-    console.log(
-      `%c${t.info1}`,
-      'color: inherit; font-size: 16px;'
-    );
-    console.log(
       `%c${t.info2}`,
       'color: inherit; font-size: 16px;'
     );
   } catch {
-    /* console may be unavailable in some embedded contexts */
+    /* noop */
   }
 }

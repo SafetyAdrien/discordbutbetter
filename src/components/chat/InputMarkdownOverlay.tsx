@@ -12,7 +12,7 @@ export interface MentionLookupData {
 export interface MentionEntry {
   display: string;
   token: string;
-  kind: 'user' | 'role' | 'channel';
+  kind: 'user' | 'role' | 'channel' | 'color';
   color?: string;
 }
 
@@ -156,6 +156,13 @@ function pillClassFor(kind: MentionEntry['kind']): string {
 }
 
 function renderMentionEntry(entry: MentionEntry, key: number): ReactNode {
+  if (entry.kind === 'color' && entry.color) {
+    return (
+      <span key={key} style={{ color: entry.color }}>
+        {entry.display}
+      </span>
+    );
+  }
   if (entry.kind === 'role' && entry.color) {
     const bg = `${entry.color}4D`;
     return (

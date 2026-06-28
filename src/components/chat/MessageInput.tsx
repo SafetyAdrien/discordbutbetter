@@ -7,6 +7,7 @@ import { CreateDMPollModal } from './CreateDMPollModal';
 import { InputMarkdownOverlay, hasOverlayMarkdown, OVERLAY_FONT_SIZE, OVERLAY_LINE_HEIGHT, INPUT_FONT_FAMILY, MentionEntry } from './InputMarkdownOverlay';
 
 import { MentionAutocomplete, MentionMember, MentionRole, MentionChannel } from './MentionAutocomplete';
+import { NAMED_COLORS } from '@/lib/colorNames';
 import { AttachmentStagingArea } from './upload/AttachmentStagingArea';
 import { PendingAttachment } from '@/hooks/usePendingAttachments';
 import { normalizeForSearch } from '@/lib/utils';
@@ -59,7 +60,7 @@ interface MessageInputProps {
 }
 
 interface MentionState {
-  type: 'user' | 'channel';
+  type: 'user' | 'channel' | 'color';
   query: string;
   startIndex: number;
   triggerLength: number;
@@ -395,6 +396,32 @@ export function MessageInput({
       }
     }
 
+    // Check for color autocomplete (`<` prefix) — `<` must be at start or after whitespace.
+    let ltIndex = -1;
+    {
+      let i = beforeCursor.lastIndexOf('<');
+      while (i !== -1) {
+        if (!inReserved(i)) { ltIndex = i; break; }
+        if (i === 0) break;
+        i = beforeCursor.lastIndexOf('<', i - 1);
+      }
+    }
+    if (ltIndex !== -1) {
+      const charBefore = ltIndex === 0 ? '' : beforeCursor[ltIndex - 1];
+      if (ltIndex === 0 || charBefore === ' ' || charBefore === '\n' || charBefore === '\t') {
+        const query = beforeCursor.slice(ltIndex + 1);
+        // Only valid name-ish characters; bail as soon as we see `>` `:` `#` etc.
+        if (/^[a-zA-Z]*$/.test(query)) {
+          return {
+            type: 'color' as const,
+            query,
+            startIndex: ltIndex,
+            triggerLength: 1,
+          };
+        }
+      }
+    }
+
     return null;
   }, [channels]);
 
@@ -464,6 +491,9 @@ export function MessageInput({
     // Channel: <#SNOWFLAKE>
     m = token.match(/^<#(\d{18})>$/);
     if (m) return { display: displayText, token, kind: 'channel' };
+    // Color: <color:#rrggbb>
+    m = token.match(/^<color:(#[0-9a-fA-F]{6})>$/);
+    if (m) return { display: displayText, token, kind: 'color', color: m[1] };
     return null;
   }, [roles]);
 
@@ -530,6 +560,10 @@ export function MessageInput({
       // Smart match using normalized search
       const normalizedQuery = normalizeForSearch(mentionState.query);
       return channels.filter(c => normalizeForSearch(c.name).includes(normalizedQuery)).slice(0, 10).length;
+    }
+    if (mentionState.type === 'color') {
+      const normalizedQuery = normalizeForSearch(mentionState.query);
+      return NAMED_COLORS.filter(c => normalizeForSearch(c.name).includes(normalizedQuery)).slice(0, 10).length;
     }
     return 0;
   }, [mentionState, members, roles, channels, canMentionEveryone]);
@@ -880,6 +914,7 @@ export function MessageInput({
             members={members}
             roles={roles}
             channels={channels}
+            colors={NAMED_COLORS}
             onSelect={handleMentionSelect}
             onClose={() => setMentionState(null)}
             selectedIndex={mentionSelectedIndex}

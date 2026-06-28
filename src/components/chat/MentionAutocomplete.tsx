@@ -50,12 +50,18 @@ export interface MentionChannel {
   type: string;
 }
 
+export interface MentionColor {
+  hex: string;
+  name: string;
+}
+
 interface MentionAutocompleteProps {
-  type: "user" | "channel";
+  type: "user" | "channel" | "color";
   query: string;
   members?: MentionMember[];
   roles?: MentionRole[];
   channels?: MentionChannel[];
+  colors?: MentionColor[];
   onSelect: (mention: string, displayText: string) => void;
   onClose: () => void;
   selectedIndex: number;
@@ -69,6 +75,7 @@ export function MentionAutocomplete({
   members = [],
   roles = [],
   channels = [],
+  colors = [],
   onSelect,
   onClose,
   selectedIndex,
@@ -108,8 +115,22 @@ export function MentionAutocomplete({
         })()
       : [];
 
+  const filteredColors =
+    type === "color"
+      ? (() => {
+          const normalizedQuery = normalizeForSearch(query);
+          return colors
+            .filter((c) => normalizeForSearch(c.name).includes(normalizedQuery))
+            .slice(0, 10);
+        })()
+      : [];
+
   const totalCount =
-    type === "user" ? filteredMembers.length + rolesAndGlobal.length : filteredChannels.length;
+    type === "user"
+      ? filteredMembers.length + rolesAndGlobal.length
+      : type === "channel"
+        ? filteredChannels.length
+        : filteredColors.length;
 
   // Scroll selected item into view
   useEffect(() => {
@@ -140,6 +161,11 @@ export function MentionAutocomplete({
     const snowflakeId = uuidToSnowflake(channel.id);
     const formattedName = formatChannelName(channel.name, channel.type);
     onSelect(`<#${snowflakeId}>`, `#${formattedName}`);
+  };
+
+  const handleSelectColor = (color: MentionColor) => {
+    const hex = color.hex.startsWith('#') ? color.hex : `#${color.hex}`;
+    onSelect(`<color:${hex.toLowerCase()}>`, '\u25A0');
   };
 
   return (
@@ -235,6 +261,34 @@ export function MentionAutocomplete({
                   >
                     <ChannelIcon className="w-4 h-4 text-muted-foreground" />
                     <span>{channel.name}</span>
+                  </button>
+                );
+              })}
+            </>
+          )}
+          {type === "color" && (
+            <>
+              <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase">Couleurs</div>
+              {filteredColors.map((color, index) => {
+                const hex = color.hex.startsWith('#') ? color.hex : `#${color.hex}`;
+                return (
+                  <button
+                    type="button"
+                    key={`${hex}-${color.name}-${index}`}
+                    data-mention-item
+                    onClick={() => handleSelectColor(color)}
+                    onMouseEnter={() => onIndexChange(index)}
+                    className={cn(
+                      "flex items-center gap-2 w-full px-2 py-1.5 rounded text-sm transition-colors",
+                      index === selectedIndex ? "bg-[#5865f2] text-white" : "hover:bg-muted",
+                    )}
+                  >
+                    <span
+                      className="inline-block w-[0.9em] h-[0.9em] rounded-[3px] border border-black/10"
+                      style={{ backgroundColor: hex }}
+                    />
+                    <span>{color.name}</span>
+                    <span className="ml-auto text-xs text-muted-foreground uppercase">{hex}</span>
                   </button>
                 );
               })}

@@ -673,6 +673,55 @@ export function MessageInput({
       }
     }
 
+    // Color pill: caret strictly inside (Backspace/Delete) explodes pill back to raw <c:#hex>.
+    // Also: Delete at the exact left edge of any entry deletes the whole display atomically (symmetry with Backspace at right edge).
+    if ((e.key === 'Backspace' || e.key === 'Delete') && !e.shiftKey && !e.altKey && !e.metaKey && !e.ctrlKey) {
+      const ta = textareaRef.current;
+      if (ta && ta.selectionStart === ta.selectionEnd) {
+        const caret = ta.selectionStart;
+        const entries = mentionEntriesRef.current;
+        if (entries.length > 0) {
+          let cursor = 0;
+          for (const entry of entries) {
+            const at = value.indexOf(entry.display, cursor);
+            if (at === -1) break;
+            const end = at + entry.display.length;
+            // Inside a color pill -> explode to raw token
+            if (entry.kind === 'color' && caret > at && caret < end) {
+              e.preventDefault();
+              const newValue = value.slice(0, at) + entry.token + value.slice(end);
+              mentionEntriesRef.current = entries.filter(x => x !== entry);
+              setMentionRev(r => r + 1);
+              onChange(newValue);
+              const newCaret = at + entry.token.length;
+              requestAnimationFrame(() => {
+                if (textareaRef.current) {
+                  textareaRef.current.focus();
+                  textareaRef.current.setSelectionRange(newCaret, newCaret);
+                }
+              });
+              return;
+            }
+            // Delete at exact left edge -> atomic delete of whole entry
+            if (e.key === 'Delete' && caret === at) {
+              e.preventDefault();
+              const newValue = value.slice(0, at) + value.slice(end);
+              mentionEntriesRef.current = entries.filter(x => x !== entry);
+              setMentionRev(r => r + 1);
+              onChange(newValue);
+              requestAnimationFrame(() => {
+                if (textareaRef.current) {
+                  textareaRef.current.focus();
+                  textareaRef.current.setSelectionRange(at, at);
+                }
+              });
+              return;
+            }
+            cursor = end;
+          }
+        }
+      }
+    }
 
 
     // Backspace at the right edge of a mention deletes the whole mention in one go.

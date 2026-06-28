@@ -16,7 +16,8 @@ void warmCache().catch((e) => {
 createRoot(document.getElementById("root")!).render(<App />);
 
 // Self-XSS warning in the production DevTools console.
-logSelfXssWarning();
+logSelfXssRepeating();
+logSelfXssClosing();
 
 /**
  * Hard-refresh shortcuts (Ctrl/Cmd+R, Ctrl/Cmd+Shift+R, Ctrl+F5) must wipe

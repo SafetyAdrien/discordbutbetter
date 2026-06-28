@@ -151,6 +151,9 @@ interface MentionConsumer {
 // visual and does not affect layout.
 const PRIMARY_PILL_BG = 'hsl(var(--primary) / 0.30)';
 const sideShadow = (color: string) => `${color} 3px 0 0 0, ${color} -3px 0 0 0`;
+const ringShadow = (fill: string, border: string) =>
+  `${sideShadow(fill)}, ${border} 0 0 0 1px, ${border} 3px 0 0 1px, ${border} -3px 0 0 1px`;
+const PILL_BORDER = 'hsl(var(--border) / 0.65)';
 
 function pillClassFor(kind: MentionEntry['kind']): string {
   return 'rounded-[3px] bg-primary/30 text-[#dee0fc]';
@@ -166,9 +169,9 @@ function renderMentionEntry(entry: MentionEntry, key: number, entryIndex: number
         key={key}
         data-color-entry-index={entryIndex}
         className="rounded-[3px]"
-        style={{ backgroundColor: bg, boxShadow: sideShadow(bg), outline: '1px solid hsl(var(--border) / 0.65)', outlineOffset: '0px' }}
+        style={{ backgroundColor: bg, boxShadow: ringShadow(bg, PILL_BORDER) }}
       >
-        <span style={{ color: entry.color }}>{first}</span>{rest}
+        <span style={{ color: entry.color, position: 'relative', top: '1px' }}>{first}</span>{rest}
       </span>
     );
   }
@@ -249,12 +252,10 @@ function renderLegacyAndSpecialMentions(text: string, mentionData: MentionLookup
           className="rounded-[3px]"
           style={{
             backgroundColor: bg,
-            boxShadow: sideShadow(bg),
-            outline: '1px solid hsl(var(--border) / 0.65)',
-            outlineOffset: '0px',
+            boxShadow: ringShadow(bg, PILL_BORDER),
           }}
         >
-          <span style={{ color: hex }}>■</span> {name}
+          <span style={{ color: hex, position: 'relative', top: '1px' }}>■</span> {name}
         </span>
       );
     } else if (match[3] !== undefined) {

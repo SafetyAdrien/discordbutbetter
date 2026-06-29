@@ -218,6 +218,10 @@ export function useWebRTC(): UseWebRTCReturn {
           newPeers.delete(peerId);
           return newPeers;
         });
+      },
+      (type) => {
+        console.log('[useWebRTC] Remote video stream ended for:', peerId, 'type:', type);
+        mediaManager.removeRemoteVideoStream(peerId, type);
       }
     );
 

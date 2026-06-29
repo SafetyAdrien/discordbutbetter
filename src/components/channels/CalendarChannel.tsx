@@ -248,7 +248,10 @@ export function CalendarChannel({ channel, onToggleMembers, showMembers, hideHea
                 const isToday = isSameDay(day, new Date());
                 const isSelected = selectedDate && isSameDay(day, selectedDate);
                 const thumbEvent = dayEvents.find((e) => !!e.thumbnail_url) ?? null;
-                const featured = dayEvents[0] ?? null;
+const featured = dayEvents[0] ?? null;
+
+const hasAnyDayAction = canCreate || dayEvents.some(canEditEvent);
+
 
                 return (
                   <ContextMenu key={day.toISOString()}>
@@ -301,6 +304,9 @@ export function CalendarChannel({ channel, onToggleMembers, showMembers, hideHea
                       </button>
                     </ContextMenuTrigger>
                     <ContextMenuContent>
+                      {!hasAnyDayAction && (
+                        <ContextMenuItem disabled>Aucune action disponible</ContextMenuItem>
+                      )}
                       {canCreate && (
                         <ContextMenuItem onClick={() => openCreate(day)}>
                           <Plus className="w-4 h-4 mr-2" /> Nouvel événement

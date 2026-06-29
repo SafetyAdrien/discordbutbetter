@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { PeerConnection, SignalData, ConnectionStats } from '@/utils/webrtc/PeerConnection';
@@ -66,6 +67,7 @@ interface AdaptiveVADState {
 
 export function useWebRTC(): UseWebRTCReturn {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -618,6 +620,12 @@ export function useWebRTC(): UseWebRTCReturn {
       setLocalCameraStream(stream);
       setIsCameraActive(true);
 
+      if (user?.id && channelIdRef.current) {
+        queryClient.setQueryData(['voice-participants', channelIdRef.current], (old: any[] | undefined) =>
+          old?.map((p) => (p.user_id === user.id ? { ...p, camera: true } : p))
+        );
+      }
+
       for (const [, pc] of peersRef.current.entries()) {
         pc.addVideoStream(stream, 'camera');
         await pc.createOffer();
@@ -635,13 +643,19 @@ export function useWebRTC(): UseWebRTCReturn {
       console.error('[useWebRTC] Failed to start camera:', error);
       throw error;
     }
-  }, [user?.id]);
+  }, [user?.id, queryClient]);
 
   // Stop camera
   const stopCamera = useCallback(async () => {
     mediaManager.stopCamera();
     setLocalCameraStream(null);
     setIsCameraActive(false);
+
+    if (user?.id && channelIdRef.current) {
+      queryClient.setQueryData(['voice-participants', channelIdRef.current], (old: any[] | undefined) =>
+        old?.map((p) => (p.user_id === user.id ? { ...p, camera: false } : p))
+      );
+    }
 
     for (const [, pc] of peersRef.current.entries()) {
       pc.removeVideoStream('camera');
@@ -656,7 +670,7 @@ export function useWebRTC(): UseWebRTCReturn {
     }
 
     console.log('[useWebRTC] Camera stopped');
-  }, [user?.id]);
+  }, [user?.id, queryClient]);
 
   // Start screen share
   const startScreenShare = useCallback(async (options?: ScreenShareOptions) => {

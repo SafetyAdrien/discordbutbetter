@@ -123,7 +123,7 @@ export function CalendarChannel({ channel, onToggleMembers, showMembers, hideHea
     setModalOpen(true);
   };
 
-  const canEditEvent = (e: ChannelCalendarEvent) => canManageEvents || e.created_by === e.created_by; // creator check enforced by RLS
+  const canEditEvent = (e: ChannelCalendarEvent) => canManageEvents || e.created_by === user?.id;
   const handleDelete = async (e: ChannelCalendarEvent) => {
     try { await remove.mutateAsync(e.id); } catch { /* toast handled */ }
   };

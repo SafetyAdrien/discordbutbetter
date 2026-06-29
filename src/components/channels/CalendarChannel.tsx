@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Plus, ChevronLeft, ChevronRight, Clock, MapPin, Users, CalendarDays, List as ListIcon, Pencil, Trash2, Copy } from 'lucide-react';
 import { StreamlineCalendar } from '@/components/icons/StreamlineCalendar';

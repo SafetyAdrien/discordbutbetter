@@ -210,8 +210,9 @@ export function VoiceChannelView({
               showMembers={showMembers}
               onToggleMute={toggleMute}
               onToggleDeafen={toggleDeafen}
-              onToggleCamera={canVideo ? toggleCamera : undefined}
+              onToggleCamera={toggleCamera}
               onToggleScreenShare={canStream ? toggleScreenShare : undefined}
+              canVideo={canVideo}
               onToggleChat={handleToggleChat}
               onToggleMembers={handleToggleMembers}
               onDisconnect={leaveChannel}

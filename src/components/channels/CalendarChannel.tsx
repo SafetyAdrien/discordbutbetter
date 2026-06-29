@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
 import { Plus, ChevronLeft, ChevronRight, Clock, MapPin, Users, CalendarDays, List as ListIcon, Pencil, Trash2, Copy } from 'lucide-react';
 import { StreamlineCalendar } from '@/components/icons/StreamlineCalendar';
 import { Button } from '@/components/ui/button';
@@ -39,7 +38,6 @@ export interface CalendarChannelProps {
 
 export function CalendarChannel({ channel, onToggleMembers, showMembers, hideHeader = false, jumpToTodaySignal }: CalendarChannelProps) {
   const { isMobile } = useBreakpoint();
-  const { user } = useAuth();
   const { data: canManageEvents = false } = useHasChannelPermission(channel.id, 'manage_events');
   const { data: canCreate = false } = useHasChannelPermission(channel.id, 'create_events');
 
@@ -123,7 +121,7 @@ export function CalendarChannel({ channel, onToggleMembers, showMembers, hideHea
     setModalOpen(true);
   };
 
-  const canEditEvent = (e: ChannelCalendarEvent) => canManageEvents || e.created_by === user?.id;
+  const canEditEvent = (_e: ChannelCalendarEvent) => canManageEvents;
   const handleDelete = async (e: ChannelCalendarEvent) => {
     try { await remove.mutateAsync(e.id); } catch { /* toast handled */ }
   };

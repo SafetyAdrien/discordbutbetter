@@ -9,6 +9,7 @@ export interface SignalData {
 export type OnSignalCallback = (signal: SignalData) => void;
 export type OnAudioStreamCallback = (stream: MediaStream) => void;
 export type OnVideoStreamCallback = (stream: MediaStream, type: 'camera' | 'screen') => void;
+export type OnVideoStreamEndedCallback = (type: 'camera' | 'screen') => void;
 export type OnDisconnectCallback = () => void;
 
 export interface ScreenShareEncodingOptions {
@@ -61,6 +62,7 @@ export class PeerConnection {
   private onSignal: OnSignalCallback;
   private onAudioStream: OnAudioStreamCallback;
   private onVideoStream: OnVideoStreamCallback;
+  private onVideoStreamEnded: OnVideoStreamEndedCallback;
   private onDisconnect: OnDisconnectCallback;
   private pendingCandidates: RTCIceCandidateInit[] = [];
   private hasRemoteDescription = false;
@@ -79,12 +81,14 @@ export class PeerConnection {
     onSignal: OnSignalCallback,
     onAudioStream: OnAudioStreamCallback,
     onVideoStream: OnVideoStreamCallback,
-    onDisconnect: OnDisconnectCallback
+    onDisconnect: OnDisconnectCallback,
+    onVideoStreamEnded: OnVideoStreamEndedCallback = () => {}
   ) {
     this.peerId = peerId;
     this.onSignal = onSignal;
     this.onAudioStream = onAudioStream;
     this.onVideoStream = onVideoStream;
+    this.onVideoStreamEnded = onVideoStreamEnded;
     this.onDisconnect = onDisconnect;
 
     this.pc = new RTCPeerConnection({

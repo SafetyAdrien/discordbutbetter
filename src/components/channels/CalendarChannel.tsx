@@ -39,9 +39,9 @@ export interface CalendarChannelProps {
 
 export function CalendarChannel({ channel, onToggleMembers, showMembers, hideHeader = false, jumpToTodaySignal }: CalendarChannelProps) {
   const { isMobile } = useBreakpoint();
+  const { user } = useAuth();
   const { data: canManageEvents = false } = useHasChannelPermission(channel.id, 'manage_events');
-  // Tout membre voyant le salon peut créer un événement (gate RLS = view_channel).
-  const canCreate = true;
+  const { data: canCreate = false } = useHasChannelPermission(channel.id, 'create_events');
 
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);

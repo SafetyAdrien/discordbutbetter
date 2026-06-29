@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import { Plus, ChevronLeft, ChevronRight, Clock, MapPin, Users, CalendarDays, List as ListIcon, Pencil, Trash2, Copy } from 'lucide-react';
 import { StreamlineCalendar } from '@/components/icons/StreamlineCalendar';
 import { Button } from '@/components/ui/button';
@@ -38,9 +39,9 @@ export interface CalendarChannelProps {
 
 export function CalendarChannel({ channel, onToggleMembers, showMembers, hideHeader = false, jumpToTodaySignal }: CalendarChannelProps) {
   const { isMobile } = useBreakpoint();
+  const { user } = useAuth();
   const { data: canManageEvents = false } = useHasChannelPermission(channel.id, 'manage_events');
-  // Tout membre voyant le salon peut créer un événement (gate RLS = view_channel).
-  const canCreate = true;
+  const { data: canCreate = false } = useHasChannelPermission(channel.id, 'create_events');
 
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -122,7 +123,7 @@ export function CalendarChannel({ channel, onToggleMembers, showMembers, hideHea
     setModalOpen(true);
   };
 
-  const canEditEvent = (e: ChannelCalendarEvent) => canManageEvents || e.created_by === e.created_by; // creator check enforced by RLS
+  const canEditEvent = (e: ChannelCalendarEvent) => canManageEvents || e.created_by === user?.id;
   const handleDelete = async (e: ChannelCalendarEvent) => {
     try { await remove.mutateAsync(e.id); } catch { /* toast handled */ }
   };
@@ -306,21 +307,19 @@ export function CalendarChannel({ channel, onToggleMembers, showMembers, hideHea
                         </ContextMenuItem>
                       )}
                       {dayEvents.length > 0 && <ContextMenuSeparator />}
-                      {dayEvents.map((e) => (
+                      {dayEvents.filter(canEditEvent).map((e) => (
                         <ContextMenuItem key={e.id} onClick={() => openEdit(e)}>
                           <Pencil className="w-4 h-4 mr-2" /> Modifier « {e.title} »
                         </ContextMenuItem>
                       ))}
-                      {dayEvents.map((e) => (
-                        (canManageEvents || true) && (
-                          <ContextMenuItem
-                            key={`del-${e.id}`}
-                            className="text-destructive focus:text-destructive"
-                            onClick={() => handleDelete(e)}
-                          >
-                            <Trash2 className="w-4 h-4 mr-2" /> Supprimer « {e.title} »
-                          </ContextMenuItem>
-                        )
+                      {dayEvents.filter(canEditEvent).map((e) => (
+                        <ContextMenuItem
+                          key={`del-${e.id}`}
+                          className="text-destructive focus:text-destructive"
+                          onClick={() => handleDelete(e)}
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" /> Supprimer « {e.title} »
+                        </ContextMenuItem>
                       ))}
                     </ContextMenuContent>
                   </ContextMenu>

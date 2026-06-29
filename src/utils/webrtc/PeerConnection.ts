@@ -122,7 +122,12 @@ export class PeerConnection {
         } else if (event.track.kind === 'video') {
           const label = event.track.label.toLowerCase();
           const isScreen = label.includes('screen') || label.includes('window') || label.includes('display');
-          this.onVideoStream(stream, isScreen ? 'screen' : 'camera');
+          const type = isScreen ? 'screen' : 'camera';
+          this.onVideoStream(stream, type);
+          event.track.onended = () => {
+            console.log('[PeerConnection] Remote video track ended for:', this.peerId, 'type:', type);
+            this.onVideoStreamEnded(type);
+          };
         }
       }
     };

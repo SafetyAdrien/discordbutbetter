@@ -307,21 +307,19 @@ export function CalendarChannel({ channel, onToggleMembers, showMembers, hideHea
                         </ContextMenuItem>
                       )}
                       {dayEvents.length > 0 && <ContextMenuSeparator />}
-                      {dayEvents.map((e) => (
+                      {dayEvents.filter(canEditEvent).map((e) => (
                         <ContextMenuItem key={e.id} onClick={() => openEdit(e)}>
                           <Pencil className="w-4 h-4 mr-2" /> Modifier « {e.title} »
                         </ContextMenuItem>
                       ))}
-                      {dayEvents.map((e) => (
-                        (canManageEvents || true) && (
-                          <ContextMenuItem
-                            key={`del-${e.id}`}
-                            className="text-destructive focus:text-destructive"
-                            onClick={() => handleDelete(e)}
-                          >
-                            <Trash2 className="w-4 h-4 mr-2" /> Supprimer « {e.title} »
-                          </ContextMenuItem>
-                        )
+                      {dayEvents.filter(canEditEvent).map((e) => (
+                        <ContextMenuItem
+                          key={`del-${e.id}`}
+                          className="text-destructive focus:text-destructive"
+                          onClick={() => handleDelete(e)}
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" /> Supprimer « {e.title} »
+                        </ContextMenuItem>
                       ))}
                     </ContextMenuContent>
                   </ContextMenu>

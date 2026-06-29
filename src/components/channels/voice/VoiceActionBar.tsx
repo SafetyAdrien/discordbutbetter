@@ -160,7 +160,6 @@ export function VoiceActionBar({
                       !canVideo && 'opacity-50'
                     )}
                     onClick={onToggleCamera}
-                    disabled={!canVideo}
                   >
                     {isCameraOn ? <Video className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
                   </Button>

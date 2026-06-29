@@ -195,7 +195,7 @@ export function CalendarChannel({ channel, onToggleMembers, showMembers, hideHea
                 </div>
               ) : (
                 upcoming.map((event) => (
-                  <EventAgendaCard key={event.id} event={event} canManage={canManageEvents} onEdit={openEdit} onDelete={handleDelete} />
+                  <EventAgendaCard key={event.id} event={event} canManage={canEditEvent(event)} onEdit={openEdit} onDelete={handleDelete} />
                 ))
               )}
             </div>
@@ -343,7 +343,7 @@ const hasAnyDayAction = canCreate || dayEvents.some(canEditEvent);
                 ) : (
                   <div className="space-y-2">
                     {eventsForDate(selectedDate).map((event) => (
-                      <EventDetailCard key={event.id} event={event} canManage={canManageEvents} onEdit={openEdit} onDelete={handleDelete} />
+                      <EventDetailCard key={event.id} event={event} canManage={canEditEvent(event)} onEdit={openEdit} onDelete={handleDelete} />
                     ))}
                   </div>
                 )}

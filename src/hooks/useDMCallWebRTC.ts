@@ -113,6 +113,13 @@ export function useDMCallWebRTC(): UseDMCallWebRTCReturn {
       () => {
         console.log('[DMCallWebRTC] Peer disconnected');
         setIsConnected(false);
+        setRemoteVideoStream(null);
+      },
+      (type) => {
+        console.log('[DMCallWebRTC] Remote video stream ended, type:', type);
+        if (type === 'camera') {
+          setRemoteVideoStream(null);
+        }
       }
     );
 

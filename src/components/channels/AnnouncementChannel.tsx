@@ -774,10 +774,9 @@ export function AnnouncementChannel({
                                 <ThreadSystemMessage
                                   thread={thread}
                                   onClick={() => onSelectThread?.(threadId)}
-                                  canManage={canManageMessages}
+                                  canManage={thread.created_by === user?.id || canManageChannels}
                                   onRename={(name) => updateThreadMut.mutate({ threadId: thread.id, name })}
                                   onDelete={() => {
-                                    if (!canManageMessages) return;
                                     deleteThreadMut.mutate({ threadId: thread.id, channelId: channel.id });
                                     deleteMessage.mutate({ messageId: message.id, channelId: channel.id });
                                   }}

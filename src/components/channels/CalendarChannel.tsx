@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, ChevronLeft, ChevronRight, Clock, MapPin, Users, CalendarDays, List as ListIcon, Pencil, Trash2, COPY } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, Clock, MapPin, Users, CalendarDays, List as ListIcon, Pencil, Trash2, Copy } from 'lucide-react';
 import { StreamlineCalendar } from '@/components/icons/StreamlineCalendar';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';

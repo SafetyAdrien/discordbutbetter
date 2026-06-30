@@ -202,36 +202,49 @@ export const usePrefetchThreadsForChannels = (channelIds: string[]) => {
     let cancelled = false;
 
     (async () => {
-      for (const channelId of channelIds) {
-        if (cancelled) return;
-        const existing = queryClient.getQueryState(['threads', channelId]);
-        if (existing?.data) continue;
+      // Only fetch channels that don't already have data in the query cache.
+      const missing = channelIds.filter(
+        (cid) => !queryClient.getQueryState(['threads', cid])?.data
+      );
+      if (!missing.length || cancelled) return;
 
-        const { data, error } = await supabase
-          .from('threads')
-          .select(`
-            *,
-            creator:profiles!threads_created_by_fkey(id, username, display_name, avatar_url)
-          `)
-          .eq('channel_id', channelId)
-          .eq('archived', false)
-          .order('last_message_at', { ascending: false });
+      const { data, error } = await supabase
+        .from('threads')
+        .select(`
+          *,
+          creator:profiles!threads_created_by_fkey(id, username, display_name, avatar_url)
+        `)
+        .in('channel_id', missing)
+        .eq('archived', false)
+        .order('last_message_at', { ascending: false });
 
-        if (cancelled || error || !data) continue;
+      if (cancelled || error || !data) return;
 
-        // Lightweight shape: no per-thread counts/last message — those load
-        // lazily when the popover opens. Goal here is instant first paint.
-        const lightweight = data.map((t) => ({ ...t, message_count: 0, participants: [], participant_count: 0 } as Thread));
-        queryClient.setQueryData(['threads', channelId], lightweight);
-        cacheSetAsync(`threads:${channelId}`, lightweight);
+      // Group threads by channel_id client-side.
+      const grouped = new Map<string, Thread[]>();
+      for (const cid of missing) grouped.set(cid, []);
+      for (const t of data) {
+        const arr = grouped.get(t.channel_id);
+        if (arr) arr.push(t as Thread);
+      }
 
-        // Also seed each detail cache for instant open.
-        for (const t of data) {
-          const existingDetail = queryClient.getQueryState(['thread', t.id]);
-          if (!existingDetail?.data) {
-            queryClient.setQueryData(['thread', t.id], t);
-            cacheSetAsync(`thread:${t.id}`, t);
-          }
+      // Seed list cache (lightweight) + per-thread detail cache.
+      for (const [cid, threads] of grouped) {
+        const lightweight = threads.map((t) => ({
+          ...t,
+          message_count: 0,
+          participants: [],
+          participant_count: 0,
+        } as Thread));
+        queryClient.setQueryData(['threads', cid], lightweight);
+        cacheSetAsync(`threads:${cid}`, lightweight);
+      }
+
+      for (const t of data) {
+        const existingDetail = queryClient.getQueryState(['thread', t.id]);
+        if (!existingDetail?.data) {
+          queryClient.setQueryData(['thread', t.id], t);
+          cacheSetAsync(`thread:${t.id}`, t);
         }
       }
     })();

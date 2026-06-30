@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Search, X, User as UserIcon, Hash, Clock, Loader2 } from 'lucide-react';
+import { Search, X, User as UserIcon, Hash, Clock, Loader2, AtSign, FileText, SlidersHorizontal, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -18,6 +18,17 @@ interface MessageSearchPanelProps {
   members: { id: string; username: string; displayName: string; avatar?: string }[];
   onClose: () => void;
   onNavigateToMessage?: (channelId: string, messageId: string) => void;
+  /** When 'popover', the panel only shows the Filters/History dropdown content
+   *  (no search input, no results) — the host renders it as a floating overlay
+   *  anchored under the MemberList search bar. When 'panel' (default), it
+   *  renders the full search experience (input + results) replacing the column. */
+  variant?: 'popover' | 'panel';
+  /** Notifies the host when a search is submitted (or cleared). Hosts use this
+   *  to swap from popover overlay to full-column panel. */
+  onSubmittedChange?: (submitted: string | null) => void;
+  /** External query control (used by popover variant so typing in the dropdown
+   *  can promote to the full panel via the host). */
+  initialQuery?: string;
 }
 
 const HISTORY_MAX = 8;
@@ -49,10 +60,13 @@ export function MessageSearchPanel({
   members,
   onClose,
   onNavigateToMessage,
+  variant = 'panel',
+  onSubmittedChange,
+  initialQuery = '',
 }: MessageSearchPanelProps) {
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(initialQuery);
   const [submitted, setSubmitted] = useState<string | null>(null);
-  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(variant === 'popover');
   const [history, setHistory] = useState<string[]>(() => loadHistory(serverId));
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -62,6 +76,7 @@ export function MessageSearchPanel({
     setHistory(loadHistory(serverId));
     setQuery('');
     setSubmitted(null);
+    onSubmittedChange?.(null);
     search.reset();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serverId]);
@@ -70,6 +85,7 @@ export function MessageSearchPanel({
     const trimmed = q.trim();
     if (!trimmed) return;
     setSubmitted(trimmed);
+    onSubmittedChange?.(trimmed);
     setShowSuggestions(false);
 
     // Very lightweight prefix parsing to feed existing useGlobalSearch
@@ -136,6 +152,124 @@ export function MessageSearchPanel({
     return m;
   }, [channels]);
 
+  const filterRows = [
+    {
+      key: 'from',
+      icon: <UserIcon className="w-4 h-4 text-muted-foreground" />,
+      label: "Provenant d'un utilisateur",
+      hint: 'de :',
+      onSelect: () => insertPrefix('de:'),
+    },
+    {
+      key: 'in',
+      icon: <Hash className="w-4 h-4 text-muted-foreground" />,
+      label: 'Envoyé dans un salon spécifique',
+      hint: 'dans :',
+      onSelect: () => insertPrefix('dans:'),
+    },
+    {
+      key: 'has',
+      icon: <FileText className="w-4 h-4 text-muted-foreground" />,
+      label: 'Contient un type de contenu spécifique',
+      hint: 'a :',
+      onSelect: () => insertPrefix('a:'),
+    },
+    {
+      key: 'mentions',
+      icon: <AtSign className="w-4 h-4 text-muted-foreground" />,
+      label: 'Mentionne un utilisateur spécifique',
+      hint: 'mentionne :',
+      onSelect: () => insertPrefix('mentionne:'),
+    },
+    {
+      key: 'more',
+      icon: <SlidersHorizontal className="w-4 h-4 text-muted-foreground" />,
+      label: 'Plus de filtres',
+      hint: '',
+      onSelect: () => inputRef.current?.focus(),
+    },
+  ];
+
+  const filtersAndHistory = (
+    <>
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground px-2 pb-1">
+        Filtres
+      </div>
+      {filterRows.map((row) => (
+        <button
+          key={row.key}
+          onClick={row.onSelect}
+          className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-surface-hover text-left"
+        >
+          <span className="shrink-0">{row.icon}</span>
+          <span className="flex-1 truncate">{row.label}</span>
+          {row.hint && (
+            <span className="text-[11px] text-muted-foreground shrink-0">{row.hint}</span>
+          )}
+        </button>
+      ))}
+
+      {history.length > 0 && (
+        <>
+          <div className="flex items-center justify-between px-2 pt-3 pb-1">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              Historique
+            </span>
+            <button
+              onClick={clearHistory}
+              className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
+              aria-label="Tout effacer"
+            >
+              <Trash2 className="w-3 h-3" />
+              Tout effacer
+            </button>
+          </div>
+          {history.map((item) => (
+            <div
+              key={item}
+              className="group flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-surface-hover"
+            >
+              <Search className="w-4 h-4 text-muted-foreground shrink-0" />
+              <button
+                onClick={() => {
+                  setQuery(item);
+                  runSearch(item);
+                }}
+                className="flex-1 truncate text-left"
+              >
+                {item}
+              </button>
+              <button
+                onClick={() => removeHistoryItem(item)}
+                className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground"
+                aria-label="Retirer de l'historique"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
+        </>
+      )}
+    </>
+  );
+
+  // Popover variant: just the Filters/History card, no input, no results.
+  if (variant === 'popover') {
+    return (
+      <div
+        className="w-full bg-surface-1 border border-border/40 rounded-md shadow-lg p-2 max-h-[70vh] overflow-y-auto"
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') {
+            e.stopPropagation();
+            onClose();
+          }
+        }}
+      >
+        {filtersAndHistory}
+      </div>
+    );
+  }
+
   return (
     <div className="w-full sm:w-60 bg-surface-1 flex flex-col sm:border-l sm:border-border/30 h-full">
       {/* Search bar — matches MemberList visual */}
@@ -183,67 +317,7 @@ export function MessageSearchPanel({
 
       {/* Quick filter / history dropdown */}
       {showSuggestions && !submitted && (
-        <div className="px-2 pt-2">
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground px-2 pb-1">
-            Filtres rapides
-          </div>
-          <button
-            onClick={() => insertPrefix('de:')}
-            className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-surface-hover text-left"
-          >
-            <UserIcon className="w-4 h-4 text-muted-foreground" />
-            <span className="text-muted-foreground">de:</span>
-            <span>d'un utilisateur</span>
-          </button>
-          <button
-            onClick={() => insertPrefix('dans:')}
-            className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-surface-hover text-left"
-          >
-            <Hash className="w-4 h-4 text-muted-foreground" />
-            <span className="text-muted-foreground">dans:</span>
-            <span>un salon</span>
-          </button>
-
-          {history.length > 0 && (
-            <>
-              <div className="flex items-center justify-between px-2 pt-3 pb-1">
-                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                  Historique
-                </span>
-                <button
-                  onClick={clearHistory}
-                  className="text-[10px] text-muted-foreground hover:text-foreground"
-                >
-                  Tout effacer
-                </button>
-              </div>
-              {history.map((item) => (
-                <div
-                  key={item}
-                  className="group flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-surface-hover"
-                >
-                  <Clock className="w-4 h-4 text-muted-foreground shrink-0" />
-                  <button
-                    onClick={() => {
-                      setQuery(item);
-                      runSearch(item);
-                    }}
-                    className="flex-1 truncate text-left"
-                  >
-                    {item}
-                  </button>
-                  <button
-                    onClick={() => removeHistoryItem(item)}
-                    className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground"
-                    aria-label="Retirer de l'historique"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))}
-            </>
-          )}
-        </div>
+        <div className="px-2 pt-2">{filtersAndHistory}</div>
       )}
 
       {/* Results */}
@@ -322,9 +396,8 @@ export function MessageSearchPanel({
         </ScrollArea>
       )}
 
-      {!submitted && !showSuggestions && (
-        <div className="flex-1" />
-      )}
+      {!submitted && !showSuggestions && <div className="flex-1" />}
     </div>
   );
 }
+

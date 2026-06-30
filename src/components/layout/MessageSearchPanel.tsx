@@ -736,7 +736,7 @@ export function MessageSearchPanel({
     return (
       <>
         <div
-          className="w-full bg-popover text-popover-foreground border border-border/40 rounded-md shadow-lg max-h-[70vh] overflow-y-auto"
+          className="w-full flex flex-col gap-2"
           onKeyDown={(e) => {
             if (e.key === 'Escape') {
               e.stopPropagation();
@@ -745,9 +745,12 @@ export function MessageSearchPanel({
             }
           }}
         >
-          <div className="p-2 pb-1">{searchInputBar}</div>
-          <Separator />
-          <div className="p-2">
+          {/* Search bar — independent rounded element */}
+          <div className="bg-popover text-popover-foreground rounded-xl shadow-lg p-1.5">
+            {searchInputBar}
+          </div>
+          {/* Floating panel — separate element below */}
+          <div className="bg-popover text-popover-foreground rounded-xl shadow-lg max-h-[70vh] overflow-y-auto p-2">
             {submenu ? renderSubmenu(submenu) : filtersAndHistory}
           </div>
         </div>

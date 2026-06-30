@@ -248,61 +248,8 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
     setSelectedRoleFilters([roleId]);
   });
 
-  // Parse search query for prefixes
-  const parseSearchQuery = (query: string) => {
-    const parsed: {
-      prefix: string;
-      value: string;
-    }[] = [];
-    let remaining = query;
-
-    // Check for each known prefix
-    for (const filter of searchFilters) {
-      const regex = new RegExp(`${filter.prefix}(\\S+)`, "gi");
-      const match = regex.exec(remaining);
-      if (match) {
-        parsed.push({
-          prefix: filter.prefix,
-          value: match[1],
-        });
-        remaining = remaining.replace(match[0], "").trim();
-      }
-    }
-    return {
-      parsed,
-      freeText: remaining,
-    };
-  };
   const filteredMembers = useMemo(() => {
     let result = [...members];
-    const { parsed, freeText } = parseSearchQuery(searchQuery);
-
-    // Apply free text filter on name
-    if (freeText.trim()) {
-      const query = freeText.toLowerCase();
-      result = result.filter(
-        (m) => m.displayName.toLowerCase().includes(query) || m.username.toLowerCase().includes(query),
-      );
-    }
-
-    // Apply prefix filters
-    for (const { prefix, value } of parsed) {
-      switch (prefix) {
-        case "de:":
-          result = result.filter(
-            (m) =>
-              m.displayName.toLowerCase().includes(value.toLowerCase()) ||
-              m.username.toLowerCase().includes(value.toLowerCase()),
-          );
-          break;
-        case "auteur:":
-          // Filter by author type (e.g., bot, user)
-          if (value.toLowerCase() === "bot") {
-            result = result.filter((m) => m.username.toLowerCase().includes("bot"));
-          }
-          break;
-      }
-    }
 
     // Apply role filter
     if (selectedRoleFilters.length > 0) {
@@ -312,7 +259,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
     // Sort by display name
     result.sort((a, b) => a.displayName.localeCompare(b.displayName));
     return result;
-  }, [members, searchQuery, selectedRoleFilters]);
+  }, [members, selectedRoleFilters]);
 
   // Group members by hoisted roles
   const groupedMembers = useMemo(() => {

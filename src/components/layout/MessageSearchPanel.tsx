@@ -153,12 +153,8 @@ export function MessageSearchPanel({
   const [filtersValue, setFiltersValue] = useState<SearchFiltersValue>(
     emptySearchFilters(),
   );
-  const [submenu, setSubmenu] = useState<{
-    mode: SubmenuMode;
-    filter: string;
-  } | null>(null);
+  const [submenu, setSubmenu] = useState<SubmenuMode | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const submenuInputRef = useRef<HTMLInputElement>(null);
 
   const search = useGlobalSearch(serverId);
   const didMountRef = useRef(false);
@@ -191,22 +187,6 @@ export function MessageSearchPanel({
     search.reset();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serverId]);
-
-  // Keep submenu filter synced with the input query (panel variant only).
-  useEffect(() => {
-    if (variant !== 'panel' || !submenu) return;
-    const prefix = PREFIX_MAP[submenu.mode];
-    const lower = query.toLowerCase();
-    const idx = lower.lastIndexOf(prefix);
-    if (idx === -1) {
-      setSubmenu(null);
-      return;
-    }
-    const rest = query.slice(idx + prefix.length).replace(/^\s+/, '');
-    if (rest !== submenu.filter) {
-      setSubmenu({ mode: submenu.mode, filter: rest });
-    }
-  }, [query, submenu, variant]);
 
   const runSearch = (q: string) => {
     const trimmed = q.trim();
@@ -247,6 +227,7 @@ export function MessageSearchPanel({
     onSubmittedChange?.(label);
     setShowSuggestions(false);
     setSubmenu(null);
+    setQuery('');
     search.mutate({ query: filters.contains ?? '', filters });
     setHistory((prev) => {
       const next = [label, ...prev.filter((h) => h !== label)].slice(
@@ -262,8 +243,14 @@ export function MessageSearchPanel({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && submenu && query === '') {
+      e.preventDefault();
+      setSubmenu(null);
+      return;
+    }
     if (e.key === 'Enter') {
       e.preventDefault();
+      if (submenu) return; // selection happens via click on submenu item
       runSearch(query);
     } else if (e.key === 'Escape') {
       if (submenu) setSubmenu(null);
@@ -273,15 +260,10 @@ export function MessageSearchPanel({
   };
 
   const openSubmenu = (mode: SubmenuMode) => {
-    const prefix = PREFIX_MAP[mode];
-    if (variant === 'panel') {
-      setQuery(`${prefix} `);
-      setShowSuggestions(true);
-      requestAnimationFrame(() => inputRef.current?.focus());
-    } else {
-      requestAnimationFrame(() => submenuInputRef.current?.focus());
-    }
-    setSubmenu({ mode, filter: '' });
+    setSubmenu(mode);
+    setQuery('');
+    setShowSuggestions(true);
+    requestAnimationFrame(() => inputRef.current?.focus());
   };
 
   const removeHistoryItem = (item: string) => {

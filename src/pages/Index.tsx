@@ -656,32 +656,77 @@ const Index = () => {
     />
   ) : null;
 
+  const closeSearch = () => {
+    setShowGlobalSearch(false);
+    setSearchSubmitted(null);
+  };
+
   const messageSearchEl = activeServer ? (
     <MessageSearchPanel
+      key={`search-panel-${activeServer.id}`}
       serverId={activeServer.id}
       channels={searchChannels}
       members={searchMembers}
-      onClose={() => setShowGlobalSearch(false)}
+      onClose={closeSearch}
+      onSubmittedChange={setSearchSubmitted}
       onNavigateToMessage={(channelId) => {
         setActiveChannelId(channelId);
-        setShowGlobalSearch(false);
+        closeSearch();
       }}
     />
   ) : null;
 
-  const rightPanelEl = activeServer && channelForChat?.type !== 'voice' && !activeThreadId
-    ? (showGlobalSearch
-        ? messageSearchEl
-        : (
-          <MemberList
-            members={memberListData}
-            ownerId={activeServer.owner_id || ''}
-            serverId={activeServer.id}
-            onOpenDM={handleOpenDM}
-            onOpenGlobalSearch={() => setShowGlobalSearch(true)}
-          />
-        ))
-    : null;
+  const messageSearchPopoverEl = activeServer ? (
+    <MessageSearchPanel
+      key={`search-popover-${activeServer.id}`}
+      variant="popover"
+      serverId={activeServer.id}
+      channels={searchChannels}
+      members={searchMembers}
+      onClose={closeSearch}
+      onSubmittedChange={setSearchSubmitted}
+      onNavigateToMessage={(channelId) => {
+        setActiveChannelId(channelId);
+        closeSearch();
+      }}
+    />
+  ) : null;
+
+  const memberListBase = activeServer && channelForChat?.type !== 'voice' && !activeThreadId ? (
+    <MemberList
+      members={memberListData}
+      ownerId={activeServer.owner_id || ''}
+      serverId={activeServer.id}
+      onOpenDM={handleOpenDM}
+      onOpenGlobalSearch={() => setShowGlobalSearch(true)}
+    />
+  ) : null;
+
+  // When a search has been submitted, MessageSearchPanel takes over the whole column.
+  // Otherwise (showGlobalSearch && !submitted), MemberList stays mounted and the
+  // Filters/History popover floats above it.
+  const rightPanelEl = !memberListBase
+    ? null
+    : showGlobalSearch && searchSubmitted
+      ? messageSearchEl
+      : (
+        <div className="relative w-full sm:w-60 h-full">
+          {memberListBase}
+          {showGlobalSearch && !searchSubmitted && (
+            <>
+              <button
+                type="button"
+                aria-label="Fermer la recherche"
+                onClick={closeSearch}
+                className="absolute inset-0 bg-black/40 z-10 cursor-default"
+              />
+              <div className="absolute left-2 right-2 top-12 z-20">
+                {messageSearchPopoverEl}
+              </div>
+            </>
+          )}
+        </div>
+      );
   const memberListEl = rightPanelEl;
 
   return (

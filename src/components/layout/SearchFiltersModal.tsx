@@ -131,21 +131,23 @@ function MemberMultiSelect({
   selected,
   onChange,
   placeholder,
-  autoOpen,
 }: {
   members: MemberLite[];
   selected: string[];
   onChange: (next: string[]) => void;
   placeholder: string;
-  autoOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(!!autoOpen);
+  const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
+  const inputRef = React.useRef<HTMLInputElement>(null);
   const selectedMap = new Set(selected);
   const filtered = members.filter((m) => {
     if (!q) return true;
     const s = q.toLowerCase();
-    return m.username.toLowerCase().includes(s) || m.displayName.toLowerCase().includes(s);
+    return (
+      m.username.toLowerCase().includes(s) ||
+      m.displayName.toLowerCase().includes(s)
+    );
   });
   const toggle = (id: string) => {
     if (selectedMap.has(id)) onChange(selected.filter((x) => x !== id));
@@ -156,13 +158,21 @@ function MemberMultiSelect({
     .filter(Boolean) as MemberLite[];
 
   return (
-    <div className="space-y-2">
-      {selectedMembers.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <div
+          role="combobox"
+          aria-expanded={open}
+          onClick={() => {
+            setOpen(true);
+            inputRef.current?.focus();
+          }}
+          className="flex flex-wrap items-center gap-1 min-h-[36px] w-full rounded-xl border border-border bg-input px-2 py-1 cursor-text"
+        >
           {selectedMembers.map((m) => (
             <span
               key={m.id}
-              className="inline-flex items-center gap-1.5 rounded-full bg-surface-2 pl-1 pr-2 py-0.5 text-xs"
+              className="inline-flex items-center gap-1.5 rounded-full bg-surface-2 pl-1 pr-1.5 py-0.5 text-xs"
             >
               {m.avatar ? (
                 <UserAvatarImage
@@ -180,7 +190,10 @@ function MemberMultiSelect({
               )}
               <span className="truncate max-w-[120px]">{m.displayName}</span>
               <button
-                onClick={() => toggle(m.id)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggle(m.id);
+                }}
                 className="text-muted-foreground hover:text-foreground"
                 aria-label={`Remove ${m.displayName}`}
               >
@@ -188,77 +201,190 @@ function MemberMultiSelect({
               </button>
             </span>
           ))}
-        </div>
-      )}
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Input
-            placeholder={placeholder}
+          <input
+            ref={inputRef}
+            type="text"
             value={q}
             onChange={(e) => {
               setQ(e.target.value);
               setOpen(true);
             }}
             onFocus={() => setOpen(true)}
-            className="h-9 text-sm"
+            placeholder={selectedMembers.length === 0 ? placeholder : ''}
+            className="flex-1 min-w-[80px] bg-transparent outline-none text-sm placeholder:text-muted-foreground"
           />
-        </PopoverTrigger>
-        <PopoverContent
-          align="start"
-          className="p-0 w-[--radix-popover-trigger-width] max-h-[260px] overflow-hidden"
-          onOpenAutoFocus={(e) => e.preventDefault()}
-        >
-          <ScrollArea className="max-h-[260px]">
-            <div className="p-1">
-              {filtered.length === 0 && (
-                <div className="text-xs text-muted-foreground px-2 py-3 text-center">
-                  No matches
-                </div>
-              )}
-              {filtered.map((m) => {
-                const checked = selectedMap.has(m.id);
-                return (
-                  <button
-                    key={m.id}
-                    onClick={() => toggle(m.id)}
-                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-surface-hover text-left"
-                  >
-                    <span
-                      className={cn(
-                        'w-4 h-4 shrink-0 rounded border flex items-center justify-center',
-                        checked
-                          ? 'bg-primary border-primary text-primary-foreground'
-                          : 'border-border'
-                      )}
-                    >
-                      {checked && <Check className="w-3 h-3" />}
-                    </span>
-                    {m.avatar ? (
-                      <UserAvatarImage
-                        src={m.avatar}
-                        alt={m.displayName}
-                        ownerId={m.id}
-                        className="w-6 h-6 rounded-full"
-                      />
-                    ) : (
-                      <Avatar className="w-6 h-6">
-                        <AvatarFallback className="text-[10px]">
-                          {m.displayName.slice(0, 2).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
+        </div>
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        className="p-0 w-[--radix-popover-trigger-width] max-h-[260px] overflow-hidden"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
+        <ScrollArea className="max-h-[260px]">
+          <div className="p-1">
+            {filtered.length === 0 && (
+              <div className="text-xs text-muted-foreground px-2 py-3 text-center">
+                No matches
+              </div>
+            )}
+            {filtered.map((m) => {
+              const checked = selectedMap.has(m.id);
+              return (
+                <button
+                  key={m.id}
+                  onClick={() => toggle(m.id)}
+                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-surface-hover text-left"
+                >
+                  <span
+                    className={cn(
+                      'w-4 h-4 shrink-0 rounded border flex items-center justify-center',
+                      checked
+                        ? 'bg-primary border-primary text-primary-foreground'
+                        : 'border-border',
                     )}
-                    <span className="flex-1 min-w-0 truncate">{m.displayName}</span>
-                    <span className="text-xs text-muted-foreground truncate">
-                      @{m.username}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </ScrollArea>
-        </PopoverContent>
-      </Popover>
-    </div>
+                  >
+                    {checked && <Check className="w-3 h-3" />}
+                  </span>
+                  {m.avatar ? (
+                    <UserAvatarImage
+                      src={m.avatar}
+                      alt={m.displayName}
+                      ownerId={m.id}
+                      className="w-6 h-6 rounded-full"
+                    />
+                  ) : (
+                    <Avatar className="w-6 h-6">
+                      <AvatarFallback className="text-[10px]">
+                        {m.displayName.slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  )}
+                  <span className="flex-1 min-w-0 truncate">
+                    {m.displayName}
+                  </span>
+                  <span className="text-xs text-muted-foreground truncate">
+                    @{m.username}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </ScrollArea>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function ChannelMultiSelect({
+  channels,
+  selected,
+  onChange,
+  placeholder,
+}: {
+  channels: ChannelLite[];
+  selected: string[];
+  onChange: (next: string[]) => void;
+  placeholder: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState('');
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  const selectedMap = new Set(selected);
+  const filtered = channels.filter((c) =>
+    !q ? true : c.name.toLowerCase().includes(q.toLowerCase()),
+  );
+  const toggle = (id: string) => {
+    if (selectedMap.has(id)) onChange(selected.filter((x) => x !== id));
+    else onChange([...selected, id]);
+  };
+  const selectedChannels = selected
+    .map((id) => channels.find((c) => c.id === id))
+    .filter(Boolean) as ChannelLite[];
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <div
+          role="combobox"
+          aria-expanded={open}
+          onClick={() => {
+            setOpen(true);
+            inputRef.current?.focus();
+          }}
+          className="flex flex-wrap items-center gap-1 min-h-[36px] w-full rounded-xl border border-border bg-input px-2 py-1 cursor-text"
+        >
+          {selectedChannels.map((c) => (
+            <span
+              key={c.id}
+              className="inline-flex items-center gap-1 rounded-full bg-surface-2 px-2 py-0.5 text-xs"
+            >
+              <Hash className="w-3 h-3 text-muted-foreground" />
+              <span className="truncate max-w-[140px]">{c.name}</span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggle(c.id);
+                }}
+                className="text-muted-foreground hover:text-foreground"
+                aria-label={`Remove ${c.name}`}
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          ))}
+          <input
+            ref={inputRef}
+            type="text"
+            value={q}
+            onChange={(e) => {
+              setQ(e.target.value);
+              setOpen(true);
+            }}
+            onFocus={() => setOpen(true)}
+            placeholder={selectedChannels.length === 0 ? placeholder : ''}
+            className="flex-1 min-w-[80px] bg-transparent outline-none text-sm placeholder:text-muted-foreground"
+          />
+        </div>
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        className="p-0 w-[--radix-popover-trigger-width] max-h-[260px] overflow-hidden"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
+        <ScrollArea className="max-h-[260px]">
+          <div className="p-1">
+            {filtered.length === 0 && (
+              <div className="text-xs text-muted-foreground px-2 py-3 text-center">
+                No matches
+              </div>
+            )}
+            {filtered.map((c) => {
+              const checked = selectedMap.has(c.id);
+              return (
+                <button
+                  key={c.id}
+                  onClick={() => toggle(c.id)}
+                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-surface-hover text-left"
+                >
+                  <span
+                    className={cn(
+                      'w-4 h-4 shrink-0 rounded border flex items-center justify-center',
+                      checked
+                        ? 'bg-primary border-primary text-primary-foreground'
+                        : 'border-border',
+                    )}
+                  >
+                    {checked && <Check className="w-3 h-3" />}
+                  </span>
+                  <Hash className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <span className="flex-1 min-w-0 truncate">{c.name}</span>
+                </button>
+              );
+            })}
+          </div>
+        </ScrollArea>
+      </PopoverContent>
+    </Popover>
   );
 }
 

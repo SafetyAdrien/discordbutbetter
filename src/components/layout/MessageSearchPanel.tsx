@@ -140,9 +140,13 @@ export function MessageSearchPanel({
   variant = 'panel',
   onSubmittedChange,
   initialQuery = '',
+  onPopoverSubmit,
+  initialSubmit = null,
 }: MessageSearchPanelProps) {
-  const [query, setQuery] = useState(initialQuery);
-  const [submitted, setSubmitted] = useState<string | null>(null);
+  const [query, setQuery] = useState(initialSubmit?.label ?? initialQuery);
+  const [submitted, setSubmitted] = useState<string | null>(
+    initialSubmit?.label ?? null,
+  );
   const [showSuggestions, setShowSuggestions] = useState(variant === 'popover');
   const [history, setHistory] = useState<string[]>(() => loadHistory(serverId));
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -157,8 +161,28 @@ export function MessageSearchPanel({
   const submenuInputRef = useRef<HTMLInputElement>(null);
 
   const search = useGlobalSearch(serverId);
+  const didMountRef = useRef(false);
+  const didRehydrateRef = useRef(false);
+
+  // Re-run search submitted from popover when the panel mounts.
+  useEffect(() => {
+    if (didRehydrateRef.current) return;
+    if (!initialSubmit) return;
+    didRehydrateRef.current = true;
+    onSubmittedChange?.(initialSubmit.label);
+    search.mutate({
+      query: initialSubmit.filters.contains ?? '',
+      filters: initialSubmit.filters,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
+    // Skip first run so initialSubmit/initialQuery aren't wiped on mount.
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+      return;
+    }
     setHistory(loadHistory(serverId));
     setQuery('');
     setSubmitted(null);

@@ -11,6 +11,12 @@ import { MarkdownText, MarkdownProvider } from '@/lib/markdown';
 import { UserAvatarImage } from '@/components/ui/user-avatar-image';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import {
+  SearchFiltersModal,
+  emptySearchFilters,
+  type SearchFiltersValue,
+  type SearchFiltersFocus,
+} from './SearchFiltersModal';
 
 interface MessageSearchPanelProps {
   serverId: string | null;

@@ -198,6 +198,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
       return next;
     });
   };
+  const [addSecondOwnerTarget, setAddSecondOwnerTarget] = useState<{ id: string; name: string } | null>(null);
   const [removeSecondOwnerTarget, setRemoveSecondOwnerTarget] = useState<{ id: string; name: string } | null>(null);
   const setSecondaryOwner = useSetSecondaryOwner();
   const removeSecondaryOwner = useRemoveSecondaryOwner();

@@ -310,8 +310,8 @@ export function MessageSearchPanel({
                         )}
                       </div>
                       <div className="text-xs text-foreground/80 line-clamp-2 mt-0.5">
-                        <MarkdownProvider value={{ ...MarkdownContext, channelId: r.channel_id }}>
-                          <MarkdownText text={r.content || ''} />
+                        <MarkdownProvider value={{ channelId: r.channel_id ?? undefined }}>
+                          <MarkdownText content={r.content || ''} />
                         </MarkdownProvider>
                       </div>
                     </div>

@@ -677,6 +677,7 @@ const Index = () => {
             ownerId={activeServer.owner_id || ''}
             serverId={activeServer.id}
             onOpenDM={handleOpenDM}
+            onOpenGlobalSearch={() => setShowGlobalSearch(true)}
           />
         ))
     : null;

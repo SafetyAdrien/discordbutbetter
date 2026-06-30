@@ -11,11 +11,6 @@ import {
   Ban,
   User as UserIcon,
   Search,
-  AtSign,
-  FileText,
-  Calendar,
-  Pin,
-  UserCircle,
   Gamepad2,
   Headphones,
   Eye,
@@ -96,6 +91,7 @@ interface MemberListProps {
   ownerId: string;
   serverId?: string;
   onOpenDM?: (conversationId: string) => void;
+  onOpenGlobalSearch?: () => void;
   serverRoles?: Role[];
 }
 const statusColors: Record<string, string> = {
@@ -123,102 +119,6 @@ const activityColors: Record<string, string> = {
   competing: "text-yellow-400",
 };
 
-// Search filter prefixes
-const searchFilters = [
-  {
-    prefix: "de:",
-    label: "de la personne",
-    icon: UserIcon,
-  },
-  {
-    prefix: "mentions:",
-    label: "mentionner quelqu'un",
-    icon: AtSign,
-  },
-  {
-    prefix: "contient:",
-    label: "dispose de données spécifiques",
-    icon: FileText,
-  },
-  {
-    prefix: "dans:",
-    label: "dans un salon spécifique",
-    icon: Hash,
-  },
-  {
-    prefix: "pendant:",
-    label: "envoyé à une date",
-    icon: Calendar,
-  },
-  {
-    prefix: "avant:",
-    label: "avant la date",
-    icon: Calendar,
-  },
-  {
-    prefix: "après:",
-    label: "après la date",
-    icon: Calendar,
-  },
-  {
-    prefix: "épinglé:",
-    label: "épinglé",
-    icon: Pin,
-  },
-  {
-    prefix: "auteur:",
-    label: "par type d'auteur",
-    icon: UserCircle,
-  },
-];
-
-// Search Filters Component
-function SearchFilters({
-  onSelectFilter,
-  searchQuery,
-  isClosing,
-  selectedIndex,
-  onMouseEnterItem,
-  availableFilters,
-}: {
-  onSelectFilter: (prefix: string) => void;
-  searchQuery: string;
-  isClosing: boolean;
-  selectedIndex: number;
-  onMouseEnterItem: (index: number) => void;
-  availableFilters: typeof searchFilters;
-}) {
-  if (availableFilters.length === 0) return null;
-  return (
-    <div
-      className={cn(
-        "absolute top-full -left-32 right-0 z-50 w-[calc(100%+8rem)] bg-card border border-border rounded-lg shadow-xl p-2 mt-1",
-        isClosing ? "animate-slide-up" : "animate-slide-down",
-      )}
-    >
-      <p className="text-xs font-medium text-muted-foreground px-2 mb-2">Options de recherche</p>
-      {availableFilters.map((filter, index) => {
-        const Icon = filter.icon;
-        const isSelected = index === selectedIndex;
-        return (
-          <button
-            key={filter.prefix}
-            onClick={() => onSelectFilter(filter.prefix)}
-            onMouseEnter={() => onMouseEnterItem(index)}
-            className={cn(
-              "flex items-center gap-2 w-full px-2 py-1.5 rounded text-sm text-left transition-colors",
-              isSelected ? "bg-muted" : "hover:bg-muted",
-            )}
-          >
-            <Icon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-            <span className="text-primary font-medium min-w-[80px]">{filter.prefix}</span>
-            <span className="text-muted-foreground/70 truncate">{filter.label}</span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
 
 // Role Icon Component
 function RoleIcon({ role }: { role: Role | RoleWithPermissions }) {
@@ -277,15 +177,12 @@ function InboxButton() {
 }
 
 export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function MemberList(
-  { members, ownerId, serverId, onOpenDM, serverRoles = [] },
+  { members, ownerId, serverId, onOpenDM, onOpenGlobalSearch, serverRoles = [] },
   ref,
 ) {
   const { user: currentUser } = useAuth();
   const [selectedMember, setSelectedMember] = useState<MemberWithRoles | null>(null);
   const [serverProfileEditOpen, setServerProfileEditOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [showFilters, setShowFilters] = useState(false);
-  const [isClosingFilters, setIsClosingFilters] = useState(false);
   const [selectedRoleFilters, setSelectedRoleFiltersRaw] = useState<string[]>(() =>
     getPersistedRoleFilter(serverId),
   );
@@ -296,63 +193,15 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
       return next;
     });
   };
-  const [filterSelectedIndex, setFilterSelectedIndex] = useState(0);
-  const searchRef = useRef<HTMLInputElement>(null);
   const [addSecondOwnerTarget, setAddSecondOwnerTarget] = useState<{ id: string; name: string } | null>(null);
   const [removeSecondOwnerTarget, setRemoveSecondOwnerTarget] = useState<{ id: string; name: string } | null>(null);
   const setSecondaryOwner = useSetSecondaryOwner();
   const removeSecondaryOwner = useRemoveSecondaryOwner();
 
-  // Calculate available filters based on search query
-  const availableFilters = useMemo(() => {
-    const lowerQuery = searchQuery.toLowerCase();
-    // If query already has a prefix, don't show suggestions
-    if (searchFilters.some((f) => lowerQuery.startsWith(f.prefix))) {
-      return [];
-    }
-    // If typing, filter suggestions that match
-    if (lowerQuery.trim()) {
-      return searchFilters.filter(
-        (f) => f.prefix.toLowerCase().includes(lowerQuery) || f.label.toLowerCase().includes(lowerQuery),
-      );
-    }
-    return searchFilters;
-  }, [searchQuery]);
-
-  // Reset selected index when filters change or dropdown opens
-  useEffect(() => {
-    setFilterSelectedIndex(0);
-  }, [searchQuery, showFilters]);
-
   // Re-hydrate role filters when changing server (component may not unmount)
   useEffect(() => {
     setSelectedRoleFiltersRaw(getPersistedRoleFilter(serverId));
   }, [serverId]);
-  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (!showFilters || availableFilters.length === 0) return;
-    switch (e.key) {
-      case "ArrowDown":
-        e.preventDefault();
-        setFilterSelectedIndex((prev) => (prev + 1) % availableFilters.length);
-        break;
-      case "ArrowUp":
-        e.preventDefault();
-        setFilterSelectedIndex((prev) => (prev <= 0 ? availableFilters.length - 1 : prev - 1));
-        break;
-      case "Enter":
-        e.preventDefault();
-        if (availableFilters[filterSelectedIndex]) {
-          handleSelectFilter(availableFilters[filterSelectedIndex].prefix);
-        }
-        break;
-      case "Tab":
-        if (availableFilters.length > 0) {
-          e.preventDefault();
-          handleSelectFilter(availableFilters[filterSelectedIndex].prefix);
-        }
-        break;
-    }
-  };
 
   // Fetch roles for filter and management
   const { data: allRoles = [] } = useServerRoles(serverId || null);
@@ -381,11 +230,6 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
       (role) => role.permissions.includes("administrator") || role.permissions.includes("manage_roles"),
     );
   }, [currentUser, serverId, ownerId, server?.secondary_owner_id, membersData, allRoles]);
-  const handleSelectFilter = (prefix: string) => {
-    setSearchQuery(prefix);
-    setShowFilters(false);
-    searchRef.current?.focus();
-  };
   const handleRoleFilterToggle = (roleId: string) => {
     setSelectedRoleFilters((prev) => (prev.includes(roleId) ? prev.filter((id) => id !== roleId) : [...prev, roleId]));
   };
@@ -399,61 +243,8 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
     setSelectedRoleFilters([roleId]);
   });
 
-  // Parse search query for prefixes
-  const parseSearchQuery = (query: string) => {
-    const parsed: {
-      prefix: string;
-      value: string;
-    }[] = [];
-    let remaining = query;
-
-    // Check for each known prefix
-    for (const filter of searchFilters) {
-      const regex = new RegExp(`${filter.prefix}(\\S+)`, "gi");
-      const match = regex.exec(remaining);
-      if (match) {
-        parsed.push({
-          prefix: filter.prefix,
-          value: match[1],
-        });
-        remaining = remaining.replace(match[0], "").trim();
-      }
-    }
-    return {
-      parsed,
-      freeText: remaining,
-    };
-  };
   const filteredMembers = useMemo(() => {
     let result = [...members];
-    const { parsed, freeText } = parseSearchQuery(searchQuery);
-
-    // Apply free text filter on name
-    if (freeText.trim()) {
-      const query = freeText.toLowerCase();
-      result = result.filter(
-        (m) => m.displayName.toLowerCase().includes(query) || m.username.toLowerCase().includes(query),
-      );
-    }
-
-    // Apply prefix filters
-    for (const { prefix, value } of parsed) {
-      switch (prefix) {
-        case "de:":
-          result = result.filter(
-            (m) =>
-              m.displayName.toLowerCase().includes(value.toLowerCase()) ||
-              m.username.toLowerCase().includes(value.toLowerCase()),
-          );
-          break;
-        case "auteur:":
-          // Filter by author type (e.g., bot, user)
-          if (value.toLowerCase() === "bot") {
-            result = result.filter((m) => m.username.toLowerCase().includes("bot"));
-          }
-          break;
-      }
-    }
 
     // Apply role filter
     if (selectedRoleFilters.length > 0) {
@@ -463,7 +254,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
     // Sort by display name
     result.sort((a, b) => a.displayName.localeCompare(b.displayName));
     return result;
-  }, [members, searchQuery, selectedRoleFilters]);
+  }, [members, selectedRoleFilters]);
 
   // Group members by hoisted roles
   const groupedMembers = useMemo(() => {
@@ -757,35 +548,12 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
             <div className="relative flex-1">
               <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground z-10" />
               <Input
-                ref={searchRef}
+                readOnly
                 placeholder="Rechercher"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={handleSearchKeyDown}
-                onFocus={() => {
-                  setIsClosingFilters(false);
-                  setShowFilters(true);
-                }}
-                onBlur={() => {
-                  setIsClosingFilters(true);
-                  setTimeout(() => {
-                    setShowFilters(false);
-                    setIsClosingFilters(false);
-                  }, 150);
-                }}
-                className="h-8 pl-8 text-sm bg-input"
+                onFocus={() => onOpenGlobalSearch?.()}
+                onClick={() => onOpenGlobalSearch?.()}
+                className="h-8 pl-8 text-sm bg-input cursor-pointer"
               />
-              {/* Filters suggestions - overlay dropdown */}
-              {showFilters && (
-                <SearchFilters
-                  onSelectFilter={handleSelectFilter}
-                  searchQuery={searchQuery}
-                  isClosing={isClosingFilters}
-                  selectedIndex={filterSelectedIndex}
-                  onMouseEnterItem={setFilterSelectedIndex}
-                  availableFilters={availableFilters}
-                />
-              )}
             </div>
             <InboxButton />
           </div>

@@ -207,31 +207,6 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
   useEffect(() => {
     setSelectedRoleFiltersRaw(getPersistedRoleFilter(serverId));
   }, [serverId]);
-  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (!showFilters || availableFilters.length === 0) return;
-    switch (e.key) {
-      case "ArrowDown":
-        e.preventDefault();
-        setFilterSelectedIndex((prev) => (prev + 1) % availableFilters.length);
-        break;
-      case "ArrowUp":
-        e.preventDefault();
-        setFilterSelectedIndex((prev) => (prev <= 0 ? availableFilters.length - 1 : prev - 1));
-        break;
-      case "Enter":
-        e.preventDefault();
-        if (availableFilters[filterSelectedIndex]) {
-          handleSelectFilter(availableFilters[filterSelectedIndex].prefix);
-        }
-        break;
-      case "Tab":
-        if (availableFilters.length > 0) {
-          e.preventDefault();
-          handleSelectFilter(availableFilters[filterSelectedIndex].prefix);
-        }
-        break;
-    }
-  };
 
   // Fetch roles for filter and management
   const { data: allRoles = [] } = useServerRoles(serverId || null);

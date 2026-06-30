@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Search, X, User as UserIcon, Hash, Clock, Loader2 } from 'lucide-react';
+import { Search, X, User as UserIcon, Hash, Clock, Loader2, AtSign, FileText, SlidersHorizontal, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -18,6 +18,17 @@ interface MessageSearchPanelProps {
   members: { id: string; username: string; displayName: string; avatar?: string }[];
   onClose: () => void;
   onNavigateToMessage?: (channelId: string, messageId: string) => void;
+  /** When 'popover', the panel only shows the Filters/History dropdown content
+   *  (no search input, no results) — the host renders it as a floating overlay
+   *  anchored under the MemberList search bar. When 'panel' (default), it
+   *  renders the full search experience (input + results) replacing the column. */
+  variant?: 'popover' | 'panel';
+  /** Notifies the host when a search is submitted (or cleared). Hosts use this
+   *  to swap from popover overlay to full-column panel. */
+  onSubmittedChange?: (submitted: string | null) => void;
+  /** External query control (used by popover variant so typing in the dropdown
+   *  can promote to the full panel via the host). */
+  initialQuery?: string;
 }
 
 const HISTORY_MAX = 8;

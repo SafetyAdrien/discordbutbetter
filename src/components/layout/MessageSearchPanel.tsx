@@ -465,37 +465,16 @@ export function MessageSearchPanel({
     );
   };
 
-  // Inline submenu (rendered in lieu of Filters/History when a submenu is open)
-  const renderSubmenu = (mode: SubmenuMode, filter: string) => {
-    const f = filter.toLowerCase();
+  // Inline submenu (rendered in lieu of Filters/History when a submenu is open).
+  // Filtering is driven by the single top input (`query`), no embedded input.
+  const renderSubmenu = (mode: SubmenuMode) => {
+    const f = query.toLowerCase().trim();
     const header = (
       <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground px-2 pt-1 pb-1.5">
         {SUBMENU_HEADER[mode]}
       </div>
     );
 
-    // Embedded search input only for popover variant (panel uses the outer input)
-    const embeddedInput =
-      variant === 'popover' ? (
-        <div className="px-2 pb-1.5">
-          <Input
-            ref={submenuInputRef}
-            value={filter}
-            onChange={(e) =>
-              setSubmenu({ mode, filter: e.target.value })
-            }
-            placeholder={
-              mode === 'in'
-                ? 'Rechercher un salon'
-                : mode === 'has'
-                  ? 'Filtrer les types'
-                  : 'Rechercher un utilisateur'
-            }
-            className="h-8 text-sm"
-            autoFocus
-          />
-        </div>
-      ) : null;
 
     let body: React.ReactNode;
     if (mode === 'has') {

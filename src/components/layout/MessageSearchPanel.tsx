@@ -383,22 +383,38 @@ export function MessageSearchPanel({
     </>
   );
 
+  const filtersModalEl = (
+    <SearchFiltersModal
+      open={filtersOpen}
+      onOpenChange={setFiltersOpen}
+      focus={filtersFocus}
+      initial={filtersValue}
+      members={members}
+      channels={channels}
+      onApply={applyFilters}
+    />
+  );
+
   // Popover variant: just the Filters/History card, no input, no results.
   if (variant === 'popover') {
     return (
-      <div
-        className="w-full bg-popover text-popover-foreground border border-border/40 rounded-md shadow-lg p-2 max-h-[70vh] overflow-y-auto"
-        onKeyDown={(e) => {
-          if (e.key === 'Escape') {
-            e.stopPropagation();
-            onClose();
-          }
-        }}
-      >
-        {filtersAndHistory}
-      </div>
+      <>
+        <div
+          className="w-full bg-popover text-popover-foreground border border-border/40 rounded-md shadow-lg p-2 max-h-[70vh] overflow-y-auto"
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              e.stopPropagation();
+              onClose();
+            }
+          }}
+        >
+          {filtersAndHistory}
+        </div>
+        {filtersModalEl}
+      </>
     );
   }
+
 
   return (
     <div className="w-full sm:w-60 bg-surface-1 flex flex-col sm:border-l sm:border-border/30 h-full">

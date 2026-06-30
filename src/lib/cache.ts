@@ -20,7 +20,9 @@ const SYNC_STORAGE_PREFIX = `${DB_NAME}:${STORE_NAME}:`;
  * on next load. We persist the last-seen version in localStorage; on mismatch
  * we wipe memory + localStorage mirror + IndexedDB before warmCache() runs.
  */
-const CACHE_SCHEMA_VERSION = 7;
+// v8: purge stale `perm:` keys that were not scoped by user_id (auto-contamination
+// for users who visited channels before the permission cache fix).
+const CACHE_SCHEMA_VERSION = 8;
 const CACHE_VERSION_KEY = `${DB_NAME}:schema-version`;
 
 /**

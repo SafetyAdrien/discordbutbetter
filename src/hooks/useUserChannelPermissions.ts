@@ -7,24 +7,39 @@ import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 type ServerPermission = Database['public']['Enums']['server_permission'];
 
 // ── IndexedDB permission cache helpers ──
+// IMPORTANT: every cache key MUST embed the current user's id to prevent
+// auto-contamination across logins/role changes on the same device.
 const PERM_CACHE_PREFIX = 'perm:';
 
-function getPermissionCache(key: string): boolean | null {
-  const raw = cacheGetSync<string>(PERM_CACHE_PREFIX + key);
+function scopedKey(userId: string | undefined, key: string): string | null {
+  if (!userId) return null;
+  return `${PERM_CACHE_PREFIX}${userId}:${key}`;
+}
+
+function getPermissionCache(userId: string | undefined, key: string): boolean | null {
+  const scoped = scopedKey(userId, key);
+  if (!scoped) return null;
+  const raw = cacheGetSync<string>(scoped);
   if (raw === undefined) return null;
   return raw === '1';
 }
 
-function setPermissionCache(key: string, value: boolean): void {
-  cacheSetAsync(PERM_CACHE_PREFIX + key, value ? '1' : '0');
+function setPermissionCache(userId: string | undefined, key: string, value: boolean): void {
+  const scoped = scopedKey(userId, key);
+  if (!scoped) return;
+  cacheSetAsync(scoped, value ? '1' : '0');
 }
 
-function getPermissionsObjectCache(channelId: string): UserChannelPermissions | null {
-  return cacheGetSync<UserChannelPermissions>(PERM_CACHE_PREFIX + 'obj:' + channelId) ?? null;
+function getPermissionsObjectCache(userId: string | undefined, channelId: string): UserChannelPermissions | null {
+  const scoped = scopedKey(userId, 'obj:' + channelId);
+  if (!scoped) return null;
+  return cacheGetSync<UserChannelPermissions>(scoped) ?? null;
 }
 
-function setPermissionsObjectCache(channelId: string, perms: UserChannelPermissions): void {
-  cacheSetAsync(PERM_CACHE_PREFIX + 'obj:' + channelId, perms);
+function setPermissionsObjectCache(userId: string | undefined, channelId: string, perms: UserChannelPermissions): void {
+  const scoped = scopedKey(userId, 'obj:' + channelId);
+  if (!scoped) return;
+  cacheSetAsync(scoped, perms);
 }
 
 export interface UserChannelPermissions {

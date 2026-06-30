@@ -11,6 +11,12 @@ import { MarkdownText, MarkdownProvider } from '@/lib/markdown';
 import { UserAvatarImage } from '@/components/ui/user-avatar-image';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import {
+  SearchFiltersModal,
+  emptySearchFilters,
+  type SearchFiltersValue,
+  type SearchFiltersFocus,
+} from './SearchFiltersModal';
 
 interface MessageSearchPanelProps {
   serverId: string | null;
@@ -68,6 +74,9 @@ export function MessageSearchPanel({
   const [submitted, setSubmitted] = useState<string | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(variant === 'popover');
   const [history, setHistory] = useState<string[]>(() => loadHistory(serverId));
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filtersFocus, setFiltersFocus] = useState<SearchFiltersFocus>(null);
+  const [filtersValue, setFiltersValue] = useState<SearchFiltersValue>(emptySearchFilters());
   const inputRef = useRef<HTMLInputElement>(null);
 
   const search = useGlobalSearch(serverId);
@@ -158,6 +167,42 @@ export function MessageSearchPanel({
     return m;
   }, [members]);
 
+  const openFilters = (focus: SearchFiltersFocus) => {
+    setFiltersFocus(focus);
+    setFiltersOpen(true);
+  };
+
+  const applyFilters = (v: SearchFiltersValue) => {
+    setFiltersValue(v);
+    // Backend hook (useGlobalSearch) currently accepts one value per filter.
+    // Take the first of each multi-select; other selections remain visible
+    // in the modal state but are not yet transmitted. Wired in step 4.
+    const filters: SearchFiltersType = {};
+    const firstFrom = v.from[0] ? members.find((m) => m.id === v.from[0]) : null;
+    if (firstFrom) filters.from = firstFrom.username;
+    const firstChan = v.in[0] ? channels.find((c) => c.id === v.in[0]) : null;
+    if (firstChan) filters.channel = firstChan.name;
+    const firstMention = v.mentions[0]
+      ? members.find((m) => m.id === v.mentions[0])
+      : null;
+    if (firstMention) filters.mentions = firstMention.username;
+    if (v.authorType) filters.authorType = v.authorType;
+    if (v.pinned !== null) filters.pinned = v.pinned;
+    const firstDate = v.dates.find((d) => d.date);
+    if (firstDate?.date) {
+      const iso = format(firstDate.date, 'yyyy-MM-dd');
+      if (firstDate.mode === 'before') filters.before = iso;
+      else if (firstDate.mode === 'after') filters.after = iso;
+      else filters.during = iso;
+    }
+    if (query.trim()) filters.contains = query.trim();
+    const label = query.trim() || '(filters)';
+    setSubmitted(label);
+    onSubmittedChange?.(label);
+    setShowSuggestions(false);
+    search.mutate({ query: filters.contains ?? '', filters });
+  };
+
   const filterRows = [
     {
       key: 'from',
@@ -165,7 +210,7 @@ export function MessageSearchPanel({
       label: 'From a specific user',
       prefix: 'from:',
       hint: 'user',
-      onSelect: () => insertPrefix('from:'),
+      onSelect: () => openFilters('from'),
     },
     {
       key: 'in',
@@ -173,7 +218,7 @@ export function MessageSearchPanel({
       label: 'Sent in a specific channel',
       prefix: 'in:',
       hint: 'channel',
-      onSelect: () => insertPrefix('in:'),
+      onSelect: () => openFilters('in'),
     },
     {
       key: 'has',
@@ -181,7 +226,7 @@ export function MessageSearchPanel({
       label: 'Includes a specific type of data',
       prefix: 'has:',
       hint: 'link, embed or file',
-      onSelect: () => insertPrefix('has:'),
+      onSelect: () => openFilters('has'),
     },
     {
       key: 'mentions',
@@ -189,7 +234,7 @@ export function MessageSearchPanel({
       label: 'Mentions a specific user',
       prefix: 'mentions:',
       hint: 'user',
-      onSelect: () => insertPrefix('mentions:'),
+      onSelect: () => openFilters('mentions'),
     },
     {
       key: 'more',
@@ -197,7 +242,7 @@ export function MessageSearchPanel({
       label: 'More filters',
       prefix: '',
       hint: 'dates, author type, and more',
-      onSelect: () => inputRef.current?.focus(),
+      onSelect: () => openFilters(null),
     },
   ];
 
@@ -338,22 +383,38 @@ export function MessageSearchPanel({
     </>
   );
 
+  const filtersModalEl = (
+    <SearchFiltersModal
+      open={filtersOpen}
+      onOpenChange={setFiltersOpen}
+      focus={filtersFocus}
+      initial={filtersValue}
+      members={members}
+      channels={channels}
+      onApply={applyFilters}
+    />
+  );
+
   // Popover variant: just the Filters/History card, no input, no results.
   if (variant === 'popover') {
     return (
-      <div
-        className="w-full bg-popover text-popover-foreground border border-border/40 rounded-md shadow-lg p-2 max-h-[70vh] overflow-y-auto"
-        onKeyDown={(e) => {
-          if (e.key === 'Escape') {
-            e.stopPropagation();
-            onClose();
-          }
-        }}
-      >
-        {filtersAndHistory}
-      </div>
+      <>
+        <div
+          className="w-full bg-popover text-popover-foreground border border-border/40 rounded-md shadow-lg p-2 max-h-[70vh] overflow-y-auto"
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              e.stopPropagation();
+              onClose();
+            }
+          }}
+        >
+          {filtersAndHistory}
+        </div>
+        {filtersModalEl}
+      </>
     );
   }
+
 
   return (
     <div className="w-full sm:w-60 bg-surface-1 flex flex-col sm:border-l sm:border-border/30 h-full">
@@ -482,6 +543,7 @@ export function MessageSearchPanel({
       )}
 
       {!submitted && !showSuggestions && <div className="flex-1" />}
+      {filtersModalEl}
     </div>
   );
 }

@@ -45,7 +45,7 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
 export type SearchFiltersFocus = 'from' | 'in' | 'has' | 'mentions' | 'date' | 'author' | 'pinned' | null;
-export type HasType = 'image' | 'video' | 'link' | 'file' | 'embed';
+export type HasType = 'image' | 'video' | 'link' | 'file' | 'embed' | 'sound' | 'poll' | 'sticker' | 'forward';
 export type AuthorType = 'user' | 'bot' | 'webhook';
 export type DateMode = 'before' | 'after' | 'during';
 

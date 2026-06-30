@@ -1,48 +1,43 @@
-## Plan de vérification — Pills de couleur
+## Résultat de la requête (lecture seule)
 
-### Statut
-Fix appliqué dans `src/components/chat/InputMarkdownOverlay.tsx`. En attente de build + vérification visuelle.
+Serveur : **Adrien's House**, salon : **Calendrier** (`41fb6f99-76e1-4b2e-a133-51af0f55c851`).
 
-### Objectif
-Rendre les pills de couleur (insertions via picker `<` et tokens manuels `<c:#hex>`) parfaitement alignés, avec une bordure visible sur les 4 côtés et un rendu identique dans le composer et les messages.
+```
+ name | is_default | permission
+------+------------+------------
+(0 rows)
+```
 
-### Décisions validées
+**Aucun rôle** du serveur (ni `@everyone`, ni un autre) ne possède `manage_events` ou `create_events` dans `role_permissions`.
 
-1. **Espace entre deux pills couleur consécutifs (picker `<`)**
-   `handleMentionSelect` (`MessageInput.tsx:526-567`) ajoute un **espace réel** ` ` après chaque insertion via le picker.
-   Deux pills consécutifs donnent `■ White ■ White`.
+## Audit complémentaire
 
-   > Note : le bouton Palette → "Insérer" (`insertColor`, `MessageInput.tsx:307-325`) n'ajoute pas d'espace de séparation.
+Overrides du salon `Calendrier` :
 
-2. **Ordre des box-shadow sur le pill couleur (avant fix)**
-   `boxShadow: `${sideShadow(bg)}, 0 0 0 1px hsl(var(--border) / 0.65)``
-   → sideShadow masquait les côtés horizontaux du ring de bordure.
+```
+role_id …4633c3d | permission=create_events | type=deny | sync_with_category=false
+```
 
-3. **Fix appliqué — bordure via `outline` au lieu de `box-shadow`**
-   Remplacé par :
-   ```ts
-   style: {
-     backgroundColor: bg,
-     boxShadow: sideShadow(bg),
-     outline: '1px solid hsl(var(--border) / 0.65)',
-     outlineOffset: '0px',
-   }
-   ```
-   Appliqué aux deux endroits :
-   - `renderMentionEntry` (kind === 'color')
-   - `renderLegacyAndSpecialMentions` (branche `match[5]`)
+→ Un seul override, qui **refuse** `create_events` à un rôle spécifique. Aucun `allow` nulle part.
 
-   Pourquoi `outline` :
-   - couche séparée de `box-shadow`, bordure visible sur 4 côtés ;
-   - ne participe pas au box model, alignement caret/overlay intact ;
-   - `outline-offset: 0` colle le bord sur le pill incluant les 2px de `sideShadow` latéraux.
+## Conclusion
 
-### Fichiers modifiés
-- `src/components/chat/InputMarkdownOverlay.tsx`
+L'hypothèse "ligne `manage_events` accordée à @everyone" est **infirmée** : la base est propre.
 
-### Vérifications à effectuer après le build
-1. Hard reload + purge SW/caches.
-2. Insérer deux pills via picker `<` consécutivement → screenshot `1_two_pills_outline.png` : bordure uniforme sur les 4 côtés, vrai espace entre les pills.
-3. Cliquer juste avant / juste après un pill → caret au bord visuel, pas de décalage 1-2px.
-4. Taper `<c:#ff0000>` manuellement entre deux pills → même rendu via la branche `match[5]`.
-5. `bunx tsgo --noEmit` → 0 erreur.
+Donc si tu vois quand même le bouton « Nouvel événement » / les actions Modifier-Supprimer sur ce salon avec un compte qui ne devrait pas, ça ne vient **pas** d'un grant DB parasite. Les seuls chemins qui restent dans `has_channel_permission` pour renvoyer `true` sur `create_events` / `manage_events` sont :
+
+1. Le compte testé est **owner** ou **secondary_owner** du serveur (bypass total — `is_server_owner` → `true`).
+2. Le compte a un rôle avec la permission **`administrator`** (bypass total).
+3. Le compte a un rôle qui accorde explicitement `create_events` ou `manage_events` *(exclu par la requête ci-dessus)*.
+4. Un override de salon `allow` *(exclu : il n'y a qu'un `deny`)*.
+
+## Prochaine étape proposée
+
+Pour trancher définitivement, dis-moi avec quel compte tu observes le bouton, et je lance (toujours en lecture seule) :
+
+- `SELECT owner_id, secondary_owner_id FROM servers WHERE name = 'Adrien''s House';`
+- la liste des rôles + permission `administrator` de ce compte sur ce serveur.
+
+Si le compte est owner / secondary / admin, le comportement actuel est **correct par design** (God Mode documenté dans la mémoire projet) et il n'y a pas de bug à corriger. Sinon, on aura identifié une vraie fuite et je préparerai un correctif ciblé.
+
+Aucune modification n'est proposée tant que ce point n'est pas levé.

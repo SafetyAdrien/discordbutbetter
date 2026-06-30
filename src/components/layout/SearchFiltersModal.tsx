@@ -217,7 +217,7 @@ function MemberMultiSelect({
               setQ(e.target.value);
               setOpen(true);
             }}
-            onFocus={() => setOpen(true)}
+            
             placeholder={selectedMembers.length === 0 ? placeholder : ''}
             className="flex-1 min-w-[80px] bg-transparent outline-none text-sm placeholder:text-muted-foreground"
           />
@@ -348,7 +348,7 @@ function ChannelMultiSelect({
               setQ(e.target.value);
               setOpen(true);
             }}
-            onFocus={() => setOpen(true)}
+            
             placeholder={selectedChannels.length === 0 ? placeholder : ''}
             className="flex-1 min-w-[80px] bg-transparent outline-none text-sm placeholder:text-muted-foreground"
           />

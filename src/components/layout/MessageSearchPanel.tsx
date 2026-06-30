@@ -57,6 +57,10 @@ interface MessageSearchPanelProps {
   variant?: 'popover' | 'panel';
   onSubmittedChange?: (submitted: string | null) => void;
   initialQuery?: string;
+  /** Triggered by popover variant so parent can rehydrate panel with same submit. */
+  onPopoverSubmit?: (s: { label: string; filters: SearchFiltersType }) => void;
+  /** Used by panel variant on mount to re-run a search submitted from the popover. */
+  initialSubmit?: { label: string; filters: SearchFiltersType } | null;
 }
 
 type SubmenuMode = 'from' | 'in' | 'has' | 'mentions';

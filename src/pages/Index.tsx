@@ -919,20 +919,7 @@ const Index = () => {
         <KeyboardShortcutsModal onClose={() => setShowShortcutsHelp(false)} />
       )}
 
-      {showGlobalSearch && (
-        <GlobalSearchModal
-          open={showGlobalSearch}
-          onClose={() => setShowGlobalSearch(false)}
-          serverId={activeServerId}
-          channels={searchChannels}
-          members={searchMembers}
-          onNavigateToMessage={(channelId, messageId) => {
-            setActiveChannelId(channelId);
-            setShowGlobalSearch(false);
-            // TODO: Scroll to message
-          }}
-        />
-      )}
+      {/* Global search is rendered inline as MessageSearchPanel below (replacing MemberList). */}
       {/* Floating Voice + Profile Panel - desktop only, spans ServerList + ChannelList width */}
       {!isMobile && !isTablet && (
         <div

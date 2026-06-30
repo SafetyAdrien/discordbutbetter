@@ -139,7 +139,7 @@ function MemberMultiSelect({
 }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
-  const inputRef = React.useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const selectedMap = new Set(selected);
   const filtered = members.filter((m) => {
     if (!q) return true;
@@ -288,7 +288,7 @@ function ChannelMultiSelect({
 }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
-  const inputRef = React.useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const selectedMap = new Set(selected);
   const filtered = channels.filter((c) =>
     !q ? true : c.name.toLowerCase().includes(q.toLowerCase()),
@@ -448,8 +448,7 @@ export function SearchFiltersModal({
                 members={members}
                 selected={value.from}
                 onChange={(next) => setValue((v) => ({ ...v, from: next }))}
-                placeholder="Search users…"
-                autoOpen={focus === 'from'}
+                placeholder="Rechercher un utilisateur"
               />
             </div>
 
@@ -460,7 +459,7 @@ export function SearchFiltersModal({
                 channels={channels}
                 selected={value.in}
                 onChange={(next) => setValue((v) => ({ ...v, in: next }))}
-                autoOpen={focus === 'in'}
+                placeholder="Rechercher un salon"
               />
             </div>
 
@@ -496,8 +495,7 @@ export function SearchFiltersModal({
                 members={members}
                 selected={value.mentions}
                 onChange={(next) => setValue((v) => ({ ...v, mentions: next }))}
-                placeholder="Search users…"
-                autoOpen={focus === 'mentions'}
+                placeholder="Rechercher un utilisateur"
               />
             </div>
 

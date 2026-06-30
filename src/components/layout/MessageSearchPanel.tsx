@@ -74,6 +74,9 @@ export function MessageSearchPanel({
   const [submitted, setSubmitted] = useState<string | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(variant === 'popover');
   const [history, setHistory] = useState<string[]>(() => loadHistory(serverId));
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filtersFocus, setFiltersFocus] = useState<SearchFiltersFocus>(null);
+  const [filtersValue, setFiltersValue] = useState<SearchFiltersValue>(emptySearchFilters());
   const inputRef = useRef<HTMLInputElement>(null);
 
   const search = useGlobalSearch(serverId);

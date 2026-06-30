@@ -4014,6 +4014,12 @@ export type Database = {
           channel_id: string
         }[]
       }
+      get_unread_channel_ids: {
+        Args: { _channel_ids: string[]; _user_id: string }
+        Returns: {
+          channel_id: string
+        }[]
+      }
       get_user_channel_permissions: {
         Args: { _channel_id: string; _user_id: string }
         Returns: {

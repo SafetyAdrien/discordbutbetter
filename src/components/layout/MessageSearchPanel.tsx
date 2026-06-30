@@ -745,8 +745,11 @@ export function MessageSearchPanel({
             }
           }}
         >
-          {/* Search bar — independent rounded element */}
-          <div className="relative z-10 bg-popover text-popover-foreground rounded-xl shadow-lg p-1.5">
+          {/* Search bar — hauteur VERROUILLÉE à h-8 (32px) pour matcher
+              exactement l'Input MemberList en repos. Ne pas ajouter de
+              padding/border/shadow ici : cela rendrait la barre plus haute
+              que l'état au repos (régression connue). */}
+          <div className="relative z-10 h-8">
             {searchInputBar}
           </div>
           {/* Floating panel — separate element below the search bar.

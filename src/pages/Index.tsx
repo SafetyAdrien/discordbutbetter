@@ -12,7 +12,7 @@ import { DiscoverModal } from '@/components/modals/DiscoverModal';
 import { CreateServerModal } from '@/components/modals/CreateServerModal';
 import { ServerSettingsModal } from '@/components/server-settings/ServerSettingsModal';
 import { KeyboardShortcutsModal } from '@/components/modals/KeyboardShortcutsModal';
-import { GlobalSearchModal } from '@/components/modals/GlobalSearchModal';
+import { MessageSearchPanel } from '@/components/layout/MessageSearchPanel';
 import { MediaChannel } from '@/components/channels/MediaChannel';
 import { ForumChannel } from '@/components/channels/ForumChannel';
 import { TasksChannel } from '@/components/channels/TasksChannel';
@@ -655,14 +655,32 @@ const Index = () => {
     />
   ) : null;
 
-  const memberListEl = activeServer && channelForChat?.type !== 'voice' && !activeThreadId ? (
-    <MemberList
-      members={memberListData}
-      ownerId={activeServer.owner_id || ''}
+  const messageSearchEl = activeServer ? (
+    <MessageSearchPanel
       serverId={activeServer.id}
-      onOpenDM={handleOpenDM}
+      channels={searchChannels}
+      members={searchMembers}
+      onClose={() => setShowGlobalSearch(false)}
+      onNavigateToMessage={(channelId) => {
+        setActiveChannelId(channelId);
+        setShowGlobalSearch(false);
+      }}
     />
   ) : null;
+
+  const rightPanelEl = activeServer && channelForChat?.type !== 'voice' && !activeThreadId
+    ? (showGlobalSearch
+        ? messageSearchEl
+        : (
+          <MemberList
+            members={memberListData}
+            ownerId={activeServer.owner_id || ''}
+            serverId={activeServer.id}
+            onOpenDM={handleOpenDM}
+          />
+        ))
+    : null;
+  const memberListEl = rightPanelEl;
 
   return (
     <div className="h-[100svh] flex bg-[hsl(var(--sidebar-background))] overflow-hidden gap-[2px]">
@@ -868,8 +886,8 @@ const Index = () => {
             )}
           </div>
 
-          {/* Right Panel - Member List inline (desktop only) */}
-          {channelForChat?.type !== 'voice' && !activeThreadId && showMembers && !isTablet && memberListEl}
+          {/* Right Panel - Member List or Message Search inline (desktop only) */}
+          {channelForChat?.type !== 'voice' && !activeThreadId && (showMembers || showGlobalSearch) && !isTablet && memberListEl}
         </>
       ) : null}
 
@@ -919,20 +937,7 @@ const Index = () => {
         <KeyboardShortcutsModal onClose={() => setShowShortcutsHelp(false)} />
       )}
 
-      {showGlobalSearch && (
-        <GlobalSearchModal
-          open={showGlobalSearch}
-          onClose={() => setShowGlobalSearch(false)}
-          serverId={activeServerId}
-          channels={searchChannels}
-          members={searchMembers}
-          onNavigateToMessage={(channelId, messageId) => {
-            setActiveChannelId(channelId);
-            setShowGlobalSearch(false);
-            // TODO: Scroll to message
-          }}
-        />
-      )}
+      {/* Global search is rendered inline as MessageSearchPanel below (replacing MemberList). */}
       {/* Floating Voice + Profile Panel - desktop only, spans ServerList + ChannelList width */}
       {!isMobile && !isTablet && (
         <div

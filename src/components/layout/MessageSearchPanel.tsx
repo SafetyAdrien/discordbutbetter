@@ -578,7 +578,7 @@ export function MessageSearchPanel({
     return (
       <>
         {header}
-        {embeddedInput}
+        
         <ScrollArea className="max-h-[260px]">{body}</ScrollArea>
       </>
     );

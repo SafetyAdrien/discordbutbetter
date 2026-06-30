@@ -886,8 +886,8 @@ const Index = () => {
             )}
           </div>
 
-          {/* Right Panel - Member List inline (desktop only) */}
-          {channelForChat?.type !== 'voice' && !activeThreadId && showMembers && !isTablet && memberListEl}
+          {/* Right Panel - Member List or Message Search inline (desktop only) */}
+          {channelForChat?.type !== 'voice' && !activeThreadId && (showMembers || showGlobalSearch) && !isTablet && memberListEl}
         </>
       ) : null}
 

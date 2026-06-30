@@ -16,6 +16,10 @@ import {
   Bot,
   Webhook,
   Pin,
+  Music,
+  BarChart3,
+  Sticker,
+  Forward,
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -41,7 +45,7 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
 export type SearchFiltersFocus = 'from' | 'in' | 'has' | 'mentions' | 'date' | 'author' | 'pinned' | null;
-export type HasType = 'image' | 'video' | 'link' | 'file' | 'embed';
+export type HasType = 'image' | 'video' | 'link' | 'file' | 'embed' | 'sound' | 'poll' | 'sticker' | 'forward';
 export type AuthorType = 'user' | 'bot' | 'webhook';
 export type DateMode = 'before' | 'after' | 'during';
 
@@ -98,6 +102,10 @@ const HAS_OPTIONS: { value: HasType; label: string; icon: React.ReactNode }[] = 
   { value: 'link', label: 'Link', icon: <LinkIcon className="w-4 h-4" /> },
   { value: 'file', label: 'File', icon: <FileIcon className="w-4 h-4" /> },
   { value: 'embed', label: 'Embed', icon: <Frame className="w-4 h-4" /> },
+  { value: 'sound', label: 'Sound', icon: <Music className="w-4 h-4" /> },
+  { value: 'poll', label: 'Poll', icon: <BarChart3 className="w-4 h-4" /> },
+  { value: 'sticker', label: 'Sticker', icon: <Sticker className="w-4 h-4" /> },
+  { value: 'forward', label: 'Forward', icon: <Forward className="w-4 h-4" /> },
 ];
 
 const AUTHOR_OPTIONS: { value: AuthorType; label: string; icon: React.ReactNode }[] = [
@@ -209,7 +217,7 @@ function MemberMultiSelect({
               setQ(e.target.value);
               setOpen(true);
             }}
-            onFocus={() => setOpen(true)}
+            
             placeholder={selectedMembers.length === 0 ? placeholder : ''}
             className="flex-1 min-w-[80px] bg-transparent outline-none text-sm placeholder:text-muted-foreground"
           />
@@ -340,7 +348,7 @@ function ChannelMultiSelect({
               setQ(e.target.value);
               setOpen(true);
             }}
-            onFocus={() => setOpen(true)}
+            
             placeholder={selectedChannels.length === 0 ? placeholder : ''}
             className="flex-1 min-w-[80px] bg-transparent outline-none text-sm placeholder:text-muted-foreground"
           />
@@ -435,7 +443,10 @@ export function SearchFiltersModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden">
+      <DialogContent
+        className="max-w-lg p-0 gap-0 overflow-hidden"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
         <div className="flex items-center justify-between px-5 py-3 border-b border-border/40">
           <DialogTitle>Filters</DialogTitle>
         </div>

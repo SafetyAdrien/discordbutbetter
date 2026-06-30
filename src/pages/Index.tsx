@@ -84,6 +84,9 @@ const Index = () => {
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const [showGlobalSearch, setShowGlobalSearch] = useState(false);
   const [searchSubmitted, setSearchSubmitted] = useState<string | null>(null);
+  const [searchInitialSubmit, setSearchInitialSubmit] = useState<
+    { label: string; filters: import('@/hooks/useGlobalSearch').SearchFilters } | null
+  >(null);
   const [showMembers, setShowMembers] = useState(true);
   const [tabletChannelsOpen, setTabletChannelsOpen] = useState(false);
   const [tabletMembersOpen, setTabletMembersOpen] = useState(false);
@@ -659,6 +662,7 @@ const Index = () => {
   const closeSearch = () => {
     setShowGlobalSearch(false);
     setSearchSubmitted(null);
+    setSearchInitialSubmit(null);
   };
 
   const messageSearchEl = activeServer ? (
@@ -669,6 +673,7 @@ const Index = () => {
       members={searchMembers}
       onClose={closeSearch}
       onSubmittedChange={setSearchSubmitted}
+      initialSubmit={searchInitialSubmit}
       onNavigateToMessage={(channelId) => {
         setActiveChannelId(channelId);
         closeSearch();
@@ -685,6 +690,7 @@ const Index = () => {
       members={searchMembers}
       onClose={closeSearch}
       onSubmittedChange={setSearchSubmitted}
+      onPopoverSubmit={(s) => setSearchInitialSubmit(s)}
       onNavigateToMessage={(channelId) => {
         setActiveChannelId(channelId);
         closeSearch();

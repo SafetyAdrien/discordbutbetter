@@ -7,7 +7,7 @@ import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useGlobalSearch, SearchFilters as SearchFiltersType } from '@/hooks/useGlobalSearch';
-import { MarkdownText, MarkdownProvider, MarkdownContext } from '@/lib/markdown';
+import { MarkdownText, MarkdownProvider } from '@/lib/markdown';
 import { UserAvatarImage } from '@/components/ui/user-avatar-image';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';

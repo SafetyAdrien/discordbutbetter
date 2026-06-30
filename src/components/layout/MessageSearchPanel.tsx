@@ -60,10 +60,13 @@ export function MessageSearchPanel({
   members,
   onClose,
   onNavigateToMessage,
+  variant = 'panel',
+  onSubmittedChange,
+  initialQuery = '',
 }: MessageSearchPanelProps) {
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(initialQuery);
   const [submitted, setSubmitted] = useState<string | null>(null);
-  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(variant === 'popover');
   const [history, setHistory] = useState<string[]>(() => loadHistory(serverId));
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -73,6 +76,7 @@ export function MessageSearchPanel({
     setHistory(loadHistory(serverId));
     setQuery('');
     setSubmitted(null);
+    onSubmittedChange?.(null);
     search.reset();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serverId]);
@@ -81,6 +85,7 @@ export function MessageSearchPanel({
     const trimmed = q.trim();
     if (!trimmed) return;
     setSubmitted(trimmed);
+    onSubmittedChange?.(trimmed);
     setShowSuggestions(false);
 
     // Very lightweight prefix parsing to feed existing useGlobalSearch

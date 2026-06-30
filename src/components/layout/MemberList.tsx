@@ -96,6 +96,7 @@ interface MemberListProps {
   ownerId: string;
   serverId?: string;
   onOpenDM?: (conversationId: string) => void;
+  onOpenGlobalSearch?: () => void;
   serverRoles?: Role[];
 }
 const statusColors: Record<string, string> = {

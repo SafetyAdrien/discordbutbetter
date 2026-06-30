@@ -83,6 +83,7 @@ const Index = () => {
   const [serverSettingsInitialTab, setServerSettingsInitialTab] = useState<string | undefined>(undefined);
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const [showGlobalSearch, setShowGlobalSearch] = useState(false);
+  const [searchSubmitted, setSearchSubmitted] = useState<string | null>(null);
   const [showMembers, setShowMembers] = useState(true);
   const [tabletChannelsOpen, setTabletChannelsOpen] = useState(false);
   const [tabletMembersOpen, setTabletMembersOpen] = useState(false);

@@ -16,6 +16,10 @@ import {
   Bot,
   Webhook,
   Pin,
+  Music,
+  BarChart3,
+  Sticker,
+  Forward,
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';

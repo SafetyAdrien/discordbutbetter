@@ -19,7 +19,7 @@ import {
   Sticker,
   Forward,
 } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';

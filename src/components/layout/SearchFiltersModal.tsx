@@ -102,6 +102,10 @@ const HAS_OPTIONS: { value: HasType; label: string; icon: React.ReactNode }[] = 
   { value: 'link', label: 'Link', icon: <LinkIcon className="w-4 h-4" /> },
   { value: 'file', label: 'File', icon: <FileIcon className="w-4 h-4" /> },
   { value: 'embed', label: 'Embed', icon: <Frame className="w-4 h-4" /> },
+  { value: 'sound', label: 'Sound', icon: <Music className="w-4 h-4" /> },
+  { value: 'poll', label: 'Poll', icon: <BarChart3 className="w-4 h-4" /> },
+  { value: 'sticker', label: 'Sticker', icon: <Sticker className="w-4 h-4" /> },
+  { value: 'forward', label: 'Forward', icon: <Forward className="w-4 h-4" /> },
 ];
 
 const AUTHOR_OPTIONS: { value: AuthorType; label: string; icon: React.ReactNode }[] = [

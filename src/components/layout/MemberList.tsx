@@ -546,14 +546,14 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
         <div className="px-3 pt-3 bg-surface-1">
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
-              <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground z-10" />
               <Input
                 readOnly
                 placeholder="Rechercher"
                 onFocus={() => onOpenGlobalSearch?.()}
                 onClick={() => onOpenGlobalSearch?.()}
-                className="h-8 pl-8 text-sm bg-input cursor-pointer"
+                className="h-8 pr-8 pl-3 text-sm bg-input cursor-pointer"
               />
+              <Search className="w-4 h-4 absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground z-10 pointer-events-none" />
             </div>
             <InboxButton />
           </div>

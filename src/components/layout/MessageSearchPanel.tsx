@@ -684,12 +684,59 @@ export function MessageSearchPanel({
     />
   );
 
-  // Popover variant: floating dropdown only.
+  // Shared input bar: chip + editable input.
+  const searchInputBar = (
+    <div className="relative flex-1">
+      <div
+        className={cn(
+          'flex items-center gap-1.5 h-8 pl-2.5 pr-2 rounded-xl bg-input',
+          'focus-within:bg-input',
+        )}
+        onClick={() => inputRef.current?.focus()}
+      >
+        {submenu && (
+          <span className="inline-flex items-center h-5 px-1.5 rounded bg-surface-2 text-xs font-medium text-foreground shrink-0 select-none">
+            {PREFIX_MAP[submenu]}
+          </span>
+        )}
+        <input
+          ref={inputRef}
+          autoFocus
+          placeholder={submenu ? '' : 'Rechercher'}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onFocus={() => setShowSuggestions(true)}
+          className="flex-1 min-w-0 h-full bg-transparent border-0 outline-none text-sm placeholder:text-muted-foreground"
+        />
+        {(query || submenu) && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setQuery('');
+              setSubmenu(null);
+              inputRef.current?.focus();
+            }}
+            className="text-muted-foreground hover:text-foreground shrink-0"
+            aria-label="Effacer"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
+        {!query && !submenu && (
+          <Search className="w-4 h-4 text-muted-foreground shrink-0 pointer-events-none" />
+        )}
+      </div>
+    </div>
+  );
+
+  // Popover variant: input bar + dropdown (overlays MemberList input).
   if (variant === 'popover') {
     return (
       <>
         <div
-          className="w-full bg-popover text-popover-foreground border border-border/40 rounded-md shadow-lg p-2 max-h-[70vh] overflow-y-auto"
+          className="w-full bg-popover text-popover-foreground border border-border/40 rounded-md shadow-lg max-h-[70vh] overflow-y-auto"
           onKeyDown={(e) => {
             if (e.key === 'Escape') {
               e.stopPropagation();
@@ -698,7 +745,11 @@ export function MessageSearchPanel({
             }
           }}
         >
-          {submenu ? renderSubmenu(submenu.mode, submenu.filter) : filtersAndHistory}
+          <div className="p-2 pb-1">{searchInputBar}</div>
+          <Separator />
+          <div className="p-2">
+            {submenu ? renderSubmenu(submenu) : filtersAndHistory}
+          </div>
         </div>
         {filtersModalEl}
       </>
@@ -709,33 +760,7 @@ export function MessageSearchPanel({
     <div className="w-full sm:w-60 bg-surface-1 flex flex-col sm:border-l sm:border-border/30 h-full">
       <div className="px-3 pt-3 bg-surface-1">
         <div className="flex items-center gap-2">
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground z-10" />
-            <Input
-              ref={inputRef}
-              autoFocus
-              placeholder="Rechercher des messages"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={handleKeyDown}
-              onFocus={() => setShowSuggestions(true)}
-              className="h-8 pl-8 pr-7 text-sm bg-input"
-            />
-            {query && (
-              <button
-                type="button"
-                onClick={() => {
-                  setQuery('');
-                  setSubmenu(null);
-                  inputRef.current?.focus();
-                }}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                aria-label="Effacer"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
+          {searchInputBar}
           <Button
             variant="ghost"
             size="icon"
@@ -752,11 +777,10 @@ export function MessageSearchPanel({
 
       {showSuggestions && !submitted && (
         <div className="px-2 pt-2">
-          {submenu
-            ? renderSubmenu(submenu.mode, submenu.filter)
-            : filtersAndHistory}
+          {submenu ? renderSubmenu(submenu) : filtersAndHistory}
         </div>
       )}
+
 
       {submitted && (
         <ScrollArea className="flex-1">

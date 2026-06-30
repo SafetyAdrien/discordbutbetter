@@ -553,35 +553,12 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
             <div className="relative flex-1">
               <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground z-10" />
               <Input
-                ref={searchRef}
+                readOnly
                 placeholder="Rechercher"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={handleSearchKeyDown}
-                onFocus={() => {
-                  setIsClosingFilters(false);
-                  setShowFilters(true);
-                }}
-                onBlur={() => {
-                  setIsClosingFilters(true);
-                  setTimeout(() => {
-                    setShowFilters(false);
-                    setIsClosingFilters(false);
-                  }, 150);
-                }}
-                className="h-8 pl-8 text-sm bg-input"
+                onFocus={() => onOpenGlobalSearch?.()}
+                onClick={() => onOpenGlobalSearch?.()}
+                className="h-8 pl-8 text-sm bg-input cursor-pointer"
               />
-              {/* Filters suggestions - overlay dropdown */}
-              {showFilters && (
-                <SearchFilters
-                  onSelectFilter={handleSelectFilter}
-                  searchQuery={searchQuery}
-                  isClosing={isClosingFilters}
-                  selectedIndex={filterSelectedIndex}
-                  onMouseEnterItem={setFilterSelectedIndex}
-                  availableFilters={availableFilters}
-                />
-              )}
             </div>
             <InboxButton />
           </div>

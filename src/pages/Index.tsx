@@ -268,7 +268,7 @@ const Index = () => {
   // Keyboard shortcuts
   useKeyboardShortcuts({
     onEscape: () => {
-      if (showGlobalSearch) setShowGlobalSearch(false);
+      if (showGlobalSearch) { setShowGlobalSearch(false); setSearchSubmitted(null); }
       else if (showShortcutsHelp) setShowShortcutsHelp(false);
       else if (showDiscover) setShowDiscover(false);
       else if (showCreate) setShowCreate(false);

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Search, X, User as UserIcon, Hash, Clock, Loader2, AtSign, FileText, SlidersHorizontal, Trash2 } from 'lucide-react';
+import { Search, X, User as UserIcon, Hash, Loader2, AtSign, Paperclip, SlidersHorizontal, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';

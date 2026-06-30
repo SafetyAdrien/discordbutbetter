@@ -662,6 +662,7 @@ const Index = () => {
   const closeSearch = () => {
     setShowGlobalSearch(false);
     setSearchSubmitted(null);
+    setSearchInitialSubmit(null);
   };
 
   const messageSearchEl = activeServer ? (
@@ -672,6 +673,7 @@ const Index = () => {
       members={searchMembers}
       onClose={closeSearch}
       onSubmittedChange={setSearchSubmitted}
+      initialSubmit={searchInitialSubmit}
       onNavigateToMessage={(channelId) => {
         setActiveChannelId(channelId);
         closeSearch();
@@ -688,6 +690,7 @@ const Index = () => {
       members={searchMembers}
       onClose={closeSearch}
       onSubmittedChange={setSearchSubmitted}
+      onPopoverSubmit={(s) => setSearchInitialSubmit(s)}
       onNavigateToMessage={(channelId) => {
         setActiveChannelId(channelId);
         closeSearch();

@@ -188,9 +188,6 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
   const { user: currentUser } = useAuth();
   const [selectedMember, setSelectedMember] = useState<MemberWithRoles | null>(null);
   const [serverProfileEditOpen, setServerProfileEditOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [showFilters, setShowFilters] = useState(false);
-  const [isClosingFilters, setIsClosingFilters] = useState(false);
   const [selectedRoleFilters, setSelectedRoleFiltersRaw] = useState<string[]>(() =>
     getPersistedRoleFilter(serverId),
   );

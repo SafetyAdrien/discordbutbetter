@@ -726,7 +726,7 @@ const Index = () => {
                 onClick={closeSearch}
                 className="absolute inset-0 bg-black/40 z-10 cursor-default"
               />
-              <div className="absolute right-3 top-12 z-20 min-w-[340px]">
+              <div className="absolute left-3 right-3 top-3 z-20">
                 {messageSearchPopoverEl}
               </div>
             </>

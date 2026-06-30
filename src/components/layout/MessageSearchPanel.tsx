@@ -543,6 +543,7 @@ export function MessageSearchPanel({
       )}
 
       {!submitted && !showSuggestions && <div className="flex-1" />}
+      {filtersModalEl}
     </div>
   );
 }

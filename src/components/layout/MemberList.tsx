@@ -235,11 +235,6 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
       (role) => role.permissions.includes("administrator") || role.permissions.includes("manage_roles"),
     );
   }, [currentUser, serverId, ownerId, server?.secondary_owner_id, membersData, allRoles]);
-  const handleSelectFilter = (prefix: string) => {
-    setSearchQuery(prefix);
-    setShowFilters(false);
-    searchRef.current?.focus();
-  };
   const handleRoleFilterToggle = (roleId: string) => {
     setSelectedRoleFilters((prev) => (prev.includes(roleId) ? prev.filter((id) => id !== roleId) : [...prev, roleId]));
   };

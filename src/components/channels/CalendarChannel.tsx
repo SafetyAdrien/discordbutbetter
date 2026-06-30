@@ -470,9 +470,9 @@ function EventAgendaCard({
     <ContextMenu>
       <ContextMenuTrigger asChild>
         <div
-          className="rounded-2xl bg-[hsl(var(--surface-1))] border-l-4 overflow-hidden cursor-pointer"
+          className={`rounded-2xl bg-[hsl(var(--surface-1))] border-l-4 overflow-hidden ${canManage ? "cursor-pointer" : "cursor-default"}`}
           style={{ borderColor: event.color }}
-          onClick={() => onEdit(event)}
+          onClick={canManage ? () => onEdit(event) : undefined}
         >
           {event.thumbnail_url && (
             <div className="w-full aspect-square overflow-hidden">
@@ -504,19 +504,25 @@ function EventAgendaCard({
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent>
-        <ContextMenuItem onClick={() => onEdit(event)}>
-          <Pencil className="w-4 h-4 mr-2" /> Modifier
-        </ContextMenuItem>
+        {canManage && (
+          <ContextMenuItem onClick={() => onEdit(event)}>
+            <Pencil className="w-4 h-4 mr-2" /> Modifier
+          </ContextMenuItem>
+        )}
         <ContextMenuItem onClick={() => { copyToClipboard(event.id); toast.success('ID copié'); }}>
           <Copy className="w-4 h-4 mr-2" /> Copier l'ID
         </ContextMenuItem>
-        <ContextMenuSeparator />
-        <ContextMenuItem
-          className="text-destructive focus:text-destructive"
-          onClick={() => onDelete(event)}
-        >
-          <Trash2 className="w-4 h-4 mr-2" /> Supprimer
-        </ContextMenuItem>
+        {canManage && (
+          <>
+            <ContextMenuSeparator />
+            <ContextMenuItem
+              className="text-destructive focus:text-destructive"
+              onClick={() => onDelete(event)}
+            >
+              <Trash2 className="w-4 h-4 mr-2" /> Supprimer
+            </ContextMenuItem>
+          </>
+        )}
       </ContextMenuContent>
     </ContextMenu>
   );
@@ -531,9 +537,9 @@ function EventDetailCard({
     <ContextMenu>
       <ContextMenuTrigger asChild>
         <div
-          className="p-3 bg-background rounded-md border-l-4 cursor-pointer"
+          className={`p-3 bg-background rounded-md border-l-4 ${canManage ? "cursor-pointer" : "cursor-default"}`}
           style={{ borderColor: event.color }}
-          onClick={() => onEdit(event)}
+          onClick={canManage ? () => onEdit(event) : undefined}
         >
           <h5 className="font-medium">{event.title}</h5>
           {event.description && (
@@ -548,15 +554,21 @@ function EventDetailCard({
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent>
-        <ContextMenuItem onClick={() => onEdit(event)}>
-          <Pencil className="w-4 h-4 mr-2" /> Modifier
-        </ContextMenuItem>
-        <ContextMenuItem
-          className="text-destructive focus:text-destructive"
-          onClick={() => onDelete(event)}
-        >
-          <Trash2 className="w-4 h-4 mr-2" /> Supprimer
-        </ContextMenuItem>
+        {canManage ? (
+          <>
+            <ContextMenuItem onClick={() => onEdit(event)}>
+              <Pencil className="w-4 h-4 mr-2" /> Modifier
+            </ContextMenuItem>
+            <ContextMenuItem
+              className="text-destructive focus:text-destructive"
+              onClick={() => onDelete(event)}
+            >
+              <Trash2 className="w-4 h-4 mr-2" /> Supprimer
+            </ContextMenuItem>
+          </>
+        ) : (
+          <ContextMenuItem disabled>Aucune action disponible</ContextMenuItem>
+        )}
       </ContextMenuContent>
     </ContextMenu>
   );

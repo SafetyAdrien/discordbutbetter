@@ -203,27 +203,6 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
   const setSecondaryOwner = useSetSecondaryOwner();
   const removeSecondaryOwner = useRemoveSecondaryOwner();
 
-  // Calculate available filters based on search query
-  const availableFilters = useMemo(() => {
-    const lowerQuery = searchQuery.toLowerCase();
-    // If query already has a prefix, don't show suggestions
-    if (searchFilters.some((f) => lowerQuery.startsWith(f.prefix))) {
-      return [];
-    }
-    // If typing, filter suggestions that match
-    if (lowerQuery.trim()) {
-      return searchFilters.filter(
-        (f) => f.prefix.toLowerCase().includes(lowerQuery) || f.label.toLowerCase().includes(lowerQuery),
-      );
-    }
-    return searchFilters;
-  }, [searchQuery]);
-
-  // Reset selected index when filters change or dropdown opens
-  useEffect(() => {
-    setFilterSelectedIndex(0);
-  }, [searchQuery, showFilters]);
-
   // Re-hydrate role filters when changing server (component may not unmount)
   useEffect(() => {
     setSelectedRoleFiltersRaw(getPersistedRoleFilter(serverId));

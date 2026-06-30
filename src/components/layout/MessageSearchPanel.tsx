@@ -736,7 +736,7 @@ export function MessageSearchPanel({
     return (
       <>
         <div
-          className="w-full flex flex-col gap-2"
+          className="relative w-full"
           onKeyDown={(e) => {
             if (e.key === 'Escape') {
               e.stopPropagation();
@@ -746,11 +746,16 @@ export function MessageSearchPanel({
           }}
         >
           {/* Search bar — independent rounded element */}
-          <div className="bg-popover text-popover-foreground rounded-xl shadow-lg p-1.5">
+          <div className="relative z-10 bg-popover text-popover-foreground rounded-xl shadow-lg p-1.5">
             {searchInputBar}
           </div>
-          {/* Floating panel — separate element below */}
-          <div className="bg-popover text-popover-foreground rounded-xl shadow-lg max-h-[70vh] overflow-y-auto p-2">
+          {/* Floating panel — separate element below the search bar.
+              Largeur volontairement indépendante de la barre de recherche —
+              NE PAS passer en w-full/left-0, voir historique des fixes sur ce
+              composant (3e régression corrigée ici). */}
+          <div
+            className="absolute right-0 top-[calc(100%+0.5rem)] z-20 min-w-[340px] max-w-[90vw] bg-popover text-popover-foreground rounded-xl shadow-lg max-h-[70vh] overflow-y-auto p-2"
+          >
             {submenu ? renderSubmenu(submenu) : filtersAndHistory}
           </div>
         </div>

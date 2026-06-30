@@ -256,6 +256,9 @@ export function MessageSearchPanel({
       saveHistory(serverId, next);
       return next;
     });
+    if (variant === 'popover') {
+      onPopoverSubmit?.({ label, filters });
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {

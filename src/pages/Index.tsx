@@ -655,14 +655,32 @@ const Index = () => {
     />
   ) : null;
 
-  const memberListEl = activeServer && channelForChat?.type !== 'voice' && !activeThreadId ? (
-    <MemberList
-      members={memberListData}
-      ownerId={activeServer.owner_id || ''}
+  const messageSearchEl = activeServer ? (
+    <MessageSearchPanel
       serverId={activeServer.id}
-      onOpenDM={handleOpenDM}
+      channels={searchChannels}
+      members={searchMembers}
+      onClose={() => setShowGlobalSearch(false)}
+      onNavigateToMessage={(channelId) => {
+        setActiveChannelId(channelId);
+        setShowGlobalSearch(false);
+      }}
     />
   ) : null;
+
+  const rightPanelEl = activeServer && channelForChat?.type !== 'voice' && !activeThreadId
+    ? (showGlobalSearch
+        ? messageSearchEl
+        : (
+          <MemberList
+            members={memberListData}
+            ownerId={activeServer.owner_id || ''}
+            serverId={activeServer.id}
+            onOpenDM={handleOpenDM}
+          />
+        ))
+    : null;
+  const memberListEl = rightPanelEl;
 
   return (
     <div className="h-[100svh] flex bg-[hsl(var(--sidebar-background))] overflow-hidden gap-[2px]">

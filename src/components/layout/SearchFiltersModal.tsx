@@ -443,7 +443,10 @@ export function SearchFiltersModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden">
+      <DialogContent
+        className="max-w-lg p-0 gap-0 overflow-hidden"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
         <div className="flex items-center justify-between px-5 py-3 border-b border-border/40">
           <DialogTitle>Filters</DialogTitle>
         </div>

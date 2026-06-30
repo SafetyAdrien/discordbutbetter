@@ -291,7 +291,7 @@ const hasAnyDayAction = canCreate || dayEvents.some(canEditEvent);
                           dayEvents.length > 0 && (
                             <div className="flex-1 space-y-0.5 overflow-hidden w-full mt-0.5 px-1">
                               {dayEvents.slice(0, 2).map((event) => (
-                                <DayCellEvent key={event.id} event={event} onClick={() => openEdit(event)} />
+                                <DayCellEvent key={event.id} event={event} onClick={canEditEvent(event) ? () => openEdit(event) : undefined} />
                               ))}
                               {dayEvents.length > 2 && (
                                 <div className="text-[10px] text-muted-foreground px-1">+{dayEvents.length - 2}</div>
@@ -445,13 +445,13 @@ export function DayThumbnail({ url }: { url: string }) {
 /**
  * Day cell event chip (fallback when no thumbnail).
  */
-function DayCellEvent({ event, onClick }: { event: ChannelCalendarEvent; onClick: () => void }) {
+function DayCellEvent({ event, onClick }: { event: ChannelCalendarEvent; onClick?: () => void }) {
   return (
     <div
-      onClick={(e) => { e.stopPropagation(); onClick(); }}
-      className="rounded overflow-hidden cursor-pointer bg-primary/15"
-      role="button"
-      tabIndex={0}
+      onClick={onClick ? (e) => { e.stopPropagation(); onClick(); } : undefined}
+      className={cn('rounded overflow-hidden bg-primary/15', onClick ? 'cursor-pointer' : 'cursor-default')}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
     >
       <div className="text-[10px] truncate px-1 text-primary">
         {event.title}

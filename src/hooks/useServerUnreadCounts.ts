@@ -75,7 +75,9 @@ export function useServerUnreadCounts() {
               });
             }
           }
-          queryClient.invalidateQueries({ queryKey: ['server-unread-counts'] });
+          // NOTE: no invalidate — the optimistic patch above is authoritative.
+          // Refetching here would race against channel_read_states replication
+          // lag and risk resurrecting a freshly-cleared badge.
         }
       )
       .subscribe();
@@ -98,7 +100,7 @@ export function useServerUnreadCounts() {
             const current = queryClient.getQueryData<Record<string, ServerUnreadInfo>>(['server-unread-counts', user.id])?.[serverId];
             patchServer(serverId, { mentionCount: (current?.mentionCount || 0) + 1 });
           }
-          queryClient.invalidateQueries({ queryKey: ['server-unread-counts'] });
+          // No invalidate — patch is authoritative.
         }
       )
       .on(
@@ -113,7 +115,7 @@ export function useServerUnreadCounts() {
             const current = queryClient.getQueryData<Record<string, ServerUnreadInfo>>(['server-unread-counts', user.id])?.[serverId];
             patchServer(serverId, { mentionCount: Math.max(0, (current?.mentionCount || 0) - 1) });
           }
-          queryClient.invalidateQueries({ queryKey: ['server-unread-counts'] });
+          // No invalidate — patch is authoritative.
         }
       )
       .subscribe();
@@ -156,7 +158,6 @@ export function useServerUnreadCounts() {
       const serverIds = memberships?.map(m => m.server_id) || [];
       if (serverIds.length === 0) return {};
 
-      // Read states (single query)
       // Channels per server (single query)
       const { data: allChannels } = await supabase
         .from('channels')
@@ -169,20 +170,6 @@ export function useServerUnreadCounts() {
       });
 
       const allChannelIds = allChannels?.map(c => c.id) || [];
-
-      // Per-channel read states (source of truth)
-      const { data: channelReads } = allChannelIds.length > 0
-        ? await supabase
-            .from('channel_read_states')
-            .select('channel_id, last_read_at')
-            .eq('user_id', user.id)
-            .in('channel_id', allChannelIds)
-        : { data: [] as { channel_id: string; last_read_at: string }[] };
-
-      const channelReadMap: Record<string, string> = {};
-      channelReads?.forEach(r => {
-        channelReadMap[r.channel_id] = r.last_read_at || new Date(0).toISOString();
-      });
 
       // Mentions (single query)
       const { data: mentions } = allChannelIds.length > 0
@@ -201,32 +188,19 @@ export function useServerUnreadCounts() {
         }
       });
 
-      // BATCHED: one query for all recent messages across user's channels,
-      // bucket per channel against each channel's own last_read_at.
-      const oldestRead = allChannelIds.reduce((oldest, cid) => {
-        const ts = channelReadMap[cid] || new Date(0).toISOString();
-        return ts < oldest ? ts : oldest;
-      }, new Date().toISOString());
-
-      const { data: unreadMessages } = allChannelIds.length > 0
-        ? await supabase
-            .from('messages')
-            .select('channel_id, created_at')
-            .in('channel_id', allChannelIds)
-            .gt('created_at', oldestRead)
-            .neq('author_id', user.id)
-            .limit(5000)
-        : { data: [] as { channel_id: string; created_at: string }[] };
-
+      // Per-channel unread evaluation done server-side (EXISTS per channel),
+      // no global cutoff, no LIMIT truncation.
       const serverHasUnread: Record<string, boolean> = {};
-      unreadMessages?.forEach(msg => {
-        const serverId = channelToServer[msg.channel_id];
-        if (!serverId) return;
-        const cutoff = channelReadMap[msg.channel_id] || new Date(0).toISOString();
-        if ((msg.created_at || '') > cutoff) {
-          serverHasUnread[serverId] = true;
-        }
-      });
+      if (allChannelIds.length > 0) {
+        const { data: unreadRows } = await supabase.rpc('get_unread_channel_ids', {
+          _user_id: user.id,
+          _channel_ids: allChannelIds,
+        });
+        (unreadRows as { channel_id: string }[] | null)?.forEach(row => {
+          const serverId = channelToServer[row.channel_id];
+          if (serverId) serverHasUnread[serverId] = true;
+        });
+      }
 
       const result: Record<string, ServerUnreadInfo> = {};
       for (const serverId of serverIds) {
@@ -257,16 +231,51 @@ export function useServerUnreadCounts() {
   const markAsRead = useMutation({
     mutationFn: async (serverId: string) => {
       if (!user) throw new Error('Not authenticated');
-      await supabase
-        .from('server_read_states')
-        .upsert({
-          user_id: user.id,
-          server_id: serverId,
-          last_read_at: new Date().toISOString(),
-        }, { onConflict: 'user_id,server_id' });
+
+      // Fetch every channel of the server and mark each as read in
+      // channel_read_states — the actual source of truth read by the badge
+      // query. Writing to server_read_states alone had no visible effect.
+      const { data: channels } = await supabase
+        .from('channels')
+        .select('id')
+        .eq('server_id', serverId);
+      const channelIds = channels?.map(c => c.id) || [];
+      if (channelIds.length === 0) return;
+
+      const now = new Date().toISOString();
+      const upserts = channelIds.map(channel_id => ({
+        user_id: user.id,
+        channel_id,
+        last_read_at: now,
+      }));
+
+      await Promise.all([
+        supabase
+          .from('channel_read_states')
+          .upsert(upserts, { onConflict: 'user_id,channel_id' }),
+        supabase
+          .from('channel_mentions')
+          .delete()
+          .eq('user_id', user.id)
+          .in('channel_id', channelIds),
+      ]);
+    },
+    onMutate: async (serverId: string) => {
+      // Optimistic patch — clear the server badge immediately so the icon
+      // resets without waiting on the network round-trip.
+      if (!user) return;
+      queryClient.setQueryData<Record<string, ServerUnreadInfo>>(
+        ['server-unread-counts', user.id],
+        (old = {}) => {
+          if (!(serverId in old)) return old;
+          const { [serverId]: _, ...rest } = old;
+          return rest;
+        }
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['server-unread-counts'] });
+      queryClient.invalidateQueries({ queryKey: ['channel-unread-counts'] });
     },
   });
 

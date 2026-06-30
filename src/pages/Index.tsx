@@ -726,7 +726,9 @@ const Index = () => {
                 onClick={closeSearch}
                 className="absolute inset-0 bg-black/40 z-10 cursor-default"
               />
-              <div className="absolute left-3 right-3 top-3 z-20">
+              {/* Right offset = inbox button (32px) + gap (8px) + px-3 (12px) = 52px.
+                  Garde l'icône Inbox visible à droite quand le popover est ouvert. */}
+              <div className="absolute left-3 right-[52px] top-3 z-20">
                 {messageSearchPopoverEl}
               </div>
             </>

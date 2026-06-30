@@ -12,7 +12,7 @@ import { DiscoverModal } from '@/components/modals/DiscoverModal';
 import { CreateServerModal } from '@/components/modals/CreateServerModal';
 import { ServerSettingsModal } from '@/components/server-settings/ServerSettingsModal';
 import { KeyboardShortcutsModal } from '@/components/modals/KeyboardShortcutsModal';
-import { GlobalSearchModal } from '@/components/modals/GlobalSearchModal';
+import { MessageSearchPanel } from '@/components/layout/MessageSearchPanel';
 import { MediaChannel } from '@/components/channels/MediaChannel';
 import { ForumChannel } from '@/components/channels/ForumChannel';
 import { TasksChannel } from '@/components/channels/TasksChannel';

@@ -152,102 +152,187 @@ export function MessageSearchPanel({
     return m;
   }, [channels]);
 
+  const memberByUsername = useMemo(() => {
+    const m = new Map<string, { id: string; username: string; displayName: string; avatar?: string }>();
+    members.forEach((u) => m.set(u.username.toLowerCase(), u));
+    return m;
+  }, [members]);
+
   const filterRows = [
     {
       key: 'from',
       icon: <UserIcon className="w-4 h-4 text-muted-foreground" />,
-      label: "Provenant d'un utilisateur",
-      hint: 'de :',
-      onSelect: () => insertPrefix('de:'),
+      label: 'From a specific user',
+      prefix: 'from:',
+      hint: 'user',
+      onSelect: () => insertPrefix('from:'),
     },
     {
       key: 'in',
       icon: <Hash className="w-4 h-4 text-muted-foreground" />,
-      label: 'Envoyé dans un salon spécifique',
-      hint: 'dans :',
-      onSelect: () => insertPrefix('dans:'),
+      label: 'Sent in a specific channel',
+      prefix: 'in:',
+      hint: 'channel',
+      onSelect: () => insertPrefix('in:'),
     },
     {
       key: 'has',
-      icon: <FileText className="w-4 h-4 text-muted-foreground" />,
-      label: 'Contient un type de contenu spécifique',
-      hint: 'a :',
-      onSelect: () => insertPrefix('a:'),
+      icon: <Paperclip className="w-4 h-4 text-muted-foreground" />,
+      label: 'Includes a specific type of data',
+      prefix: 'has:',
+      hint: 'link, embed or file',
+      onSelect: () => insertPrefix('has:'),
     },
     {
       key: 'mentions',
       icon: <AtSign className="w-4 h-4 text-muted-foreground" />,
-      label: 'Mentionne un utilisateur spécifique',
-      hint: 'mentionne :',
-      onSelect: () => insertPrefix('mentionne:'),
+      label: 'Mentions a specific user',
+      prefix: 'mentions:',
+      hint: 'user',
+      onSelect: () => insertPrefix('mentions:'),
     },
     {
       key: 'more',
       icon: <SlidersHorizontal className="w-4 h-4 text-muted-foreground" />,
-      label: 'Plus de filtres',
-      hint: '',
+      label: 'More filters',
+      prefix: '',
+      hint: 'dates, author type, and more',
       onSelect: () => inputRef.current?.focus(),
     },
   ];
 
+  // Parse a history string into structured chunks (plain text + token pills).
+  const parseHistoryItem = (raw: string) => {
+    const tokenRe = /(\b(?:has|in|from|mentions|de|dans):\S+)/gi;
+    const parts: Array<
+      | { kind: 'text'; value: string }
+      | { kind: 'token'; prefix: string; value: string }
+    > = [];
+    let last = 0;
+    let m: RegExpExecArray | null;
+    while ((m = tokenRe.exec(raw)) !== null) {
+      if (m.index > last) parts.push({ kind: 'text', value: raw.slice(last, m.index) });
+      const [prefix, value] = m[0].split(/:(.+)/);
+      parts.push({ kind: 'token', prefix: `${prefix}:`, value: value ?? '' });
+      last = m.index + m[0].length;
+    }
+    if (last < raw.length) parts.push({ kind: 'text', value: raw.slice(last) });
+    return parts;
+  };
+
+  const renderHistoryContent = (raw: string) => {
+    const parts = parseHistoryItem(raw);
+    if (parts.length === 0 || (parts.length === 1 && parts[0].kind === 'text')) {
+      return <span className="truncate">{raw}</span>;
+    }
+    return (
+      <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+        {parts.map((p, i) => {
+          if (p.kind === 'text') {
+            const t = p.value.trim();
+            if (!t) return null;
+            return <span key={i} className="text-sm">{t}</span>;
+          }
+          const lower = p.prefix.toLowerCase();
+          const isChannel = lower === 'in:' || lower === 'dans:';
+          const isUser = lower === 'from:' || lower === 'de:' || lower === 'mentions:';
+          const ch = isChannel ? channels.find((c) => c.name.toLowerCase() === p.value.toLowerCase().replace(/^#/, '')) : null;
+          const member = isUser ? memberByUsername.get(p.value.toLowerCase()) : null;
+          return (
+            <span
+              key={i}
+              className="inline-flex items-center gap-1 rounded bg-surface-2 px-1.5 py-0.5 text-xs"
+            >
+              <span className="text-muted-foreground">{p.prefix}</span>
+              {isChannel && <Hash className="w-3 h-3 text-muted-foreground" />}
+              {isUser && member?.avatar && (
+                <UserAvatarImage
+                  src={member.avatar}
+                  alt={member.displayName}
+                  ownerId={member.id}
+                  className="w-4 h-4 rounded-full"
+                />
+              )}
+              {isUser && !member?.avatar && (
+                <Avatar className="w-4 h-4">
+                  <AvatarFallback className="text-[8px]">
+                    {p.value.slice(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+              )}
+              <span className="truncate">{ch ? ch.name : p.value}</span>
+            </span>
+          );
+        })}
+      </div>
+    );
+  };
+
   const filtersAndHistory = (
     <>
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground px-2 pb-1">
-        Filtres
+      <div className="text-[11px] font-semibold text-muted-foreground px-2 pt-1 pb-1.5">
+        Filters
       </div>
-      {filterRows.map((row) => (
-        <button
-          key={row.key}
-          onClick={row.onSelect}
-          className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-surface-hover text-left"
-        >
-          <span className="shrink-0">{row.icon}</span>
-          <span className="flex-1 truncate">{row.label}</span>
-          {row.hint && (
-            <span className="text-[11px] text-muted-foreground shrink-0">{row.hint}</span>
-          )}
-        </button>
-      ))}
+      <div className="flex flex-col">
+        {filterRows.map((row) => (
+          <button
+            key={row.key}
+            onClick={row.onSelect}
+            className="w-full flex items-center gap-3 px-2 py-1.5 rounded text-sm hover:bg-surface-hover text-left"
+          >
+            <span className="shrink-0">{row.icon}</span>
+            <span className="flex-1 min-w-0">
+              <span className="block text-sm text-foreground truncate">{row.label}</span>
+              <span className="block text-xs text-muted-foreground truncate">
+                {row.prefix && <span className="text-primary">{row.prefix} </span>}
+                {row.hint}
+              </span>
+            </span>
+          </button>
+        ))}
+      </div>
 
       {history.length > 0 && (
         <>
-          <div className="flex items-center justify-between px-2 pt-3 pb-1">
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-              Historique
+          <Separator className="my-2" />
+          <div className="flex items-center justify-between px-2 pb-1.5">
+            <span className="text-[11px] font-semibold text-muted-foreground">
+              History
             </span>
             <button
               onClick={clearHistory}
-              className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
-              aria-label="Tout effacer"
+              className="text-muted-foreground hover:text-foreground"
+              aria-label="Clear history"
             >
-              <Trash2 className="w-3 h-3" />
-              Tout effacer
+              <Trash2 className="w-3.5 h-3.5" />
             </button>
           </div>
-          {history.map((item) => (
-            <div
-              key={item}
-              className="group flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-surface-hover"
-            >
-              <Search className="w-4 h-4 text-muted-foreground shrink-0" />
-              <button
-                onClick={() => {
-                  setQuery(item);
-                  runSearch(item);
-                }}
-                className="flex-1 truncate text-left"
+          <div className="flex flex-col">
+            {history.map((item) => (
+              <div
+                key={item}
+                className="group flex items-center gap-2 px-2 py-1.5 rounded hover:bg-surface-hover"
               >
-                {item}
-              </button>
-              <button
-                onClick={() => removeHistoryItem(item)}
-                className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground"
-                aria-label="Retirer de l'historique"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          ))}
+                <Search className="w-4 h-4 text-muted-foreground shrink-0" />
+                <button
+                  onClick={() => {
+                    setQuery(item);
+                    runSearch(item);
+                  }}
+                  className="flex-1 min-w-0 text-left"
+                >
+                  {renderHistoryContent(item)}
+                </button>
+                <button
+                  onClick={() => removeHistoryItem(item)}
+                  className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground"
+                  aria-label="Remove from history"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
         </>
       )}
     </>
@@ -257,7 +342,7 @@ export function MessageSearchPanel({
   if (variant === 'popover') {
     return (
       <div
-        className="w-full bg-surface-1 border border-border/40 rounded-md shadow-lg p-2 max-h-[70vh] overflow-y-auto"
+        className="w-full bg-popover text-popover-foreground border border-border/40 rounded-md shadow-lg p-2 max-h-[70vh] overflow-y-auto"
         onKeyDown={(e) => {
           if (e.key === 'Escape') {
             e.stopPropagation();

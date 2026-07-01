@@ -5,9 +5,9 @@ import path from "path";
 import { parse } from "@babel/parser";
 import type {
   JSXOpeningElement,
-  JSXAttribute,
-  Identifier,
   JSXIdentifier,
+  JSXMemberExpression,
+  JSXNamespacedName,
   File,
 } from "@babel/types";
 
@@ -27,19 +27,38 @@ interface MemberListMount {
 }
 
 function isJSXIdentifierName(
-  name: JSXIdentifier | Identifier | string | null | undefined,
+  name: JSXIdentifier | JSXMemberExpression | JSXNamespacedName,
   expected: string
 ): boolean {
-  if (!name) return false;
-  return typeof name === "string" ? name === expected : name.name === expected;
+  return name.type === "JSXIdentifier" && name.name === expected;
 }
 
 function nodeHasFillHeight(node: JSXOpeningElement): boolean {
   return node.attributes.some((attr) => {
     if (attr.type !== "JSXAttribute") return false;
-    const name = (attr.name as JSXIdentifier).name;
-    return name === "fillHeight";
+    return attr.name.name === "fillHeight";
   });
+}
+
+function visitNode(node: unknown, visitor: (n: JSXOpeningElement) => void) {
+  if (!node || typeof node !== "object") return;
+  const n = node as Record<string, unknown>;
+
+  if (
+    (n.type === "JSXOpeningElement" || n.type === "JSXSelfClosingElement") &&
+    isJSXIdentifierName((n.name as JSXOpeningElement).name, "MemberList")
+  ) {
+    visitor(n as unknown as JSXOpeningElement);
+  }
+
+  for (const key of Object.keys(n)) {
+    const value = n[key];
+    if (Array.isArray(value)) {
+      value.forEach((child) => visitNode(child, visitor));
+    } else if (value && typeof value === "object") {
+      visitNode(value, visitor);
+    }
+  }
 }
 
 function extractMountsFromFile(filePath: string): MemberListMount[] {
@@ -56,35 +75,13 @@ function extractMountsFromFile(filePath: string): MemberListMount[] {
   }
 
   const mounts: MemberListMount[] = [];
-
-  function visit(node: unknown) {
-    if (!node || typeof node !== "object") return;
-    const n = node as Record<string, unknown>;
-
-    if (
-      (n.type === "JSXOpeningElement" || n.type === "JSXSelfClosingElement") &&
-      isJSXIdentifierName((n.name as JSXOpeningElement).name, "MemberList")
-    ) {
-      const element = n as JSXOpeningElement;
-      const line = element.loc?.start?.line ?? 0;
-      mounts.push({
-        file: path.relative(SRC_ROOT, filePath),
-        line,
-        hasFillHeight: nodeHasFillHeight(element),
-      });
-    }
-
-    for (const key of Object.keys(n)) {
-      const value = n[key];
-      if (Array.isArray(value)) {
-        value.forEach(visit);
-      } else if (value && typeof value === "object") {
-        visit(value);
-      }
-    }
-  }
-
-  visit(ast);
+  visitNode(ast, (element) => {
+    mounts.push({
+      file: path.relative(SRC_ROOT, filePath),
+      line: element.loc?.start?.line ?? 0,
+      hasFillHeight: nodeHasFillHeight(element),
+    });
+  });
   return mounts;
 }
 

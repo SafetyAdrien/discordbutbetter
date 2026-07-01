@@ -52,8 +52,6 @@ export const ALL_TAB_DESCRIPTORS: ReadonlyArray<SettingsTabDescriptor> = [
   { type: 'keybinds', category: 'app_settings', label: 'Raccourcis clavier', icon: Keyboard, implementedBy: 'KeybindsSettings' },
   { type: 'desktop_settings', category: 'app_settings', label: 'Application desktop', icon: Monitor, implementedBy: 'DesktopSettings' },
   { type: 'advanced_settings', category: 'app_settings', label: 'Avancé', icon: Sliders, implementedBy: 'AdvancedSettings' },
-  { type: 'desktop_settings', category: 'app_settings', label: 'Application desktop', icon: Monitor, implementedBy: null },
-  { type: 'advanced_settings', category: 'app_settings', label: 'Avancé', icon: Sliders, implementedBy: null },
 ] as const;
 
 export const IMPLEMENTED_TAB_DESCRIPTORS: ReadonlyArray<SettingsTabDescriptor> = ALL_TAB_DESCRIPTORS.filter(

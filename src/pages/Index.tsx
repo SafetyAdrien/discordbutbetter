@@ -494,6 +494,7 @@ const Index = () => {
     id: activeServer.id,
     name: activeServer.name,
     ownerId: activeServer.owner_id || '',
+    secondaryOwnerId: activeServer.secondary_owner_id || undefined,
     iconUrl: activeServer.icon_url || undefined,
     bannerUrl: activeServer.banner_url || undefined,
     description: activeServer.description || undefined,

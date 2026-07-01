@@ -1047,14 +1047,23 @@ export function ChannelList({
   // Check if user can access server settings
   const canAccessSettings = useCanAccessServerSettings(server.id);
 
+  // Check if user is the owner (cannot leave, must delete). Calculé
+  // directement depuis la prop `server` de cette page (source garantie à
+  // jour pour le serveur affiché), à ne pas confondre avec le isGod/isOwner
+  // interne de usePermissions() qui dépend d'une liste séparée
+  // (useServers(), la liste de TOUS les serveurs de l'utilisateur) pouvant
+  // être désynchronisée par rapport au serveur réellement affiché — c'est ce
+  // qui bloquait le drag pour de vrais propriétaires/gestionnaires après
+  // l'ajout de `disabled: !canManageChannels`.
+  const isOwner = profile?.id === server.ownerId;
+
   // Check if user can manage channels
   const { hasPermission, isGod } = usePermissions(server.id);
-  const canManageChannels = isGod || hasPermission("manage_channels") || hasPermission("administrator");
+  const canManageChannels = isGod || isOwner || hasPermission("manage_channels") || hasPermission("administrator");
+
   // Create-invite is gated server-side by owner/admin (RLS on `invites`), not the unused `create_invites` permission enum.
   const canCreateInvite = isGod || hasPermission("administrator");
 
-  // Check if user is the owner (cannot leave, must delete)
-  const isOwner = profile?.id === server.ownerId;
 
   // BATCH: Get all channel permissions (view + connect) with a SINGLE RPC call
   // Replaces useChannelsVisibility + useVoiceChannelLocks (N+M calls → 1 call)

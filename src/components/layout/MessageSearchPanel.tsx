@@ -696,9 +696,14 @@ export function MessageSearchPanel({
   //   chevauchement et un mouvement apparent des icônes.
   const searchInputBar = (
     <div className="relative flex-1 min-w-0">
+      {/* ⚠️ VERROU parité stricte avec l'Input shadcn au repos (MemberList) :
+          - pl-3 (12px) identique à l'Input repos.
+          - border border-transparent : compense le 1px de border-border de
+            l'Input shadcn. Sans ces deux propriétés, le placeholder
+            "Rechercher" saute de 3px vers la gauche au clic (régression). */}
       <div
         className={cn(
-          'relative flex items-center gap-1.5 h-8 min-h-8 max-h-8 pl-2.5 pr-8 rounded-xl bg-input box-border overflow-hidden',
+          'relative flex items-center gap-1.5 h-8 min-h-8 max-h-8 pl-3 pr-8 rounded-xl bg-input box-border overflow-hidden border border-transparent',
         )}
         onClick={() => inputRef.current?.focus()}
       >

@@ -1,20 +1,33 @@
-## Plan ciblé
+## Problème
 
-1. **Restaurer les deux icônes visibles à droite**
-   - Dans `MessageSearchPanel.tsx`, remplacer le slot unique `X/Search` par deux slots fixes séparés à droite.
-   - Garder la loupe toujours montée et toujours visible.
-   - Ajouter/reconserver la seconde icône carrée/fenêtre dans son propre emplacement fixe, sans dépendre de l’état ouvert/fermé.
+Au clic sur la barre "Rechercher", le placeholder saute vers la gauche de ~3px.
 
-2. **Verrouiller la géométrie de la barre**
-   - Conserver une hauteur stricte `32px` sur le conteneur et l’input.
-   - Utiliser des largeurs fixes pour les zones d’icônes afin d’éviter tout mouvement, upscale, reflow ou décalage au clic/focus.
-   - Ajuster le `padding-right` interne pour réserver exactement la place des deux icônes.
+**Cause** : différence de padding effectif entre l'état repos et l'état actif.
 
-3. **Limiter le changement au strict nécessaire**
-   - Ne pas toucher au popover, à sa largeur, à son ancrage, aux sous-panneaux, ni à la modale.
-   - Ne pas modifier `MemberList.tsx` sauf si la seconde icône attendue est uniquement définie dans son état repos et doit être reproduite à l’identique côté `MessageSearchPanel.tsx`.
+| État | Composant | Border | Padding gauche | Offset texte total |
+|---|---|---|---|---|
+| Repos (MemberList) | `<Input className="pl-3 pr-8">` | 1px (`border-border`) | 12px | **13px** |
+| Actif (MessageSearchPanel) | `<div … pl-2.5 pr-8>` avec `<input>` interne | 0px | 10px | **10px** |
 
-4. **Validation**
-   - Vérifier visuellement que la barre ne change pas de hauteur au clic.
-   - Vérifier que les deux icônes restent visibles dans tous les états : repos, focus, popover ouvert, texte saisi, filtre actif.
-   - Lancer `tsgo --noEmit` et confirmer qu’il n’y a pas de nouvelle erreur.
+L'active state supprime la border et utilise `pl-2.5` au lieu de `pl-3`, ce qui décale le texte de 3px vers la gauche.
+
+## Fix (ciblé, un seul fichier)
+
+**`src/components/layout/MessageSearchPanel.tsx`** — ligne 701 :
+
+Remplacer le conteneur de la barre active pour reproduire EXACTEMENT la géométrie de l'`Input` au repos :
+
+```diff
+- 'relative flex items-center gap-1.5 h-8 min-h-8 max-h-8 pl-2.5 pr-8 rounded-xl bg-input box-border overflow-hidden',
++ 'relative flex items-center gap-1.5 h-8 min-h-8 max-h-8 pl-3 pr-8 rounded-xl bg-input box-border overflow-hidden border border-transparent',
+```
+
+- `pl-3` → aligne le texte avec l'état repos (12px identique).
+- `border border-transparent` → compense le 1px de border de `<Input>` au repos, garantissant l'égalité pixel-perfect sans changer l'apparence visuelle (transparent).
+- `h-8` + `box-border` conservés → hauteur totale reste 32px.
+
+Ajouter un commentaire de verrouillage anti-régression au-dessus expliquant pourquoi `pl-3` + `border border-transparent` sont obligatoires (parité stricte avec l'`Input` shadcn au repos dans `MemberList.tsx`).
+
+## Vérification
+
+Cliquer sur la barre : le mot "Rechercher" ne doit plus bouger d'un pixel horizontalement entre l'état repos et l'état focus/popover ouvert.

@@ -36,32 +36,34 @@ const CacheRehydrateBridge = () => {
 };
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <CacheRehydrateBridge />
-    <AuthProvider>
-      <PresenceProvider>
-        <VoiceProvider>
-          <TooltipProvider delayDuration={0}>
-            <DndProvider options={dndMultiBackendPipeline}>
-              <BrowserRouter>
-                <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/auth" element={<Auth />} />
-                  <Route path="/invite/:code" element={<Invite />} />
-                  <Route path="/install" element={<Install />} />
-                  <Route path="/admin/badges" element={<AdminBadges />} />
-                  <Route path="/trust" element={<Trust />} />
-                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </BrowserRouter>
-              <PerfOverlay />
-            </DndProvider>
-          </TooltipProvider>
-        </VoiceProvider>
-      </PresenceProvider>
-    </AuthProvider>
-  </QueryClientProvider>
+  <ThemeProvider>
+    <QueryClientProvider client={queryClient}>
+      <CacheRehydrateBridge />
+      <AuthProvider>
+        <PresenceProvider>
+          <VoiceProvider>
+            <TooltipProvider delayDuration={0}>
+              <DndProvider options={dndMultiBackendPipeline}>
+                <BrowserRouter>
+                  <Routes>
+                    <Route path="/" element={<Index />} />
+                    <Route path="/auth" element={<Auth />} />
+                    <Route path="/invite/:code" element={<Invite />} />
+                    <Route path="/install" element={<Install />} />
+                    <Route path="/admin/badges" element={<AdminBadges />} />
+                    <Route path="/trust" element={<Trust />} />
+                    {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </BrowserRouter>
+                <PerfOverlay />
+              </DndProvider>
+            </TooltipProvider>
+          </VoiceProvider>
+        </PresenceProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  </ThemeProvider>
 );
 
 

@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { resolveCategoryDropTarget } from "@/lib/dnd/categoryDropTarget";
 import { uuidToSnowflake } from "@/lib/snowflake";
 import { useScrollAwareContextMenuGuard } from "@/hooks/useScrollAwareContextMenuGuard";
 import {

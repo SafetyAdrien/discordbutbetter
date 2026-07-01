@@ -2213,22 +2213,26 @@ function VoiceParticipantsSidebar({
   );
 }
 
-function ChannelListScrollContainer({
-  onScroll,
-  children,
-}: {
-  onScroll: React.UIEventHandler<HTMLDivElement>;
-  children: React.ReactNode;
-}) {
+const ChannelListScrollContainer = forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement> & {
+    onScroll: React.UIEventHandler<HTMLDivElement>;
+    children: React.ReactNode;
+  }
+>(function ChannelListScrollContainer({ onScroll, children, className, ...rest }, ref) {
   const guard = useScrollAwareContextMenuGuard();
   return (
     <div
-      className="flex-1 overflow-y-auto scrollbar-thin py-2 px-1 relative"
+      ref={ref}
+      className={cn("flex-1 overflow-y-auto scrollbar-thin py-2 px-1 relative", className)}
       onScroll={onScroll}
       {...guard}
+      {...rest}
     >
       {children}
     </div>
   );
-}
+});
+
+
 

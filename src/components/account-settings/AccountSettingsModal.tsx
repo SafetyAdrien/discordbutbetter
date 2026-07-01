@@ -139,6 +139,11 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
   const selectTab = (tab: SettingsTab) => {
     setActiveTab(tab);
     setSearchQuery('');
+    // Repart du haut : sinon la position de scroll de l'onglet précédent
+    // "fuit" visuellement sur le nouveau contenu pendant une frame.
+    requestAnimationFrame(() => {
+      if (contentRef.current) contentRef.current.scrollTop = 0;
+    });
   };
 
   const renderContent = () => {

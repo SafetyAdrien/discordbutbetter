@@ -692,7 +692,8 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
       data: {
         type: "channel",
         channelId: channel.id
-      }
+      },
+      disabled: !canManageChannels
     });
     const style = {
       transform: CSS.Transform.toString(transform),

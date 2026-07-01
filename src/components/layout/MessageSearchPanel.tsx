@@ -783,22 +783,25 @@ export function MessageSearchPanel({
 
   return (
     <div className="w-full sm:w-60 bg-surface-1 flex flex-col sm:border-l sm:border-border/30 h-full">
-      <div className="px-3 pt-3 bg-surface-1">
-        <div className="flex items-center gap-2">
-          {searchInputBar}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 shrink-0"
-            onClick={onClose}
-            aria-label="Fermer la recherche"
-          >
-            <X className="w-4 h-4" />
-          </Button>
-        </div>
+      <div
+        className="h-12 px-3 sm:px-4 flex items-center gap-2 flex-shrink-0 bg-[hsl(var(--surface-2))] w-full"
+        style={{
+          borderBottom: "1px solid hsl(var(--border) / 0.5)",
+          boxShadow: "var(--shadow-elevation-1)",
+        }}
+      >
+        {searchInputBar}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 shrink-0"
+          onClick={onClose}
+          aria-label="Fermer la recherche"
+        >
+          <X className="w-4 h-4" />
+        </Button>
       </div>
 
-      <Separator className="mt-3" />
 
       {showSuggestions && !submitted && (
         <div className="px-2 pt-2">

@@ -203,28 +203,48 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
               <nav className="px-2 space-y-0.5">
                 {categoryTabs.map((tab) => {
                   const Icon = tab.icon;
+                  const isActiveTab = activeTab === tab.type;
                   return (
-                    <button
-                      key={tab.type}
-                      onClick={() => onSelect(tab.type)}
-                      className={cn(
-                        'w-full flex items-center gap-3 px-3 rounded-2xl text-sm font-medium transition-all duration-300',
-                        isMobile ? 'py-3' : 'py-2.5',
-                        activeTab === tab.type
-                          ? 'bg-primary/12 text-primary'
-                          : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    <div key={tab.type}>
+                      <button
+                        onClick={() => onSelect(tab.type)}
+                        className={cn(
+                          'w-full flex items-center gap-3 px-3 rounded-2xl text-sm font-medium transition-all duration-300',
+                          isMobile ? 'py-3' : 'py-2.5',
+                          isActiveTab
+                            ? 'bg-primary/12 text-primary'
+                            : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                        )}
+                        style={{ transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)' }}
+                      >
+                        <div className={cn(
+                          'w-8 h-8 rounded-full flex items-center justify-center transition-colors duration-200',
+                          isActiveTab ? 'bg-primary/15' : 'bg-muted/50'
+                        )}>
+                          <Icon className="w-4 h-4" />
+                        </div>
+                        <span className="flex-1 text-left">{tab.label}</span>
+                        {isMobile && <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+                      </button>
+                      {isActiveTab && !isMobile && activeSections.length > 0 && (
+                        <div className="ml-[19px] pl-4 border-l border-border/40 mt-1 mb-1 space-y-0.5">
+                          {activeSections.map((section) => (
+                            <button
+                              key={section.id}
+                              onClick={() => scrollToSettingsSection(contentRef.current, section.id)}
+                              className={cn(
+                                'w-full text-left px-2 py-1.5 rounded-lg text-xs transition-colors duration-150',
+                                activeSectionId === section.id
+                                  ? 'text-primary font-medium'
+                                  : 'text-muted-foreground hover:text-foreground'
+                              )}
+                            >
+                              {section.label}
+                            </button>
+                          ))}
+                        </div>
                       )}
-                      style={{ transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)' }}
-                    >
-                      <div className={cn(
-                        'w-8 h-8 rounded-full flex items-center justify-center transition-colors duration-200',
-                        activeTab === tab.type ? 'bg-primary/15' : 'bg-muted/50'
-                      )}>
-                        <Icon className="w-4 h-4" />
-                      </div>
-                      <span className="flex-1 text-left">{tab.label}</span>
-                      {isMobile && <ChevronRight className="w-4 h-4 text-muted-foreground" />}
-                    </button>
+                    </div>
                   );
                 })}
               </nav>

@@ -547,7 +547,6 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
           className="h-12 px-3 sm:px-4 flex items-center gap-2 flex-shrink-0 bg-surface-1 w-full"
           style={{
             borderBottom: "1px solid hsl(var(--border) / 0.5)",
-            boxShadow: "var(--shadow-elevation-1)",
           }}
         >
           <div className="relative flex-1">

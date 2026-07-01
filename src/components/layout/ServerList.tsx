@@ -489,6 +489,7 @@ export function ServerList({
             onClick={() => onServerSelect(null)}
             className={cn(
               'server-icon relative group',
+              activeServerId === null && 'is-active',
               activeServerId === null 
                 ? 'bg-primary text-primary-foreground' 
                 : 'bg-surface-3 hover:bg-primary hover:text-primary-foreground'

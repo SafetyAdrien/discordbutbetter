@@ -299,7 +299,8 @@ function SortableCategory({
       type: "category",
       categoryId: category.id
     },
-    transition: null
+    transition: null,
+    disabled: !canManageChannels
   });
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -691,7 +692,8 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
       data: {
         type: "channel",
         channelId: channel.id
-      }
+      },
+      disabled: !canManageChannels
     });
     const style = {
       transform: CSS.Transform.toString(transform),
@@ -960,7 +962,35 @@ export function ChannelList({
   // (avoids stale closure when React batches setState between dragOver and dragEnd)
   const dropPositionRef = useRef<"before" | "after">("after");
   const dropModeRef = useRef<"before" | "after" | "inside">("after");
+  // Position Y réelle de la souris, mise à jour indépendamment des événements
+  // du shim react-dnd. Le shim planifie un requestAnimationFrame PAR élément
+  // survolé, avec un instantané de delta figé au moment de la planification
+  // (voir src/lib/dnd-shim/use-sortable.tsx). Si le curseur traverse plusieurs
+  // catégories rapidement (typiquement en survolant vers le haut, où les
+  // catégories sont plus rapprochées), ces callbacks peuvent s'exécuter dans
+  // un ordre différent de celui du survol réel et faire retomber l'indicateur
+  // sur une position intermédiaire au lieu de la position finale sous le
+  // curseur — d'où l'indicateur qui "part dans le mauvais sens" lors de
+  // mouvements rapides. En traquant la position réelle via un listener natif,
+  // on n'est plus jamais tributaire de cet ordonnancement.
+  const liveClientYRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!activeId) {
+      liveClientYRef.current = null;
+      return;
+    }
+    const handlePointerMove = (e: PointerEvent) => {
+      liveClientYRef.current = e.clientY;
+    };
+    window.addEventListener("pointermove", handlePointerMove, { passive: true });
+    return () => window.removeEventListener("pointermove", handlePointerMove);
+  }, [activeId]);
+
   const getDragClientY = useCallback((event: DragOverEvent | DragEndEvent) => {
+    if (liveClientYRef.current !== null) return liveClientYRef.current;
+
+    // Repli si aucun pointermove n'a encore été capté (ex: tout premier
+    // instant du drag) : ancien calcul basé sur l'événement du shim.
     const activatorEvent = event.activatorEvent as MouseEvent | TouchEvent | null;
     if (!activatorEvent) return null;
 
@@ -1201,6 +1231,14 @@ export function ChannelList({
     });
   };
   const handleDragStart = (event: DragStartEvent) => {
+    // Défense en profondeur : useSortable({ disabled: !canManageChannels })
+    // empêche déjà le drag de démarrer côté catégories/salons, mais on
+    // bloque aussi ici au cas où un autre point d'entrée déclencherait un
+    // drag (ex: futur code qui oublierait de passer `disabled`).
+    const activeIdStr = event.active.id as string;
+    if (!canManageChannels && (activeIdStr.startsWith("category-") || activeIdStr.startsWith("channel-"))) {
+      return;
+    }
     dropPositionRef.current = "after";
     dropModeRef.current = "after";
     setOverId(null);

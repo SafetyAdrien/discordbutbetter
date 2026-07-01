@@ -984,29 +984,12 @@ export function ChannelList({
         id: element.dataset.categoryId,
         rect: element.getBoundingClientRect()
       }))
-      .filter((item): item is { id: string; rect: DOMRect } => !!item.id && item.id !== activeCategoryId)
-      .sort((a, b) => a.rect.top - b.rect.top);
+      .filter((item): item is { id: string; rect: DOMRect } => !!item.id && item.id !== activeCategoryId);
 
-    if (categoryHeaders.length === 0) return null;
-
-    const target = categoryHeaders.reduce((closest, current) => {
-      const currentDistance =
-        clientY < current.rect.top ? current.rect.top - clientY :
-        clientY > current.rect.bottom ? clientY - current.rect.bottom :
-        0;
-      const closestDistance =
-        clientY < closest.rect.top ? closest.rect.top - clientY :
-        clientY > closest.rect.bottom ? clientY - closest.rect.bottom :
-        0;
-
-      return currentDistance < closestDistance ? current : closest;
-    }, categoryHeaders[0]);
-
-    const midpoint = target.rect.top + target.rect.height / 2;
-    return {
-      overCatId: target.id,
-      position: clientY < midpoint ? "before" as const : "after" as const
-    };
+    return resolveCategoryDropTarget(
+      categoryHeaders.map((h) => ({ id: h.id, top: h.rect.top, height: h.rect.height })),
+      clientY,
+    );
   }, [getDragClientY]);
   const { profile, signOut, updateStatus } = useAuth();
   const { voiceState, joinChannel, leaveChannel, toggleMute, toggleDeafen, isConnected, speakingUsers } = useVoice();

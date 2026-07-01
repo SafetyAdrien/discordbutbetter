@@ -996,10 +996,10 @@ const Index = () => {
           </SheetContent>
         </Sheet>
       )}
-      {isTablet && memberListEl && (
+      {isTablet && tabletMemberListEl && (
         <Sheet open={tabletMembersOpen} onOpenChange={setTabletMembersOpen}>
           <SheetContent side="right" className="p-0 w-[280px] sm:max-w-[280px] border-l">
-            <div className="h-full overflow-hidden">{memberListEl}</div>
+            <div className="h-full overflow-hidden">{tabletMemberListEl}</div>
           </SheetContent>
         </Sheet>
       )}

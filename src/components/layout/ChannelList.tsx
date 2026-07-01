@@ -201,6 +201,7 @@ interface Server {
   id: string;
   name: string;
   ownerId: string;
+  secondaryOwnerId?: string;
   categories: Category[];
   iconUrl?: string;
   bannerUrl?: string;

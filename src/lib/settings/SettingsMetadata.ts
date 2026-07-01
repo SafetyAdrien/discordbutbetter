@@ -1,11 +1,3 @@
-/**
- * Métadonnées transverses attachées à un item de settings (section ou entrée
- * de recherche). Porté depuis l'architecture fluxer
- * (fluxer_app/src/features/user/components/settings_utils/SettingsMetadata.ts),
- * adapté : pas d'i18n ici (NexusChat n'a pas de système Lingui/MessageDescriptor,
- * tout est en chaînes simples).
- */
-
 export type SettingsAudience = 'primary' | 'advanced' | 'developer';
 
 export type SettingsCategoryTag =
@@ -29,7 +21,6 @@ export interface SettingsMetadata {
   badges?: ReadonlyArray<SettingsStatusBadgeKind>;
 }
 
-/** Fenêtre pendant laquelle un item reste marqué "Nouveau" après son addedAt. */
 export const SETTINGS_NEW_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
 function parseTimestampMs(value: string | undefined): number | null {

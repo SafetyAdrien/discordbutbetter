@@ -30,7 +30,7 @@ export function AppearanceSettings() {
 
   return (
     <div className="space-y-8">
-      <section>
+      <section data-settings-section-id="theme">
         <h2 className="text-lg font-semibold mb-1">Thème</h2>
         <p className="text-sm text-muted-foreground mb-4">
           Choisissez l'apparence générale de l'application.

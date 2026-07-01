@@ -310,7 +310,7 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
         <SettingsDivider />
         <SettingsRow icon={<Keyboard className="w-4 h-4 text-muted-foreground" />} label="Raccourcis clavier" onClick={() => selectTab('keybinds')} />
         <SettingsDivider />
-        <SettingsRow icon={<Bell className="w-4 h-4 text-muted-foreground" />} label="Notifications" onClick={() => toast.info('Bientôt disponible')} />
+        <SettingsRow icon={<Bell className="w-4 h-4 text-muted-foreground" />} label="Notifications" onClick={() => selectTab('notifications')} />
         <SettingsDivider />
         <SettingsRow icon={<Shield className="w-4 h-4 text-muted-foreground" />} label="Confidentialité & sécurité" onClick={() => selectTab('privacy_safety')} />
       </SettingsSection>

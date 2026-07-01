@@ -556,7 +556,8 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
         ref={ref}
         className={cn(
           "w-full sm:w-60 bg-surface-1 flex flex-col sm:border-l sm:border-border/30",
-          fillHeight && "h-full"
+          fillHeight && "h-full",
+          className
         )}
       >
         {/* Search input and Inbox — même style de barre "collée" que le header de salon : hauteur h-12, pleine largeur, pas d'arrondi sur la barre elle-même. */}

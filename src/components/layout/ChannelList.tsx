@@ -1339,9 +1339,11 @@ export function ChannelList({
     setOverId(overIdStr);
   };
   const handleDragEnd = (event: DragEndEvent) => {
-    // Snapshot ref values synchronously — handleDragOver writes them; state may be stale here
+    // Snapshot ref/state values synchronously — handleDragOver writes them, et on
+    // les lit avant que setOverId(null)/setActiveId(null) ne les réinitialisent.
     const currentDropPosition = dropPositionRef.current;
     const currentDropMode = dropModeRef.current;
+    const lastOverId = overId; // état React qui pilote RÉELLEMENT le DropIndicator affiché à l'écran
     setOverId(null);
     const { active, over } = event;
     setActiveId(null);
@@ -1351,12 +1353,26 @@ export function ChannelList({
     // Handle category reordering with precise position
     if (activeIdStr.startsWith("category-")) {
       const activeCatId = activeIdStr.replace("category-", "");
-      const hoverTarget = overIdStr?.startsWith("category-") && overIdStr !== activeIdStr ?
-        { overCatId: overIdStr.replace("category-", ""), position: currentDropPosition } :
+      // IMPORTANT : on utilise `lastOverId` (l'état React `overId`), PAS
+      // `overIdStr` (event.over?.id). Ce dernier vient du hit-test natif du
+      // shim react-dnd (ctx.state.lastOverId côté use-sortable.tsx) : il ne se
+      // met à jour QUE quand le curseur est physiquement au-dessus de la fine
+      // bande DOM de l'en-tête d'une catégorie. Notre calcul personnalisé
+      // (getCategoryDropTarget, appelé depuis handleDragOver) résout au
+      // contraire une cible même dans les zones "creuses" entre catégories —
+      // et c'est LUI qui pilote le DropIndicator affiché via `overId`/`setOverId`.
+      // Utiliser overIdStr créait exactement le bug rapporté : l'indicateur
+      // était au bon endroit, mais si le curseur n'était pas *exactement* sur
+      // la bande DOM d'un en-tête au moment du lâcher, overIdStr restait périmé
+      // (dernier en-tête réellement survolé au sens du hit-test natif), donc le
+      // drop se résolvait ailleurs.
+      const hoverTarget = lastOverId?.startsWith("category-") && lastOverId !== activeIdStr ?
+        { overCatId: lastOverId.replace("category-", ""), position: currentDropPosition } :
         null;
       const resolvedTarget = pickCategoryDropTarget(hoverTarget, getCategoryDropTarget(activeCatId, event));
 
       if (!resolvedTarget) return;
+
 
       const overCatId = resolvedTarget.overCatId;
       const oldIndex = orderedServerCategories.findIndex((c) => c.id === activeCatId);

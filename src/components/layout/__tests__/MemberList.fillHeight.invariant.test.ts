@@ -46,6 +46,8 @@ function visitNode(node: unknown, visitor: (n: JSXOpeningElement) => void) {
 
   if (
     (n.type === "JSXOpeningElement" || n.type === "JSXSelfClosingElement") &&
+    n.name &&
+    typeof n.name === "object" &&
     isJSXIdentifierName((n.name as JSXOpeningElement).name, "MemberList")
   ) {
     visitor(n as unknown as JSXOpeningElement);

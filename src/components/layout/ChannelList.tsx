@@ -1231,6 +1231,14 @@ export function ChannelList({
     });
   };
   const handleDragStart = (event: DragStartEvent) => {
+    // Défense en profondeur : useSortable({ disabled: !canManageChannels })
+    // empêche déjà le drag de démarrer côté catégories/salons, mais on
+    // bloque aussi ici au cas où un autre point d'entrée déclencherait un
+    // drag (ex: futur code qui oublierait de passer `disabled`).
+    const activeIdStr = event.active.id as string;
+    if (!canManageChannels && (activeIdStr.startsWith("category-") || activeIdStr.startsWith("channel-"))) {
+      return;
+    }
     dropPositionRef.current = "after";
     dropModeRef.current = "after";
     setOverId(null);

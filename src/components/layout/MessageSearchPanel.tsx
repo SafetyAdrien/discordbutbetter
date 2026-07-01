@@ -47,6 +47,7 @@ import { StreamlineCalendar } from '@/components/icons/StreamlineCalendar';
 import { StreamlineTasks } from '@/components/icons/StreamlineTasks';
 import { StreamlineStage } from '@/components/icons/StreamlineStage';
 import { StreamlineLink } from '@/components/icons/StreamlineLink';
+import { DiscordInbox } from '@/components/icons/DiscordInbox';
 
 interface MessageSearchPanelProps {
   serverId: string | null;
@@ -688,15 +689,14 @@ export function MessageSearchPanel({
   // ⚠️ VERROUS ANTI-RÉGRESSION :
   // - Hauteur EXACTE 32px (h-8) sur le conteneur ET l'input : jamais de padding
   //   vertical, jamais de border, jamais de shadow qui augmenteraient la hauteur.
-  // - Les icônes de droite (X et loupe) sont TOUJOURS montées dans un slot de
-  //   16×16 fixe ; on bascule leur visibilité via `visibility` (pas d'unmount)
-  //   pour éviter le moindre reflow/upscale au clic.
-  const hasContent = Boolean(query || submenu);
+  // - Les deux icônes de droite (loupe + carré/inbox) sont TOUJOURS montées
+  //   dans deux slots fixes 16×16. Aucune icône ne doit être remplacée par X,
+  //   démontée, scale ou déplacée au clic/focus/filtre actif.
   const searchInputBar = (
     <div className="relative flex-1 min-w-0">
       <div
         className={cn(
-          'flex items-center gap-1.5 h-8 min-h-8 max-h-8 pl-2.5 pr-2 rounded-xl bg-input box-border',
+          'flex items-center gap-1.5 h-8 min-h-8 max-h-8 pl-2.5 pr-2 rounded-xl bg-input box-border overflow-hidden',
         )}
         onClick={() => inputRef.current?.focus()}
       >
@@ -715,33 +715,14 @@ export function MessageSearchPanel({
           onFocus={() => setShowSuggestions(true)}
           className="flex-1 min-w-0 h-8 leading-8 bg-transparent border-0 outline-none text-sm placeholder:text-muted-foreground p-0 m-0"
         />
-        {/* Slot droit à taille fixe — les deux icônes coexistent, on toggle
-            uniquement la visibilité pour éviter tout décalage/upscale. */}
-        <div className="relative w-4 h-4 shrink-0">
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setQuery('');
-              setSubmenu(null);
-              inputRef.current?.focus();
-            }}
-            aria-label="Effacer"
-            tabIndex={hasContent ? 0 : -1}
-            className={cn(
-              'absolute inset-0 flex items-center justify-center text-muted-foreground hover:text-foreground',
-              hasContent ? 'visible' : 'invisible pointer-events-none',
-            )}
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-          <Search
-            className={cn(
-              'absolute inset-0 w-4 h-4 text-muted-foreground pointer-events-none',
-              hasContent ? 'invisible' : 'visible',
-            )}
-          />
-        </div>
+        {/* Deux slots fixes : ne pas conditionner, remplacer, scaler ou retirer
+            ces icônes, sinon la barre bouge/semble perdre son bouton droit. */}
+        <span className="flex h-4 w-4 shrink-0 items-center justify-center text-muted-foreground pointer-events-none">
+          <Search className="h-4 w-4" />
+        </span>
+        <span className="flex h-4 w-4 shrink-0 items-center justify-center text-muted-foreground pointer-events-none">
+          <DiscordInbox className="h-4 w-4" />
+        </span>
       </div>
     </div>
   );

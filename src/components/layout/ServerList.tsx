@@ -143,6 +143,7 @@ function SortableServerIcon({
                   onClick={onClick}
                   className={cn(
                     'server-icon relative group select-none',
+                    isActive && 'is-active',
                     isActive
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-surface-3 hover:bg-primary/80 hover:text-primary-foreground',

@@ -26,11 +26,13 @@ interface MemberListMount {
   hasFillHeight: boolean;
 }
 
-function isJSXIdentifierName(
-  name: JSXIdentifier | JSXMemberExpression | JSXNamespacedName,
+function isPlainJSXIdentifierName(
+  name: unknown,
   expected: string
 ): boolean {
-  return name.type === "JSXIdentifier" && name.name === expected;
+  if (!name || typeof name !== "object") return false;
+  const n = name as { type?: string; name?: string };
+  return n.type === "JSXIdentifier" && n.name === expected;
 }
 
 function nodeHasFillHeight(node: JSXOpeningElement): boolean {
@@ -46,10 +48,7 @@ function visitNode(node: unknown, visitor: (n: JSXOpeningElement) => void) {
 
   if (
     (n.type === "JSXOpeningElement" || n.type === "JSXSelfClosingElement") &&
-    n.name &&
-    typeof n.name === "object" &&
-    "type" in (n.name as object) &&
-    isJSXIdentifierName((n.name as JSXOpeningElement).name, "MemberList")
+    isPlainJSXIdentifierName(n.name, "MemberList")
   ) {
     visitor(n as unknown as JSXOpeningElement);
   }

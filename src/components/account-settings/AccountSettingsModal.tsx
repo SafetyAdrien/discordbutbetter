@@ -444,7 +444,7 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
               <X className="w-5 h-5" />
             </button>
           </div>
-          <div className={cn('flex-1 overflow-y-auto', isTablet ? 'p-4' : 'p-6')}>
+          <div ref={contentRef} className={cn('flex-1 overflow-y-auto', isTablet ? 'p-4' : 'p-6')}>
             <div className="max-w-2xl">{renderContent()}</div>
           </div>
         </div>

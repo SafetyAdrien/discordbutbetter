@@ -784,7 +784,7 @@ export function MessageSearchPanel({
   return (
     <div className="w-full sm:w-60 bg-surface-1 flex flex-col sm:border-l sm:border-border/30 h-full">
       <div
-        className="h-12 px-3 sm:px-4 flex items-center gap-2 flex-shrink-0 bg-[hsl(var(--surface-2))] w-full"
+        className="h-12 px-3 sm:px-4 flex items-center gap-2 flex-shrink-0 bg-surface-1 w-full"
         style={{
           borderBottom: "1px solid hsl(var(--border) / 0.5)",
           boxShadow: "var(--shadow-elevation-1)",

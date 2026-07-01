@@ -728,10 +728,17 @@ const Index = () => {
                 className="absolute inset-0 bg-black/40 z-10 cursor-default"
               />
               {/* Verrou pixel-perfect recherche MemberList :
-                  - left = border-left MemberList (1px) + px-3 (12px) = 13px.
-                  - right = inbox button (32px) + gap (8px) + px-3 (12px) = 52px.
-                  Ne pas remettre left-3 : cela décale le placeholder de 1px au clic. */}
-              <div className="absolute left-[13px] right-[52px] top-3 z-20">
+                  Le bandeau de recherche est maintenant un bandeau plein type
+                  header (h-12, padding responsive px-3/sm:px-4, contenu centré
+                  verticalement via items-center) plutôt qu'un simple padding-top.
+                  - top = (h-12 − h-8 de l'Input) / 2 = (48 − 32) / 2 = 8px = top-2.
+                  - left = border-left MemberList (1px, seulement à partir de sm:)
+                    + padding gauche (px-3=12px sous sm, sm:px-4=16px dès sm).
+                  - right = inbox button (32px) + gap (8px) + padding droit (12px
+                    sous sm, 16px dès sm).
+                  Recalculer ces valeurs à chaque changement de hauteur/padding du
+                  bandeau MemberList — elles ne se déduisent pas automatiquement. */}
+              <div className="absolute left-3 sm:left-[17px] right-[52px] sm:right-[56px] top-2 z-20">
                 {messageSearchPopoverEl}
               </div>
             </>

@@ -299,7 +299,8 @@ function SortableCategory({
       type: "category",
       categoryId: category.id
     },
-    transition: null
+    transition: null,
+    disabled: !canManageChannels
   });
   const style = {
     transform: CSS.Transform.toString(transform),

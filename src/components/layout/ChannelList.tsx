@@ -971,25 +971,33 @@ export function ChannelList({
   // un ordre différent de celui du survol réel et faire retomber l'indicateur
   // sur une position intermédiaire au lieu de la position finale sous le
   // curseur — d'où l'indicateur qui "part dans le mauvais sens" lors de
-  // mouvements rapides. En traquant la position réelle via un listener natif,
-  // on n'est plus jamais tributaire de cet ordonnancement.
+  // mouvements rapides.
+  //
+  // IMPORTANT : on écoute "dragover", PAS "pointermove"/"mousemove". Le
+  // backend utilisé ici (react-dnd-html5-backend) s'appuie sur l'API native
+  // HTML5 Drag & Drop du navigateur — pendant un drag natif actif, le
+  // navigateur NE déclenche PAS pointermove/mousemove sur la page (c'est un
+  // comportement standard des navigateurs), seulement dragover. Écouter
+  // pointermove ici ne capte donc rien pendant un vrai drag et retombe en
+  // silence sur l'ancien calcul basé sur l'événement du shim.
   const liveClientYRef = useRef<number | null>(null);
+
   useEffect(() => {
     if (!activeId) {
       liveClientYRef.current = null;
       return;
     }
-    const handlePointerMove = (e: PointerEvent) => {
+    const handleNativeDragOver = (e: DragEvent) => {
       liveClientYRef.current = e.clientY;
     };
-    window.addEventListener("pointermove", handlePointerMove, { passive: true });
-    return () => window.removeEventListener("pointermove", handlePointerMove);
+    window.addEventListener("dragover", handleNativeDragOver, { passive: true });
+    return () => window.removeEventListener("dragover", handleNativeDragOver);
   }, [activeId]);
 
   const getDragClientY = useCallback((event: DragOverEvent | DragEndEvent) => {
     if (liveClientYRef.current !== null) return liveClientYRef.current;
 
-    // Repli si aucun pointermove n'a encore été capté (ex: tout premier
+    // Repli si aucun dragover natif n'a encore été capté (ex: tout premier
     // instant du drag) : ancien calcul basé sur l'événement du shim.
     const activatorEvent = event.activatorEvent as MouseEvent | TouchEvent | null;
     if (!activatorEvent) return null;
@@ -1003,6 +1011,7 @@ export function ChannelList({
     const touch = activatorEvent.touches[0] || activatorEvent.changedTouches[0];
     return touch ? touch.clientY + event.delta.y : null;
   }, []);
+
 
   const getCategoryDropTarget = useCallback((activeCategoryId: string, event: DragOverEvent | DragEndEvent) => {
     const clientY = getDragClientY(event);

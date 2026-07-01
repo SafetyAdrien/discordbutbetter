@@ -105,6 +105,15 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const { signOut, user } = useAuth();
+  const contentRef = useRef<HTMLDivElement | null>(null);
+
+  const activeSections: Array<SettingsSectionConfig> = useMemo(() => {
+    if (!activeTab || activeTab === 'help-markdown') return [];
+    return getSectionsForTab(activeTab);
+  }, [activeTab]);
+
+  const activeSectionIds = useMemo(() => activeSections.map((s) => s.id), [activeSections]);
+  const activeSectionId = useSettingsScrollSpy(contentRef, activeSectionIds);
 
   const handleSignOut = async () => {
     await signOut();

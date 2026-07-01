@@ -72,6 +72,13 @@ const TAB_COMPONENTS: Partial<Record<UserSettingsTabType, React.ComponentType>> 
   devices: SessionsSettings,
   appearance: AppearanceSettings,
   keybinds: KeybindsSettings,
+  notifications: NotificationsSettings,
+  chat_settings: ChatSettings,
+  voice_video: VoiceVideoSettings,
+  accessibility: AccessibilitySettings,
+  language: LanguageSettings,
+  desktop_settings: DesktopSettings,
+  advanced_settings: AdvancedSettings,
 };
 
 const HELP_TAB: SettingsTabDescriptor = {

@@ -2213,7 +2213,7 @@ function VoiceParticipantsSidebar({
   );
 }
 
-const ChannelListScrollContainer = React.forwardRef<
+const ChannelListScrollContainer = forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement> & {
     onScroll: React.UIEventHandler<HTMLDivElement>;
@@ -2233,5 +2233,6 @@ const ChannelListScrollContainer = React.forwardRef<
     </div>
   );
 });
+
 
 

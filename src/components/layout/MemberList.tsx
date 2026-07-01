@@ -542,23 +542,26 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
   return (
     <>
       <div ref={ref} className="w-full sm:w-60 bg-surface-1 flex flex-col sm:border-l sm:border-border/30">
-        {/* Search input and Inbox */}
-        <div className="px-3 pt-3 bg-surface-1">
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1">
-              <Input
-                readOnly
-                placeholder="Rechercher"
-                onFocus={() => onOpenGlobalSearch?.()}
-                onClick={() => onOpenGlobalSearch?.()}
-                className="h-8 pr-8 pl-3 text-sm bg-input cursor-pointer"
-              />
-              <Search className="w-4 h-4 absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground z-10 pointer-events-none" />
-            </div>
-            <InboxButton />
+        {/* Search input and Inbox — même style de barre "collée" que le header de salon : hauteur h-12, pleine largeur, pas d'arrondi sur la barre elle-même. */}
+        <div
+          className="h-12 px-3 sm:px-4 flex items-center gap-2 flex-shrink-0 bg-[hsl(var(--surface-2))] w-full"
+          style={{
+            borderBottom: "1px solid hsl(var(--border) / 0.5)",
+            boxShadow: "var(--shadow-elevation-1)",
+          }}
+        >
+          <div className="relative flex-1">
+            <Input
+              readOnly
+              placeholder="Rechercher"
+              onFocus={() => onOpenGlobalSearch?.()}
+              onClick={() => onOpenGlobalSearch?.()}
+              className="h-8 pr-8 pl-3 text-sm bg-input cursor-pointer"
+            />
+            <Search className="w-4 h-4 absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground z-10 pointer-events-none" />
           </div>
+          <InboxButton />
         </div>
-        <Separator className="mt-3" />
         {selectedRoleFilters.length > 0 && (
           <div className="px-2 pt-2 flex flex-wrap items-center gap-1.5">
             <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Filtré par</span>

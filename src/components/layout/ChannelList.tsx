@@ -201,6 +201,7 @@ interface Server {
   id: string;
   name: string;
   ownerId: string;
+  secondaryOwnerId?: string;
   categories: Category[];
   iconUrl?: string;
   bannerUrl?: string;
@@ -1056,10 +1057,14 @@ export function ChannelList({
   // qui bloquait le drag pour de vrais propriétaires/gestionnaires après
   // l'ajout de `disabled: !canManageChannels`.
   const isOwner = profile?.id === server.ownerId;
+  // Même logique pour le système de double propriétaire (second propriétaire) :
+  // un vrai second propriétaire ne doit pas dépendre uniquement du isGod de
+  // usePermissions() (même risque de désynchronisation que pour isOwner).
+  const isSecondaryOwner = !!server.secondaryOwnerId && profile?.id === server.secondaryOwnerId;
 
   // Check if user can manage channels
   const { hasPermission, isGod } = usePermissions(server.id);
-  const canManageChannels = isGod || isOwner || hasPermission("manage_channels") || hasPermission("administrator");
+  const canManageChannels = isGod || isOwner || isSecondaryOwner || hasPermission("manage_channels") || hasPermission("administrator");
 
   // Create-invite is gated server-side by owner/admin (RLS on `invites`), not the unused `create_invites` permission enum.
   const canCreateInvite = isGod || hasPermission("administrator");

@@ -1133,7 +1133,6 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
           style={{
             borderBottom: "1px solid hsl(var(--border) / 0.5)",
             boxShadow: "var(--shadow-elevation-1)",
-            borderRadius: "0 0 var(--radius-xl) var(--radius-xl)",
           }}
         >
           <div className="flex items-center gap-2 min-w-0 flex-shrink">

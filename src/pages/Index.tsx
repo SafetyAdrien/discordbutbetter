@@ -699,16 +699,24 @@ const Index = () => {
     />
   ) : null;
 
-  const memberListBase = activeServer && channelForChat?.type !== 'voice' && !activeThreadId ? (
-    <MemberList
-      members={memberListData}
-      ownerId={activeServer.owner_id || ''}
-      serverId={activeServer.id}
-      onOpenDM={handleOpenDM}
-      onOpenGlobalSearch={() => setShowGlobalSearch(true)}
-      fillHeight
-    />
-  ) : null;
+  const renderMemberList = (opts: { fillHeight?: boolean; className?: string }) =>
+    activeServer && channelForChat?.type !== 'voice' && !activeThreadId ? (
+      <MemberList
+        members={memberListData}
+        ownerId={activeServer.owner_id || ''}
+        serverId={activeServer.id}
+        onOpenDM={handleOpenDM}
+        onOpenGlobalSearch={() => setShowGlobalSearch(true)}
+        fillHeight={opts.fillHeight}
+        className={opts.className}
+      />
+    ) : null;
+
+  const memberListBase = renderMemberList({ fillHeight: true });
+  // Version pour les Sheets tablette : pas de `fillHeight` (la hauteur est
+  // contrôlée par le parent flex du Sheet) et flex-1 pour occuper l'espace
+  // disponible sans déborder du conteneur `h-full overflow-hidden`.
+  const memberListSheetBase = renderMemberList({ className: "flex-1 min-h-0" });
 
   // When a search has been submitted, MessageSearchPanel takes over the whole column.
   // Otherwise (showGlobalSearch && !submitted), MemberList stays mounted and the
@@ -747,6 +755,29 @@ const Index = () => {
         </div>
       );
   const memberListEl = rightPanelEl;
+
+  const tabletMemberListEl = !memberListSheetBase
+    ? null
+    : showGlobalSearch && searchSubmitted
+      ? messageSearchEl
+      : (
+        <div className="relative w-full sm:w-60 h-full flex flex-col">
+          {memberListSheetBase}
+          {showGlobalSearch && !searchSubmitted && (
+            <>
+              <button
+                type="button"
+                aria-label="Fermer la recherche"
+                onClick={closeSearch}
+                className="absolute inset-0 bg-black/40 z-10 cursor-default"
+              />
+              <div className="absolute left-3 sm:left-[17px] right-[52px] sm:right-[56px] top-2 z-20">
+                {messageSearchPopoverEl}
+              </div>
+            </>
+          )}
+        </div>
+      );
 
   return (
     <div className="h-[100svh] flex bg-[hsl(var(--sidebar-background))] overflow-hidden gap-[2px]">

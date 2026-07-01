@@ -706,6 +706,7 @@ const Index = () => {
       serverId={activeServer.id}
       onOpenDM={handleOpenDM}
       onOpenGlobalSearch={() => setShowGlobalSearch(true)}
+      fillHeight
     />
   ) : null;
 

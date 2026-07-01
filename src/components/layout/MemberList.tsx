@@ -93,7 +93,17 @@ interface MemberListProps {
   onOpenDM?: (conversationId: string) => void;
   onOpenGlobalSearch?: () => void;
   serverRoles?: Role[];
+  /**
+   * Remplit toute la hauteur du parent (h-full) au lieu de s'ajuster au
+   * contenu. À activer UNIQUEMENT quand le parent immédiat a une hauteur
+   * définie en display normal (ex: colonne desktop avec `h-full`) — sinon
+   * ça peut casser la mise en page (ex: mobile Sheet, qui empile ses
+   * enfants en flux normal, pas en flex). Par défaut `false` pour ne rien
+   * changer aux autres emplacements où MemberList est monté.
+   */
+  fillHeight?: boolean;
 }
+
 const statusColors: Record<string, string> = {
   online: "bg-[hsl(var(--online))]",
   idle: "bg-[hsl(var(--idle))]",
@@ -177,7 +187,7 @@ function InboxButton() {
 }
 
 export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function MemberList(
-  { members, ownerId, serverId, onOpenDM, onOpenGlobalSearch, serverRoles = [] },
+  { members, ownerId, serverId, onOpenDM, onOpenGlobalSearch, serverRoles = [], fillHeight = false },
   ref,
 ) {
   const { user: currentUser } = useAuth();
@@ -541,7 +551,13 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
   const filterableRoles = allRoles.filter((r) => !r.is_default);
   return (
     <>
-      <div ref={ref} className="w-full sm:w-60 bg-surface-1 flex flex-col sm:border-l sm:border-border/30">
+      <div
+        ref={ref}
+        className={cn(
+          "w-full sm:w-60 bg-surface-1 flex flex-col sm:border-l sm:border-border/30",
+          fillHeight && "h-full"
+        )}
+      >
         {/* Search input and Inbox — même style de barre "collée" que le header de salon : hauteur h-12, pleine largeur, pas d'arrondi sur la barre elle-même. */}
         <div
           className="h-12 px-3 sm:px-4 flex items-center gap-2 flex-shrink-0 bg-surface-1 w-full"

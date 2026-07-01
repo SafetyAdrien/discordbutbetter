@@ -55,6 +55,8 @@ import {
   type UserSettingsTabType,
 } from '@/lib/settings/SettingsTabTypes';
 import { searchSettings, type SettingsSearchResult } from '@/lib/settings/SettingsSearchIndex';
+import { getSectionsForTab, type SettingsSectionConfig } from '@/lib/settings/SettingsSectionRegistry';
+import { useSettingsScrollSpy, scrollToSettingsSection } from '@/hooks/useSettingsScrollSpy';
 
 type SettingsTab = UserSettingsTabType | 'help-markdown';
 

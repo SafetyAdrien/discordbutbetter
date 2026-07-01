@@ -188,7 +188,7 @@ function InboxButton() {
 }
 
 export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function MemberList(
-  { members, ownerId, serverId, onOpenDM, onOpenGlobalSearch, serverRoles = [], fillHeight = false },
+  { members, ownerId, serverId, onOpenDM, onOpenGlobalSearch, serverRoles = [], fillHeight = false, className },
   ref,
 ) {
   const { user: currentUser } = useAuth();

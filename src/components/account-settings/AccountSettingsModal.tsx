@@ -1,13 +1,7 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   X,
-  User,
-  Shield,
-  Link2,
-  AppWindow,
-  Smartphone,
   LogOut,
-  Palette,
   Trash2,
   Settings,
   ChevronLeft,
@@ -17,6 +11,14 @@ import {
   Sparkles,
   Bell,
   HelpCircle,
+  Search,
+  Palette,
+  User,
+  Link2,
+  Smartphone,
+  AppWindow,
+  Shield,
+  Keyboard,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -33,32 +35,59 @@ import { PrivacySettings } from './PrivacySettings';
 import { ConnectionsSettings } from './ConnectionsSettings';
 import { AuthorizedAppsSettings } from './AuthorizedAppsSettings';
 import { SessionsSettings } from './SessionsSettings';
+import { AppearanceSettings } from './AppearanceSettings';
+import { KeybindsSettings } from './KeybindsSettings';
 import { MarkdownHelpPage } from './MarkdownHelpPage';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { uuidToSnowflake } from '@/lib/snowflake';
+import {
+  IMPLEMENTED_TAB_DESCRIPTORS,
+  SETTINGS_CATEGORY_LABELS,
+  getTabsByCategory,
+  type SettingsTabDescriptor,
+  type UserSettingsTabType,
+} from '@/lib/settings/SettingsTabTypes';
+import { searchSettings, type SettingsSearchResult } from '@/lib/settings/SettingsSearchIndex';
+
+type SettingsTab = UserSettingsTabType | 'help-markdown';
 
 interface AccountSettingsModalProps {
   onClose: () => void;
   initialTab?: SettingsTab | null;
 }
 
-type SettingsTab = 'account' | 'profile' | 'privacy' | 'connections' | 'apps' | 'sessions' | 'help-markdown';
+const TAB_COMPONENTS: Partial<Record<UserSettingsTabType, React.ComponentType>> = {
+  my_profile: ProfileSettingsTab,
+  account_security: AccountSettings,
+  privacy_safety: PrivacySettings,
+  linked_accounts: ConnectionsSettings,
+  authorized_apps: AuthorizedAppsSettings,
+  devices: SessionsSettings,
+  appearance: AppearanceSettings,
+  keybinds: KeybindsSettings,
+};
 
-const tabs = [
-  { id: 'account' as const, label: 'Mon compte', icon: User },
-  { id: 'profile' as const, label: 'Profil', icon: Palette },
-  { id: 'privacy' as const, label: 'Confidentialité', icon: Shield },
-  { id: 'connections' as const, label: 'Connexions', icon: Link2 },
-  { id: 'apps' as const, label: 'Applications autorisées', icon: AppWindow },
-  { id: 'sessions' as const, label: 'Sessions actives', icon: Smartphone },
-  { id: 'help-markdown' as const, label: 'Aide · Markdown', icon: HelpCircle },
-];
+const HELP_TAB: SettingsTabDescriptor = {
+  type: 'help-markdown' as UserSettingsTabType,
+  category: 'app_settings',
+  label: 'Aide · Markdown',
+  icon: HelpCircle,
+  implementedBy: 'MarkdownHelpPage',
+};
+
+function findTabDescriptor(tabId: SettingsTab): SettingsTabDescriptor | undefined {
+  if (tabId === 'help-markdown') return HELP_TAB;
+  return IMPLEMENTED_TAB_DESCRIPTORS.find((t) => t.type === tabId);
+}
 
 export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsModalProps) {
   const { isMobile, isTablet } = useBreakpoint();
-  const [activeTab, setActiveTab] = useState<SettingsTab | null>(initialTab !== undefined ? initialTab : (isMobile ? null : 'account'));
+  const [activeTab, setActiveTab] = useState<SettingsTab | null>(
+    initialTab !== undefined ? initialTab : (isMobile ? null : 'my_profile'),
+  );
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const { signOut, user } = useAuth();
 
   const handleSignOut = async () => {
@@ -74,54 +103,133 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
     }
   };
 
+  const searchResults = useMemo<Array<SettingsSearchResult>>(() => {
+    if (!searchQuery.trim()) return [];
+    return searchSettings(
+      searchQuery,
+      IMPLEMENTED_TAB_DESCRIPTORS.map((t) => ({ type: t.type, label: t.label })),
+    );
+  }, [searchQuery]);
+
+  const selectTab = (tab: SettingsTab) => {
+    setActiveTab(tab);
+    setSearchQuery('');
+  };
+
   const renderContent = () => {
-    switch (activeTab) {
-      case 'account': return <AccountSettings />;
-      case 'profile': return <ProfileSettingsTab />;
-      case 'privacy': return <PrivacySettings />;
-      case 'connections': return <ConnectionsSettings />;
-      case 'apps': return <AuthorizedAppsSettings />;
-      case 'sessions': return <SessionsSettings />;
-      case 'help-markdown': return <MarkdownHelpPage />;
-      default: return null;
-    }
+    if (activeTab === 'help-markdown') return <MarkdownHelpPage />;
+    if (!activeTab) return null;
+    const Component = TAB_COMPONENTS[activeTab];
+    return Component ? <Component /> : null;
   };
 
   const renderNavList = (onSelect: (tab: SettingsTab) => void) => (
     <div className="py-4">
-      <div className="px-4 mb-3">
-        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-          Paramètres utilisateur
-        </h3>
+      <div className="px-4 mb-3 relative">
+        <Input
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Rechercher un réglage..."
+          className="h-8 pl-8 text-sm bg-input"
+        />
+        <Search className="w-3.5 h-3.5 absolute left-[22px] top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
       </div>
-      <nav className="px-2 space-y-0.5">
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => onSelect(tab.id)}
-              className={cn(
-                'w-full flex items-center gap-3 px-3 rounded-2xl text-sm font-medium transition-all duration-300',
-                isMobile ? 'py-3' : 'py-2.5',
-                activeTab === tab.id
-                  ? 'bg-primary/12 text-primary'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-              )}
-              style={{ transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)' }}
-            >
-              <div className={cn(
-                'w-8 h-8 rounded-full flex items-center justify-center transition-colors duration-200',
-                activeTab === tab.id ? 'bg-primary/15' : 'bg-muted/50'
-              )}>
-                <Icon className="w-4 h-4" />
+
+      {searchQuery.trim() ? (
+        <div className="px-2 space-y-2">
+          {searchResults.length === 0 ? (
+            <p className="px-2 text-sm text-muted-foreground">Aucun résultat pour « {searchQuery} ».</p>
+          ) : (
+            searchResults.map((result) => {
+              const descriptor = IMPLEMENTED_TAB_DESCRIPTORS.find((t) => t.type === result.tab.type);
+              const Icon = descriptor?.icon ?? Settings;
+              return (
+                <button
+                  key={result.tab.type}
+                  onClick={() => onSelect(result.tab.type as SettingsTab)}
+                  className="w-full text-left px-3 py-2.5 rounded-2xl hover:bg-muted transition-colors"
+                >
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <Icon className="w-4 h-4 text-muted-foreground" />
+                    {result.tab.label}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1 pl-6 truncate">
+                    {result.matchedItems.map((item) => item.label).join(' · ')}
+                  </div>
+                </button>
+              );
+            })
+          )}
+        </div>
+      ) : (
+        <>
+          {getTabsByCategory().map(([category, categoryTabs]) => (
+            <div key={category} className="mb-2">
+              <div className="px-4 mb-1 mt-3 first:mt-0">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  {SETTINGS_CATEGORY_LABELS[category]}
+                </h3>
               </div>
-              <span className="flex-1 text-left">{tab.label}</span>
-              {isMobile && <ChevronRight className="w-4 h-4 text-muted-foreground" />}
-            </button>
-          );
-        })}
-      </nav>
+              <nav className="px-2 space-y-0.5">
+                {categoryTabs.map((tab) => {
+                  const Icon = tab.icon;
+                  return (
+                    <button
+                      key={tab.type}
+                      onClick={() => onSelect(tab.type)}
+                      className={cn(
+                        'w-full flex items-center gap-3 px-3 rounded-2xl text-sm font-medium transition-all duration-300',
+                        isMobile ? 'py-3' : 'py-2.5',
+                        activeTab === tab.type
+                          ? 'bg-primary/12 text-primary'
+                          : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                      )}
+                      style={{ transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)' }}
+                    >
+                      <div className={cn(
+                        'w-8 h-8 rounded-full flex items-center justify-center transition-colors duration-200',
+                        activeTab === tab.type ? 'bg-primary/15' : 'bg-muted/50'
+                      )}>
+                        <Icon className="w-4 h-4" />
+                      </div>
+                      <span className="flex-1 text-left">{tab.label}</span>
+                      {isMobile && <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+                    </button>
+                  );
+                })}
+              </nav>
+            </div>
+          ))}
+
+          <div className="mb-2">
+            <div className="px-4 mb-1 mt-3">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Aide</h3>
+            </div>
+            <nav className="px-2 space-y-0.5">
+              <button
+                onClick={() => onSelect('help-markdown')}
+                className={cn(
+                  'w-full flex items-center gap-3 px-3 rounded-2xl text-sm font-medium transition-all duration-300',
+                  isMobile ? 'py-3' : 'py-2.5',
+                  activeTab === 'help-markdown'
+                    ? 'bg-primary/12 text-primary'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                )}
+                style={{ transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)' }}
+              >
+                <div className={cn(
+                  'w-8 h-8 rounded-full flex items-center justify-center transition-colors duration-200',
+                  activeTab === 'help-markdown' ? 'bg-primary/15' : 'bg-muted/50'
+                )}>
+                  <HelpCircle className="w-4 h-4" />
+                </div>
+                <span className="flex-1 text-left">Aide · Markdown</span>
+                {isMobile && <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+              </button>
+            </nav>
+          </div>
+        </>
+      )}
 
       <div className="px-2 mt-6">
         <div className="h-px bg-border/50 mb-2 mx-2 rounded-full" />
@@ -168,37 +276,39 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
   const renderMobileSettingsHome = () => (
     <div className="pb-8">
       <SettingsSection title="Compte">
-        <SettingsRow icon={<User className="w-4 h-4 text-muted-foreground" />} label="Mon compte" onClick={() => setActiveTab('account')} />
+        <SettingsRow icon={<User className="w-4 h-4 text-muted-foreground" />} label="Mon compte" onClick={() => selectTab('account_security')} />
         <SettingsDivider />
-        <SettingsRow icon={<Pencil className="w-4 h-4 text-muted-foreground" />} label="Modifier le profil" onClick={() => setActiveTab('profile')} />
+        <SettingsRow icon={<Pencil className="w-4 h-4 text-muted-foreground" />} label="Modifier le profil" onClick={() => selectTab('my_profile')} />
         <SettingsDivider />
         <SettingsRow icon={<QrCode className="w-4 h-4 text-muted-foreground" />} label="Mon code QR" onClick={() => toast.info('Bientôt disponible')} />
         <SettingsDivider />
-        <SettingsRow icon={<Link2 className="w-4 h-4 text-muted-foreground" />} label="Connexions" onClick={() => setActiveTab('connections')} />
+        <SettingsRow icon={<Link2 className="w-4 h-4 text-muted-foreground" />} label="Connexions" onClick={() => selectTab('linked_accounts')} />
         <SettingsDivider />
-        <SettingsRow icon={<Smartphone className="w-4 h-4 text-muted-foreground" />} label="Sessions actives" onClick={() => setActiveTab('sessions')} />
+        <SettingsRow icon={<Smartphone className="w-4 h-4 text-muted-foreground" />} label="Sessions actives" onClick={() => selectTab('devices')} />
         <SettingsDivider />
-        <SettingsRow icon={<AppWindow className="w-4 h-4 text-muted-foreground" />} label="Applications autorisées" onClick={() => setActiveTab('apps')} />
+        <SettingsRow icon={<AppWindow className="w-4 h-4 text-muted-foreground" />} label="Applications autorisées" onClick={() => selectTab('authorized_apps')} />
         <SettingsDivider />
         <SettingsRow icon={<Sparkles className="w-4 h-4 text-muted-foreground" />} label="Boost & avantages" onClick={() => toast.info('Bientôt disponible')} />
       </SettingsSection>
 
       <SettingsSection title="Préférences">
+        <SettingsRow icon={<Palette className="w-4 h-4 text-muted-foreground" />} label="Apparence" onClick={() => selectTab('appearance')} />
+        <SettingsDivider />
+        <SettingsRow icon={<Keyboard className="w-4 h-4 text-muted-foreground" />} label="Raccourcis clavier" onClick={() => selectTab('keybinds')} />
+        <SettingsDivider />
         <SettingsRow icon={<Bell className="w-4 h-4 text-muted-foreground" />} label="Notifications" onClick={() => toast.info('Bientôt disponible')} />
         <SettingsDivider />
-        <SettingsRow icon={<Palette className="w-4 h-4 text-muted-foreground" />} label="Apparence" onClick={() => setActiveTab('profile')} />
-        <SettingsDivider />
-        <SettingsRow icon={<Shield className="w-4 h-4 text-muted-foreground" />} label="Confidentialité & sécurité" onClick={() => setActiveTab('privacy')} />
+        <SettingsRow icon={<Shield className="w-4 h-4 text-muted-foreground" />} label="Confidentialité & sécurité" onClick={() => selectTab('privacy_safety')} />
       </SettingsSection>
 
       <SettingsSection title="Aide">
-        <SettingsRow icon={<HelpCircle className="w-4 h-4 text-muted-foreground" />} label="Guide Markdown" onClick={() => setActiveTab('help-markdown')} />
+        <SettingsRow icon={<HelpCircle className="w-4 h-4 text-muted-foreground" />} label="Guide Markdown" onClick={() => selectTab('help-markdown')} />
       </SettingsSection>
 
       <SettingsSection title="Support">
         <SettingsRow icon={<HelpCircle className="w-4 h-4 text-muted-foreground" />} label="Aide & FAQ" onClick={() => toast.info('Bientôt disponible')} />
         <SettingsDivider />
-        <SettingsRow icon={<Settings className="w-4 h-4 text-muted-foreground" />} label="Paramètres avancés" onClick={() => setActiveTab('account')} />
+        <SettingsRow icon={<Settings className="w-4 h-4 text-muted-foreground" />} label="Paramètres avancés" onClick={() => selectTab('account_security')} />
       </SettingsSection>
 
       <section className="mx-4 mt-6 rounded-2xl bg-card border border-border/50 overflow-hidden">
@@ -217,7 +327,6 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
     </div>
   );
 
-  // Mobile: 2-level navigation
   if (isMobile) {
     return (
       <div className="fixed inset-0 z-50 flex flex-col bg-background">
@@ -240,7 +349,7 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
                 <ChevronLeft className="w-5 h-5" />
               </button>
               <h1 className="font-semibold text-sm flex-1 truncate">
-                {tabs.find(t => t.id === activeTab)?.label}
+                {findTabDescriptor(activeTab)?.label}
               </h1>
               <button onClick={onClose} className="p-2 rounded-full hover:bg-muted">
                 <X className="w-5 h-5" />
@@ -255,7 +364,6 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
     );
   }
 
-  // Desktop / Tablet - Material You elevated panels
   return (
     <div className="fixed inset-0 z-50 flex">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
@@ -271,7 +379,7 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
           isTablet ? 'w-52' : 'w-60'
         )}>
           <div className="flex-1 overflow-y-auto">
-            {renderNavList((tab) => setActiveTab(tab))}
+            {renderNavList((tab) => selectTab(tab))}
           </div>
         </div>
         <div className="flex-1 flex flex-col overflow-hidden bg-background min-w-0">
@@ -280,7 +388,7 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
             isTablet ? 'h-12 px-4' : 'h-14 px-6'
           )}>
             <h1 className={cn('font-semibold truncate', isTablet ? 'text-base' : 'text-lg')}>
-              {tabs.find(t => t.id === activeTab)?.label}
+              {activeTab ? findTabDescriptor(activeTab)?.label : ''}
             </h1>
             <button onClick={onClose} className="p-2 rounded-full hover:bg-muted transition-all duration-200 shrink-0">
               <X className="w-5 h-5" />

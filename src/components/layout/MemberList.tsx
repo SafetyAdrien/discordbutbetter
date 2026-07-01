@@ -102,6 +102,7 @@ interface MemberListProps {
    * changer aux autres emplacements où MemberList est monté.
    */
   fillHeight?: boolean;
+  className?: string;
 }
 
 const statusColors: Record<string, string> = {
@@ -187,7 +188,7 @@ function InboxButton() {
 }
 
 export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function MemberList(
-  { members, ownerId, serverId, onOpenDM, onOpenGlobalSearch, serverRoles = [], fillHeight = false },
+  { members, ownerId, serverId, onOpenDM, onOpenGlobalSearch, serverRoles = [], fillHeight = false, className },
   ref,
 ) {
   const { user: currentUser } = useAuth();
@@ -555,7 +556,8 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
         ref={ref}
         className={cn(
           "w-full sm:w-60 bg-surface-1 flex flex-col sm:border-l sm:border-border/30",
-          fillHeight && "h-full"
+          fillHeight && "h-full",
+          className
         )}
       >
         {/* Search input and Inbox — même style de barre "collée" que le header de salon : hauteur h-12, pleine largeur, pas d'arrondi sur la barre elle-même. */}

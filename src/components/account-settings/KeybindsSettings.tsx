@@ -3,7 +3,7 @@ import { KEYBOARD_SHORTCUTS } from '@/hooks/useKeyboardShortcuts';
 export function KeybindsSettings() {
   return (
     <div className="space-y-8">
-      <section>
+      <section data-settings-section-id="reference">
         <h2 className="text-lg font-semibold mb-1">Raccourcis clavier</h2>
         <p className="text-sm text-muted-foreground mb-4">
           Liste des raccourcis actuellement disponibles dans NexusChat. La

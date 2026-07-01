@@ -47,7 +47,6 @@ import { StreamlineCalendar } from '@/components/icons/StreamlineCalendar';
 import { StreamlineTasks } from '@/components/icons/StreamlineTasks';
 import { StreamlineStage } from '@/components/icons/StreamlineStage';
 import { StreamlineLink } from '@/components/icons/StreamlineLink';
-import { DiscordInbox } from '@/components/icons/DiscordInbox';
 
 interface MessageSearchPanelProps {
   serverId: string | null;
@@ -689,14 +688,17 @@ export function MessageSearchPanel({
   // ⚠️ VERROUS ANTI-RÉGRESSION :
   // - Hauteur EXACTE 32px (h-8) sur le conteneur ET l'input : jamais de padding
   //   vertical, jamais de border, jamais de shadow qui augmenteraient la hauteur.
-  // - Les deux icônes de droite (loupe + carré/inbox) sont TOUJOURS montées
-  //   dans deux slots fixes 16×16. Aucune icône ne doit être remplacée par X,
-  //   démontée, scale ou déplacée au clic/focus/filtre actif.
+  // - La loupe reste une icône ABSOLUE à right-2.5, comme l'Input MemberList
+  //   au repos. Ne pas la remettre dans le flux flex : cela décale/upscale
+  //   visuellement l'icône au clic et recrée la régression vidéo.
+  // - Ne pas ajouter l'icône Inbox ici : le vrai bouton Inbox reste hors de la
+  //   barre, à droite, dans MemberList/Index. Le dupliquer dans l'input crée un
+  //   chevauchement et un mouvement apparent des icônes.
   const searchInputBar = (
     <div className="relative flex-1 min-w-0">
       <div
         className={cn(
-          'flex items-center gap-1.5 h-8 min-h-8 max-h-8 pl-2.5 pr-2 rounded-xl bg-input box-border overflow-hidden',
+          'relative flex items-center gap-1.5 h-8 min-h-8 max-h-8 pl-2.5 pr-8 rounded-xl bg-input box-border overflow-hidden',
         )}
         onClick={() => inputRef.current?.focus()}
       >
@@ -715,14 +717,7 @@ export function MessageSearchPanel({
           onFocus={() => setShowSuggestions(true)}
           className="flex-1 min-w-0 h-8 leading-8 bg-transparent border-0 outline-none text-sm placeholder:text-muted-foreground p-0 m-0"
         />
-        {/* Deux slots fixes : ne pas conditionner, remplacer, scaler ou retirer
-            ces icônes, sinon la barre bouge/semble perdre son bouton droit. */}
-        <span className="flex h-4 w-4 shrink-0 items-center justify-center text-muted-foreground pointer-events-none">
-          <Search className="h-4 w-4" />
-        </span>
-        <span className="flex h-4 w-4 shrink-0 items-center justify-center text-muted-foreground pointer-events-none">
-          <DiscordInbox className="h-4 w-4" />
-        </span>
+        <Search className="absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
       </div>
     </div>
   );

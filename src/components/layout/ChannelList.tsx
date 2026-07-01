@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { resolveCategoryDropTarget } from "@/lib/dnd/categoryDropTarget";
+import { resolveCategoryDropTarget, pickCategoryDropTarget } from "@/lib/dnd/categoryDropTarget";
 import { uuidToSnowflake } from "@/lib/snowflake";
 import { useScrollAwareContextMenuGuard } from "@/hooks/useScrollAwareContextMenuGuard";
 import {
@@ -1351,11 +1351,10 @@ export function ChannelList({
     // Handle category reordering with precise position
     if (activeIdStr.startsWith("category-")) {
       const activeCatId = activeIdStr.replace("category-", "");
-      const resolvedTarget = getCategoryDropTarget(activeCatId, event) ??
-        (overIdStr?.startsWith("category-") && overIdStr !== activeIdStr ? {
-          overCatId: overIdStr.replace("category-", ""),
-          position: currentDropPosition
-        } : null);
+      const hoverTarget = overIdStr?.startsWith("category-") && overIdStr !== activeIdStr ?
+        { overCatId: overIdStr.replace("category-", ""), position: currentDropPosition } :
+        null;
+      const resolvedTarget = pickCategoryDropTarget(hoverTarget, getCategoryDropTarget(activeCatId, event));
 
       if (!resolvedTarget) return;
 

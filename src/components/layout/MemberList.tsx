@@ -102,6 +102,7 @@ interface MemberListProps {
    * changer aux autres emplacements où MemberList est monté.
    */
   fillHeight?: boolean;
+  className?: string;
 }
 
 const statusColors: Record<string, string> = {

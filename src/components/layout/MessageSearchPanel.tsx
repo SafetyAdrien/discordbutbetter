@@ -24,6 +24,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import {
   useGlobalSearch,
@@ -684,10 +685,20 @@ export function MessageSearchPanel({
     />
   );
 
+  const sharedInputHandlers = {
+    value: query,
+    onChange: (e: React.ChangeEvent<HTMLInputElement>) => setQuery(e.target.value),
+    onKeyDown: handleKeyDown,
+    onFocus: () => setShowSuggestions(true),
+  };
+
   // Shared input bar: chip + editable input.
   // ⚠️ VERROUS ANTI-RÉGRESSION :
   // - Hauteur EXACTE 32px (h-8) sur le conteneur ET l'input : jamais de padding
-  //   vertical, jamais de border, jamais de shadow qui augmenteraient la hauteur.
+  //   vertical additionnel, jamais de shadow qui augmenterait la hauteur.
+  // - Sans préfixe actif, utiliser le VRAI composant Input, pas un div+input
+  //   reconstruit : le placeholder doit garder la même baseline native que
+  //   MemberList. C'est le verrou définitif contre le micro-décalage au clic.
   // - La loupe reste une icône ABSOLUE à right-2.5, comme l'Input MemberList
   //   au repos. Ne pas la remettre dans le flux flex : cela décale/upscale
   //   visuellement l'icône au clic et recrée la régression vidéo.
@@ -696,34 +707,40 @@ export function MessageSearchPanel({
   //   chevauchement et un mouvement apparent des icônes.
   const searchInputBar = (
     <div className="relative flex-1 min-w-0">
-      {/* ⚠️ VERROU parité stricte avec l'Input shadcn au repos (MemberList) :
-          - pl-3 (12px) identique à l'Input repos.
-          - border border-transparent : compense le 1px de border-border de
-            l'Input shadcn. Sans ces deux propriétés, le placeholder
-            "Rechercher" saute de 3px vers la gauche au clic (régression). */}
-      <div
-        className={cn(
-          'relative flex items-center gap-1.5 h-8 min-h-8 max-h-8 pl-3 pr-8 rounded-xl bg-input box-border overflow-hidden border border-transparent',
-        )}
-        onClick={() => inputRef.current?.focus()}
-      >
-        {submenu && (
+      {!submenu ? (
+        <>
+          {/* Pixel-identique à MemberList: même Input, même classes, même loupe.
+              Ne pas remplacer par un wrapper flex : les baselines natives de
+              placeholder diffèrent et recréent le micro-décalage vidéo. */}
+          <Input
+            ref={inputRef}
+            autoFocus
+            placeholder="Rechercher"
+            {...sharedInputHandlers}
+            className="h-8 pr-8 pl-3 text-sm bg-input"
+          />
+          <Search className="w-4 h-4 absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground z-10 pointer-events-none" />
+        </>
+      ) : (
+        <div
+          className={cn(
+            'relative flex items-center gap-1.5 h-8 min-h-8 max-h-8 pl-3 pr-8 rounded-xl bg-input box-border overflow-hidden border border-border',
+          )}
+          onClick={() => inputRef.current?.focus()}
+        >
           <span className="inline-flex items-center h-5 px-1.5 rounded bg-surface-2 text-xs font-medium text-foreground shrink-0 select-none">
             {PREFIX_MAP[submenu]}
           </span>
-        )}
-        <input
-          ref={inputRef}
-          autoFocus
-          placeholder={submenu ? '' : 'Rechercher'}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={handleKeyDown}
-          onFocus={() => setShowSuggestions(true)}
-          className="flex-1 min-w-0 h-8 leading-8 bg-transparent border-0 outline-none text-sm placeholder:text-muted-foreground p-0 m-0"
-        />
-        <Search className="absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-      </div>
+          <input
+            ref={inputRef}
+            autoFocus
+            placeholder=""
+            {...sharedInputHandlers}
+            className="flex-1 min-w-0 h-8 leading-8 bg-transparent border-0 outline-none text-sm placeholder:text-muted-foreground p-0 m-0"
+          />
+          <Search className="absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+        </div>
+      )}
     </div>
   );
 

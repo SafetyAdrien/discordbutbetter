@@ -726,9 +726,11 @@ const Index = () => {
                 onClick={closeSearch}
                 className="absolute inset-0 bg-black/40 z-10 cursor-default"
               />
-              {/* Right offset = inbox button (32px) + gap (8px) + px-3 (12px) = 52px.
-                  Garde l'icône Inbox visible à droite quand le popover est ouvert. */}
-              <div className="absolute left-3 right-[52px] top-3 z-20">
+              {/* Verrou pixel-perfect recherche MemberList :
+                  - left = border-left MemberList (1px) + px-3 (12px) = 13px.
+                  - right = inbox button (32px) + gap (8px) + px-3 (12px) = 52px.
+                  Ne pas remettre left-3 : cela décale le placeholder de 1px au clic. */}
+              <div className="absolute left-[13px] right-[52px] top-3 z-20">
                 {messageSearchPopoverEl}
               </div>
             </>

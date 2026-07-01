@@ -685,12 +685,18 @@ export function MessageSearchPanel({
   );
 
   // Shared input bar: chip + editable input.
+  // ⚠️ VERROUS ANTI-RÉGRESSION :
+  // - Hauteur EXACTE 32px (h-8) sur le conteneur ET l'input : jamais de padding
+  //   vertical, jamais de border, jamais de shadow qui augmenteraient la hauteur.
+  // - Les icônes de droite (X et loupe) sont TOUJOURS montées dans un slot de
+  //   16×16 fixe ; on bascule leur visibilité via `visibility` (pas d'unmount)
+  //   pour éviter le moindre reflow/upscale au clic.
+  const hasContent = Boolean(query || submenu);
   const searchInputBar = (
-    <div className="relative flex-1">
+    <div className="relative flex-1 min-w-0">
       <div
         className={cn(
-          'flex items-center gap-1.5 h-8 pl-2.5 pr-2 rounded-xl bg-input',
-          'focus-within:bg-input',
+          'flex items-center gap-1.5 h-8 min-h-8 max-h-8 pl-2.5 pr-2 rounded-xl bg-input box-border',
         )}
         onClick={() => inputRef.current?.focus()}
       >
@@ -707,9 +713,11 @@ export function MessageSearchPanel({
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
           onFocus={() => setShowSuggestions(true)}
-          className="flex-1 min-w-0 h-full bg-transparent border-0 outline-none text-sm placeholder:text-muted-foreground"
+          className="flex-1 min-w-0 h-8 leading-8 bg-transparent border-0 outline-none text-sm placeholder:text-muted-foreground p-0 m-0"
         />
-        {(query || submenu) && (
+        {/* Slot droit à taille fixe — les deux icônes coexistent, on toggle
+            uniquement la visibilité pour éviter tout décalage/upscale. */}
+        <div className="relative w-4 h-4 shrink-0">
           <button
             type="button"
             onClick={(e) => {
@@ -718,18 +726,26 @@ export function MessageSearchPanel({
               setSubmenu(null);
               inputRef.current?.focus();
             }}
-            className="text-muted-foreground hover:text-foreground shrink-0"
             aria-label="Effacer"
+            tabIndex={hasContent ? 0 : -1}
+            className={cn(
+              'absolute inset-0 flex items-center justify-center text-muted-foreground hover:text-foreground',
+              hasContent ? 'visible' : 'invisible pointer-events-none',
+            )}
           >
             <X className="w-3.5 h-3.5" />
           </button>
-        )}
-        {!query && !submenu && (
-          <Search className="w-4 h-4 text-muted-foreground shrink-0 pointer-events-none" />
-        )}
+          <Search
+            className={cn(
+              'absolute inset-0 w-4 h-4 text-muted-foreground pointer-events-none',
+              hasContent ? 'invisible' : 'visible',
+            )}
+          />
+        </div>
       </div>
     </div>
   );
+
 
   // Popover variant: input bar + dropdown (overlays MemberList input).
   if (variant === 'popover') {

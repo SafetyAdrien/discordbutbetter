@@ -177,7 +177,7 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
                 <button
                   key={result.tab.type}
                   onClick={() => onSelect(result.tab.type as SettingsTab)}
-                  className="w-full text-left px-3 py-2.5 rounded-[10px] hover:bg-muted transition-colors"
+                  className="w-full text-left px-3 py-1.5 rounded-[10px] hover:bg-muted transition-colors"
                 >
                   <div className="flex items-center gap-2 text-sm font-medium">
                     <Icon className="w-4 h-4 text-muted-foreground" />
@@ -210,7 +210,7 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
                         onClick={() => onSelect(tab.type)}
                         className={cn(
                           'w-full flex items-center gap-3 px-3 rounded-[10px] text-sm font-medium transition-all duration-300',
-                          isMobile ? 'py-1.5' : 'py-1',
+                          isMobile ? 'py-1' : 'py-0.5',
                           isActiveTab
                             ? 'bg-primary/12 text-primary'
                             : 'text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -233,7 +233,7 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
                               key={section.id}
                               onClick={() => scrollToSettingsSection(contentRef.current, section.id)}
                               className={cn(
-                                'w-full text-left px-2 py-1 rounded-[10px] text-xs transition-colors duration-150',
+                                'w-full text-left px-2 py-0.5 rounded-[10px] text-xs transition-colors duration-150',
                                 activeSectionId === section.id
                                   ? 'text-primary font-medium'
                                   : 'text-muted-foreground hover:text-foreground'
@@ -260,7 +260,7 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
                 onClick={() => onSelect('help-markdown')}
                 className={cn(
                   'w-full flex items-center gap-3 px-3 rounded-[10px] text-sm font-medium transition-all duration-300',
-                  isMobile ? 'py-1.5' : 'py-1',
+                  isMobile ? 'py-1' : 'py-0.5',
                   activeTab === 'help-markdown'
                     ? 'bg-primary/12 text-primary'
                     : 'text-muted-foreground hover:bg-muted hover:text-foreground'

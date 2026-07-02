@@ -4,16 +4,16 @@ import { useUpdateProfile, useUploadAvatar, useUploadBanner } from '@/hooks/useP
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { UserAvatarImage } from '@/components/ui/user-avatar-image';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Camera, Loader2, Pencil, CalendarDays } from 'lucide-react';
+import { Camera, Loader2, Pencil, CalendarDays, MessageCircle, Smile } from 'lucide-react';
 import { MarkdownLiveTextarea } from '@/components/profile/MarkdownLiveTextarea';
 import { ProfileCalendar } from '@/components/profile/calendar/ProfileCalendar';
 import { EventListBelow } from '@/components/profile/calendar/EventListBelow';
 import { ModernColorPicker } from '@/components/profile/calendar/ModernColorPicker';
 import { ServerProfileEditModal } from '@/components/profile/ServerProfileEditModal';
 import { AvatarUploadEditor } from '@/components/profile/AvatarUploadEditor';
+import { FullUserProfileModal } from '@/components/profile/FullUserProfileModal';
 
 const BIO_MAX = 4000;
 
@@ -25,6 +25,13 @@ const activityTypes = [
   { value: 'watching', label: 'Regarde' },
   { value: 'competing', label: 'En compétition' },
 ];
+
+const statusDotColors: Record<string, string> = {
+  online: 'bg-green-500',
+  idle: 'bg-yellow-500',
+  dnd: 'bg-red-500',
+  offline: 'bg-gray-500',
+};
 
 export function ProfileSettingsTab() {
   const { profile } = useAuth();
@@ -47,6 +54,7 @@ export function ProfileSettingsTab() {
   const [gradientStart, setGradientStart] = useState(p?.theme_gradient?.split(',')[0] || '#00D4FF');
   const [gradientEnd, setGradientEnd] = useState(p?.theme_gradient?.split(',')[1] || '#8B5CF6');
   const [serverProfileEditOpen, setServerProfileEditOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const hasChanges =
     displayName !== (profile?.display_name || '') ||
@@ -100,10 +108,27 @@ export function ProfileSettingsTab() {
   };
 
   const initial = (profile?.display_name || '?').charAt(0).toUpperCase();
+  const accentColor = useGradient ? gradientStart : themeColor;
+  const status = (p?.status as string) || 'offline';
+
+  const previewUser = profile
+    ? {
+        id: profile.id,
+        display_name: profile.display_name || '',
+        username: (profile as any).username || '',
+        avatar_url: profile.avatar_url ?? null,
+        banner_url: profile.banner_url ?? null,
+        bio: profile.bio ?? null,
+        status,
+        created_at: (profile as any).created_at ?? null,
+        pronouns: p?.pronouns ?? null,
+        custom_status: profile.custom_status ?? null,
+      }
+    : null;
 
   return (
     <div className="space-y-4 pb-24">
-      {/* Hero — Banner + Avatar (mirrors mobile) */}
+      {/* Hero — Banner + Avatar */}
       <section className="relative rounded-2xl overflow-hidden border border-border/50">
         <button
           type="button"
@@ -151,7 +176,6 @@ export function ProfileSettingsTab() {
               fallbackClassName="bg-primary/20 text-primary text-4xl font-semibold"
               fallback={initial}
             />
-
             <div className="absolute bottom-1 right-1 w-7 h-7 rounded-full border-[4px] border-background bg-primary flex items-center justify-center">
               {uploadAvatar.isPending ? (
                 <Loader2 className="w-3 h-3 animate-spin text-primary-foreground" />
@@ -162,6 +186,105 @@ export function ProfileSettingsTab() {
           </button>
           <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
         </div>
+      </section>
+
+      {/* Aperçu du profil style Fluxer */}
+      <section className="space-y-2">
+        <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Aperçu du profil
+        </Label>
+        <button
+          type="button"
+          onClick={() => setPreviewOpen(true)}
+          className="w-full rounded-lg overflow-hidden border-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary bg-card"
+          style={{ borderColor: accentColor }}
+          aria-label="Ouvrir l'aperçu complet du profil"
+        >
+          {/* Bannière ~105px */}
+          <div className="relative h-[105px]">
+            {profile?.banner_url ? (
+              <img src={profile.banner_url} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <div
+                className="w-full h-full"
+                style={{
+                  background: useGradient
+                    ? `linear-gradient(135deg, ${gradientStart}, ${gradientEnd})`
+                    : `linear-gradient(135deg, ${themeColor}, hsl(var(--primary)))`,
+                }}
+              />
+            )}
+            {/* Avatar 80px qui déborde */}
+            <div className="absolute -bottom-10 left-4">
+              <div className="relative">
+                <UserAvatarImage
+                  src={profile?.avatar_url}
+                  alt={profile?.display_name}
+                  className="w-20 h-20 border-[6px] border-card"
+                  fallbackClassName="bg-primary/20 text-primary text-2xl font-semibold"
+                  fallback={initial}
+                />
+                <span
+                  className={`absolute bottom-0.5 right-0.5 w-4 h-4 rounded-full border-[3px] border-card ${statusDotColors[status] || statusDotColors.offline}`}
+                  aria-label={`Statut: ${status}`}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Contenu */}
+          <div className="px-4 pt-12 pb-4 space-y-3">
+            <div className="space-y-0.5">
+              <h3 className="text-xl font-bold text-foreground leading-tight truncate">
+                {displayName || profile?.display_name || 'Utilisateur'}
+              </h3>
+              {(profile as any)?.username && (
+                <p className="text-sm text-muted-foreground truncate">
+                  @{(profile as any).username?.toLowerCase()}
+                </p>
+              )}
+              {pronouns && (
+                <p className="text-xs text-muted-foreground italic">{pronouns}</p>
+              )}
+            </div>
+
+            {customStatus && (
+              <div className="flex items-start gap-2 text-sm text-foreground/90">
+                <Smile className="w-4 h-4 mt-0.5 shrink-0 text-muted-foreground" />
+                <span className="break-words">{customStatus}</span>
+              </div>
+            )}
+
+            {(profile as any)?.created_at && (
+              <div className="pt-2 border-t border-border/50 space-y-0.5">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Membre depuis
+                </p>
+                <p className="text-sm text-foreground/90 flex items-center gap-1.5">
+                  <CalendarDays className="w-3.5 h-3.5 text-muted-foreground" />
+                  {new Date((profile as any).created_at).toLocaleDateString('fr-FR', {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric',
+                  })}
+                </p>
+              </div>
+            )}
+
+            {bio && (
+              <p className="text-sm text-foreground/85 whitespace-pre-wrap line-clamp-3">{bio}</p>
+            )}
+
+            {/* Pseudo-bouton Modifier le profil */}
+            <div
+              className="w-full h-10 rounded-md bg-primary text-primary-foreground flex items-center justify-center gap-2 text-sm font-semibold pointer-events-none select-none"
+              aria-hidden="true"
+            >
+              <MessageCircle className="w-4 h-4" />
+              Modifier le profil
+            </div>
+          </div>
+        </button>
       </section>
 
       {/* Identity card */}
@@ -329,6 +452,7 @@ export function ProfileSettingsTab() {
           uploadAvatar.mutate(file);
         }}
       />
+      <FullUserProfileModal user={previewUser} open={previewOpen} onOpenChange={setPreviewOpen} />
     </div>
   );
 }

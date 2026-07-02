@@ -420,7 +420,7 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
       <div
         className={cn(
           'relative flex w-full m-auto rounded-3xl overflow-hidden',
-          isTablet ? 'max-w-[95vw] max-h-[95vh]' : 'max-w-5xl max-h-[90vh]'
+          isTablet ? 'max-w-[98vw] max-h-[96vh]' : 'max-w-7xl max-h-[92vh]'
         )}
         style={{ boxShadow: 'var(--shadow-elevation-3)' }}
       >
@@ -445,7 +445,7 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
             </button>
           </div>
           <div ref={contentRef} className={cn('flex-1 overflow-y-auto', isTablet ? 'p-4' : 'p-6')}>
-            <div className="max-w-2xl">{renderContent()}</div>
+            <div className="max-w-none">{renderContent()}</div>
           </div>
         </div>
       </div>

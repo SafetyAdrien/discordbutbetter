@@ -233,7 +233,7 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
                               key={section.id}
                               onClick={() => scrollToSettingsSection(contentRef.current, section.id)}
                               className={cn(
-                                'w-full text-left px-2 py-1.5 rounded-lg text-xs transition-colors duration-150',
+                                'w-full text-left px-2 py-1 rounded-lg text-xs transition-colors duration-150',
                                 activeSectionId === section.id
                                   ? 'text-primary font-medium'
                                   : 'text-muted-foreground hover:text-foreground'

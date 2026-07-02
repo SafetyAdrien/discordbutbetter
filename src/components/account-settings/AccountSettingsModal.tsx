@@ -283,7 +283,7 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
 
       <div className="px-2 mt-6">
         <div className="h-px bg-border/50 mb-2 mx-2 rounded-full" />
-        <button onClick={handleSignOut} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-sm font-medium text-destructive hover:bg-destructive/8 transition-all duration-200">
+        <button onClick={handleSignOut} className="w-full flex items-center gap-3 px-3 py-1.5 rounded-[10px] text-sm font-medium text-destructive hover:bg-destructive/8 transition-all duration-200">
           <div className="w-8 h-8 rounded-[10px] flex items-center justify-center bg-destructive/10">
             <LogOut className="w-4 h-4" />
           </div>
@@ -291,7 +291,7 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
         </button>
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
           <AlertDialogTrigger asChild>
-            <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-sm font-medium text-destructive/60 hover:bg-destructive/5 transition-all duration-200">
+            <button className="w-full flex items-center gap-3 px-3 py-1.5 rounded-[10px] text-sm font-medium text-destructive/60 hover:bg-destructive/5 transition-all duration-200">
               <div className="w-8 h-8 rounded-[10px] flex items-center justify-center bg-destructive/5">
                 <Trash2 className="w-4 h-4" />
               </div>
@@ -395,13 +395,13 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
         ) : (
           <>
             <div className="h-14 px-3 flex items-center gap-2 bg-[hsl(var(--surface-1))] flex-shrink-0 rounded-b-2xl" style={{ boxShadow: 'var(--shadow-elevation-1)' }}>
-              <button onClick={() => setActiveTab(null)} className="p-2 rounded-[10px] hover:bg-muted">
+              <button onClick={() => setActiveTab(null)} className="p-1.5 rounded-[10px] hover:bg-muted">
                 <ChevronLeft className="w-5 h-5" />
               </button>
               <h1 className="font-semibold text-sm flex-1 truncate">
                 {findTabDescriptor(activeTab)?.label}
               </h1>
-              <button onClick={onClose} className="p-2 rounded-[10px] hover:bg-muted">
+              <button onClick={onClose} className="p-1.5 rounded-[10px] hover:bg-muted">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -440,7 +440,7 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
             <h1 className={cn('font-semibold truncate', isTablet ? 'text-base' : 'text-lg')}>
               {activeTab ? findTabDescriptor(activeTab)?.label : ''}
             </h1>
-            <button onClick={onClose} className="p-2 rounded-[10px] hover:bg-muted transition-all duration-200 shrink-0">
+            <button onClick={onClose} className="p-1.5 rounded-[10px] hover:bg-muted transition-all duration-200 shrink-0">
               <X className="w-5 h-5" />
             </button>
           </div>

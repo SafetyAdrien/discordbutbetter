@@ -364,7 +364,7 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
       <section className="mx-4 mt-6 rounded-[10px] bg-card border border-border/50 overflow-hidden">
         <button
           onClick={handleSignOut}
-          className="w-full flex items-center justify-center gap-2 px-4 py-3.5 text-sm font-medium text-destructive active:bg-destructive/10 transition-colors"
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-destructive active:bg-destructive/10 transition-colors"
         >
           <LogOut className="w-4 h-4" />
           Se déconnecter
@@ -486,7 +486,7 @@ function SettingsRow({ icon, label, onClick }: { icon: React.ReactNode; label: s
   return (
     <button
       onClick={onClick}
-      className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-muted/40 transition-colors"
+      className="w-full flex items-center gap-3 px-4 py-2.5 active:bg-muted/40 transition-colors"
     >
       <div className="w-9 h-9 rounded-[10px] flex items-center justify-center bg-muted/40">{icon}</div>
       <div className="flex-1 text-left text-sm font-medium">{label}</div>

@@ -444,8 +444,20 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
               <X className="w-5 h-5" />
             </button>
           </div>
-          <div ref={contentRef} className={cn('flex-1 overflow-y-auto', isTablet ? 'p-4' : 'p-6')}>
-            <div className="max-w-none">{renderContent()}</div>
+          <div
+            ref={contentRef}
+            className={cn(
+              'flex-1',
+              // L'onglet Profil gère son propre scroll en interne (colonne
+              // gauche défilante, colonne droite fixe pour la preview — voir
+              // ProfileSettingsTab.tsx) plutôt que de compter sur position:sticky
+              // dans un ancêtre scrollable, qui s'est révélé peu fiable ici.
+              // Tous les autres onglets gardent le scroll classique.
+              activeTab === 'my_profile' ? 'overflow-hidden' : 'overflow-y-auto',
+              isTablet ? 'p-4' : 'p-6'
+            )}
+          >
+            <div className={cn('max-w-none', activeTab === 'my_profile' && 'h-full')}>{renderContent()}</div>
           </div>
         </div>
       </div>

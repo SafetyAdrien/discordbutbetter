@@ -1,9 +1,4 @@
-Objectif : supprimer le micro-décalage visible au clic sur la barre de recherche en gardant exactement la même géométrie entre l’état repos et l’état popover.
-
-Plan :
-1. Remplacer la barre active du popover par la même structure visuelle que l’Input au repos : même hauteur, même radius, même border, même padding, même position absolue de la loupe.
-2. Éviter le remplacement perceptible du DOM : l’overlay actif sera strictement superposé aux coordonnées de la barre existante, sans changement de largeur/hauteur/offset.
-3. Verrouiller la ligne de texte avec une hauteur/line-height stable pour que le placeholder “Rechercher” ne bouge ni horizontalement ni verticalement.
-4. Garder l’icône Inbox hors de l’input et visible à droite, sans mouvement.
-5. Ajouter un commentaire anti-régression explicite indiquant que la géométrie doit rester identique à `MemberList`.
-6. Vérifier visuellement l’ouverture/fermeture du popover : placeholder, loupe et conteneur doivent rester pixel-stables.
+1. Inspect `src/components/account-settings/AccountSettingsModal.tsx` to identify the main settings navigation buttons in the left sidebar and the scroll-spy sub-section buttons.
+2. Reduce vertical padding on main navigation buttons to achieve the very compact Discord-style density requested by the user: `isMobile ? 'py-1.5' : 'py-1'`.
+3. Reduce vertical padding on sub-section/scroll-spy navigation buttons to `py-1`.
+4. Verify the change with `tsgo` and ESLint to ensure no errors.

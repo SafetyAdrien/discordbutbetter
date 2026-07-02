@@ -177,7 +177,7 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
                 <button
                   key={result.tab.type}
                   onClick={() => onSelect(result.tab.type as SettingsTab)}
-                  className="w-full text-left px-3 py-2.5 rounded-[10px] hover:bg-muted transition-colors"
+                  className="w-full text-left px-3 py-1.5 rounded-[10px] hover:bg-muted transition-colors"
                 >
                   <div className="flex items-center gap-2 text-sm font-medium">
                     <Icon className="w-4 h-4 text-muted-foreground" />
@@ -210,7 +210,7 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
                         onClick={() => onSelect(tab.type)}
                         className={cn(
                           'w-full flex items-center gap-3 px-3 rounded-[10px] text-sm font-medium transition-all duration-300',
-                          isMobile ? 'py-1.5' : 'py-1',
+                          isMobile ? 'py-1' : 'py-0.5',
                           isActiveTab
                             ? 'bg-primary/12 text-primary'
                             : 'text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -233,7 +233,7 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
                               key={section.id}
                               onClick={() => scrollToSettingsSection(contentRef.current, section.id)}
                               className={cn(
-                                'w-full text-left px-2 py-1 rounded-[10px] text-xs transition-colors duration-150',
+                                'w-full text-left px-2 py-0.5 rounded-[10px] text-xs transition-colors duration-150',
                                 activeSectionId === section.id
                                   ? 'text-primary font-medium'
                                   : 'text-muted-foreground hover:text-foreground'
@@ -260,7 +260,7 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
                 onClick={() => onSelect('help-markdown')}
                 className={cn(
                   'w-full flex items-center gap-3 px-3 rounded-[10px] text-sm font-medium transition-all duration-300',
-                  isMobile ? 'py-1.5' : 'py-1',
+                  isMobile ? 'py-1' : 'py-0.5',
                   activeTab === 'help-markdown'
                     ? 'bg-primary/12 text-primary'
                     : 'text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -283,7 +283,7 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
 
       <div className="px-2 mt-6">
         <div className="h-px bg-border/50 mb-2 mx-2 rounded-full" />
-        <button onClick={handleSignOut} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-sm font-medium text-destructive hover:bg-destructive/8 transition-all duration-200">
+        <button onClick={handleSignOut} className="w-full flex items-center gap-3 px-3 py-1.5 rounded-[10px] text-sm font-medium text-destructive hover:bg-destructive/8 transition-all duration-200">
           <div className="w-8 h-8 rounded-[10px] flex items-center justify-center bg-destructive/10">
             <LogOut className="w-4 h-4" />
           </div>
@@ -291,7 +291,7 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
         </button>
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
           <AlertDialogTrigger asChild>
-            <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-sm font-medium text-destructive/60 hover:bg-destructive/5 transition-all duration-200">
+            <button className="w-full flex items-center gap-3 px-3 py-1.5 rounded-[10px] text-sm font-medium text-destructive/60 hover:bg-destructive/5 transition-all duration-200">
               <div className="w-8 h-8 rounded-[10px] flex items-center justify-center bg-destructive/5">
                 <Trash2 className="w-4 h-4" />
               </div>
@@ -364,7 +364,7 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
       <section className="mx-4 mt-6 rounded-[10px] bg-card border border-border/50 overflow-hidden">
         <button
           onClick={handleSignOut}
-          className="w-full flex items-center justify-center gap-2 px-4 py-3.5 text-sm font-medium text-destructive active:bg-destructive/10 transition-colors"
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-destructive active:bg-destructive/10 transition-colors"
         >
           <LogOut className="w-4 h-4" />
           Se déconnecter
@@ -395,13 +395,13 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
         ) : (
           <>
             <div className="h-14 px-3 flex items-center gap-2 bg-[hsl(var(--surface-1))] flex-shrink-0 rounded-b-2xl" style={{ boxShadow: 'var(--shadow-elevation-1)' }}>
-              <button onClick={() => setActiveTab(null)} className="p-2 rounded-[10px] hover:bg-muted">
+              <button onClick={() => setActiveTab(null)} className="p-1.5 rounded-[10px] hover:bg-muted">
                 <ChevronLeft className="w-5 h-5" />
               </button>
               <h1 className="font-semibold text-sm flex-1 truncate">
                 {findTabDescriptor(activeTab)?.label}
               </h1>
-              <button onClick={onClose} className="p-2 rounded-[10px] hover:bg-muted">
+              <button onClick={onClose} className="p-1.5 rounded-[10px] hover:bg-muted">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -440,7 +440,7 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
             <h1 className={cn('font-semibold truncate', isTablet ? 'text-base' : 'text-lg')}>
               {activeTab ? findTabDescriptor(activeTab)?.label : ''}
             </h1>
-            <button onClick={onClose} className="p-2 rounded-[10px] hover:bg-muted transition-all duration-200 shrink-0">
+            <button onClick={onClose} className="p-1.5 rounded-[10px] hover:bg-muted transition-all duration-200 shrink-0">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -486,7 +486,7 @@ function SettingsRow({ icon, label, onClick }: { icon: React.ReactNode; label: s
   return (
     <button
       onClick={onClick}
-      className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-muted/40 transition-colors"
+      className="w-full flex items-center gap-3 px-4 py-2.5 active:bg-muted/40 transition-colors"
     >
       <div className="w-9 h-9 rounded-[10px] flex items-center justify-center bg-muted/40">{icon}</div>
       <div className="flex-1 text-left text-sm font-medium">{label}</div>

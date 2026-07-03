@@ -16,6 +16,7 @@ import Install from "./pages/Install";
 import AdminBadges from "./pages/AdminBadges";
 import Trust from "./pages/Trust";
 import NotFound from "./pages/NotFound";
+import OAuthConsent from "./pages/OAuthConsent";
 import { useCacheRehydrate } from "@/hooks/useCacheRehydrate";
 import { useUrlMetadataRealtime } from "@/hooks/useUrlMetadata";
 import { CustomThemeTintLayer } from "@/components/appearance/CustomThemeTintLayer";
@@ -58,6 +59,7 @@ const App = () => (
                     <Route path="/install" element={<Install />} />
                     <Route path="/admin/badges" element={<AdminBadges />} />
                     <Route path="/trust" element={<Trust />} />
+                    <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                     <Route path="*" element={<NotFound />} />
                   </Routes>

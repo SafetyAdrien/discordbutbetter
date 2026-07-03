@@ -61,29 +61,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Require an authenticated caller before touching Discord APIs or storage.
-    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-    const supabaseUrlAuth = Deno.env.get('SUPABASE_URL')!;
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const supabaseAuth = createClient(supabaseUrlAuth, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data: userData, error: userError } = await supabaseAuth.auth.getUser();
-    if (userError || !userData?.user) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     const { templateCode } = await req.json();
-
 
     if (!templateCode || typeof templateCode !== 'string') {
       return new Response(

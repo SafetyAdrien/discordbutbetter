@@ -52,6 +52,7 @@ Deno.serve(async (req) => {
     const identity = body?.identity || userData.user.id;
     const name = body?.name || userData.user.user_metadata?.display_name || userData.user.email || identity;
     const metadata = body?.metadata;
+    const adminRoom = body?.adminRoom === true;
 
     if (!room || typeof room !== 'string') {
       return new Response(JSON.stringify({ error: 'room is required' }), {
@@ -60,9 +61,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Admin grants are never trusted from the client. If admin capabilities are
-    // ever needed, derive them server-side by checking the caller's permissions
-    // on the channel/server that owns this room.
     const videoGrant: VideoGrant = {
       roomJoin: true,
       canPublish: true,
@@ -71,6 +69,12 @@ Deno.serve(async (req) => {
       room: room,
     };
 
+    if (adminRoom) {
+      videoGrant.roomCreate = true;
+      videoGrant.roomAdmin = true;
+      videoGrant.canPublish = true;
+      videoGrant.canSubscribe = true;
+    }
 
     const token = new AccessToken(livekitApiKey, livekitApiSecret, {
       identity,

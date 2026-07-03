@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -73,12 +73,6 @@ const signupSchema = z.object({
 
 export default function Auth() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const rawNext = searchParams.get('next');
-  const nextPath =
-    rawNext && rawNext.startsWith('/') && !rawNext.startsWith('//')
-      ? rawNext
-      : '/';
   const { user, signIn, signUp, loading: authLoading } = useAuth();
   
   const [email, setEmail] = useState('');
@@ -124,7 +118,7 @@ export default function Auth() {
 
   useEffect(() => {
     if (user && !authLoading && authView !== 'reset-password') {
-      navigate(nextPath);
+      navigate('/');
     }
   }, [user, authLoading, navigate, authView]);
 
@@ -275,7 +269,7 @@ export default function Auth() {
     } else {
       resetRateLimit('login');
       toast.success('Connexion réussie !');
-      navigate(nextPath);
+      navigate('/');
     }
   };
 
@@ -344,7 +338,7 @@ export default function Auth() {
       }
     } else {
       toast.success('Connexion réussie !');
-      navigate(nextPath);
+      navigate('/');
     }
   };
 
@@ -418,7 +412,7 @@ export default function Auth() {
 
     setLoading(false);
     toast.success('Compte créé avec succès !');
-    navigate(nextPath);
+    navigate('/');
   };
 
   const handleForgotPassword = async (e: React.FormEvent) => {
@@ -487,7 +481,7 @@ export default function Auth() {
       setAuthView('login');
       setPassword('');
       setConfirmPassword('');
-      navigate(nextPath);
+      navigate('/');
     }
   };
 

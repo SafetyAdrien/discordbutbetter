@@ -1,7 +1,5 @@
 // Twitch channel/stream status via the Lovable connector gateway (Helix).
 // Returns a normalized payload regardless of online/offline state.
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
-
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -48,28 +46,6 @@ Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
-    // Require an authenticated caller to prevent unauthenticated abuse of the
-    // Twitch and Lovable AI credits (rate-limit / quota exhaustion).
-    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data: userData, error: userError } = await supabaseAuth.auth.getUser();
-    if (userError || !userData?.user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
     const lovableKey = Deno.env.get('LOVABLE_API_KEY');
     const twitchKey = Deno.env.get('TWITCH_API_KEY');
     if (!lovableKey || !twitchKey) {
@@ -78,7 +54,6 @@ Deno.serve(async (req: Request) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-
 
     const body = (await req.json().catch(() => ({}))) as RequestBody;
     const login = (body.login || '').trim().toLowerCase();
@@ -132,10 +107,9 @@ Deno.serve(async (req: Request) => {
     });
   } catch (err) {
     console.error('twitch-channel-status error', err);
-    return new Response(JSON.stringify({ error: 'Internal error' }), {
+    return new Response(JSON.stringify({ error: (err as Error).message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 });
-

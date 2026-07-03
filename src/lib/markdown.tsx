@@ -538,12 +538,17 @@ export const MarkdownText = React.forwardRef<HTMLDivElement, { content: string; 
     useSyncExternalStore(subscribeGlobal, getGlobalSnapshot);
     const activeContext = reactContext || globalMarkdownContext;
     const ctxWithVariant = variant ? { ...activeContext, variant } : activeContext;
-    const hasAlert = content.includes('> [!');
+    // Strip custom-theme markers — they're rendered as ThemeCardEmbeds below the message.
+    const cleaned = content.indexOf('[[nexuschat-theme:') !== -1
+      ? content.replace(/\[\[nexuschat-theme:v1:[A-Za-z0-9_\-=]+\]\]/g, '').replace(/[ \t]+\n/g, '\n').trim()
+      : content;
+    const hasAlert = cleaned.includes('> [!');
+    if (!cleaned) return null;
     return <div ref={ref} className={cn(
       variant === 'chat' && hasAlert ? 'block w-full' : 'inline-block max-w-full min-w-0 align-top',
       variant === 'chat' && 'chat-markdown',
       className
-    )}>{parseMarkdown(content, ctxWithVariant)}</div>;
+    )}>{parseMarkdown(cleaned, ctxWithVariant)}</div>;
   }
 );
 MarkdownText.displayName = 'MarkdownText';

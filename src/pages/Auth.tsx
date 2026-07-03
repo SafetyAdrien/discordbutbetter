@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -73,6 +73,12 @@ const signupSchema = z.object({
 
 export default function Auth() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const rawNext = searchParams.get('next');
+  const nextPath =
+    rawNext && rawNext.startsWith('/') && !rawNext.startsWith('//')
+      ? rawNext
+      : '/';
   const { user, signIn, signUp, loading: authLoading } = useAuth();
   
   const [email, setEmail] = useState('');

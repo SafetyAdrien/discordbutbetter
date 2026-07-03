@@ -136,7 +136,7 @@ export function ServerSettingsModal({
     <nav className="space-y-2 p-2.5">
       {sections.map(section => (
         <div key={section.id}>
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-1">
+          <p className={cn("text-xs font-semibold text-muted-foreground tracking-wider px-3 mb-1", caseClass('serverSettings', casePrefs) === 'normal-case' ? 'uppercase' : caseClass('serverSettings', casePrefs))}>
             {section.name === 'server' ? serverName : section.name}
           </p>
           <div className="space-y-0.5">

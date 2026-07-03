@@ -228,7 +228,7 @@ export function useLiveKit(roomName: string | null, options: UseLiveKitOptions =
       mounted = false;
       disconnect();
     };
-  }, [roomName, identity, options.name, options.adminRoom, options.metadata, disconnect, updateParticipants, updateLocalTracks]);
+  }, [roomName, identity, options.name, options.metadata, disconnect, updateParticipants, updateLocalTracks]);
 
   const localParticipant = room?.localParticipant || null;
 

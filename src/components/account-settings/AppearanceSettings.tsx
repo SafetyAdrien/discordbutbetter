@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils';
 import { useTheme, type ThemePreference } from '@/contexts/ThemeContext';
 import { CategoryCaseSection } from '@/components/appearance/CategoryCaseSection';
 import { AppearancePreviewBanner } from '@/components/appearance/AppearancePreviewBanner';
+import { CustomThemeBanner } from '@/components/appearance/CustomThemeBanner';
 import { Separator } from '@/components/ui/separator';
 
 
@@ -75,7 +76,12 @@ export function AppearanceSettings() {
             );
           })}
         </div>
+
+        <div className="mt-4 max-w-2xl">
+          <CustomThemeBanner />
+        </div>
       </section>
+
 
       <CategoryCaseSection />
     </div>

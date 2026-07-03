@@ -294,6 +294,7 @@ function SortableCategory({
 
 }: {category: Category;children: React.ReactNode;isCollapsed: boolean;onToggle: () => void;onEdit: () => void;onCreateChannel: () => void;onDelete: () => void;showDropIndicator?: boolean;dropPosition?: "before" | "after";canManageChannels?: boolean;serverId: string;showInsideHighlight?: boolean;}) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const { prefs: casePrefs } = useCategoryCasePreferences();
   const { attributes, listeners, setNodeRef, transform, isDragging } = useSortable({
     id: `category-${category.id}`,
     data: {

@@ -2,6 +2,9 @@ import { Check, Moon, Sun } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme, type ThemePreference } from '@/contexts/ThemeContext';
 import { CategoryCaseSection } from '@/components/appearance/CategoryCaseSection';
+import { AppearancePreviewBanner } from '@/components/appearance/AppearancePreviewBanner';
+import { Separator } from '@/components/ui/separator';
+
 
 const THEME_OPTIONS: Array<{
   value: ThemePreference;
@@ -31,6 +34,8 @@ export function AppearanceSettings() {
 
   return (
     <div className="space-y-8">
+      <AppearancePreviewBanner />
+      <Separator />
       <section data-settings-section-id="theme">
         <h2 className="text-lg font-semibold mb-1">Thème</h2>
         <p className="text-sm text-muted-foreground mb-4">

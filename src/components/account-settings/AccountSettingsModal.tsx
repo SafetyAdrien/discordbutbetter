@@ -417,6 +417,7 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
           </>
         )}
       </div>
+      </AccountSettingsContext.Provider>
     );
   }
 

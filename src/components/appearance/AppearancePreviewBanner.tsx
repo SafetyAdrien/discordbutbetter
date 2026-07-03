@@ -1,272 +1,156 @@
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { cn } from '@/lib/utils';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
-
-import m1Back from '@/assets/appearance-banner/m1-back.png';
-import m1FrontA from '@/assets/appearance-banner/m1-front-a.png';
-import m1FrontB from '@/assets/appearance-banner/m1-front-b.png';
-import m2Back from '@/assets/appearance-banner/m2-back.png';
-import m2FrontA from '@/assets/appearance-banner/m2-front-a.png';
-import m2FrontB from '@/assets/appearance-banner/m2-front-b.png';
-import m3Back from '@/assets/appearance-banner/m3-back.png';
-import m3FrontA from '@/assets/appearance-banner/m3-front-a.png';
-import m3FrontB from '@/assets/appearance-banner/m3-front-b.png';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
+import { SceneGlobal } from './preview-scenes/SceneGlobal';
+import { SceneProfileSettings } from './preview-scenes/SceneProfileSettings';
+import { SceneDMs } from './preview-scenes/SceneDMs';
+import { scenePalettes, type SceneTheme } from './preview-scenes/sceneTokens';
 
 /**
- * Un « pane » (image encadrée) posé dans la scène.
- * `position` : coordonnées CSS (%) dans la scène 16:9.
- * `objectPosition` : cadrage interne (par défaut top-left, ce qui évite
- *                    de zoomer sur le centre et donne un aperçu naturel).
+ * A single stacked layer inside a scene.
+ * `position` uses CSS percentages within the 16:9 stage, so scenes stay
+ * proportional at any banner width.
  */
 type Pane = {
-  src: string;
-  position: CSSProperties; // left/top/width/height/right/bottom
-  objectPosition?: string;
-  rotate?: number;         // deg, small tilt
-  elevation?: 1 | 2 | 3;   // shadow depth (1 = back, 3 = front)
-  radius?: number;         // px
+  Scene: () => JSX.Element;
+  theme: SceneTheme;
+  position: CSSProperties;
+  rotate?: number;
+  elevation?: 1 | 2 | 3;
 };
 
 type Slide = {
   key: string;
-  panes: [Pane, Pane, Pane]; // ordered back → middle → front
+  label: string;
+  panes: [Pane, Pane, Pane];
 };
 
-const RADIUS = 14;
-
-/**
- * SCÈNES — chaque scène = 3 panes, cadrées propres, empilées en cascade.
- * Les objets sont pensés pour que le pane N+1 mange proprement une zone du
- * pane N (le socle 5px de son ombre portée simule la découpe demandée).
- */
+/** Small aesthetic offsets so each moment feels handmade instead of gridded. */
 const SLIDES: Slide[] = [
   {
-    key: 'server',
+    key: 'global',
+    label: 'Interface globale',
     panes: [
-      {
-        src: m1Back,
-        position: { left: '3%', top: '6%', width: '64%', height: '84%' },
-        objectPosition: '0% 0%',
-        rotate: 0,
-        elevation: 1,
-        radius: RADIUS,
-      },
-      {
-        src: m1FrontA,
-        position: { left: '38%', top: '20%', width: '22%', height: '70%' },
-        objectPosition: '0% 0%',
-        rotate: -2,
-        elevation: 2,
-        radius: RADIUS,
-      },
-      {
-        src: m1FrontB,
-        position: { right: '6%', top: '14%', width: '20%', height: '70%' },
-        objectPosition: '0% 0%',
-        rotate: 3,
-        elevation: 3,
-        radius: RADIUS,
-      },
+      { Scene: SceneGlobal, theme: 'dark', position: { left: '4%', top: '8%', width: '60%', height: '84%' }, rotate: -1, elevation: 1 },
+      { Scene: SceneProfileSettings, theme: 'light', position: { left: '32%', top: '22%', width: '40%', height: '66%' }, rotate: 2, elevation: 2 },
+      { Scene: SceneDMs, theme: 'dark', position: { right: '4%', top: '14%', width: '38%', height: '72%' }, rotate: -2, elevation: 3 },
     ],
   },
   {
-    key: 'appearance',
+    key: 'profile',
+    label: 'Profil & Paramètres',
     panes: [
-      {
-        src: m2Back,
-        position: { left: '3%', top: '6%', width: '66%', height: '86%' },
-        objectPosition: '0% 0%',
-        rotate: 0,
-        elevation: 1,
-        radius: RADIUS,
-      },
-      {
-        src: m2FrontA,
-        position: { left: '40%', top: '46%', width: '30%', height: '30%' },
-        objectPosition: '50% 50%',
-        rotate: -2,
-        elevation: 2,
-        radius: RADIUS,
-      },
-      {
-        src: m2FrontB,
-        position: { right: '5%', top: '22%', width: '26%', height: '30%' },
-        objectPosition: '0% 50%',
-        rotate: 3,
-        elevation: 3,
-        radius: RADIUS,
-      },
+      { Scene: SceneDMs, theme: 'dark', position: { left: '4%', top: '10%', width: '46%', height: '80%' }, rotate: -2, elevation: 1 },
+      { Scene: SceneGlobal, theme: 'dark', position: { left: '26%', top: '20%', width: '46%', height: '72%' }, rotate: 1, elevation: 2 },
+      { Scene: SceneProfileSettings, theme: 'light', position: { right: '4%', top: '12%', width: '46%', height: '76%' }, rotate: 3, elevation: 3 },
     ],
   },
   {
-    key: 'typography',
+    key: 'dms',
+    label: 'Messages privés',
     panes: [
-      {
-        src: m3Back,
-        position: { left: '3%', top: '6%', width: '64%', height: '86%' },
-        objectPosition: '0% 0%',
-        rotate: 0,
-        elevation: 1,
-        radius: RADIUS,
-      },
-      {
-        src: m3FrontA,
-        position: { left: '40%', top: '30%', width: '26%', height: '54%' },
-        objectPosition: '50% 0%',
-        rotate: -2,
-        elevation: 2,
-        radius: RADIUS,
-      },
-      {
-        src: m3FrontB,
-        position: { right: '5%', top: '26%', width: '28%', height: '26%' },
-        objectPosition: '0% 50%',
-        rotate: 3,
-        elevation: 3,
-        radius: RADIUS,
-      },
+      { Scene: SceneProfileSettings, theme: 'light', position: { left: '4%', top: '10%', width: '48%', height: '78%' }, rotate: -2, elevation: 1 },
+      { Scene: SceneGlobal, theme: 'dark', position: { left: '28%', top: '18%', width: '44%', height: '74%' }, rotate: 1, elevation: 2 },
+      { Scene: SceneDMs, theme: 'dark', position: { right: '4%', top: '12%', width: '46%', height: '78%' }, rotate: -1, elevation: 3 },
     ],
   },
 ];
 
-const VISIBLE_MS = 8000;
-const FADE_MS = 900;
+/** Pane wrapper: applies theme scope, socle shadow (via ::after), rotation, elevation. */
+function PaneBox({ pane, active }: { pane: Pane; active: boolean }) {
+  const palette = scenePalettes[pane.theme];
+  const socleColor = 'hsl(var(--background))';
+  const shadowY = 8 + (pane.elevation ?? 1) * 4;
+  const shadowBlur = 16 + (pane.elevation ?? 1) * 8;
+  const zIndex = 10 + (pane.elevation ?? 1);
 
-/**
- * Ombre portée épaisse « socle 5px » demandée + halo diffus.
- * Les 5 premiers px sont un solid drop-shadow de la couleur du fond,
- * ce qui produit un contour propre autour du pane et « détoure » la
- * layer du dessous — c'est le montage propre attendu.
- */
-function paneShadow(elevation: 1 | 2 | 3): string {
-  const socle = 'drop-shadow(0 5px 0 hsl(var(--background)))';
-  switch (elevation) {
-    case 1:
-      return `${socle} drop-shadow(0 10px 24px hsl(0 0% 0% / 0.30))`;
-    case 2:
-      return `${socle} drop-shadow(0 14px 30px hsl(0 0% 0% / 0.40))`;
-    case 3:
-    default:
-      return `${socle} drop-shadow(0 20px 40px hsl(0 0% 0% / 0.50))`;
-  }
-}
-
-function PaneImg({ pane, active, eager }: { pane: Pane; active: boolean; eager: boolean }) {
-  const radius = pane.radius ?? RADIUS;
   return (
     <div
-      className="absolute pointer-events-none select-none"
+      className={cn(
+        'absolute overflow-hidden rounded-[10px] border border-[hsl(var(--border))]',
+        palette.className,
+        !active && 'pointer-events-none',
+      )}
       style={{
         ...pane.position,
-        transform: `rotate(${pane.rotate ?? 0}deg)`,
+        ...palette.style,
+        transform: `rotate(${pane.rotate ?? 0}deg) translateZ(0)`,
         transformOrigin: 'center',
-        // filter drop-shadow lets the shadow hug the rounded corners of the
-        // <img> itself, not a rectangular container box.
-        filter: paneShadow(pane.elevation ?? 2),
-        transition: `opacity ${FADE_MS}ms ease, transform 700ms ease`,
         opacity: active ? 1 : 0,
+        transition: 'opacity var(--banner-fade, 800ms) ease',
         willChange: 'opacity',
+        zIndex,
+        boxShadow: `0 5px 0 0 ${socleColor}, 0 ${shadowY}px ${shadowBlur}px hsl(0 0% 0% / 0.35)`,
       }}
+      aria-hidden
     >
-      <img
-        src={pane.src}
-        alt=""
-        draggable={false}
-        loading={eager ? 'eager' : 'lazy'}
-        decoding={eager ? 'sync' : 'async'}
-        // @ts-expect-error — fetchpriority is a valid HTML attr, React types lag.
-        fetchpriority={eager ? 'high' : 'low'}
-        className="w-full h-full object-cover"
-        style={{
-          borderRadius: radius,
-          objectPosition: pane.objectPosition ?? '0% 0%',
-          outline: '1px solid hsl(var(--border))',
-          outlineOffset: -1,
-        }}
-      />
+      <pane.Scene />
     </div>
   );
 }
 
-/** Décode en arrière-plan les images qui ne sont pas encore visibles pour
- *  qu'au moment du fondu enchaîné, le bitmap soit déjà prêt (aucun flash). */
-function useIdlePrefetch(urls: readonly string[]) {
-  useEffect(() => {
-    let cancelled = false;
-    const run = () => {
-      if (cancelled) return;
-      urls.forEach((src) => {
-        const img = new Image();
-        img.src = src;
-        // .decode() force la décompression hors thread principal.
-        if (typeof img.decode === 'function') img.decode().catch(() => undefined);
-      });
-    };
-    const ric = (window as unknown as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number })
-      .requestIdleCallback;
-    const handle = ric
-      ? ric(run, { timeout: 1200 })
-      : window.setTimeout(run, 300);
-    return () => {
-      cancelled = true;
-      const cic = (window as unknown as { cancelIdleCallback?: (h: number) => void }).cancelIdleCallback;
-      if (ric && cic) cic(handle as number);
-      else window.clearTimeout(handle as number);
-    };
-  }, [urls]);
-}
-
-// Les URLs des slides différées (tout sauf la première scène).
-const DEFERRED_SRCS = SLIDES.slice(1).flatMap((s) => s.panes.map((p) => p.src));
-
 export function AppearancePreviewBanner() {
   const reduced = useReducedMotion();
+  const { isMobile } = useBreakpoint();
   const [index, setIndex] = useState(0);
+  const [visible, setVisible] = useState(true);
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
-  useIdlePrefetch(DEFERRED_SRCS);
+  // Pause when scrolled out of view
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    const obs = new IntersectionObserver(
+      (entries) => entries.forEach((e) => setVisible(e.isIntersecting)),
+      { threshold: 0.15 },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
 
   useEffect(() => {
-    if (reduced) return;
-    const id = window.setInterval(() => {
-      setIndex((i) => (i + 1) % SLIDES.length);
-    }, VISIBLE_MS);
+    if (reduced || !visible) return;
+    const interval = isMobile ? 6000 : 8000;
+    const id = window.setInterval(() => setIndex((i) => (i + 1) % SLIDES.length), interval);
     return () => window.clearInterval(id);
-  }, [reduced]);
+  }, [reduced, visible, isMobile]);
+
+  const fadeMs = isMobile ? 500 : 800;
 
   return (
     <div
+      ref={containerRef}
       role="img"
-      aria-label="Aperçu des thèmes et de la personnalisation typographique"
-      className="relative w-full h-[280px] rounded-2xl overflow-hidden border border-border/60 select-none"
+      aria-label={`Aperçu — ${SLIDES[index].label}`}
+      className="relative w-full h-[240px] md:h-[280px] rounded-2xl overflow-hidden border border-border/60 select-none"
       style={{
+        // custom prop so PaneBox reads a per-instance duration
+        ['--banner-fade' as string]: `${fadeMs}ms`,
         background:
           'radial-gradient(ellipse at 20% 20%, hsl(var(--primary) / 0.28), transparent 55%), radial-gradient(ellipse at 85% 80%, hsl(24 95% 60% / 0.22), transparent 55%), hsl(var(--background))',
       }}
     >
       {SLIDES.map((slide, i) => (
-        <div
-          key={slide.key}
-          aria-hidden={i !== index}
-          className={cn('absolute inset-0', i !== index && 'pointer-events-none')}
-        >
+        <div key={slide.key} className="absolute inset-0" aria-hidden={i !== index}>
           {slide.panes.map((pane, li) => (
-            <PaneImg key={li} pane={pane} active={i === index} eager={i === 0} />
+            <PaneBox key={li} pane={pane} active={i === index} />
           ))}
         </div>
       ))}
 
-      {/* Slide indicator */}
-      <div
-        aria-hidden="true"
-        className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 pointer-events-none z-10"
-      >
-        {SLIDES.map((_, i) => (
-          <span
-            key={i}
+      {/* Indicator */}
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 pointer-events-none z-40">
+        {SLIDES.map((s, i) => (
+          <button
+            key={s.key}
+            type="button"
+            aria-label={`Aller à : ${s.label}`}
             className={cn(
-              'h-1.5 rounded-full transition-all duration-300',
-              i === index ? 'w-5 bg-foreground/70' : 'w-1.5 bg-foreground/25',
+              'h-1.5 rounded-full transition-all duration-300 pointer-events-auto',
+              i === index ? 'w-6 bg-foreground/70' : 'w-1.5 bg-foreground/25 hover:bg-foreground/50',
             )}
+            onClick={() => setIndex(i)}
           />
         ))}
       </div>

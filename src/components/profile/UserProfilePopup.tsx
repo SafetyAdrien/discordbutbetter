@@ -485,7 +485,7 @@ export function UserProfilePopup({
         </div>
 
         {/* Inner card */}
-        <div className="rounded-lg bg-background/40 p-3 space-y-2.5">
+        <div className="rounded-lg bg-muted/60 dark:bg-background/40 p-3 space-y-2.5">
           {/* Name + pronouns */}
           <div>
             <div className="flex items-center gap-1.5 flex-wrap">

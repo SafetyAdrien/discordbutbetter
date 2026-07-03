@@ -17,6 +17,7 @@ import Trust from "./pages/Trust";
 import NotFound from "./pages/NotFound";
 import { useCacheRehydrate } from "@/hooks/useCacheRehydrate";
 import { useUrlMetadataRealtime } from "@/hooks/useUrlMetadata";
+import { CustomThemeTintLayer } from "@/components/appearance/CustomThemeTintLayer";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -38,6 +39,7 @@ const CacheRehydrateBridge = () => {
 const App = () => (
   <ThemeProvider>
     <QueryClientProvider client={queryClient}>
+      <CustomThemeTintLayer />
       <CacheRehydrateBridge />
       <AuthProvider>
         <PresenceProvider>

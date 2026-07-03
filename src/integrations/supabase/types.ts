@@ -3636,6 +3636,27 @@ export type Database = {
           },
         ]
       }
+      user_ui_preferences: {
+        Row: {
+          category_case: Json
+          created_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category_case?: Json
+          created_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category_case?: Json
+          created_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       voice_signals: {
         Row: {
           channel_id: string

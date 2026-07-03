@@ -1,58 +1,34 @@
-## Constat
+## Constat après audit
 
-En regardant à nouveau la vidéo image par image :
-- Frame 5–6 : l'utilisateur est dans le modal Paramètres → onglet Apparence, il clique sur le bouton "Try it out".
-- Frame 7+ : **le modal Paramètres se ferme entièrement**, et le side sheet "Customize your theme" apparaît sur la droite par-dessus l'interface principale de l'app (channel list, chat, member list).
+**Persistance / sync :** l'infra est déjà là (`user_ui_preferences.custom_theme` jsonb, RLS user-scoped, REPLICA IDENTITY FULL, table dans `supabase_realtime`). `applyDraft()` fait bien `upsert` + les autres appareils reçoivent via `postgres_changes`. Une seule chose manque : garantir que le round-trip est fiable et observable.
 
-Donc le comportement correct est : clic sur « Personnaliser » → fermer le modal des paramètres → ouvrir le side sheet.
+**Rendu vs vidéo — 3 défauts :**
 
-Actuellement le sheet s'ouvre par-dessus le modal, ce qui n'est pas conforme.
+1. **Le tint recouvre le side sheet.** `CustomThemeTintLayer` est monté à `z-index: 9998`, le sheet à `z-[80]`. Avec `mix-blend-mode`, l'overlay se blend AU-DESSUS du sheet et le "salit" (visible surtout à forte intensité). Dans la vidéo, le sheet reste propre pendant que l'app se tinte derrière.
+2. **Blend mode dark-mode inadapté.** Aujourd'hui `screen` en dark → une couleur foncée (ex. `#000000` @74 %) n'a quasi aucun effet, alors que la vidéo montre l'app qui s'assombrit. `soft-light` reproduit le comportement observé (assombrit avec du sombre, éclaircit avec du clair) sans blanchir.
+3. **Slider "Gradient Direction" manquant.** Dans la vidéo il apparaît dès qu'il y a ≥ 2 chips (f30 : 1 chip → pas de slider ; f45/f60 : ≥ 2 chips → slider visible avec la valeur en °). On l'a retiré à tort au tour précédent.
 
 ## Changements
 
-### 1. `src/components/account-settings/AccountSettingsModal.tsx`
-- Créer et exporter un contexte léger `AccountSettingsContext` (`{ close: () => void }`).
-- Wrapper le contenu rendu du modal avec `<AccountSettingsContext.Provider value={{ close: onClose }}>`.
-- Exporter un hook `useAccountSettings()` qui renvoie ce contexte (ou `null` si utilisé hors modal).
+### A. Rendu fidèle (`src/components/appearance/CustomThemeTintLayer.tsx` + `src/index.css`)
+- Descendre le `z-index` du tint layer à `40` (au-dessus du contenu app, en-dessous du sheet `z-[80]` et de tout futur modal `z-50`). Le sheet reste 100 % net.
+- Ajouter une classe utilitaire optionnelle `data-ct-lift` que le sheet peut poser sur son racine si besoin (`isolation: isolate`) pour couper toute contamination résiduelle.
+- Passer le blend `dark` de `screen` → `soft-light` ; garder `light` sur `soft-light` aussi (comportement neutre + tint lisible). Documenter dans le commentaire CSS.
+- Conserver `pointer-events: none`, `will-change: opacity`, `transition: opacity 240ms`.
 
-### 2. `src/components/appearance/CustomThemeBanner.tsx`
-- Consommer `useAccountSettings()`.
-- Au clic sur la bannière / touche Enter :
-  1. `ctx?.close()` — ferme le modal paramètres.
-  2. `requestAnimationFrame(() => setOpen(true))` — ouvre le sheet après la fermeture.
-- Le side sheet est déjà monté via `createPortal(document.body)` donc il survit à la fermeture du modal parent (aucun bug de démontage).
+### B. Restauration du slider "Direction du dégradé" (`CustomThemeSheet.tsx`)
+- Sous "Intensité", si `draft.chips.length >= 2` : afficher un slider `Direction du dégradé` (0–360°, step 1) piloté par `setDraft({ angle })`, avec la valeur affichée à droite comme dans la vidéo. Sinon on ne rend rien (l'angle n'a pas de sens avec 1 couleur, cohérent avec le code de `applyToDom` qui duplique la couleur).
+- Rien à changer dans le hook (`angle` est déjà dans `CustomThemeState` et sérialisé).
 
-### 3. `src/components/appearance/CustomThemeSheet.tsx`
-- Aucun changement structurel.
-- Vérifier simplement que la fermeture du modal parent n'empêche pas la ré-ouverture du modal après clic sur "Retour/Fermer" — comme le sheet est portalisé et son état vit dans le composant `<CustomThemeBanner>` qui, lui, n'est plus monté après fermeture du modal → **il faut déplacer le montage du sheet dans un endroit toujours vivant**.
+### C. Fiabiliser la sync temps réel (`src/hooks/useCustomTheme.ts`)
+- `syncToServer` : ajouter un `console.debug` en cas d'erreur et surfacer via toast (`sonner`) uniquement pour l'action utilisateur `applyDraft` (échec réseau ⇒ "Impossible d'enregistrer votre thème, il reste actif localement"). Pas de toast sur succès (silencieux comme la vidéo).
+- `applyDraft` : après `syncToServer`, ne rien de plus — le canal realtime existant réhydratera automatiquement les autres onglets/appareils.
+- Vérification manuelle post-implémentation : ouvrir 2 onglets, Appliquer d'un côté → l'autre onglet reflète le changement < 1 s (log dans la console de debug).
 
-### 4. Nouveau composant `src/components/appearance/CustomThemeSheetHost.tsx` (obligatoire)
-- Fournit un store global léger (`openCustomThemeSheet()` / `useCustomThemeSheetOpen()`).
-- Monté une seule fois dans `src/App.tsx` (à côté de `CustomThemeTintLayer`).
-- Rend `<CustomThemeSheet open={…} onOpenChange={…} />` en permanence, sous protection d'auth.
-- La bannière appelle simplement `openCustomThemeSheet()` après `ctx?.close()`.
+### D. Nettoyage mineur
+- La chip sélectionnée : garder l'indicateur `border-primary` actuel (déjà conforme à la vidéo).
+- Aucun changement DB (schéma, RLS, publication realtime déjà en place).
 
-### 5. `src/App.tsx`
-- Monter `<CustomThemeSheetHost />` à l'intérieur de `AuthProvider` (là où vit déjà `CustomThemeTintLayer`).
-
-### 6. Finalisation "Partager"
-
-L'encodage (`encodeCustomTheme`), le stripping du marker dans `markdown.tsx`, et le rendu de `ThemeCardEmbeds` dans `SmartLinkEmbeds` sont déjà en place.
-
-Ajustements de finition :
-- **`ShareCustomThemeDialog.tsx`** :
-  - Ajouter les DMs (1-1 et groupes) en source d'envoi possible, sous une section "Messages privés" en tête de liste. Requête sur `dm_conversations` where l'utilisateur est membre. Sélection stockée séparément (`selectedDms: Set<string>`). Insertion via `dm_messages`.
-  - Après envoi réussi, refermer le sheet parent aussi (`onOpenChange(false)` déjà OK) et afficher un toast avec bouton "Voir" qui navigue vers le premier salon/DM choisi.
-  - Vérifier que le payload d'insertion respecte le schéma actuel de `messages` (déjà OK d'après `useMessages`).
-- **`ThemeCardEmbed.tsx`** : ajouter une pastille "✓ Appliqué" persistante quand le thème est déjà actif (déjà géré) + tooltip "Cliquez pour prévisualiser" (petit `title` sur le bouton). Rien de plus.
-
-Le pipeline est ainsi complet : marker encodé côté envoi → marker retiré du texte affiché → carte "Appliquer" rendue sous le message → clic applique le thème via `applySharedTheme` (déjà exporté).
-
-## Fichiers touchés
-- `src/components/account-settings/AccountSettingsModal.tsx` (contexte + Provider)
-- `src/components/appearance/CustomThemeBanner.tsx` (utilise le contexte et le host global)
-- `src/components/appearance/CustomThemeSheetHost.tsx` (nouveau)
-- `src/App.tsx` (monter le host)
-- `src/components/appearance/ShareCustomThemeDialog.tsx` (DMs + toast)
-
-Aucune migration DB requise.
+## Ce qui n'est PAS touché
+- La logique draft/committed, les Chips (add/remove/select), l'EyeDropper, `Surprends-moi`, `Réinitialiser`, `Partager`, `applySharedTheme`, l'entry-point `CustomThemeBanner` et `CustomThemeSheetHost` — tout reste inchangé.
+- Aucune migration Supabase nécessaire.

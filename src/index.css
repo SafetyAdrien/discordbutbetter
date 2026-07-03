@@ -1043,16 +1043,18 @@
 
 /* ============================================================
  * Custom theme overlay
- * Uses screen blend for readable, non-washed tinting; only paints
- * when html.custom-theme is present. Keep this at the very end so
- * it overrides any component background.
+ * A single fixed layer sitting just above the app content and
+ * below the customization side sheet, blended with `soft-light`
+ * so a dark chip darkens the UI and a bright chip warms it, both
+ * without washing out — matches the reference video's behavior.
  * ============================================================ */
-html.custom-theme body {
-  /* keep base tokens intact; overlay renders on top with blend */
-}
 html.custom-theme .custom-theme-overlay {
-  mix-blend-mode: screen;
+  mix-blend-mode: soft-light;
 }
 html.light.custom-theme .custom-theme-overlay {
-  mix-blend-mode: multiply;
+  mix-blend-mode: soft-light;
+}
+/* The side sheet opts out of the tint so it stays perfectly crisp. */
+[data-ct-lift='true'] {
+  isolation: isolate;
 }

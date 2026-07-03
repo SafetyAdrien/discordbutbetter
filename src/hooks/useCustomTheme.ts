@@ -215,16 +215,24 @@ export function applySharedTheme(theme: { chips: string[]; angle: number; intens
 
 let currentUserId: string | null = null;
 
-async function syncToServer(state: CustomThemeState) {
+async function syncToServer(state: CustomThemeState, opts?: { notifyOnError?: boolean }) {
   if (!currentUserId) return;
   try {
-    await supabase
+    const { error } = await supabase
       .from('user_ui_preferences')
       .upsert(
         [{ user_id: currentUserId, custom_theme: state as unknown as never, updated_at: new Date().toISOString() }],
         { onConflict: 'user_id' },
       );
-  } catch { /* noop */ }
+    if (error) throw error;
+  } catch (err) {
+    console.debug('[customTheme] sync failed', err);
+    if (opts?.notifyOnError) {
+      toast.error('Impossible d\'enregistrer votre thème', {
+        description: 'Il reste actif localement — nouvelle tentative à la prochaine action.',
+      });
+    }
+  }
 }
 
 /* ---------- Hook boilerplate ---------- */

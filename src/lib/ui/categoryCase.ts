@@ -10,7 +10,8 @@ export type CategoryCaseZone =
   | 'channelCategories'
   | 'userSettings'
   | 'serverSettings'
-  | 'categoryModal';
+  | 'categoryModal'
+  | 'profileEdit';
 
 export interface ZonePref {
   enabled: boolean;
@@ -26,6 +27,7 @@ export const DEFAULT_CATEGORY_CASE_PREFS: CategoryCasePrefs = {
   userSettings: { ...DEFAULT_ZONE_PREF },
   serverSettings: { ...DEFAULT_ZONE_PREF },
   categoryModal: { ...DEFAULT_ZONE_PREF },
+  profileEdit: { ...DEFAULT_ZONE_PREF },
 };
 
 export const ZONE_LABELS: Record<CategoryCaseZone, string> = {
@@ -33,6 +35,7 @@ export const ZONE_LABELS: Record<CategoryCaseZone, string> = {
   userSettings: 'Sections des paramètres utilisateur',
   serverSettings: 'Sections des paramètres serveur',
   categoryModal: 'Onglets du modal de catégorie',
+  profileEdit: "Libellés d'édition du profil",
 };
 
 export const CASE_OPTIONS: Array<{ value: CaseValue; label: string; hint: string }> = [
@@ -60,6 +63,7 @@ export function normalizePrefs(raw: unknown): CategoryCasePrefs {
     userSettings: { ...DEFAULT_ZONE_PREF },
     serverSettings: { ...DEFAULT_ZONE_PREF },
     categoryModal: { ...DEFAULT_ZONE_PREF },
+    profileEdit: { ...DEFAULT_ZONE_PREF },
   };
   if (!raw || typeof raw !== 'object') return out;
   const rec = raw as Record<string, unknown>;

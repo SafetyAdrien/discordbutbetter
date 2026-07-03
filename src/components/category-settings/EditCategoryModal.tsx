@@ -35,6 +35,7 @@ export function EditCategoryModal({
   const [activeTab, setActiveTab] = useState('overview');
   const [category, setCategory] = useState<CategoryDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { prefs: casePrefs } = useCategoryCasePreferences();
 
   useEffect(() => {
     const fetchCategory = async () => {

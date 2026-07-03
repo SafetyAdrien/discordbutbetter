@@ -383,7 +383,9 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
 
   if (isMobile) {
     return (
+      <AccountSettingsContext.Provider value={{ close: onClose }}>
       <div className="fixed inset-0 z-50 flex flex-col bg-background">
+
         {activeTab === null ? (
           <>
             <div className="h-12 px-3 flex items-center gap-2 border-b border-border flex-shrink-0">

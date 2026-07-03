@@ -14,6 +14,9 @@ import { ModernColorPicker } from '@/components/profile/calendar/ModernColorPick
 import { ServerProfileEditModal } from '@/components/profile/ServerProfileEditModal';
 import { AvatarUploadEditor } from '@/components/profile/AvatarUploadEditor';
 import { FullUserProfileModal } from '@/components/profile/FullUserProfileModal';
+import { useCategoryCasePreferences } from '@/hooks/useCategoryCasePreferences';
+import { caseClass } from '@/lib/ui/categoryCase';
+import { cn } from '@/lib/utils';
 
 const BIO_MAX = 4000;
 

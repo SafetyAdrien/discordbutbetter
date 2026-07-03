@@ -124,7 +124,7 @@ export default function Auth() {
 
   useEffect(() => {
     if (user && !authLoading && authView !== 'reset-password') {
-      navigate('/');
+      navigate(nextPath);
     }
   }, [user, authLoading, navigate, authView]);
 
@@ -275,7 +275,7 @@ export default function Auth() {
     } else {
       resetRateLimit('login');
       toast.success('Connexion réussie !');
-      navigate('/');
+      navigate(nextPath);
     }
   };
 
@@ -344,7 +344,7 @@ export default function Auth() {
       }
     } else {
       toast.success('Connexion réussie !');
-      navigate('/');
+      navigate(nextPath);
     }
   };
 
@@ -418,7 +418,7 @@ export default function Auth() {
 
     setLoading(false);
     toast.success('Compte créé avec succès !');
-    navigate('/');
+    navigate(nextPath);
   };
 
   const handleForgotPassword = async (e: React.FormEvent) => {
@@ -487,7 +487,7 @@ export default function Auth() {
       setAuthView('login');
       setPassword('');
       setConfirmPassword('');
-      navigate('/');
+      navigate(nextPath);
     }
   };
 

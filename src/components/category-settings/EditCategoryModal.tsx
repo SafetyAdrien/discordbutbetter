@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { cn } from '@/lib/utils';
+import { useCategoryCasePreferences } from '@/hooks/useCategoryCasePreferences';
+import { caseClass } from '@/lib/ui/categoryCase';
 import { CategoryOverview } from './CategoryOverview';
 import { CategoryPermissions } from './CategoryPermissions';
 import { CategoryDangerZone } from './CategoryDangerZone';

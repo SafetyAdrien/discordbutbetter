@@ -75,7 +75,7 @@ export function EditCategoryModal({
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
           <TabsList className="grid w-full grid-cols-2 px-1">
             {tabItems.map(item => (
-              <TabsTrigger key={item.id} value={item.id}>{item.label}</TabsTrigger>
+              <TabsTrigger key={item.id} value={item.id} className={cn(caseClass('categoryModal', casePrefs))}>{item.label}</TabsTrigger>
             ))}
           </TabsList>
 

@@ -38,8 +38,10 @@ const statusDotColors: Record<string, string> = {
 
 /** Label de champ — même style plat que Fluxer (petit texte gris au-dessus du champ, pas d'encart). */
 function FieldLabel({ children, htmlFor }: { children: React.ReactNode; htmlFor?: string }) {
+  const { prefs } = useCategoryCasePreferences();
+  const caseCls = prefs.profileEdit.enabled ? caseClass('profileEdit', prefs) : 'uppercase';
   return (
-    <Label htmlFor={htmlFor} className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+    <Label htmlFor={htmlFor} className={cn('text-xs font-semibold tracking-wide text-muted-foreground', caseCls)}>
       {children}
     </Label>
   );

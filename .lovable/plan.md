@@ -1,33 +1,71 @@
-## Problème
+# Real custom-theme retint (no more filter overlay)
 
-Quand l'utilisateur ouvre le side sheet et déplace le curseur dans le `HsvColorPicker`, l'interface derrière ne change PAS en direct.
+## Problem
+Today `CustomThemeTintLayer` paints a single `mix-blend-mode: soft-light` gradient over the whole app. That's why it feels like "just a filter": semantic tokens (`--background`, `--card`, `--sidebar`, `--muted`, `--border`, `--foreground`, `--primary`, etc.) never change. Sections, modals, inputs, text, borders all keep their original dark/light values.
 
-Cause racine dans `useCustomTheme.ts` → `applyToDom()` :
-```ts
-if (!active.enabled || active.chips.length === 0) {
-  root.classList.remove(HTML_CLASS);  // ← retire le thème
-  return;
-}
+## Goal
+When custom theme is active, every surface, text and accent is actually re-derived from the user's chips + intensity, in both dark and light modes — like Discord. The blended overlay is removed.
+
+## Approach
+
+### 1. Derive a full palette from the chips
+Add `src/lib/customTheme/palette.ts`:
+- Input: `chips[]`, `intensity` (0–100), `mode: 'dark' | 'light'`.
+- Convert the primary chip (chip 0) to HSL → `baseH`, `baseS`.
+- Blend factor `k = intensity / 100 * 0.85` (cap so text stays readable).
+- Produce an HSL token map by mixing each base dark/light token's hue toward `baseH` and its saturation toward `baseS * k`, keeping the original lightness (so contrast is preserved):
+  - `background`, `foreground`
+  - `card`, `card-foreground`, `popover`, `popover-foreground`
+  - `muted`, `muted-foreground`, `accent`, `accent-foreground`
+  - `border`, `input`, `ring`
+  - `sidebar-background`, `sidebar-foreground`, `sidebar-accent`, `sidebar-border`, `sidebar-ring`
+  - `primary`, `primary-foreground` (uses chip 0 directly; foreground picked by luminance)
+  - `secondary`, `secondary-foreground`
+  - `chat-hover`, `channel-hover`, `server-list-bg`, `channel-list-bg`, `main-bg`, `member-list-bg`, `chat-input-bg`, and any other app-specific surface token already in `index.css`
+- Output: `{ [cssVar: string]: string /* "H S% L%" */ }`.
+
+### 2. Apply the palette from `useCustomTheme.applyToDom`
+- Remove the gradient/overlay path.
+- When `shouldRender`:
+  - Detect current mode from `document.documentElement.classList.contains('light')`.
+  - Compute palette, then `root.style.setProperty(name, value)` for every token.
+  - Add `html.custom-theme` (existing class stays for scoped rules).
+  - Also expose a subtle gradient variable `--ct-accent-gradient` for hero/nav accents that already opt in — no full-page overlay.
+- When disabled: `root.style.removeProperty(...)` for every token we set (track the applied keys in a module-level `Set`) and remove `custom-theme`.
+- Re-run the recompute on theme mode change: subscribe to a `MutationObserver` on `documentElement` `class` attribute (dark ↔ light toggle).
+
+### 3. Remove the filter overlay
+- Delete `<CustomThemeTintLayer />` usage from `App.tsx` (and the component file).
+- Strip the `.custom-theme-overlay`, `mix-blend-mode` and `--ct-gradient` / `--ct-intensity` rules from `src/index.css` (keep `.discord-theme-sheet` scoped tokens intact; keep `[data-ct-lift]` since it no longer needs isolation but is harmless — remove for cleanliness).
+
+### 4. Side-sheet live preview
+- `CustomThemeSheet` already flips `draft.enabled = true` on open and `applyDraft` commits — works unchanged because `applyToDom` now retints tokens live via the same rAF path.
+- The sheet keeps its own scoped tokens (`--discord-sheet-*`), so it stays crisp regardless of the app palette.
+
+### 5. Persistence & sync
+Unchanged. `user_ui_preferences.custom_theme` already carries `{enabled, chips, intensity, angle}`. `angle` is kept for the optional `--ct-accent-gradient`.
+
+## Technical details
+
+Files touched:
+- `src/lib/customTheme/palette.ts` (new) — pure function `buildPalette(chips, intensity, mode)`.
+- `src/hooks/useCustomTheme.ts` — rewrite `applyToDom` to write token vars; add mode observer; track applied keys for clean removal.
+- `src/components/appearance/CustomThemeTintLayer.tsx` — delete (or reduce to just calling `useMountCustomTheme` if kept for the mount hook; prefer moving the mount into `App.tsx` directly).
+- `src/App.tsx` — replace `<CustomThemeTintLayer />` with a `useMountCustomTheme()` call in the root component.
+- `src/index.css` — remove overlay rules; keep sheet-scoped tokens.
+
+Blending formula (per token, in HSL):
+```text
+H' = baseH
+S' = clamp(origS + (baseS - origS) * k, 0, 100)
+L' = origL                     // preserve contrast
 ```
-Tant que `draft.enabled === false` (état par défaut avant premier « Apply »), le `scheduleApply()` déclenché par chaque `setChip` ne peint rien. Le live preview n'existe que si `enabled` est déjà true → non fidèle à Discord.
+`primary` = chip 0 verbatim; `primary-foreground` = white/black by luminance.
 
-## Correctif
+Fallback: single-chip themes still get a full retint (angle/gradient only affects the accent variable). 2–3 chips: `--ct-accent-gradient = linear-gradient(angle, chips…)` available for components that want it.
 
-1. **`src/components/appearance/CustomThemeSheet.tsx`**
-   - À l'ouverture du sheet (`open === true`), si `draft.enabled` est `false`, appeler `setDraft({ enabled: true })` pour activer le rendu live du draft. Le thème committed reste inchangé tant que l'utilisateur ne clique pas sur « Apply ».
-   - À la fermeture sans Apply, `discardDraft()` restaure l'état committed (donc `enabled: false` si c'était le cas) — comportement déjà en place, rien à changer.
-
-2. **`src/hooks/useCustomTheme.ts`**
-   - Dans `applyToDom()`, considérer aussi le draft actif : si `snap.isDirty` et `snap.draft.chips.length > 0`, forcer le rendu du gradient même si `draft.enabled` est false. Cela garantit un preview live robuste quel que soit le point d'entrée (banner, sheet, etc.).
-   - Alternative plus propre : `activeForDom()` renvoie déjà le bon état ; il suffit d'assouplir la garde `!active.enabled` en `!active.enabled && !snap.isDirty` pour autoriser le preview pendant l'édition.
-
-3. **Vérification (Playwright)**
-   - Ouvrir Personnaliser → sheet visible, thème committed inchangé.
-   - Déplacer le curseur du HsvColorPicker → capture avant/après montrant que la teinte de l'interface derrière change en temps réel.
-   - Fermer sans Apply → l'interface revient à l'état d'origine.
-   - Cliquer Apply → persistance + sync realtime OK.
-
-## Fichiers modifiés
-
-- `src/hooks/useCustomTheme.ts` (assouplir la garde `enabled` pendant `isDirty`)
-- `src/components/appearance/CustomThemeSheet.tsx` (activer le draft à l'ouverture pour un preview immédiat)
+## Verification (Playwright)
+1. Open Personnaliser → move HSV picker → screenshot: sidebar, header, chat, member list all shift hue live.
+2. Toggle Dark ↔ Light while custom theme active → palette re-derives, contrast preserved.
+3. Click Apply → reload → same palette restored from Supabase.
+4. Disable → all tokens revert to default dark/light.

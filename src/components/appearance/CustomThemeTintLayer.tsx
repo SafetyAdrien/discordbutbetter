@@ -12,12 +12,13 @@ export function CustomThemeTintLayer() {
   return (
     <div
       aria-hidden
-      className="fixed inset-0 pointer-events-none"
+      className="custom-theme-overlay fixed inset-0 pointer-events-none"
       style={{
-        zIndex: -1,
+        zIndex: 9998,
         background: 'var(--ct-gradient, transparent)',
         opacity: 'var(--ct-intensity, 0)',
         transition: 'opacity 240ms ease',
+        willChange: 'opacity',
       }}
     />
   );

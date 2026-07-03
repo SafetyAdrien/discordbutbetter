@@ -71,6 +71,8 @@ export function AppearanceSettings() {
           })}
         </div>
       </section>
+
+      <CategoryCaseSection />
     </div>
   );
 }

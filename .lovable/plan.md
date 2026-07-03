@@ -1,64 +1,81 @@
 ## Objectif
 
-Ajouter, tout en haut de l'onglet **Apparence** (au-dessus de la section « Thème », séparé par un `<Separator />`), une **bannière visuelle non-interactive** de ~260px de haut qui fait défiler 3 « moments » avec transition **fondu au noir**, chaque moment durant **8s**.
+Remplacer les images générées IA par de **vraies captures de l'app** (thème sombre uniquement — le thème clair n'existe pas encore), présentées en **mise en scène 3 layers empilés** (fenêtre principale au fond + 2 fenêtres flottantes rotées devant), et remplacer le fondu au noir par un **fondu enchaîné** (crossfade).
 
-Chaque moment reprend la mise en scène de ta capture : 3 couches empilées en cascade (mockup principal au fond, deux fenêtres flottantes devant, décalées et légèrement rotées), sur un fond dégradé sombre.
+## Étape 1 — Capturer les vraies vues via Playwright
 
-## Les 3 moments
+Restaurer la session Supabase injectée (`LOVABLE_BROWSER_SUPABASE_*`) puis naviguer dans `http://localhost:8080` pour capturer, sous viewport 1280×1800 :
 
-1. **Thème sombre** — composition de 3 layers sombres (channel list + chat + modal paramètres) sur dégradé violet/indigo.
-2. **Thème clair** — même composition mais en palette claire, séparée visuellement du moment sombre par la transition (pas côte à côte : l'utilisateur a demandé un vrai carrousel avec fondu, pas un split-screen figé).
-3. **Typographie des catégories** — composition mettant en scène une ChannelList + le panneau de contrôle « AG / ag / Ag / Aa » + un modal, pour illustrer la personnalisation.
+**Moment 1 — Vue principale**
+- Fenêtre large : screenshot du layout principal (ChannelList + zone chat).
+- Vignette flottante 1 : element screenshot de la liste de salons (`aside` / colonne channels).
+- Vignette flottante 2 : element screenshot d'un popover (ex. menu utilisateur en bas de la ChannelList, ou un context menu ouvert).
 
-## Assets
+**Moment 2 — Paramètres Apparence**
+- Fenêtre large : screenshot du modal Paramètres > Apparence (juste au-dessous de la bannière, ou en scrollant à la section Thème).
+- Vignette flottante 1 : element screenshot des deux tuiles « Sombre / Clair ».
+- Vignette flottante 2 : element screenshot d'un des boutons de casse (AG/ag/Ag/Aa).
 
-Générer **3 images PNG** via `imagegen--generate_image` (tier `standard` pour un rendu propre), format 1920x520 (ratio bannière large), chacune représentant la composition « 3 layers empilés » demandée. Les images sont importées via ES6 imports classiques dans `src/assets/` (pas d'externalisation `lovable-assets` nécessaire — 3 fichiers modérés).
+**Moment 3 — Paramètres Typographie**
+- Fenêtre large : screenshot de la section « Typographie des catégories » (avec la grille + preview).
+- Vignette flottante 1 : element screenshot du live preview « ChannelList » à droite.
+- Vignette flottante 2 : element screenshot d'une ligne de zone (Switch + boutons AG/ag/Ag/Aa).
 
-- `src/assets/appearance-banner-dark.jpg`
-- `src/assets/appearance-banner-light.jpg`
-- `src/assets/appearance-banner-typography.jpg`
+Total : 9 PNG capturés dans `/tmp/browser/appearance-banner/`. Nettoyer les curseurs / hover states avant capture (`await page.mouse.move(0, 0)`).
 
-Prompts orientés : « floating UI mockup screenshots stacked in 3 layers, main window in back, two smaller windows overlapping in front with slight rotation, isometric-ish, deep gradient background, no text legibility required, cinematic soft shadows ».
+Les 9 fichiers sont ensuite copiés dans `src/assets/appearance-banner/` :
+- `m1-back.png`, `m1-front-a.png`, `m1-front-b.png`
+- `m2-back.png`, `m2-front-a.png`, `m2-front-b.png`
+- `m3-back.png`, `m3-front-a.png`, `m3-front-b.png`
 
-## Composant
+Les 3 anciennes images IA (`appearance-banner-dark.jpg` / `-light.jpg` / `-typography.jpg`) sont supprimées.
 
-Nouveau fichier `src/components/appearance/AppearancePreviewBanner.tsx` :
+## Étape 2 — Refactor du composant `AppearancePreviewBanner`
 
-- Container `h-[260px] w-full rounded-2xl overflow-hidden relative border border-border/50`.
-- 3 `<img>` absolument positionnés (`inset-0 w-full h-full object-cover`), un par moment.
-- État `activeIndex` (0/1/2), setInterval de 8000ms pour avancer.
-- Transition : chaque image a `opacity-100` si active, `opacity-0` sinon, `transition-opacity duration-700 ease-in-out`.
-- **Fondu au noir** : overlay `<div className="absolute inset-0 bg-black pointer-events-none" />` dont l'opacité passe à `1` pendant 700ms au moment du switch (via un second state `isFading`), puis retombe à `0`. Timing total : 8000ms visible → 700ms fondu au noir montant → swap image → 700ms fondu descendant.
-- Respect `prefers-reduced-motion` (via `useReducedMotion` déjà présent) : désactive l'auto-play et affiche uniquement le moment 0.
-- Petits « dots » d'indicateur en bas (purement décoratifs, `aria-hidden`), 3 pastilles.
-- `role="img"` + `aria-label` global sur le container : « Aperçu des thèmes et de la personnalisation typographique ».
-- Non-interactif : `pointer-events-none` sur les images, aucun clic/hover, aucun bouton.
+Réécrire `src/components/appearance/AppearancePreviewBanner.tsx` :
 
-## Intégration
+- Le container garde `h-[260px] rounded-2xl overflow-hidden relative border border-border/50`.
+- **Fond** : dégradé sombre (`bg-gradient-to-br from-[hsl(var(--surface-2))] via-[hsl(var(--background))] to-black`) au lieu de `bg-black`.
+- 3 slides absolument positionnés (`inset-0`), un par moment. Chaque slide contient les 3 layers de mise en scène :
 
-Modifier `src/components/account-settings/AppearanceSettings.tsx` :
-
-```tsx
-<div className="space-y-8">
-  <AppearancePreviewBanner />
-  <Separator />
-  <section data-settings-section-id="theme">…</section>
-  <CategoryCaseSection />
+```
+<div className="absolute inset-0 flex items-center justify-center">
+  {/* Back window : large mockup shell */}
+  <div className="relative w-[70%] aspect-[16/10] rounded-xl overflow-hidden shadow-[0_30px_60px_-20px_rgba(0,0,0,0.7)] border border-white/10">
+    <img src={backSrc} className="w-full h-full object-cover" />
+  </div>
+  {/* Front A : right-side floating window, rotated */}
+  <div className="absolute right-[10%] top-[25%] w-[38%] aspect-[4/3] rounded-lg overflow-hidden shadow-[0_20px_40px_-10px_rgba(0,0,0,0.8)] border border-white/10"
+       style={{ transform: 'rotate(-4deg)' }}>
+    <img src={frontASrc} className="w-full h-full object-cover" />
+  </div>
+  {/* Front B : bottom-right popover, smaller, rotated the other way */}
+  <div className="absolute right-[6%] bottom-[8%] w-[22%] aspect-square rounded-lg overflow-hidden shadow-[0_15px_30px_-8px_rgba(0,0,0,0.8)] border border-white/10"
+       style={{ transform: 'rotate(3deg)' }}>
+    <img src={frontBSrc} className="w-full h-full object-cover" />
+  </div>
 </div>
 ```
 
-Aucune modification du registre de sections ni de l'index de recherche (la bannière n'est pas une section navigable).
+- **Crossfade (fondu enchaîné)** : chaque slide a `opacity-100` si actif, `opacity-0` sinon, `transition-opacity duration-700`. On supprime le state `isFading` et l'overlay noir : les deux slides se chevauchent naturellement pendant la transition, plus de passage par le noir.
+- L'auto-play `setInterval(8000)` reste identique. Suppression de la constante `FADE_MS` du timing (on garde la variable pour la durée de transition CSS).
+- `useReducedMotion` respecté (aucun défilement si actif).
+- Dots indicateurs en bas inchangés.
+
+## Étape 3 — Nettoyage
+
+- Supprimer les 3 images IA obsolètes dans `src/assets/`.
+- Aucun autre fichier modifié.
 
 ## Détails techniques
 
-- Cleanup du `setInterval` dans le `useEffect` return.
-- `useEffect` déclenché uniquement quand l'onglet est monté (pas de logique globale).
-- Aucune requête réseau, aucune donnée utilisateur, aucune persistance.
-- Le composant est pur présentation → uniquement du frontend, conforme à la règle « UI change → frontend only ».
+- Les captures Playwright sont faites en mode headless, viewport 1280×1800 comme prescrit. Session injectée si `LOVABLE_BROWSER_AUTH_STATUS === 'injected'` (à vérifier avant lancement).
+- Si la session est absente ou si aucun serveur n'existe sur le compte de test : replier sur des captures d'un serveur seed / de l'écran vide. Je notifierai le cas dans la réponse.
+- Aucun changement backend, aucune requête réseau côté app.
 - Aucun impact sur la logique existante (thème, typographie, prefs Supabase).
 
 ## Ce qui n'est PAS fait
 
-- Pas de split-screen simultané dark|light (l'utilisateur veut un carrousel, pas une comparaison figée).
-- Pas d'animation interactive dans les mockups (images statiques uniquement, comme demandé).
-- Pas de génération dynamique côté serveur.
+- Pas de moment « thème clair » (impossible sans implémentation clair — l'utilisateur a choisi « 3 scènes sombres réelles »).
+- Pas de génération d'images IA.
+- Pas de changement du timing 8s.

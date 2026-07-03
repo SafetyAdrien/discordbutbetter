@@ -151,7 +151,7 @@ function paneShadow(elevation: 1 | 2 | 3): string {
   }
 }
 
-function PaneImg({ pane, active }: { pane: Pane; active: boolean }) {
+function PaneImg({ pane, active, eager }: { pane: Pane; active: boolean; eager: boolean }) {
   const radius = pane.radius ?? RADIUS;
   return (
     <div
@@ -165,14 +165,17 @@ function PaneImg({ pane, active }: { pane: Pane; active: boolean }) {
         filter: paneShadow(pane.elevation ?? 2),
         transition: `opacity ${FADE_MS}ms ease, transform 700ms ease`,
         opacity: active ? 1 : 0,
-        willChange: 'opacity, transform',
+        willChange: 'opacity',
       }}
     >
       <img
         src={pane.src}
         alt=""
         draggable={false}
-        loading="lazy"
+        loading={eager ? 'eager' : 'lazy'}
+        decoding={eager ? 'sync' : 'async'}
+        // @ts-expect-error — fetchpriority is a valid HTML attr, React types lag.
+        fetchpriority={eager ? 'high' : 'low'}
         className="w-full h-full object-cover"
         style={{
           borderRadius: radius,
@@ -185,9 +188,42 @@ function PaneImg({ pane, active }: { pane: Pane; active: boolean }) {
   );
 }
 
+/** Décode en arrière-plan les images qui ne sont pas encore visibles pour
+ *  qu'au moment du fondu enchaîné, le bitmap soit déjà prêt (aucun flash). */
+function useIdlePrefetch(urls: readonly string[]) {
+  useEffect(() => {
+    let cancelled = false;
+    const run = () => {
+      if (cancelled) return;
+      urls.forEach((src) => {
+        const img = new Image();
+        img.src = src;
+        // .decode() force la décompression hors thread principal.
+        if (typeof img.decode === 'function') img.decode().catch(() => undefined);
+      });
+    };
+    const ric = (window as unknown as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number })
+      .requestIdleCallback;
+    const handle = ric
+      ? ric(run, { timeout: 1200 })
+      : window.setTimeout(run, 300);
+    return () => {
+      cancelled = true;
+      const cic = (window as unknown as { cancelIdleCallback?: (h: number) => void }).cancelIdleCallback;
+      if (ric && cic) cic(handle as number);
+      else window.clearTimeout(handle as number);
+    };
+  }, [urls]);
+}
+
+// Les URLs des slides différées (tout sauf la première scène).
+const DEFERRED_SRCS = SLIDES.slice(1).flatMap((s) => s.panes.map((p) => p.src));
+
 export function AppearancePreviewBanner() {
   const reduced = useReducedMotion();
   const [index, setIndex] = useState(0);
+
+  useIdlePrefetch(DEFERRED_SRCS);
 
   useEffect(() => {
     if (reduced) return;
@@ -214,7 +250,7 @@ export function AppearancePreviewBanner() {
           className={cn('absolute inset-0', i !== index && 'pointer-events-none')}
         >
           {slide.panes.map((pane, li) => (
-            <PaneImg key={li} pane={pane} active={i === index} />
+            <PaneImg key={li} pane={pane} active={i === index} eager={i === 0} />
           ))}
         </div>
       ))}

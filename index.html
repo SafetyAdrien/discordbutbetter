@@ -41,9 +41,26 @@
   <meta property="og:description" content="BCord est une plateforme de messagerie et VoIP optimisée pour les communautés de gamers. Créez des serveurs.">
   <meta name="twitter:description" content="BCord est une plateforme de messagerie et VoIP optimisée pour les communautés de gamers. Créez des serveurs.">
   <link rel="icon" type="image/png" href="/apple-touch-icon-180x180.png">
+  <script>
+    // Anti-FOUC: applique la préférence de thème AVANT le premier paint.
+    (function () {
+      try {
+        var stored = localStorage.getItem('nexuschat:theme');
+        var pref = (stored === 'light' || stored === 'dark' || stored === 'system') ? stored : 'dark';
+        var resolved = pref === 'system'
+          ? (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+          : pref;
+        var root = document.documentElement;
+        if (resolved === 'dark') root.classList.add('dark');
+        root.style.colorScheme = resolved;
+      } catch (e) {
+        document.documentElement.classList.add('dark');
+      }
+    })();
+  </script>
 </head>
 
-  <body class="dark">
+  <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

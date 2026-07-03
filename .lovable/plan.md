@@ -1,126 +1,64 @@
-## Partie A — Bannière Apparence : composition propre
+## 1. Préchargement des 9 images de la bannière
 
-Objectif : arrêter les images « collées à la va-vite ». Chaque moment garde 3 calques mais avec un cadrage propre, des ombres épaisses et une découpe de la layer du dessous.
+Aujourd'hui les 9 PNG sont importés en `import` statique en haut du fichier : Vite les bundle dans le graphe, donc elles partent en requête dès que `AppearanceSettings` est chargé — mais rien ne priorise le premier slide, et rien ne garantit que les slides 2 & 3 soient décodées **avant** leur fondu (d'où le pop-in au premier cycle).
 
-### 1. Re-capturer proprement les 9 vignettes
-Ré-exécuter Playwright et remplacer les fichiers actuels dans `src/assets/appearance-banner/` par des captures ciblées (screenshot d'élément, pas de crop viewport), ce qui garantit des bords propres :
+### Ce qu'on fait
+- **Slide 1 (visible immédiatement)** : passer les 3 `<img>` en `fetchpriority="high"` + `decoding="sync"` + `loading="eager"`.
+- **Slides 2 & 3** : garder `loading="lazy"` + `decoding="async"`, mais lancer un **prefetch programmatique** dès que la bannière est montée, dans un `useEffect` avec `requestIdleCallback` (fallback `setTimeout(_, 300)`) — via `new Image(); img.src = ...; img.decode()`. Résultat : le fondu enchaîné trouve les bitmaps déjà décodés, zéro reflow, zéro flash blanc.
+- **Bonus zéro coût** : ajouter `width`/`height` intrinsèques sur les `<img>` pour éviter tout layout shift, et `will-change: opacity` uniquement pendant la transition.
 
-- Moment 1 (Vue serveur) :
-  - `m1-back` = screenshot élément du panneau central (chat area) — pas de barre serveur qui déborde
-  - `m1-front-a` = screenshot élément de la liste de salons uniquement
-  - `m1-front-b` = screenshot élément de la member list uniquement
-- Moment 2 (Réglages) :
-  - `m2-back` = screenshot élément de `.modal` cadré serré (sans le fond obscurci)
-  - `m2-front-a` = screenshot élément des 2 tuiles thème (Sombre + Clair) une fois le thème clair activé
-  - `m2-front-b` = screenshot élément d'une carte de zone typographie complète
-- Moment 3 (Typographie) :
-  - `m3-back` = screenshot élément de la section Typographie entière
-  - `m3-front-a` = screenshot élément du bloc Aperçu en direct
-  - `m3-front-b` = screenshot élément d'une ligne de zone (label + AG/ag/Ag/Aa)
+Aucun changement d'API du composant, aucun impact sur le fondu.
 
-### 2. Refonte de `AppearancePreviewBanner.tsx`
+## 2. Thème clair — audit et complétion
 
-Composition en cascade avec règles strictes :
+L'étape précédente a posé les tokens sémantiques (`:root` = clair, `.dark` = sombre) et le thème bascule bien globalement. Il reste **72 fichiers** qui contiennent au moins une couleur codée en dur (`bg-black`, `text-white`, `bg-[#…]`, `bg-[hsl(220…)]`, dégradés `from-[#…]`) qui **ne réagissent pas** au switch et cassent la lisibilité en clair.
 
-```text
-+-----------------------------------------------+
-|   [ back (large, angle léger) ]               |
-|        \                                      |
-|         \____[ frontA (offset centre) ]___    |
-|                          \                    |
-|                           \__[ frontB ]__     |
-+-----------------------------------------------+
-```
+### Stratégie : catégoriser puis remplacer par tokens
 
-Règles visuelles par calque :
-- `border-radius: 12px`, `overflow: hidden`
-- `object-fit: cover`, `object-position: top left` — pour éviter tout étirement
-- Anneau clair 1px : `outline: 1px solid hsl(var(--border))` (remplace le `ring` qui rendait sale)
-- **Ombre portée épaisse 5px** demandée (sur les calques front) :
-  - `box-shadow: 0 5px 0 0 hsl(var(--background)), 0 5px 24px -4px rgba(0,0,0,.55)`
-  - La première stop crée un "socle" plein de 5px qui « détoure » proprement le calque du dessous en cachant la jointure — c'est le montage propre demandé.
-- **Découpe du calque du dessous** : appliquer un `clip-path` (ou `mask-image` en dégradé) au calque immédiatement inférieur, dans la zone où le calque supérieur le chevauche, pour supprimer la partie cachée. Approche retenue : `mask-image` en composite avec un `radial-gradient` positionné exactement sur la bbox du front → produit un « trou » net + fondu 12px de sécurité. Fallback sans `mask-composite` : superposer un `<div>` de la même couleur que le fond de la bannière avec le border-radius du front + l'ombre 5px, ce qui simule la découpe.
-- Angles doux : `transform: perspective(1600px) rotateY(4deg) rotateX(0.5deg)` (moitié moins que la version actuelle → plus propre).
+Passage systématique par zones fonctionnelles, du plus visible au plus rare :
 
-Transition entre moments : garder le crossfade opacity 900ms + désactivé si `prefers-reduced-motion`.
+1. **Chat & messages** — `MessageInput`, `MessageList`, `MessageItem`, réactions, mentions, embeds, code blocks, alerts markdown, blockquotes.
+2. **Sidebar & rails** — `ServerList`, `ChannelList`, `MemberList`, `UserPanel`, headers.
+3. **Modales & popovers** — settings, profile card, context menus, tooltips, color picker, emoji picker.
+4. **Voice/Video** — tiles, halos, controls bar.
+5. **Auth & landing** — pages `/auth`, `/`, `/invite`, écrans vides.
+6. **Divers** — badges, calendrier, forum, media feed, threads sidebar.
 
-## Partie B — Thème clair complet + transition
+### Règles de substitution appliquées
 
-### 1. Palette claire complète dans `src/index.css`
+| Avant | Après |
+|---|---|
+| `bg-black`, `bg-[#0…]` | `bg-background` ou `bg-surface-1/2/3` |
+| `text-white` | `text-foreground` ou `text-primary-foreground` selon contexte |
+| `text-black` | `text-foreground` |
+| `bg-white` | `bg-card` ou `bg-popover` |
+| `border-[#…]` | `border-border` |
+| `text-gray-400/500` | `text-muted-foreground` |
+| `bg-[hsl(220 20% 9%)]` explicites | `bg-[hsl(var(--surface-1))]` |
+| Dégradés hardcodés | tokens `--gradient-*` ou HSL via variable |
 
-Le bloc `.dark` actuel ne fait rien (les valeurs sont dupliquées de `:root`). Restructuration :
+### Ajouts CSS ciblés (`src/index.css`)
 
-- Déplacer **toutes** les variables actuelles de `:root` (background, foreground, card, popover, primary, muted, accent, destructive, alerts, borders, surfaces `surface-1/2/3`, sidebar, user-panel, shadows, gradients, status colors…) dans `.dark { … }`.
-- Ajouter un bloc `:root { … }` (thème clair par défaut) avec la palette équivalente, valeurs miroir :
+- Ajuster quelques valeurs claires si l'audit visuel révèle un contraste trop faible (ex. `--muted-foreground` clair à `225 12% 35%`).
+- Ajouter des variantes light pour les backdrops de modales (`--overlay: 225 25% 8% / 0.5` en dark, `220 20% 40% / 0.35` en light).
+- Vérifier les scrollbars custom, les shadows d'élévation, et les `bg-black/50` de dropzones.
 
-Exemples de valeurs claires cohérentes (à appliquer sur **toutes** les variables) :
-- `--background: 220 20% 98%`
-- `--foreground: 225 25% 12%`
-- `--card: 0 0% 100%`
-- `--popover: 0 0% 100%`
-- `--muted: 220 14% 94%`
-- `--muted-foreground: 225 12% 40%`
-- `--border: 220 14% 88%`
-- `--input: 220 14% 96%`
-- `--surface-server-list: 220 16% 92%`
-- `--surface-1: 220 18% 96%`
-- `--surface-2: 0 0% 100%`
-- `--surface-3: 220 14% 94%`
-- `--surface-header: 220 16% 92%`
-- `--surface-hover: 220 14% 90%`
-- `--user-panel: 220 16% 92%`
-- `--sidebar-*` : miroir clair
-- `--gradient-surface: linear-gradient(180deg, hsl(0 0% 100%), hsl(220 18% 96%))`
-- `--shadow-card: 0 4px 20px hsl(225 25% 12% / 0.08)`
-- `--shadow-elevation-1/2/3` : opacités abaissées (0.06 / 0.08 / 0.12)
-- `--poll-background: 220 14% 94%`
-- Statuts inchangés (accessibles dans les deux thèmes)
+### Vérification
 
-Le highlight.js (l.711) et les autres blocs `.dark`-only éventuels sont vérifiés pour ne pas casser en clair.
+Playwright headless, en boucle :
+1. Ouvrir chaque page/section principale (server, DMs, settings, profil, invite, auth).
+2. Switch dark → light → dark, screenshot à chaque étape.
+3. Contrôle visuel du contraste + scan console `getComputedStyle` sur les nœuds qui contenaient du hardcodé.
 
-### 2. Activer la tuile "Clair" dans `AppearanceSettings.tsx`
-- `available: true`
-- Retirer le texte « Bientôt disponible… », mettre : « Palette claire lumineuse et lisible. »
-- Débloquer le `disabled` et l'`opacity-50`.
+## Détails techniques
 
-### 3. Transition douce sans défaut
+- Fichier bannière : `src/components/appearance/AppearancePreviewBanner.tsx` — ajout `useEffect` de prefetch + attributs `fetchpriority`/`decoding`/`loading` par pane, exposition via un flag `elevation === 1 ? eager : lazy`.
+- Aucun changement du système de transition (opacité 900 ms) ni de la composition des slides.
+- Pour le light theme : uniquement des edits de fichiers `.tsx` (remplacement classes) + potentiels tweaks dans `src/index.css`. Aucune migration, aucun changement de contrat de composants, aucune régression de layout attendue.
+- La liste exhaustive des 72 fichiers est traitée par lots parallèles (rg + line_replace batchés).
 
-Ajouter dans `src/index.css`, dans `@layer base`, une transition ciblée sur les propriétés colorimétriques (jamais sur `all`, ce qui casserait les animations existantes) :
+## Hors scope
 
-```css
-html.theme-transition,
-html.theme-transition *,
-html.theme-transition *::before,
-html.theme-transition *::after {
-  transition:
-    background-color 320ms ease,
-    color 320ms ease,
-    border-color 320ms ease,
-    fill 320ms ease,
-    stroke 320ms ease,
-    box-shadow 320ms ease !important;
-}
-```
-
-Modification de `ThemeContext.tsx` :
-- Dans `applyThemeClass`, avant `classList.toggle('dark', …)`, faire :
-  1. `root.classList.add('theme-transition')`
-  2. Toggle du thème
-  3. `setTimeout(() => root.classList.remove('theme-transition'), 360)`
-- La classe temporaire garantit que **seule** la bascule de thème déclenche la transition (pas de coût runtime permanent, pas d'interaction avec les hovers/anim).
-- Respect de `prefers-reduced-motion` : short-circuit à 0ms (pas d'ajout de la classe).
-
-Vérification que `applyThemeClass` gère correctement `colorScheme` en clair (`root.style.colorScheme = 'light'`) pour que les scrollbars/formulaires natifs suivent.
-
-## Fichiers touchés
-
-- `src/assets/appearance-banner/*.png` — 9 fichiers remplacés par des captures propres
-- `src/components/appearance/AppearancePreviewBanner.tsx` — composition, ombres 5px, découpe
-- `src/index.css` — palette claire complète + classe `theme-transition`
-- `src/contexts/ThemeContext.tsx` — ajout/retrait de la classe `theme-transition` autour du switch
-- `src/components/account-settings/AppearanceSettings.tsx` — activation de la tuile Clair
-
-## Ce qui n'est pas touché
-
-- Aucun composant métier n'est modifié : le thème clair fonctionne uniquement via les tokens sémantiques existants (aucun composant n'utilise `text-white` / `bg-black` hardcodés dans nos règles).
-- Le système de typographie des catégories, la logique d'ouverture du modal, la synchro Supabase des préférences UI restent inchangés.
+- Refonte des palettes de couleurs (on garde exactement les valeurs déjà en place).
+- Nouveau système de theming (déjà en place via CSS vars).
+- Retouche des screenshots de la bannière (déjà propres).

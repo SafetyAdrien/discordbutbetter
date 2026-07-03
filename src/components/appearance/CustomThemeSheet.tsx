@@ -57,12 +57,15 @@ export function CustomThemeSheet({ open, onOpenChange }: CustomThemeSheetProps) 
   useEffect(() => {
     if (open) {
       setMounted(true);
+      // Ensure live preview kicks in even if the committed theme is disabled.
+      if (!snap.draft.enabled) setDraft({ enabled: true });
       const id = requestAnimationFrame(() => setEntered(true));
       return () => cancelAnimationFrame(id);
     }
     setEntered(false);
     const t = window.setTimeout(() => setMounted(false), 300);
     return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   useEffect(() => {

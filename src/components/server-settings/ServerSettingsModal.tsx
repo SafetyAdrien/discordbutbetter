@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
+import { useCategoryCasePreferences } from '@/hooks/useCategoryCasePreferences';
+import { caseClass } from '@/lib/ui/categoryCase';
 import { X, Info, Heart, Smile, Sticker, Users, Shield, Link, Ban, History, Trash2, Zap, Volume2, Puzzle, FileCode, ChevronLeft, ChevronRight, BadgeCheck } from 'lucide-react';
 import { ServerProfileSettings } from './ServerProfileSettings';
 import { EngagementSettings } from './EngagementSettings';

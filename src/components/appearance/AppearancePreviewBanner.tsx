@@ -250,7 +250,7 @@ export function AppearancePreviewBanner() {
           className={cn('absolute inset-0', i !== index && 'pointer-events-none')}
         >
           {slide.panes.map((pane, li) => (
-            <PaneImg key={li} pane={pane} active={i === index} />
+            <PaneImg key={li} pane={pane} active={i === index} eager={i === 0} />
           ))}
         </div>
       ))}

@@ -1,69 +1,58 @@
-## Objectif
-Reproduire à l'identique le side sheet « Customize your theme » de la vidéo, avec toutes les sections, dans le bon ordre, sans oubli.
+## Constat
 
-## Layout cible (fidèle à la vidéo)
+En regardant à nouveau la vidéo image par image :
+- Frame 5–6 : l'utilisateur est dans le modal Paramètres → onglet Apparence, il clique sur le bouton "Try it out".
+- Frame 7+ : **le modal Paramètres se ferme entièrement**, et le side sheet "Customize your theme" apparaît sur la droite par-dessus l'interface principale de l'app (channel list, chat, member list).
 
-```
-┌─ Customize your theme ────────── [X] ┐
-│                                       │
-│ Appearance                            │
-│ ┌────────────┐ ┌────────────┐         │
-│ │ 🌙 Sombre  │ │ ☀ Clair   │         │
-│ └────────────┘ └────────────┘         │
-│                                       │
-│ Colors                                │
-│ ┌───────────────────────────────────┐ │
-│ │      SV picker square             │ │
-│ └───────────────────────────────────┘ │
-│ ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬  hue slider       │
-│                                       │
-│ [■]  #5865F2               [🎨]       │
-│                                       │
-│ [ + Add Color ]  (full width, dashed) │
-│                                       │
-│ Palette chips (si >0) : ● ● ●         │
-│                                       │
-│ Controls                              │
-│ Color Intensity              74%      │
-│ ▬▬▬▬▬▬▬▬▬●▬▬▬▬▬▬                     │
-│                                       │
-│      [ ✨ Surprise Me! ]              │
-│         Reset                         │
-│                                       │
-├───────────────────────────────────────┤
-│ [🔗]              [ Back ] [ Apply ]  │
-└───────────────────────────────────────┘
-```
+Donc le comportement correct est : clic sur « Personnaliser » → fermer le modal des paramètres → ouvrir le side sheet.
 
-## Changements dans `src/components/appearance/CustomThemeSheet.tsx`
+Actuellement le sheet s'ouvre par-dessus le modal, ce qui n'est pas conforme.
 
-### Supprimer
-- La grosse carte "Aperçu en direct" (l'aperçu réel = l'app derrière, comme dans la vidéo).
-- Le slider **Angle** (absent de la vidéo).
-- La sous-carte "Activer le thème personnalisé" avec Switch (l'activation se fait implicitement au clic sur **Apply**).
-- La ligne de secondary actions dupliquée (Surprends-moi / Réinitialiser à côté du switch).
+## Changements
 
-### Ajouter / restructurer
-1. **Section `Appearance`** — deux mini-cartes Dark / Light côte à côte (icônes Moon/Sun + libellé), reliées à `useTheme()` pour changer le thème en direct. La carte active a `border-primary bg-primary/5`. Reprend la même logique que `AppearanceSettings`.
-2. **Section `Colors`** — dans l'ordre :
-   - `HsvColorPicker` (SV + hue).
-   - Ligne hex : swatch carré 36px + `<Input>` monospace flex-1 + bouton icône eyedropper (`Pipette` de lucide) qui ouvre `window.EyeDropper` si disponible, sinon désactivé.
-   - Bouton pleine largeur "**+ Add Color**" (`border-dashed`, `w-full`, style pill). Désactivé et opacité 50 quand `chips.length >= 3`. Au clic → `addChip()` + sélectionne la nouvelle.
-   - Bandeau des chips existantes (uniquement si >1) sur une ligne : chaque chip cliquable = `setSelectedChip`, croix flottante pour supprimer.
-3. **Section `Controls`** — libellé + slider `Color Intensity` avec `%` à droite.
-4. **Bloc bas centré** :
-   - Bouton pill "**Surprise Me!**" (icône Sparkles) → `randomizeDraft()`.
-   - Bouton texte "**Reset**" en dessous, ghost, → `resetCustomTheme()`.
-5. **Footer** inchangé structurellement : icône Share à gauche, `Back` (= Annuler/Fermer) et `Apply` à droite. Adapter `applyDraft` pour activer automatiquement le thème (`setDraft({ enabled: true })` avant `applyDraft()` si couleurs présentes) pour respecter la vidéo où Apply active tout.
+### 1. `src/components/account-settings/AccountSettingsModal.tsx`
+- Créer et exporter un contexte léger `AccountSettingsContext` (`{ close: () => void }`).
+- Wrapper le contenu rendu du modal avec `<AccountSettingsContext.Provider value={{ close: onClose }}>`.
+- Exporter un hook `useAccountSettings()` qui renvoie ce contexte (ou `null` si utilisé hors modal).
 
-### Styles
-- Espacement vertical entre sections : `space-y-5`.
-- Labels de section : `text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2`.
-- Cartes Appearance : `rounded-2xl border p-3 flex flex-col items-start gap-2`.
-- Slider intensité : garder shadcn `Slider`.
-- Le panneau lui-même (portail, non-modal, slide from right, largeur 420px, pas de backdrop) est conservé — c'est déjà conforme.
+### 2. `src/components/appearance/CustomThemeBanner.tsx`
+- Consommer `useAccountSettings()`.
+- Au clic sur la bannière / touche Enter :
+  1. `ctx?.close()` — ferme le modal paramètres.
+  2. `requestAnimationFrame(() => setOpen(true))` — ouvre le sheet après la fermeture.
+- Le side sheet est déjà monté via `createPortal(document.body)` donc il survit à la fermeture du modal parent (aucun bug de démontage).
+
+### 3. `src/components/appearance/CustomThemeSheet.tsx`
+- Aucun changement structurel.
+- Vérifier simplement que la fermeture du modal parent n'empêche pas la ré-ouverture du modal après clic sur "Retour/Fermer" — comme le sheet est portalisé et son état vit dans le composant `<CustomThemeBanner>` qui, lui, n'est plus monté après fermeture du modal → **il faut déplacer le montage du sheet dans un endroit toujours vivant**.
+
+### 4. Nouveau composant `src/components/appearance/CustomThemeSheetHost.tsx` (obligatoire)
+- Fournit un store global léger (`openCustomThemeSheet()` / `useCustomThemeSheetOpen()`).
+- Monté une seule fois dans `src/App.tsx` (à côté de `CustomThemeTintLayer`).
+- Rend `<CustomThemeSheet open={…} onOpenChange={…} />` en permanence, sous protection d'auth.
+- La bannière appelle simplement `openCustomThemeSheet()` après `ctx?.close()`.
+
+### 5. `src/App.tsx`
+- Monter `<CustomThemeSheetHost />` à l'intérieur de `AuthProvider` (là où vit déjà `CustomThemeTintLayer`).
+
+### 6. Finalisation "Partager"
+
+L'encodage (`encodeCustomTheme`), le stripping du marker dans `markdown.tsx`, et le rendu de `ThemeCardEmbeds` dans `SmartLinkEmbeds` sont déjà en place.
+
+Ajustements de finition :
+- **`ShareCustomThemeDialog.tsx`** :
+  - Ajouter les DMs (1-1 et groupes) en source d'envoi possible, sous une section "Messages privés" en tête de liste. Requête sur `dm_conversations` where l'utilisateur est membre. Sélection stockée séparément (`selectedDms: Set<string>`). Insertion via `dm_messages`.
+  - Après envoi réussi, refermer le sheet parent aussi (`onOpenChange(false)` déjà OK) et afficher un toast avec bouton "Voir" qui navigue vers le premier salon/DM choisi.
+  - Vérifier que le payload d'insertion respecte le schéma actuel de `messages` (déjà OK d'après `useMessages`).
+- **`ThemeCardEmbed.tsx`** : ajouter une pastille "✓ Appliqué" persistante quand le thème est déjà actif (déjà géré) + tooltip "Cliquez pour prévisualiser" (petit `title` sur le bouton). Rien de plus.
+
+Le pipeline est ainsi complet : marker encodé côté envoi → marker retiré du texte affiché → carte "Appliquer" rendue sous le message → clic applique le thème via `applySharedTheme` (déjà exporté).
 
 ## Fichiers touchés
-- `src/components/appearance/CustomThemeSheet.tsx` — refonte du contenu.
+- `src/components/account-settings/AccountSettingsModal.tsx` (contexte + Provider)
+- `src/components/appearance/CustomThemeBanner.tsx` (utilise le contexte et le host global)
+- `src/components/appearance/CustomThemeSheetHost.tsx` (nouveau)
+- `src/App.tsx` (monter le host)
+- `src/components/appearance/ShareCustomThemeDialog.tsx` (DMs + toast)
 
-Aucun autre fichier n'est modifié.
+Aucune migration DB requise.

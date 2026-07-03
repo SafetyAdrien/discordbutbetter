@@ -30,6 +30,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { AccountSettings } from './AccountSettings';
+import { AccountSettingsContext } from './AccountSettingsContext';
 import { ProfileSettingsTab } from './ProfileSettingsTab';
 import { PrivacySettings } from './PrivacySettings';
 import { ConnectionsSettings } from './ConnectionsSettings';
@@ -382,7 +383,9 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
 
   if (isMobile) {
     return (
+      <AccountSettingsContext.Provider value={{ close: onClose }}>
       <div className="fixed inset-0 z-50 flex flex-col bg-background">
+
         {activeTab === null ? (
           <>
             <div className="h-12 px-3 flex items-center gap-2 border-b border-border flex-shrink-0">
@@ -414,10 +417,12 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
           </>
         )}
       </div>
+      </AccountSettingsContext.Provider>
     );
   }
 
   return (
+    <AccountSettingsContext.Provider value={{ close: onClose }}>
     <div className="fixed inset-0 z-50 flex">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
       <div
@@ -465,6 +470,7 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
         </div>
       </div>
     </div>
+    </AccountSettingsContext.Provider>
   );
 }
 

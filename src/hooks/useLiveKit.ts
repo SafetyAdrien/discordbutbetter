@@ -14,13 +14,11 @@ import {
 import { connectToLiveKitRoom, LiveKitTokenResponse } from '@/lib/livekit';
 
 export interface UseLiveKitOptions {
-  identity?: string;
   name?: string;
   audio?: boolean;
   video?: boolean;
   screenShare?: boolean;
   metadata?: Record<string, unknown>;
-  adminRoom?: boolean;
   roomOptions?: Partial<RoomOptions>;
   onConnected?: (room: Room) => void;
   onDisconnected?: (reason?: DisconnectReason) => void;

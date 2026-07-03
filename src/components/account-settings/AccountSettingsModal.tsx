@@ -108,6 +108,7 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
   const [searchQuery, setSearchQuery] = useState('');
   const { signOut, user } = useAuth();
   const contentRef = useRef<HTMLDivElement | null>(null);
+  const { prefs: casePrefs } = useCategoryCasePreferences();
 
   const activeSections: Array<SettingsSectionConfig> = useMemo(() => {
     if (!activeTab || activeTab === 'help-markdown') return [];

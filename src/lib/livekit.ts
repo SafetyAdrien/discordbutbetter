@@ -16,20 +16,16 @@ export interface LiveKitTokenResponse {
 
 export async function fetchLiveKitToken(
   room: string,
-  identity?: string,
   options?: {
     name?: string;
     metadata?: Record<string, unknown>;
-    adminRoom?: boolean;
   }
 ): Promise<LiveKitTokenResponse> {
   const { data, error } = await supabase.functions.invoke('livekit-token', {
     body: {
       room,
-      identity,
       name: options?.name,
       metadata: options?.metadata,
-      adminRoom: options?.adminRoom,
     },
   });
 

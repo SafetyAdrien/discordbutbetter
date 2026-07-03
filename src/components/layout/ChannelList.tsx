@@ -1,4 +1,6 @@
 import { cn } from "@/lib/utils";
+import { useCategoryCasePreferences } from "@/hooks/useCategoryCasePreferences";
+import { caseClass } from "@/lib/ui/categoryCase";
 import { resolveCategoryDropTarget, pickCategoryDropTarget } from "@/lib/dnd/categoryDropTarget";
 import { uuidToSnowflake } from "@/lib/snowflake";
 import { useScrollAwareContextMenuGuard } from "@/hooks/useScrollAwareContextMenuGuard";
@@ -294,6 +296,7 @@ function SortableCategory({
 
 }: {category: Category;children: React.ReactNode;isCollapsed: boolean;onToggle: () => void;onEdit: () => void;onCreateChannel: () => void;onDelete: () => void;showDropIndicator?: boolean;dropPosition?: "before" | "after";canManageChannels?: boolean;serverId: string;showInsideHighlight?: boolean;}) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const { prefs: casePrefs } = useCategoryCasePreferences();
   const { attributes, listeners, setNodeRef, transform, isDragging } = useSortable({
     id: `category-${category.id}`,
     data: {
@@ -343,7 +346,7 @@ function SortableCategory({
                 className="flex items-center gap-px flex-1">
 
                 <ChevronDown className={cn("w-3 h-3 transition-transform duration-200", isCollapsed && "-rotate-90")} />
-                <span className="tracking-wide font-ginto text-[14px] font-medium my-0 py-0 px-[2px] mx-[2px] text-muted-foreground">
+                <span className={cn("tracking-wide font-ginto text-[14px] font-medium my-0 py-0 px-[2px] mx-[2px] text-muted-foreground", caseClass('channelCategories', casePrefs))}>
                   {category.name}
                 </span>
               </button>

@@ -57,6 +57,8 @@ import {
 import { searchSettings, type SettingsSearchResult } from '@/lib/settings/SettingsSearchIndex';
 import { getSectionsForTab, type SettingsSectionConfig } from '@/lib/settings/SettingsSectionRegistry';
 import { useSettingsScrollSpy, scrollToSettingsSection } from '@/hooks/useSettingsScrollSpy';
+import { useCategoryCasePreferences } from '@/hooks/useCategoryCasePreferences';
+import { caseClass } from '@/lib/ui/categoryCase';
 
 type SettingsTab = UserSettingsTabType | 'help-markdown';
 
@@ -106,6 +108,7 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
   const [searchQuery, setSearchQuery] = useState('');
   const { signOut, user } = useAuth();
   const contentRef = useRef<HTMLDivElement | null>(null);
+  const { prefs: casePrefs } = useCategoryCasePreferences();
 
   const activeSections: Array<SettingsSectionConfig> = useMemo(() => {
     if (!activeTab || activeTab === 'help-markdown') return [];
@@ -196,7 +199,7 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
           {getTabsByCategory().map(([category, categoryTabs]) => (
             <div key={category} className="mb-2">
               <div className="px-4 mb-1 mt-3 first:mt-0">
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                <h3 className={cn("text-xs font-semibold text-muted-foreground tracking-wider", caseClass('userSettings', casePrefs) === 'normal-case' ? 'uppercase' : caseClass('userSettings', casePrefs))}>
                   {SETTINGS_CATEGORY_LABELS[category]}
                 </h3>
               </div>
@@ -253,7 +256,7 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
 
           <div className="mb-2">
             <div className="px-4 mb-1 mt-3">
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Aide</h3>
+              <h3 className={cn("text-xs font-semibold text-muted-foreground tracking-wider", caseClass('userSettings', casePrefs) === 'normal-case' ? 'uppercase' : caseClass('userSettings', casePrefs))}>Aide</h3>
             </div>
             <nav className="px-2 space-y-0.5">
               <button

@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
+import { useCategoryCasePreferences } from '@/hooks/useCategoryCasePreferences';
+import { caseClass } from '@/lib/ui/categoryCase';
 import { X, Info, Heart, Smile, Sticker, Users, Shield, Link, Ban, History, Trash2, Zap, Volume2, Puzzle, FileCode, ChevronLeft, ChevronRight, BadgeCheck } from 'lucide-react';
 import { ServerProfileSettings } from './ServerProfileSettings';
 import { EngagementSettings } from './EngagementSettings';
@@ -52,6 +54,7 @@ export function ServerSettingsModal({
   initialTab,
 }: ServerSettingsModalProps) {
   const { isMobile, isTablet } = useBreakpoint();
+  const { prefs: casePrefs } = useCategoryCasePreferences();
   const [activeTab, setActiveTab] = useState<SettingsTab | null>(initialTab ?? (isMobile ? null : 'profile'));
 
   const sections: Section[] = [
@@ -133,7 +136,7 @@ export function ServerSettingsModal({
     <nav className="space-y-2 p-2.5">
       {sections.map(section => (
         <div key={section.id}>
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-1">
+          <p className={cn("text-xs font-semibold text-muted-foreground tracking-wider px-3 mb-1", caseClass('serverSettings', casePrefs) === 'normal-case' ? 'uppercase' : caseClass('serverSettings', casePrefs))}>
             {section.name === 'server' ? serverName : section.name}
           </p>
           <div className="space-y-0.5">

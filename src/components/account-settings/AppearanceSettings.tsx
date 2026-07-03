@@ -1,6 +1,7 @@
 import { Check, Moon, Sun } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme, type ThemePreference } from '@/contexts/ThemeContext';
+import { CategoryCaseSection } from '@/components/appearance/CategoryCaseSection';
 
 const THEME_OPTIONS: Array<{
   value: ThemePreference;
@@ -70,6 +71,8 @@ export function AppearanceSettings() {
           })}
         </div>
       </section>
+
+      <CategoryCaseSection />
     </div>
   );
 }

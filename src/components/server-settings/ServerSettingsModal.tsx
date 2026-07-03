@@ -54,6 +54,7 @@ export function ServerSettingsModal({
   initialTab,
 }: ServerSettingsModalProps) {
   const { isMobile, isTablet } = useBreakpoint();
+  const { prefs: casePrefs } = useCategoryCasePreferences();
   const [activeTab, setActiveTab] = useState<SettingsTab | null>(initialTab ?? (isMobile ? null : 'profile'));
 
   const sections: Section[] = [

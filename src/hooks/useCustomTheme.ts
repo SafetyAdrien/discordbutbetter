@@ -16,6 +16,7 @@ import { useCallback, useEffect, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { buildPalette, type ThemeMode } from '@/lib/customTheme/palette';
 
 const LOCAL_KEY = 'nexuschat:ui:customTheme';
 const HTML_CLASS = 'custom-theme';
@@ -88,6 +89,20 @@ function activeForDom(): CustomThemeState {
   return snap.isDirty ? snap.draft : snap.committed;
 }
 
+/** Track the CSS custom properties we wrote so we can cleanly revert. */
+const appliedKeys = new Set<string>();
+
+function currentMode(): ThemeMode {
+  if (typeof document === 'undefined') return 'dark';
+  return document.documentElement.classList.contains('light') ? 'light' : 'dark';
+}
+
+function clearApplied(root: HTMLElement) {
+  appliedKeys.forEach((k) => root.style.removeProperty(k));
+  appliedKeys.clear();
+  root.style.removeProperty('--ct-accent-gradient');
+}
+
 function applyToDom() {
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
@@ -96,16 +111,27 @@ function applyToDom() {
   const shouldRender = (active.enabled || snap.isDirty) && active.chips.length > 0;
   if (!shouldRender) {
     root.classList.remove(HTML_CLASS);
-    root.style.removeProperty('--ct-gradient');
-    root.style.removeProperty('--ct-intensity');
+    clearApplied(root);
     return;
   }
   root.classList.add(HTML_CLASS);
+
+  const palette = buildPalette(active.chips, active.intensity, currentMode());
+  // Remove any previously applied keys that are no longer in the new palette.
+  appliedKeys.forEach((k) => {
+    if (!(k in palette)) root.style.removeProperty(k);
+  });
+  appliedKeys.clear();
+  for (const name in palette) {
+    root.style.setProperty(name, palette[name]);
+    appliedKeys.add(name);
+  }
+
+  // Optional accent gradient variable for components that want a chip gradient.
   const stops = active.chips.length === 1
     ? `${active.chips[0]}, ${active.chips[0]}`
     : active.chips.join(', ');
-  root.style.setProperty('--ct-gradient', `linear-gradient(${active.angle}deg, ${stops})`);
-  root.style.setProperty('--ct-intensity', String(active.intensity / 100));
+  root.style.setProperty('--ct-accent-gradient', `linear-gradient(${active.angle}deg, ${stops})`);
 }
 
 /* ---------- Draft (editor) API ---------- */
@@ -274,7 +300,20 @@ export function useMountCustomTheme() {
       }
     };
     document.addEventListener('visibilitychange', onVis);
-    return () => document.removeEventListener('visibilitychange', onVis);
+    // Re-derive the palette whenever the light/dark class flips.
+    const mo = new MutationObserver((records) => {
+      for (const r of records) {
+        if (r.type === 'attributes' && r.attributeName === 'class') {
+          scheduleApply();
+          break;
+        }
+      }
+    });
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => {
+      document.removeEventListener('visibilitychange', onVis);
+      mo.disconnect();
+    };
   }, []);
 
   // Cross-device sync via Supabase

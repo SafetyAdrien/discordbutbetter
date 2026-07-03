@@ -45,6 +45,7 @@ const App = () => (
       <AuthProvider>
         <CustomThemeTintLayer />
         <CustomThemeSheetHost />
+        <Toaster />
         <PresenceProvider>
           <VoiceProvider>
             <TooltipProvider delayDuration={0}>

@@ -461,11 +461,16 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
               // ProfileSettingsTab.tsx) plutôt que de compter sur position:sticky
               // dans un ancêtre scrollable, qui s'est révélé peu fiable ici.
               // Tous les autres onglets gardent le scroll classique.
-              activeTab === 'my_profile' ? 'overflow-hidden' : 'overflow-y-auto',
+              // Le layout interne à colonnes scrollables du Profil ne s'active
+              // qu'à partir de `lg` (≥1024px). Sur tablette (768–1023px) on
+              // doit donc laisser le conteneur parent gérer le scroll, sinon
+              // le contenu (bio, calendrier, activité, thème, bouton save) est
+              // coupé et inaccessible.
+              activeTab === 'my_profile' ? 'overflow-y-auto lg:overflow-hidden' : 'overflow-y-auto',
               isTablet ? 'p-4' : 'p-6'
             )}
           >
-            <div className={cn('max-w-none', activeTab === 'my_profile' && 'h-full')}>{renderContent()}</div>
+            <div className={cn('max-w-none', activeTab === 'my_profile' && 'lg:h-full')}>{renderContent()}</div>
           </div>
         </div>
       </div>

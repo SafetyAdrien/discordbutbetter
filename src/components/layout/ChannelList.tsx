@@ -1,4 +1,6 @@
 import { cn } from "@/lib/utils";
+import { useCategoryCasePreferences } from "@/hooks/useCategoryCasePreferences";
+import { caseClass } from "@/lib/ui/categoryCase";
 import { resolveCategoryDropTarget, pickCategoryDropTarget } from "@/lib/dnd/categoryDropTarget";
 import { uuidToSnowflake } from "@/lib/snowflake";
 import { useScrollAwareContextMenuGuard } from "@/hooks/useScrollAwareContextMenuGuard";

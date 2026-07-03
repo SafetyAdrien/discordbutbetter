@@ -256,7 +256,7 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
 
           <div className="mb-2">
             <div className="px-4 mb-1 mt-3">
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Aide</h3>
+              <h3 className={cn("text-xs font-semibold text-muted-foreground tracking-wider", caseClass('userSettings', casePrefs) === 'normal-case' ? 'uppercase' : caseClass('userSettings', casePrefs))}>Aide</h3>
             </div>
             <nav className="px-2 space-y-0.5">
               <button

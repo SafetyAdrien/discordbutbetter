@@ -1,16 +1,14 @@
 import { useState } from 'react';
 import { Sparkles } from 'lucide-react';
-import { Switch } from '@/components/ui/switch';
 import { CustomThemeSheet } from './CustomThemeSheet';
-import { useCustomTheme, setCommittedEnabled } from '@/hooks/useCustomTheme';
 
 /**
  * Entry-point banner under the Dark/Light theme cards. Opens the full
- * `CustomThemeSheet` and exposes a quick on/off toggle right on the banner.
+ * `CustomThemeSheet`. Enable/disable is handled inside the sheet itself,
+ * to match the reference flow.
  */
 export function CustomThemeBanner() {
   const [open, setOpen] = useState(false);
-  const state = useCustomTheme();
 
   return (
     <>
@@ -46,19 +44,9 @@ export function CustomThemeBanner() {
               Composez votre propre palette et donnez à l'interface votre signature.
             </div>
           </div>
-          <div className="flex items-center gap-3 shrink-0" onClick={(e) => e.stopPropagation()}>
-            {state.enabled && (
-              <span className="hidden sm:inline text-xs px-2 py-0.5 rounded-full bg-white/25">Actif</span>
-            )}
-            <Switch
-              checked={state.enabled}
-              onCheckedChange={setCommittedEnabled}
-              aria-label="Activer/désactiver le thème personnalisé"
-            />
-            <span className="hidden md:inline text-sm font-semibold px-3 py-1.5 rounded-full bg-white text-black">
-              Personnaliser
-            </span>
-          </div>
+          <span className="text-sm font-semibold px-3 py-1.5 rounded-full bg-white text-black shrink-0">
+            Personnaliser
+          </span>
         </div>
       </div>
 

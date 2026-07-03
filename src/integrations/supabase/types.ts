@@ -3640,18 +3640,21 @@ export type Database = {
         Row: {
           category_case: Json
           created_at: string
+          custom_theme: Json | null
           updated_at: string
           user_id: string
         }
         Insert: {
           category_case?: Json
           created_at?: string
+          custom_theme?: Json | null
           updated_at?: string
           user_id: string
         }
         Update: {
           category_case?: Json
           created_at?: string
+          custom_theme?: Json | null
           updated_at?: string
           user_id?: string
         }

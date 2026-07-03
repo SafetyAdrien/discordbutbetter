@@ -1,13 +1,20 @@
 /**
- * useCustomTheme
+ * useCustomTheme — full state store for the custom theme feature.
  *
- * A lightweight custom-theme layer that renders as a full-screen tinted
- * overlay behind the app UI. All updates go directly to CSS variables on
- * the <html> element and are rAF-throttled — React never re-renders when
- * the user drags the color picker, so the editor stays cheap even on
- * mid-range hardware.
+ * Two layers of state:
+ *  - `committed`  : the theme that is actually persisted + applied to the DOM
+ *  - `draft`      : the in-progress editor state, applied live to the DOM
+ *                   but NOT persisted until the user hits "Appliquer"
+ *
+ * All DOM writes go straight to CSS custom properties via a rAF-throttled
+ * writer so dragging sliders / color picker never re-renders React.
+ * Persistence:
+ *  - localStorage: instant, offline-first
+ *  - Supabase `user_ui_preferences.custom_theme`: cross-device sync
  */
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 const LOCAL_KEY = 'nexuschat:ui:customTheme';
 const HTML_CLASS = 'custom-theme';
@@ -26,6 +33,12 @@ export const DEFAULT_CUSTOM_THEME: CustomThemeState = {
   angle: 135,
 };
 
+type Snapshot = {
+  committed: CustomThemeState;
+  draft: CustomThemeState;
+  isDirty: boolean;
+};
+
 function readLocal(): CustomThemeState {
   try {
     const raw = localStorage.getItem(LOCAL_KEY);
@@ -37,15 +50,26 @@ function readLocal(): CustomThemeState {
   }
 }
 
-let cache: CustomThemeState = readLocal();
+function eq(a: CustomThemeState, b: CustomThemeState): boolean {
+  return (
+    a.enabled === b.enabled &&
+    a.intensity === b.intensity &&
+    a.angle === b.angle &&
+    a.chips.length === b.chips.length &&
+    a.chips.every((c, i) => c === b.chips[i])
+  );
+}
+
+let snap: Snapshot = (() => {
+  const c = readLocal();
+  return { committed: c, draft: c, isDirty: false };
+})();
+
 const listeners = new Set<() => void>();
+function emit() { listeners.forEach((l) => l()); }
 
 function persist() {
-  try {
-    localStorage.setItem(LOCAL_KEY, JSON.stringify(cache));
-  } catch {
-    /* noop */
-  }
+  try { localStorage.setItem(LOCAL_KEY, JSON.stringify(snap.committed)); } catch { /* noop */ }
 }
 
 /** rAF-throttled writer for the CSS custom properties. */
@@ -58,46 +82,60 @@ function scheduleApply() {
   });
 }
 
+/** Which state should drive the DOM: draft when editing, committed otherwise. */
+function activeForDom(): CustomThemeState {
+  return snap.isDirty ? snap.draft : snap.committed;
+}
+
 function applyToDom() {
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
-  if (!cache.enabled) {
+  const active = activeForDom();
+  if (!active.enabled || active.chips.length === 0) {
     root.classList.remove(HTML_CLASS);
     root.style.removeProperty('--ct-gradient');
     root.style.removeProperty('--ct-intensity');
     return;
   }
   root.classList.add(HTML_CLASS);
-  const stops =
-    cache.chips.length === 1
-      ? `${cache.chips[0]}, ${cache.chips[0]}`
-      : cache.chips.join(', ');
-  root.style.setProperty('--ct-gradient', `linear-gradient(${cache.angle}deg, ${stops})`);
-  root.style.setProperty('--ct-intensity', String(cache.intensity / 100));
+  const stops = active.chips.length === 1
+    ? `${active.chips[0]}, ${active.chips[0]}`
+    : active.chips.join(', ');
+  root.style.setProperty('--ct-gradient', `linear-gradient(${active.angle}deg, ${stops})`);
+  root.style.setProperty('--ct-intensity', String(active.intensity / 100));
 }
 
-/** Public API */
-export function setCustomTheme(patch: Partial<CustomThemeState>, options?: { persist?: boolean }) {
-  cache = { ...cache, ...patch };
+/* ---------- Draft (editor) API ---------- */
+
+export function setDraft(patch: Partial<CustomThemeState>) {
+  const nextDraft = { ...snap.draft, ...patch };
+  snap = { ...snap, draft: nextDraft, isDirty: !eq(nextDraft, snap.committed) };
   scheduleApply();
-  if (options?.persist !== false) persist();
-  listeners.forEach((l) => l());
+  emit();
 }
 
-export function getCustomTheme() {
-  return cache;
+export function setChip(i: number, hex: string) {
+  const chips = [...snap.draft.chips];
+  chips[i] = hex;
+  setDraft({ chips });
 }
 
-/** Randomize helper for the "Surprise Me!" button. */
-export function randomizeCustomTheme() {
-  const rand = () => `hsl(${Math.floor(Math.random() * 360)} 80% 55%)`;
-  // Convert hsl(...) to hex so downstream inputs work; keep simple by using two hues
-  const h1 = Math.floor(Math.random() * 360);
-  const h2 = (h1 + 40 + Math.floor(Math.random() * 120)) % 360;
-  const toHex = (h: number) => {
+export function addChip(hex?: string) {
+  if (snap.draft.chips.length >= 3) return;
+  const seed = hex ?? snap.draft.chips[snap.draft.chips.length - 1] ?? '#5865F2';
+  setDraft({ chips: [...snap.draft.chips, seed] });
+}
+
+export function removeChip(i: number) {
+  if (snap.draft.chips.length <= 1) return;
+  setDraft({ chips: snap.draft.chips.filter((_, k) => k !== i) });
+}
+
+export function randomizeDraft() {
+  const rand = () => {
+    const h = Math.floor(Math.random() * 360);
     const s = 70;
     const l = 55;
-    // HSL to RGB
     const a = (s / 100) * Math.min(l / 100, 1 - l / 100);
     const f = (n: number) => {
       const k = (n + h / 30) % 12;
@@ -106,60 +144,195 @@ export function randomizeCustomTheme() {
     };
     return `#${f(0)}${f(8)}${f(4)}`;
   };
-  setCustomTheme({
+  const chipCount = 2 + Math.floor(Math.random() * 2); // 2 or 3
+  const chips: string[] = [];
+  for (let i = 0; i < chipCount; i++) chips.push(rand());
+  setDraft({
     enabled: true,
-    chips: [toHex(h1), toHex(h2)],
+    chips,
     angle: Math.floor(Math.random() * 360),
-    intensity: 40 + Math.floor(Math.random() * 45),
+    intensity: 45 + Math.floor(Math.random() * 40),
   });
-  void rand;
 }
 
-export function resetCustomTheme() {
-  setCustomTheme({ ...DEFAULT_CUSTOM_THEME });
+/** Discard the in-progress draft. */
+export function discardDraft() {
+  if (!snap.isDirty) return;
+  snap = { ...snap, draft: snap.committed, isDirty: false };
+  scheduleApply();
+  emit();
 }
+
+/** Apply the current draft as the committed theme + persist + sync. */
+export function applyDraft() {
+  if (!snap.isDirty) return;
+  snap = { committed: snap.draft, draft: snap.draft, isDirty: false };
+  persist();
+  scheduleApply();
+  emit();
+  void syncToServer(snap.committed);
+}
+
+/** Restore defaults (committed + draft). */
+export function resetCustomTheme() {
+  snap = { committed: { ...DEFAULT_CUSTOM_THEME }, draft: { ...DEFAULT_CUSTOM_THEME }, isDirty: false };
+  persist();
+  scheduleApply();
+  emit();
+  void syncToServer(snap.committed);
+}
+
+/** Toggle enable on/off from outside the editor (banner switch). */
+export function setCommittedEnabled(enabled: boolean) {
+  if (snap.committed.enabled === enabled) return;
+  const nextCommitted = { ...snap.committed, enabled };
+  const nextDraft = snap.isDirty ? snap.draft : nextCommitted;
+  snap = { committed: nextCommitted, draft: nextDraft, isDirty: snap.isDirty && !eq(nextDraft, nextCommitted) };
+  persist();
+  scheduleApply();
+  emit();
+  void syncToServer(snap.committed);
+}
+
+/** Apply an incoming shared theme (from a message link). Auto-commits. */
+export function applySharedTheme(theme: { chips: string[]; angle: number; intensity: number }) {
+  const next: CustomThemeState = {
+    enabled: true,
+    chips: theme.chips.slice(0, 3),
+    angle: theme.angle,
+    intensity: theme.intensity,
+  };
+  snap = { committed: next, draft: next, isDirty: false };
+  persist();
+  scheduleApply();
+  emit();
+  void syncToServer(next);
+}
+
+/* ---------- Server sync ---------- */
+
+let currentUserId: string | null = null;
+
+async function syncToServer(state: CustomThemeState) {
+  if (!currentUserId) return;
+  try {
+    await supabase
+      .from('user_ui_preferences')
+      .upsert(
+        [{ user_id: currentUserId, custom_theme: state as unknown as never, updated_at: new Date().toISOString() }],
+        { onConflict: 'user_id' },
+      );
+  } catch { /* noop */ }
+}
+
+/* ---------- Hook boilerplate ---------- */
 
 function subscribe(cb: () => void) {
   listeners.add(cb);
-  return () => listeners.delete(cb);
+  return () => { listeners.delete(cb); };
+}
+function getSnap(): Snapshot { return snap; }
+
+/** Read-only snapshot for consumers. */
+export function useCustomThemeSnapshot(): Snapshot {
+  return useSyncExternalStore(subscribe, getSnap, getSnap);
 }
 
-export function useCustomTheme() {
-  const state = useSyncExternalStore(subscribe, () => cache, () => cache);
-  return state;
+/** Legacy compat: returns the committed state as before. */
+export function useCustomTheme(): CustomThemeState {
+  const s = useSyncExternalStore(subscribe, getSnap, getSnap);
+  return s.isDirty ? s.draft : s.committed;
 }
 
-/** Ensures the DOM reflects the stored theme on first mount. */
+export function getCustomTheme(): CustomThemeState {
+  return snap.committed;
+}
+
+/** Mount once at the app root: applies DOM, sets up sync + visibility. */
 export function useMountCustomTheme() {
+  const { user } = useAuth();
   useEffect(() => {
     applyToDom();
-    // Disable temporarily when tab is backgrounded (avoids paints on hidden pages)
     const onVis = () => {
-      if (document.hidden && cache.enabled) {
+      const active = activeForDom();
+      if (document.hidden && active.enabled) {
         document.documentElement.classList.remove(HTML_CLASS);
-      } else if (!document.hidden && cache.enabled) {
+      } else if (!document.hidden && active.enabled) {
         document.documentElement.classList.add(HTML_CLASS);
       }
     };
     document.addEventListener('visibilitychange', onVis);
     return () => document.removeEventListener('visibilitychange', onVis);
   }, []);
+
+  // Cross-device sync via Supabase
+  useEffect(() => {
+    if (!user?.id) { currentUserId = null; return; }
+    currentUserId = user.id;
+
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('user_ui_preferences')
+        .select('custom_theme')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (cancelled) return;
+      const remote = (data?.custom_theme ?? null) as Partial<CustomThemeState> | null;
+      if (remote && typeof remote === 'object') {
+        const merged: CustomThemeState = { ...DEFAULT_CUSTOM_THEME, ...remote };
+        // Only overwrite if different, and never clobber a local dirty draft.
+        if (!eq(merged, snap.committed)) {
+          snap = { committed: merged, draft: snap.isDirty ? snap.draft : merged, isDirty: snap.isDirty };
+          persist();
+          scheduleApply();
+          emit();
+        }
+      }
+    })();
+
+    const channel = supabase
+      .channel(`user_ui_prefs_ct:${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'user_ui_preferences', filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          const row = (payload.new ?? payload.old) as { custom_theme?: Partial<CustomThemeState> | null } | null;
+          const remote = row?.custom_theme;
+          if (remote && typeof remote === 'object') {
+            const merged: CustomThemeState = { ...DEFAULT_CUSTOM_THEME, ...remote };
+            if (!eq(merged, snap.committed)) {
+              snap = { committed: merged, draft: snap.isDirty ? snap.draft : merged, isDirty: snap.isDirty };
+              persist();
+              scheduleApply();
+              emit();
+            }
+          }
+        },
+      )
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
 }
 
-// Public setters kept individual for the editor components
-export function setChip(i: number, hex: string) {
-  const chips = [...cache.chips];
-  chips[i] = hex;
-  setCustomTheme({ chips });
+/* ---------- Legacy helpers kept for existing imports ---------- */
+
+/** @deprecated Use setDraft + applyDraft, or setCommittedEnabled/applySharedTheme. */
+export function setCustomTheme(patch: Partial<CustomThemeState>, _options?: { persist?: boolean }) {
+  const next = { ...snap.committed, ...patch };
+  snap = { committed: next, draft: next, isDirty: false };
+  persist();
+  scheduleApply();
+  emit();
+  void syncToServer(next);
 }
 
-export function addChip() {
-  if (cache.chips.length >= 3) return;
-  const last = cache.chips[cache.chips.length - 1] || '#5865F2';
-  setCustomTheme({ chips: [...cache.chips, last] });
-}
-
-export function removeChip(i: number) {
-  if (cache.chips.length <= 1) return;
-  setCustomTheme({ chips: cache.chips.filter((_, k) => k !== i) });
+/** @deprecated Use randomizeDraft + applyDraft in the editor flow. */
+export function randomizeCustomTheme() {
+  randomizeDraft();
+  applyDraft();
 }

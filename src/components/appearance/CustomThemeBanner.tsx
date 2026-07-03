@@ -1,31 +1,31 @@
 import { useState } from 'react';
 import { Sparkles } from 'lucide-react';
-import { CustomThemeEditor } from './CustomThemeEditor';
-import { useCustomTheme } from '@/hooks/useCustomTheme';
+import { Switch } from '@/components/ui/switch';
+import { CustomThemeSheet } from './CustomThemeSheet';
+import { useCustomTheme, setCommittedEnabled } from '@/hooks/useCustomTheme';
 
 /**
- * Entry-point banner shown under the Dark/Light theme cards. Collapses to
- * a marketing-style stripe when closed and expands to reveal the full
- * editor when clicked. Kept purely presentational; heavy state lives in
- * `useCustomTheme`.
+ * Entry-point banner under the Dark/Light theme cards. Opens the full
+ * `CustomThemeSheet` and exposes a quick on/off toggle right on the banner.
  */
 export function CustomThemeBanner() {
   const [open, setOpen] = useState(false);
   const state = useCustomTheme();
 
   return (
-    <div className="space-y-3">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        className="group relative w-full overflow-hidden rounded-2xl border border-border/60 text-left"
+    <>
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => setOpen(true)}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(true); } }}
+        aria-label="Ouvrir l'éditeur de thème personnalisé"
+        className="group relative w-full overflow-hidden rounded-2xl border border-border/60 text-left cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         style={{
           background:
             'linear-gradient(120deg, hsl(var(--primary) / 0.85), hsl(280 70% 55% / 0.85), hsl(24 95% 60% / 0.85))',
         }}
       >
-        {/* subtle animated highlight */}
         <div
           aria-hidden
           className="absolute inset-0 opacity-40 group-hover:opacity-60 transition-opacity"
@@ -46,18 +46,23 @@ export function CustomThemeBanner() {
               Composez votre propre palette et donnez à l'interface votre signature.
             </div>
           </div>
-          <div className="hidden sm:flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-3 shrink-0" onClick={(e) => e.stopPropagation()}>
             {state.enabled && (
-              <span className="text-xs px-2 py-0.5 rounded-full bg-white/25">Actif</span>
+              <span className="hidden sm:inline text-xs px-2 py-0.5 rounded-full bg-white/25">Actif</span>
             )}
-            <span className="text-sm font-semibold px-3 py-1.5 rounded-full bg-white text-black">
-              {open ? 'Fermer' : 'Essayer'}
+            <Switch
+              checked={state.enabled}
+              onCheckedChange={setCommittedEnabled}
+              aria-label="Activer/désactiver le thème personnalisé"
+            />
+            <span className="hidden md:inline text-sm font-semibold px-3 py-1.5 rounded-full bg-white text-black">
+              Personnaliser
             </span>
           </div>
         </div>
-      </button>
+      </div>
 
-      {open && <CustomThemeEditor onClose={() => setOpen(false)} />}
-    </div>
+      <CustomThemeSheet open={open} onOpenChange={setOpen} />
+    </>
   );
 }

@@ -4,6 +4,8 @@ import { YouTubeEmbed } from './YouTubeEmbed';
 import { TwitchEmbed } from './TwitchEmbed';
 import { LinkEmbed, LinkEmbeds as FallbackLinkEmbeds } from '@/components/chat/LinkEmbed';
 import { extractUrls } from '@/hooks/useUrlMetadata';
+import { extractThemesFromContent } from '@/lib/customTheme/encode';
+import { ThemeCardEmbeds } from './ThemeCardEmbed';
 
 interface SmartLinkEmbedProps {
   url: string;
@@ -26,12 +28,14 @@ interface SmartLinkEmbedsProps {
 
 export function SmartLinkEmbeds({ content }: SmartLinkEmbedsProps) {
   const urls = useMemo(() => extractUrls(content), [content]);
-  if (urls.length === 0) return null;
+  const themes = useMemo(() => extractThemesFromContent(content), [content]);
+  if (urls.length === 0 && themes.length === 0) return null;
   return (
     <div className="space-y-1">
       {urls.map((url) => (
         <SmartLinkEmbed key={url} url={url} />
       ))}
+      {themes.length > 0 && <ThemeCardEmbeds content={content} />}
     </div>
   );
 }

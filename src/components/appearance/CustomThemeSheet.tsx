@@ -277,6 +277,22 @@ export function CustomThemeSheet({ open, onOpenChange }: CustomThemeSheetProps) 
         {/* Controls */}
         <section>
           <SectionLabel>Réglages</SectionLabel>
+          {draft.chips.length >= 2 && (
+            <>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-sm">Direction du dégradé</span>
+                <span className="text-xs tabular-nums text-muted-foreground">{draft.angle}°</span>
+              </div>
+              <Slider
+                value={[draft.angle]}
+                min={0}
+                max={360}
+                step={1}
+                onValueChange={([v]) => setDraft({ angle: v })}
+                className="mb-4"
+              />
+            </>
+          )}
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-sm">Intensité</span>
             <span className="text-xs tabular-nums text-muted-foreground">{draft.intensity}%</span>
@@ -289,6 +305,7 @@ export function CustomThemeSheet({ open, onOpenChange }: CustomThemeSheetProps) 
             onValueChange={([v]) => setDraft({ intensity: v })}
           />
         </section>
+
 
         {/* Actions centrées */}
         <div className="pt-2 flex flex-col items-center gap-2">

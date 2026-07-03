@@ -14,9 +14,8 @@ export function CustomThemeTintLayer() {
       aria-hidden
       className="custom-theme-overlay fixed inset-0 pointer-events-none"
       style={{
-        // Above the app UI, below the customization side sheet (z-[80])
-        // and any modal (z-50 → the sheet host closes them first anyway).
-        zIndex: 40,
+        // Above every app surface, below the customization side sheet (z-[80]).
+        zIndex: 70,
         background: 'var(--ct-gradient, transparent)',
         opacity: 'var(--ct-intensity, 0)',
         transition: 'opacity 240ms ease',

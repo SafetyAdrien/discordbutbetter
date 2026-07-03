@@ -171,8 +171,9 @@ export function applyDraft() {
   persist();
   scheduleApply();
   emit();
-  void syncToServer(snap.committed);
+  void syncToServer(snap.committed, { notifyOnError: true });
 }
+
 
 /** Restore defaults (committed + draft). */
 export function resetCustomTheme() {

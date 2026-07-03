@@ -14,6 +14,9 @@ import { ModernColorPicker } from '@/components/profile/calendar/ModernColorPick
 import { ServerProfileEditModal } from '@/components/profile/ServerProfileEditModal';
 import { AvatarUploadEditor } from '@/components/profile/AvatarUploadEditor';
 import { FullUserProfileModal } from '@/components/profile/FullUserProfileModal';
+import { useCategoryCasePreferences } from '@/hooks/useCategoryCasePreferences';
+import { caseClass } from '@/lib/ui/categoryCase';
+import { cn } from '@/lib/utils';
 
 const BIO_MAX = 4000;
 
@@ -35,8 +38,10 @@ const statusDotColors: Record<string, string> = {
 
 /** Label de champ — même style plat que Fluxer (petit texte gris au-dessus du champ, pas d'encart). */
 function FieldLabel({ children, htmlFor }: { children: React.ReactNode; htmlFor?: string }) {
+  const { prefs } = useCategoryCasePreferences();
+  const caseCls = prefs.profileEdit.enabled ? caseClass('profileEdit', prefs) : 'uppercase';
   return (
-    <Label htmlFor={htmlFor} className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+    <Label htmlFor={htmlFor} className={cn('text-xs font-semibold tracking-wide text-muted-foreground', caseCls)}>
       {children}
     </Label>
   );
@@ -370,9 +375,7 @@ export function ProfileSettingsTab() {
             overflow-y-auto isolé ci-dessus). */}
         <div className="lg:w-[320px] lg:shrink-0 space-y-4 mb-4 lg:mb-0 order-1 lg:order-2">
           <section className="space-y-2">
-            <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Aperçu du profil
-            </Label>
+            <FieldLabel>Aperçu du profil</FieldLabel>
             <button
               type="button"
               onClick={() => setPreviewOpen(true)}

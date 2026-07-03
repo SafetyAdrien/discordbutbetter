@@ -102,5 +102,17 @@ export function useCategoryCasePreferences() {
       );
   }, [user?.id]);
 
-  return { prefs, setZone };
+  const resetAll = useCallback(async () => {
+    const next: CategoryCasePrefs = JSON.parse(JSON.stringify(DEFAULT_CATEGORY_CASE_PREFS));
+    setCache(next);
+    if (!user?.id) return;
+    await supabase
+      .from('user_ui_preferences')
+      .upsert(
+        [{ user_id: user.id, category_case: next as unknown as never, updated_at: new Date().toISOString() }],
+        { onConflict: 'user_id' },
+      );
+  }, [user?.id]);
+
+  return { prefs, setZone, resetAll };
 }

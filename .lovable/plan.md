@@ -1,52 +1,70 @@
 ## Objectif
 
-Ajouter un panneau d'aperçu live à droite (ou en dessous sur mobile) de la section "Typographie des catégories" qui montre, en temps réel et sans latence, à quoi ressembleront les 4 zones (ChannelList, paramètres utilisateur, paramètres serveur, modal catégorie) pendant que l'utilisateur bascule Decoration/Case.
+Trois ajouts complémentaires à la section « Typographie des catégories » :
+1. Bouton **Réinitialiser** pour revenir aux valeurs par défaut.
+2. Meilleure accessibilité du **live preview** : annonce ARIA + focus visible par zone.
+3. Nouvelle zone **Édition du profil** appliquant la casse aux libellés du formulaire de profil.
 
-## Ce que fait le plan
+## 1. Bouton Réinitialiser
 
-### 1. Restructurer `CategoryCaseSection.tsx` en 2 colonnes
-- Passer le contenu actuel dans une grille : `grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-4`.
-- Colonne gauche : les 4 cartes de réglages existantes (inchangées).
-- Colonne droite (sticky `lg:sticky lg:top-4`) : nouveau composant `<CategoryCaseLivePreview />`.
-- Sur mobile (`<lg`), l'aperçu passe en dessous, plié dans une carte compacte.
+### Hook
+- Modifier `src/hooks/useCategoryCasePreferences.ts` :
+  - Exporter une fonction `resetAll()` qui `setCache(DEFAULT_CATEGORY_CASE_PREFS)` puis upsert la valeur par défaut vers `user_ui_preferences`.
 
-### 2. Créer `src/components/appearance/CategoryCaseLivePreview.tsx`
-Mini maquette statique qui reflète les vraies UI, sans logique métier ni requête, uniquement du markup + `caseClass(zone, prefs)`. Structure :
+### UI
+- Modifier `src/components/appearance/CategoryCaseSection.tsx` :
+  - Ajouter un bouton `Réinitialiser` (variante `ghost`, taille `sm`) à droite du titre.
+  - Désactivé si `prefs` est déjà égal à `DEFAULT_CATEGORY_CASE_PREFS` (comparaison shallow zone par zone).
+  - Confirmation via `AlertDialog` shadcn ("Réinitialiser la typographie ? Toutes les zones reviendront à l'apparence par défaut.") pour éviter un clic accidentel.
 
-```text
-Card "Aperçu en direct"
-├── Bloc 1 — Liste de salons (ChannelList)
-│    ▸ 2 catégories factices ("Général", "Vocal") avec chevron + 2 salons chacune
-│    ▸ Applique caseClass('channelCategories', prefs) sur les labels de catégorie
-├── Bloc 2 — Paramètres utilisateur
-│    ▸ 3 lignes de nav factices ("Mon compte", "Profil", "Apparence")
-│    ▸ Applique caseClass('userSettings', prefs) sur les section headers
-├── Bloc 3 — Paramètres serveur
-│    ▸ 3 lignes ("Personnes", "Rôles", "Salons")
-│    ▸ Applique caseClass('serverSettings', prefs)
-└── Bloc 4 — Modal catégorie (TabsList)
-     ▸ Deux TabsTrigger factices "Aperçu" / "Permissions"
-     ▸ Applique caseClass('categoryModal', prefs)
-```
+## 2. Accessibilité du live preview
 
-Chaque bloc reprend fidèlement les classes tailwind visuelles réelles (couleur, taille, spacing, uppercase par défaut le cas échéant pour serverSettings/userSettings) pour que l'aperçu soit représentatif.
+Modifier `src/components/appearance/CategoryCaseLivePreview.tsx` :
 
-### 3. Réactivité instantanée
-- L'aperçu lit `prefs` via `useCategoryCasePreferences()` : la mise à jour est immédiate car le hook a déjà un cache module-level et fait un `setState` optimiste avant l'appel réseau.
-- Aucun débounce, aucune requête, aucun état local — la source de vérité reste le hook.
+- Wrapper principal `<aside role="region" aria-label="Aperçu en direct de la typographie des catégories">`.
+- Chaque bloc devient focusable :
+  - `tabIndex={0}`, `role="group"`, `aria-labelledby={id}`.
+  - Classes focus visibles : `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background`.
+- Ajouter une **live region** `<div aria-live="polite" aria-atomic="true" className="sr-only">` dans `CategoryCaseSection.tsx` qui se met à jour à chaque changement (`useEffect` sur `prefs`) avec un message du type :
+  > « Aperçu mis à jour : Catégories de salons en majuscules, Édition du profil désactivé, … »
+- Debounce léger (150 ms) via `setTimeout` pour éviter le spam d'annonces quand on clique successivement.
+- Sur les 4 cartes de réglage (colonne gauche), améliorer aussi le focus des boutons `AG/ag/Ag/Aa` : ajouter `focus-visible:ring-2 focus-visible:ring-primary` (les défauts sont masqués globalement par `focus-ring-removal`, il faut réactiver explicitement ici).
+- Titre de chaque bloc avec un `id` stable pour l'`aria-labelledby`.
 
-### 4. Retirer la mini-ligne "Aperçu : Général" dans chaque carte de réglage
-Redondante avec le nouveau panneau. Ça allège la colonne de gauche.
+## 3. Zone « Édition du profil »
 
-## Détails techniques (dev)
+### Extension du modèle
+Modifier `src/lib/ui/categoryCase.ts` :
+- Ajouter `'profileEdit'` à `CategoryCaseZone`.
+- Ajouter aux constantes : `DEFAULT_CATEGORY_CASE_PREFS.profileEdit`, `ZONE_LABELS.profileEdit = "Libellés d'édition du profil"`, entrée dans `normalizePrefs`.
+- Aucun changement de schéma DB : la colonne `category_case` est un `jsonb` libre.
 
-- Nouveau fichier : `src/components/appearance/CategoryCaseLivePreview.tsx` (~120 lignes, pur JSX).
-- Modif : `src/components/appearance/CategoryCaseSection.tsx` — wrapper grid, suppression du mini-preview par carte.
-- Aucune modification du hook, du helper `caseClass`, de la DB, ni des composants réels (ChannelList, modals). C'est un aperçu isolé.
-- Zéro requête, zéro nouveau state, zéro dépendance ajoutée.
+### Ordre dans la section
+Ajouter `'profileEdit'` en dernier dans `ZONE_ORDER` de `CategoryCaseSection.tsx`.
+
+### Application
+- Modifier `src/components/account-settings/ProfileSettingsTab.tsx` :
+  - Importer `useCategoryCasePreferences` + `caseClass`.
+  - Refactoriser `FieldLabel` (ligne 37) pour utiliser le hook et remplacer `uppercase` par un ternaire :
+    `prefs.profileEdit.enabled ? caseClass('profileEdit', prefs) : 'uppercase'`
+    → cela préserve l'apparence uppercase actuelle par défaut mais laisse l'utilisateur choisir Aa / Ag / ag.
+  - Même traitement pour le `<Label>` "Connexions" ligne 373.
+
+### Preview
+Ajouter un 5ᵉ bloc dans `CategoryCaseLivePreview.tsx` :
+- Titre bloc « Édition du profil »
+- Mini formulaire factice avec 2 `FieldLabel` (« Nom d'affichage », « Pronoms ») + faux inputs, styles identiques à `ProfileSettingsTab.FieldLabel`, appliquant le même ternaire (uppercase par défaut).
+
+## Fichiers touchés
+
+- `src/lib/ui/categoryCase.ts` — ajout zone `profileEdit`.
+- `src/hooks/useCategoryCasePreferences.ts` — expose `resetAll`.
+- `src/components/appearance/CategoryCaseSection.tsx` — bouton reset + AlertDialog + live region + focus visible sur boutons.
+- `src/components/appearance/CategoryCaseLivePreview.tsx` — a11y (roles, focus, aria-labelledby) + nouveau bloc profil.
+- `src/components/account-settings/ProfileSettingsTab.tsx` — application de la casse aux `FieldLabel`.
 
 ## Hors périmètre
 
-- Pas d'aperçu embarquant les vrais composants (`ChannelList`, `ServerSettingsModal`) — trop lourd, nécessiterait un serveur/contexte fictif, risque de régressions.
-- Pas de nouvelles zones typographiques.
-- Pas de changement DB.
+- Pas de nouvelle table / migration DB.
+- Pas d'ajout d'autres zones (annonces, forum, etc.) — uniquement profil comme demandé.
+- Pas de changement des raccourcis clavier.

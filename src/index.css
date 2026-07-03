@@ -119,61 +119,134 @@
 }
 
 @layer base {
+  /* ===================================================
+     LIGHT THEME (default at :root)
+     Applied when <html> has no `.dark` class.
+     =================================================== */
   :root {
-    /* Material You — Dark Surface Palette */
-    --background: 225 18% 11%;
-    --foreground: 220 10% 93%;
+    --background: 220 20% 98%;
+    --foreground: 225 25% 12%;
 
-    /* Card / Channel sidebar */
-    --card: 225 20% 15%;
-    --card-foreground: 220 10% 93%;
+    --card: 0 0% 100%;
+    --card-foreground: 225 25% 12%;
 
-    /* Popovers */
-    --popover: 225 18% 17%;
-    --popover-foreground: 220 10% 93%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 225 25% 12%;
 
-    /* Toolbar */
-    --toolbar: 225 16% 20%;
+    --toolbar: 220 16% 94%;
 
-    /* Primary — vibrant blue */
     --primary: 225 85% 58%;
     --primary-foreground: 0 0% 100%;
 
-    /* Secondary */
+    --secondary: 270 55% 58%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 220 14% 94%;
+    --muted-foreground: 225 12% 40%;
+
+    --accent: 186 70% 42%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --alert-note: 212 92% 52%;
+    --alert-tip: 142 62% 40%;
+    --alert-important: 268 65% 55%;
+    --alert-warning: 38 92% 46%;
+    --alert-caution: 0 78% 52%;
+
+    --border: 220 14% 88%;
+    --input: 220 14% 96%;
+    --ring: 225 85% 58%;
+
+    --radius: 0.875rem;
+    --radius-xl: 1.25rem;
+    --radius-2xl: 1.5rem;
+    --radius-3xl: 1.75rem;
+
+    --surface-server-list: 220 16% 92%;
+    --surface-1: 220 18% 96%;
+    --surface-2: 0 0% 100%;
+    --surface-3: 220 14% 94%;
+    --surface-elevated: 0 0% 100%;
+    --surface-header: 220 16% 92%;
+    --surface-hover: 220 14% 90%;
+
+    --shadow-elevation-1: 0 1px 3px 0 hsl(225 25% 12% / 0.06), 0 1px 2px -1px hsl(225 25% 12% / 0.05);
+    --shadow-elevation-2: 0 4px 12px -2px hsl(225 25% 12% / 0.10), 0 2px 6px -2px hsl(225 25% 12% / 0.06);
+    --shadow-elevation-3: 0 12px 32px -4px hsl(225 25% 12% / 0.14), 0 4px 12px -4px hsl(225 25% 12% / 0.08);
+
+    --online: 142 76% 40%;
+    --idle: 38 92% 50%;
+    --dnd: 0 72% 51%;
+    --offline: 220 12% 55%;
+    --voice-active: 142 76% 40%;
+    --poll-background: 220 14% 94%;
+
+    --glow-primary: 225 85% 58%;
+    --glow-secondary: 270 55% 58%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(186 100% 45%), hsl(270 55% 58%));
+    --gradient-glow: linear-gradient(135deg, hsl(186 100% 45% / 0.2), hsl(270 55% 58% / 0.2));
+    --gradient-surface: linear-gradient(180deg, hsl(0 0% 100%), hsl(220 18% 96%));
+
+    --shadow-glow: 0 0 20px hsl(186 100% 45% / 0.18);
+    --shadow-glow-lg: 0 0 40px hsl(186 100% 45% / 0.24);
+    --shadow-card: 0 4px 20px hsl(225 25% 12% / 0.08);
+
+    --sidebar-background: 220 16% 92%;
+    --sidebar-foreground: 225 25% 12%;
+    --sidebar-primary: 225 85% 58%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 14% 90%;
+    --sidebar-accent-foreground: 225 25% 12%;
+    --sidebar-border: 220 14% 84%;
+    --sidebar-ring: 225 85% 58%;
+
+    --user-panel: 220 16% 92%;
+  }
+
+  /* ===================================================
+     DARK THEME — Material You dark surfaces
+     =================================================== */
+  .dark {
+    --background: 225 18% 11%;
+    --foreground: 220 10% 93%;
+
+    --card: 225 20% 15%;
+    --card-foreground: 220 10% 93%;
+
+    --popover: 225 18% 17%;
+    --popover-foreground: 220 10% 93%;
+
+    --toolbar: 225 16% 20%;
+
+    --primary: 225 85% 58%;
+    --primary-foreground: 0 0% 100%;
+
     --secondary: 270 55% 58%;
     --secondary-foreground: 220 10% 93%;
 
-    /* Muted */
     --muted: 225 14% 20%;
     --muted-foreground: 220 10% 60%;
 
-    /* Accent */
     --accent: 186 70% 42%;
     --accent-foreground: 220 10% 93%;
 
-    /* Destructive */
     --destructive: 0 72% 51%;
     --destructive-foreground: 220 10% 93%;
 
-    /* GitHub-style markdown alerts (NOTE / TIP / IMPORTANT / WARNING / CAUTION) */
     --alert-note: 212 92% 62%;
     --alert-tip: 142 62% 48%;
     --alert-important: 268 75% 68%;
     --alert-warning: 38 92% 52%;
     --alert-caution: 0 78% 60%;
 
-    /* Borders & Inputs */
     --border: 225 14% 22%;
     --input: 225 20% 18%;
     --ring: 225 85% 58%;
 
-    /* Material You radius tokens */
-    --radius: 0.875rem;
-    --radius-xl: 1.25rem;
-    --radius-2xl: 1.5rem;
-    --radius-3xl: 1.75rem;
-
-    /* Material surfaces with elevation — wider spread for distinction */
     --surface-server-list: 225 22% 6%;
     --surface-1: 225 20% 9%;
     --surface-2: 225 18% 14%;
@@ -182,12 +255,10 @@
     --surface-header: 225 22% 6%;
     --surface-hover: 225 14% 24%;
 
-    /* Material elevation shadows */
     --shadow-elevation-1: 0 1px 3px 0 hsl(0 0% 0% / 0.15), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
     --shadow-elevation-2: 0 4px 12px -2px hsl(0 0% 0% / 0.2), 0 2px 6px -2px hsl(0 0% 0% / 0.1);
     --shadow-elevation-3: 0 12px 32px -4px hsl(0 0% 0% / 0.3), 0 4px 12px -4px hsl(0 0% 0% / 0.15);
 
-    /* Status colors */
     --online: 142 76% 46%;
     --idle: 38 92% 50%;
     --dnd: 0 72% 51%;
@@ -195,21 +266,14 @@
     --voice-active: 142 76% 46%;
     --poll-background: 228 20% 15%;
 
-    /* Gaming / glow */
-    --glow-primary: 225 85% 58%;
-    --glow-secondary: 270 55% 58%;
-
-    /* Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(186 100% 50%), hsl(270 55% 58%));
     --gradient-glow: linear-gradient(135deg, hsl(186 100% 50% / 0.3), hsl(270 55% 58% / 0.3));
     --gradient-surface: linear-gradient(180deg, hsl(220 16% 14%), hsl(220 18% 10%));
 
-    /* Shadows */
     --shadow-glow: 0 0 20px hsl(186 100% 50% / 0.3);
     --shadow-glow-lg: 0 0 40px hsl(186 100% 50% / 0.4);
     --shadow-card: 0 4px 20px hsl(0 0% 0% / 0.3);
 
-    /* Server List Sidebar */
     --sidebar-background: 225 22% 6%;
     --sidebar-foreground: 220 10% 93%;
     --sidebar-primary: 225 85% 58%;
@@ -219,13 +283,27 @@
     --sidebar-border: 225 14% 16%;
     --sidebar-ring: 225 85% 58%;
 
-    /* User Profile Panel */
     --user-panel: 225 22% 6%;
   }
 
-  .dark {
-    --background: 225 18% 11%;
-    --foreground: 220 10% 93%;
+  /* ===================================================
+     THEME TRANSITION
+     Class added temporarily by ThemeContext when the
+     user toggles the theme. Scoped to color-related
+     properties only so we never override existing
+     transforms / animations.
+     =================================================== */
+  html.theme-transition,
+  html.theme-transition *,
+  html.theme-transition *::before,
+  html.theme-transition *::after {
+    transition:
+      background-color 320ms ease,
+      color 320ms ease,
+      border-color 320ms ease,
+      fill 320ms ease,
+      stroke 320ms ease,
+      box-shadow 320ms ease !important;
   }
 }
 

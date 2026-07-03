@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { cn } from '@/lib/utils';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 
@@ -12,93 +12,178 @@ import m3Back from '@/assets/appearance-banner/m3-back.png';
 import m3FrontA from '@/assets/appearance-banner/m3-front-a.png';
 import m3FrontB from '@/assets/appearance-banner/m3-front-b.png';
 
-type Layer = {
+/**
+ * Un « pane » (image encadrée) posé dans la scène.
+ * `position` : coordonnées CSS (%) dans la scène 16:9.
+ * `objectPosition` : cadrage interne (par défaut top-left, ce qui évite
+ *                    de zoomer sur le centre et donne un aperçu naturel).
+ */
+type Pane = {
   src: string;
-  className: string;
-  style?: React.CSSProperties;
+  position: CSSProperties; // left/top/width/height/right/bottom
+  objectPosition?: string;
+  rotate?: number;         // deg, small tilt
+  elevation?: 1 | 2 | 3;   // shadow depth (1 = back, 3 = front)
+  radius?: number;         // px
 };
 
 type Slide = {
-  label: string;
-  back: Layer;
-  frontA: Layer;
-  frontB: Layer;
+  key: string;
+  panes: [Pane, Pane, Pane]; // ordered back → middle → front
 };
 
+const RADIUS = 14;
+
 /**
- * Chaque slide = 3 calques réels de l'interface, empilés en cascade.
- * back  : fenêtre principale, légèrement inclinée à gauche
- * frontA: carte flottante, centre-bas
- * frontB: petite carte flottante, droite
+ * SCÈNES — chaque scène = 3 panes, cadrées propres, empilées en cascade.
+ * Les objets sont pensés pour que le pane N+1 mange proprement une zone du
+ * pane N (le socle 5px de son ombre portée simule la découpe demandée).
  */
 const SLIDES: Slide[] = [
   {
-    label: 'Vue serveur',
-    back: {
-      src: m1Back,
-      className:
-        'absolute left-[6%] top-[10%] w-[62%] h-[80%] rounded-xl shadow-2xl ring-1 ring-white/10 object-cover object-left-top',
-      style: { transform: 'perspective(1200px) rotateY(6deg) rotateX(1deg)' },
-    },
-    frontA: {
-      src: m1FrontA,
-      className:
-        'absolute left-[38%] top-[26%] w-[34%] h-[68%] rounded-xl shadow-2xl ring-1 ring-white/15 object-cover object-left-top',
-      style: { transform: 'perspective(1200px) rotateY(-4deg)' },
-    },
-    frontB: {
-      src: m1FrontB,
-      className:
-        'absolute right-[6%] top-[14%] w-[22%] h-[62%] rounded-xl shadow-2xl ring-1 ring-white/10 object-cover object-top',
-      style: { transform: 'perspective(1200px) rotateY(-10deg)' },
-    },
+    key: 'server',
+    panes: [
+      {
+        src: m1Back,
+        position: { left: '3%', top: '6%', width: '64%', height: '84%' },
+        objectPosition: '0% 0%',
+        rotate: 0,
+        elevation: 1,
+        radius: RADIUS,
+      },
+      {
+        src: m1FrontA,
+        position: { left: '38%', top: '20%', width: '22%', height: '70%' },
+        objectPosition: '0% 0%',
+        rotate: -2,
+        elevation: 2,
+        radius: RADIUS,
+      },
+      {
+        src: m1FrontB,
+        position: { right: '6%', top: '14%', width: '20%', height: '70%' },
+        objectPosition: '0% 0%',
+        rotate: 3,
+        elevation: 3,
+        radius: RADIUS,
+      },
+    ],
   },
   {
-    label: 'Réglages d’apparence',
-    back: {
-      src: m2Back,
-      className:
-        'absolute left-[5%] top-[8%] w-[66%] h-[84%] rounded-xl shadow-2xl ring-1 ring-white/10 object-cover object-left-top',
-      style: { transform: 'perspective(1200px) rotateY(5deg)' },
-    },
-    frontA: {
-      src: m2FrontA,
-      className:
-        'absolute left-[42%] top-[46%] w-[32%] h-[36%] rounded-xl shadow-2xl ring-1 ring-white/15 object-cover',
-      style: { transform: 'perspective(1200px) rotateY(-4deg)' },
-    },
-    frontB: {
-      src: m2FrontB,
-      className:
-        'absolute right-[6%] top-[22%] w-[20%] h-[36%] rounded-xl shadow-2xl ring-1 ring-white/15 object-cover',
-      style: { transform: 'perspective(1200px) rotateY(-10deg)' },
-    },
+    key: 'appearance',
+    panes: [
+      {
+        src: m2Back,
+        position: { left: '3%', top: '6%', width: '66%', height: '86%' },
+        objectPosition: '0% 0%',
+        rotate: 0,
+        elevation: 1,
+        radius: RADIUS,
+      },
+      {
+        src: m2FrontA,
+        position: { left: '40%', top: '46%', width: '30%', height: '30%' },
+        objectPosition: '50% 50%',
+        rotate: -2,
+        elevation: 2,
+        radius: RADIUS,
+      },
+      {
+        src: m2FrontB,
+        position: { right: '5%', top: '22%', width: '26%', height: '30%' },
+        objectPosition: '0% 50%',
+        rotate: 3,
+        elevation: 3,
+        radius: RADIUS,
+      },
+    ],
   },
   {
-    label: 'Typographie des catégories',
-    back: {
-      src: m3Back,
-      className:
-        'absolute left-[5%] top-[8%] w-[66%] h-[84%] rounded-xl shadow-2xl ring-1 ring-white/10 object-cover object-left-top',
-      style: { transform: 'perspective(1200px) rotateY(5deg)' },
-    },
-    frontA: {
-      src: m3FrontA,
-      className:
-        'absolute left-[42%] top-[32%] w-[30%] h-[56%] rounded-xl shadow-2xl ring-1 ring-white/15 object-cover object-top',
-      style: { transform: 'perspective(1200px) rotateY(-4deg)' },
-    },
-    frontB: {
-      src: m3FrontB,
-      className:
-        'absolute right-[5%] top-[24%] w-[24%] h-[34%] rounded-xl shadow-2xl ring-1 ring-white/15 object-cover',
-      style: { transform: 'perspective(1200px) rotateY(-10deg)' },
-    },
+    key: 'typography',
+    panes: [
+      {
+        src: m3Back,
+        position: { left: '3%', top: '6%', width: '64%', height: '86%' },
+        objectPosition: '0% 0%',
+        rotate: 0,
+        elevation: 1,
+        radius: RADIUS,
+      },
+      {
+        src: m3FrontA,
+        position: { left: '40%', top: '30%', width: '26%', height: '54%' },
+        objectPosition: '50% 0%',
+        rotate: -2,
+        elevation: 2,
+        radius: RADIUS,
+      },
+      {
+        src: m3FrontB,
+        position: { right: '5%', top: '26%', width: '28%', height: '26%' },
+        objectPosition: '0% 50%',
+        rotate: 3,
+        elevation: 3,
+        radius: RADIUS,
+      },
+    ],
   },
 ];
 
 const VISIBLE_MS = 8000;
 const FADE_MS = 900;
+
+/**
+ * Ombre portée épaisse « socle 5px » demandée + halo diffus.
+ * Les 5 premiers px sont un solid drop-shadow de la couleur du fond,
+ * ce qui produit un contour propre autour du pane et « détoure » la
+ * layer du dessous — c'est le montage propre attendu.
+ */
+function paneShadow(elevation: 1 | 2 | 3): string {
+  const socle = 'drop-shadow(0 5px 0 hsl(var(--background)))';
+  switch (elevation) {
+    case 1:
+      return `${socle} drop-shadow(0 10px 24px hsl(0 0% 0% / 0.30))`;
+    case 2:
+      return `${socle} drop-shadow(0 14px 30px hsl(0 0% 0% / 0.40))`;
+    case 3:
+    default:
+      return `${socle} drop-shadow(0 20px 40px hsl(0 0% 0% / 0.50))`;
+  }
+}
+
+function PaneImg({ pane, active }: { pane: Pane; active: boolean }) {
+  const radius = pane.radius ?? RADIUS;
+  return (
+    <div
+      className="absolute pointer-events-none select-none"
+      style={{
+        ...pane.position,
+        transform: `rotate(${pane.rotate ?? 0}deg)`,
+        transformOrigin: 'center',
+        // filter drop-shadow lets the shadow hug the rounded corners of the
+        // <img> itself, not a rectangular container box.
+        filter: paneShadow(pane.elevation ?? 2),
+        transition: `opacity ${FADE_MS}ms ease, transform 700ms ease`,
+        opacity: active ? 1 : 0,
+        willChange: 'opacity, transform',
+      }}
+    >
+      <img
+        src={pane.src}
+        alt=""
+        draggable={false}
+        loading="lazy"
+        className="w-full h-full object-cover"
+        style={{
+          borderRadius: radius,
+          objectPosition: pane.objectPosition ?? '0% 0%',
+          outline: '1px solid hsl(var(--border))',
+          outlineOffset: -1,
+        }}
+      />
+    </div>
+  );
+}
 
 export function AppearancePreviewBanner() {
   const reduced = useReducedMotion();
@@ -116,37 +201,25 @@ export function AppearancePreviewBanner() {
     <div
       role="img"
       aria-label="Aperçu des thèmes et de la personnalisation typographique"
-      className="relative w-full h-[260px] rounded-2xl overflow-hidden border border-border/50 select-none"
+      className="relative w-full h-[280px] rounded-2xl overflow-hidden border border-border/60 select-none"
       style={{
         background:
-          'radial-gradient(ellipse at 20% 20%, hsl(var(--primary) / 0.35), transparent 55%), radial-gradient(ellipse at 85% 80%, hsl(24 95% 60% / 0.28), transparent 55%), hsl(var(--background))',
+          'radial-gradient(ellipse at 20% 20%, hsl(var(--primary) / 0.28), transparent 55%), radial-gradient(ellipse at 85% 80%, hsl(24 95% 60% / 0.22), transparent 55%), hsl(var(--background))',
       }}
     >
       {SLIDES.map((slide, i) => (
         <div
-          key={slide.label}
-          aria-hidden="true"
-          className="absolute inset-0 transition-opacity ease-in-out pointer-events-none"
-          style={{
-            opacity: i === index ? 1 : 0,
-            transitionDuration: `${FADE_MS}ms`,
-          }}
+          key={slide.key}
+          aria-hidden={i !== index}
+          className={cn('absolute inset-0', i !== index && 'pointer-events-none')}
         >
-          {[slide.back, slide.frontA, slide.frontB].map((layer, li) => (
-            <img
-              key={li}
-              src={layer.src}
-              alt=""
-              draggable={false}
-              loading="lazy"
-              className={cn(layer.className, 'pointer-events-none select-none')}
-              style={layer.style}
-            />
+          {slide.panes.map((pane, li) => (
+            <PaneImg key={li} pane={pane} active={i === index} />
           ))}
         </div>
       ))}
 
-      {/* Bottom dots */}
+      {/* Slide indicator */}
       <div
         aria-hidden="true"
         className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 pointer-events-none z-10"
@@ -156,7 +229,7 @@ export function AppearancePreviewBanner() {
             key={i}
             className={cn(
               'h-1.5 rounded-full transition-all duration-300',
-              i === index ? 'w-5 bg-white/80' : 'w-1.5 bg-white/30',
+              i === index ? 'w-5 bg-foreground/70' : 'w-1.5 bg-foreground/25',
             )}
           />
         ))}

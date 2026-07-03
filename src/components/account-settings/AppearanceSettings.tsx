@@ -23,9 +23,9 @@ const THEME_OPTIONS: Array<{
   {
     value: 'light',
     label: 'Clair',
-    description: "Bientôt disponible — la palette claire est en cours de conception.",
+    description: 'Palette claire lumineuse et lisible.',
     icon: Sun,
-    available: false,
+    available: true,
   },
 ];
 

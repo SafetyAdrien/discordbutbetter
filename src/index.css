@@ -1482,8 +1482,14 @@ html.light .discord-theme-footer {
 .discord-theme-footer-secondary {
   margin-left: auto;
   height: 36px !important;
+  min-width: 78px;
   border-radius: 6px !important;
+  background: var(--discord-sheet-subtle-2) !important;
   color: var(--discord-sheet-fg) !important;
+}
+
+.discord-theme-footer-secondary:hover {
+  background: hsl(215 18% 23%) !important;
 }
 
 .discord-theme-apply {

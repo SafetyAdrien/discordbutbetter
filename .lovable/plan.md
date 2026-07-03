@@ -1,89 +1,52 @@
-# Contrôle Case pour les libellés de catégories
+## Objectif
 
-Ajout d'un réglage de casse purement visuel (`text-transform`) appliqué uniquement à l'utilisateur connecté, synchronisé entre ses appareils via une nouvelle table dédiée.
+Ajouter un panneau d'aperçu live à droite (ou en dessous sur mobile) de la section "Typographie des catégories" qui montre, en temps réel et sans latence, à quoi ressembleront les 4 zones (ChannelList, paramètres utilisateur, paramètres serveur, modal catégorie) pendant que l'utilisateur bascule Decoration/Case.
 
-## Portée (4 zones indépendantes avec toggle d'activation)
+## Ce que fait le plan
 
-Chaque zone a son propre interrupteur ON/OFF + son propre choix AG / ag / Ag / Aa :
+### 1. Restructurer `CategoryCaseSection.tsx` en 2 colonnes
+- Passer le contenu actuel dans une grille : `grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-4`.
+- Colonne gauche : les 4 cartes de réglages existantes (inchangées).
+- Colonne droite (sticky `lg:sticky lg:top-4`) : nouveau composant `<CategoryCaseLivePreview />`.
+- Sur mobile (`<lg`), l'aperçu passe en dessous, plié dans une carte compacte.
 
-1. **Channel categories** — entêtes de catégories dans `ChannelList.tsx`
-2. **User settings sections** — libellés "Mes Paramètres", "Compte", "Facturation"... dans `AccountSettingsModal.tsx`
-3. **Server settings sections** — libellés "Expressions", "Personnes", "Modérations"... dans `ServerSettingsModal.tsx`
-4. **Category modal tabs** — onglets "Aperçu", "Permissions" dans `EditCategoryModal.tsx`
-
-## Options de casse
-
-- **AG** → `uppercase`
-- **ag** → `lowercase`
-- **Ag** → `capitalize` (title case CSS)
-- **Aa** → aucune transformation (défaut)
-
-Rendu 100 % côté client via `text-transform` sur la couche présentation — aucune donnée serveur modifiée, autres utilisateurs non impactés.
-
-## Persistance cross-device
-
-Nouvelle table `public.user_ui_preferences` :
-
-| Colonne | Type | Notes |
-|---|---|---|
-| `user_id` | uuid PK, FK → `auth.users` | 1 ligne / utilisateur |
-| `category_case` | jsonb | `{ channelCategories: {enabled, case}, userSettings: {...}, serverSettings: {...}, categoryModal: {...} }` |
-| `created_at` / `updated_at` | timestamptz | trigger updated_at |
-
-- GRANT `SELECT/INSERT/UPDATE/DELETE` à `authenticated`, `ALL` à `service_role`.
-- RLS : `user_id = auth.uid()` pour SELECT / INSERT / UPDATE / DELETE.
-- Realtime activé pour sync live entre onglets/appareils du même user.
-
-## Emplacement UI
-
-Nouveau sous-groupe **"Typographie des catégories"** dans l'onglet **Apparence** (`src/lib/settings/section_registry/AppearanceSections.ts` + `AppearanceIndex.ts`).
-
-Layout du contrôle par zone (répété 4 fois) :
+### 2. Créer `src/components/appearance/CategoryCaseLivePreview.tsx`
+Mini maquette statique qui reflète les vraies UI, sans logique métier ni requête, uniquement du markup + `caseClass(zone, prefs)`. Structure :
 
 ```text
-┌─ Catégories de salons ─────────── [Switch] ┐
-│  Case : [AG] [ag] [Ag] [Aa]                │
-└────────────────────────────────────────────┘
+Card "Aperçu en direct"
+├── Bloc 1 — Liste de salons (ChannelList)
+│    ▸ 2 catégories factices ("Général", "Vocal") avec chevron + 2 salons chacune
+│    ▸ Applique caseClass('channelCategories', prefs) sur les labels de catégorie
+├── Bloc 2 — Paramètres utilisateur
+│    ▸ 3 lignes de nav factices ("Mon compte", "Profil", "Apparence")
+│    ▸ Applique caseClass('userSettings', prefs) sur les section headers
+├── Bloc 3 — Paramètres serveur
+│    ▸ 3 lignes ("Personnes", "Rôles", "Salons")
+│    ▸ Applique caseClass('serverSettings', prefs)
+└── Bloc 4 — Modal catégorie (TabsList)
+     ▸ Deux TabsTrigger factices "Aperçu" / "Permissions"
+     ▸ Applique caseClass('categoryModal', prefs)
 ```
 
-Quand un switch est OFF, les boutons de casse sont désactivés et la zone reste en `Aa`.
+Chaque bloc reprend fidèlement les classes tailwind visuelles réelles (couleur, taille, spacing, uppercase par défaut le cas échéant pour serverSettings/userSettings) pour que l'aperçu soit représentatif.
 
-## Détails techniques
+### 3. Réactivité instantanée
+- L'aperçu lit `prefs` via `useCategoryCasePreferences()` : la mise à jour est immédiate car le hook a déjà un cache module-level et fait un `setState` optimiste avant l'appel réseau.
+- Aucun débounce, aucune requête, aucun état local — la source de vérité reste le hook.
 
-**Nouveaux fichiers**
-- `src/hooks/useCategoryCasePreferences.ts` — lit/écrit la ligne user via Supabase, expose `{ prefs, setZone, isLoading }`. Fallback localStorage pour instant UI + upsert async. Realtime channel sur `user_ui_preferences` filtré par `user_id`.
-- `src/lib/ui/categoryCase.ts` — helper `caseClass(zone, prefs)` retournant la classe Tailwind (`uppercase` / `lowercase` / `capitalize` / `normal-case`).
-- `src/components/appearance/CategoryCaseSection.tsx` — UI des 4 blocs (Switch + segmented buttons AG/ag/Ag/Aa réutilisant les tokens de design existants).
+### 4. Retirer la mini-ligne "Aperçu : Général" dans chaque carte de réglage
+Redondante avec le nouveau panneau. Ça allège la colonne de gauche.
 
-**Fichiers modifiés (application de `caseClass`)**
-- `src/components/layout/ChannelList.tsx` — sur le `<span>` du nom de catégorie.
-- `src/components/account-settings/AccountSettingsModal.tsx` — sur les `<p>` de nom de section (`section.name`).
-- `src/components/server-settings/ServerSettingsModal.tsx` — sur le `<p>` `text-xs font-semibold ... uppercase` (retirer la classe `uppercase` hardcodée pour laisser la préférence gagner).
-- `src/components/category-settings/EditCategoryModal.tsx` — sur les `<TabsTrigger>`.
-- `src/components/account-settings/AppearanceSettingsTab.tsx` (ou équivalent) — insertion de `<CategoryCaseSection />`.
-- `src/lib/settings/section_registry/AppearanceSections.ts` + `search_index/AppearanceIndex.ts` — nouvelle entrée "Typographie des catégories" (keywords : casse, majuscules, minuscules, uppercase, lowercase, typographie).
+## Détails techniques (dev)
 
-## Migration SQL (aperçu)
+- Nouveau fichier : `src/components/appearance/CategoryCaseLivePreview.tsx` (~120 lignes, pur JSX).
+- Modif : `src/components/appearance/CategoryCaseSection.tsx` — wrapper grid, suppression du mini-preview par carte.
+- Aucune modification du hook, du helper `caseClass`, de la DB, ni des composants réels (ChannelList, modals). C'est un aperçu isolé.
+- Zéro requête, zéro nouveau state, zéro dépendance ajoutée.
 
-```sql
-CREATE TABLE public.user_ui_preferences (
-  user_id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  category_case jsonb NOT NULL DEFAULT '{}'::jsonb,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.user_ui_preferences TO authenticated;
-GRANT ALL ON public.user_ui_preferences TO service_role;
-ALTER TABLE public.user_ui_preferences ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "own_prefs_all" ON public.user_ui_preferences
-  FOR ALL TO authenticated
-  USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
--- trigger updated_at + REPLICA IDENTITY FULL + ajout à publication realtime
-```
+## Hors périmètre
 
-## Contraintes respectées
-
-- Client-only visuel : les noms réels en base ne changent jamais → invisible pour les autres utilisateurs.
-- Cross-device : lecture Supabase + Realtime → même préférence sur mobile/desktop du même compte.
-- Design system : réutilisation `Switch` shadcn + boutons `rounded-[10px]` cohérents avec le modal actuel.
-- Aucun impact sur les hooks métier (`useChannels`, `useCategories`, permissions).
+- Pas d'aperçu embarquant les vrais composants (`ChannelList`, `ServerSettingsModal`) — trop lourd, nécessiterait un serveur/contexte fictif, risque de régressions.
+- Pas de nouvelles zones typographiques.
+- Pas de changement DB.

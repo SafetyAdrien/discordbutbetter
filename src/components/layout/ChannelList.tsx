@@ -346,7 +346,7 @@ function SortableCategory({
                 className="flex items-center gap-px flex-1">
 
                 <ChevronDown className={cn("w-3 h-3 transition-transform duration-200", isCollapsed && "-rotate-90")} />
-                <span className="tracking-wide font-ginto text-[14px] font-medium my-0 py-0 px-[2px] mx-[2px] text-muted-foreground">
+                <span className={cn("tracking-wide font-ginto text-[14px] font-medium my-0 py-0 px-[2px] mx-[2px] text-muted-foreground", caseClass('channelCategories', casePrefs))}>
                   {category.name}
                 </span>
               </button>

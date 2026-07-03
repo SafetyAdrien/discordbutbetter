@@ -1,36 +1,33 @@
-Plan d’implémentation :
+## Problème
 
-1. Reprendre le side sheet à partir de la vidéo de référence, pas de l’ancienne version.
-   - Utiliser les frames du panneau Discord comme source visuelle.
-   - Respecter le comportement observé : le clic sur « Personnaliser » ferme les paramètres et revient à l’interface principale avec le panneau à droite.
-   - Aucun overlay sombre, pas de modal centrée, l’app reste visible derrière.
+Quand l'utilisateur ouvre le side sheet et déplace le curseur dans le `HsvColorPicker`, l'interface derrière ne change PAS en direct.
 
-2. Refaire la structure visuelle du side sheet.
-   - Panneau fixe à droite, hauteur complète, largeur et espacement alignés sur la vidéo.
-   - Header Discord-like : titre, bouton fermer circulaire avec indication ESC.
-   - Fond, bordure, ombres, séparateurs, typographie gg sans et densité fidèles.
-   - Footer fixe avec les actions « Partager », « Retour/Fermer » et « Appliquer » dans le même esprit Discord.
+Cause racine dans `useCustomTheme.ts` → `applyToDom()` :
+```ts
+if (!active.enabled || active.chips.length === 0) {
+  root.classList.remove(HTML_CLASS);  // ← retire le thème
+  return;
+}
+```
+Tant que `draft.enabled === false` (état par défaut avant premier « Apply »), le `scheduleApply()` déclenché par chaque `setChip` ne peint rien. Le live preview n'existe que si `enabled` est déjà true → non fidèle à Discord.
 
-3. Corriger tous les contrôles manquants ou non fidèles.
-   - Sélecteur couleur HSV avec carré saturation/luminosité et slider teinte aux dimensions de la vidéo.
-   - Champ HEX, aperçu couleur, pipette, chips de couleur, suppression de chip.
-   - Bouton d’ajout de couleur, limite de couleurs, état sélectionné.
-   - Slider direction du dégradé visible quand plusieurs couleurs existent.
-   - Slider intensité avec valeur affichée.
-   - « Surprends-moi », « Réinitialiser », « Partager » et « Appliquer » conservés mais restylés pour coller à Discord.
+## Correctif
 
-4. Corriger le rendu du thème derrière le panneau.
-   - Le thème doit se prévisualiser en temps réel sur l’interface principale derrière le sheet.
-   - Le side sheet doit rester net, non teinté, non lavé, sans blend parasite.
-   - Les couleurs sombres doivent assombrir l’interface et les couleurs claires l’éclaircir comme dans la vidéo.
+1. **`src/components/appearance/CustomThemeSheet.tsx`**
+   - À l'ouverture du sheet (`open === true`), si `draft.enabled` est `false`, appeler `setDraft({ enabled: true })` pour activer le rendu live du draft. Le thème committed reste inchangé tant que l'utilisateur ne clique pas sur « Apply ».
+   - À la fermeture sans Apply, `discardDraft()` restaure l'état committed (donc `enabled: false` si c'était le cas) — comportement déjà en place, rien à changer.
 
-5. Sécuriser le comportement d’application.
-   - « Appliquer » doit valider le draft, persister le thème côté backend déjà existant, et déclencher la synchronisation temps réel entre appareils.
-   - « Retour/Fermer » doit annuler les changements non appliqués.
-   - ESC et le bouton fermer doivent avoir le même comportement.
+2. **`src/hooks/useCustomTheme.ts`**
+   - Dans `applyToDom()`, considérer aussi le draft actif : si `snap.isDirty` et `snap.draft.chips.length > 0`, forcer le rendu du gradient même si `draft.enabled` est false. Cela garantit un preview live robuste quel que soit le point d'entrée (banner, sheet, etc.).
+   - Alternative plus propre : `activeForDom()` renvoie déjà le bon état ; il suffit d'assouplir la garde `!active.enabled` en `!active.enabled && !snap.isDirty` pour autoriser le preview pendant l'édition.
 
-6. Vérification finale obligatoire.
-   - Ouvrir le flux depuis « Personnaliser » et confirmer qu’on revient bien à l’interface principale.
-   - Comparer visuellement le side sheet avec les frames de la vidéo.
-   - Tester couleur unique, plusieurs couleurs, direction, intensité, reset, partage, appliquer.
-   - Vérifier desktop et mobile pour éviter tout élément coupé, manquant ou superposé.
+3. **Vérification (Playwright)**
+   - Ouvrir Personnaliser → sheet visible, thème committed inchangé.
+   - Déplacer le curseur du HsvColorPicker → capture avant/après montrant que la teinte de l'interface derrière change en temps réel.
+   - Fermer sans Apply → l'interface revient à l'état d'origine.
+   - Cliquer Apply → persistance + sync realtime OK.
+
+## Fichiers modifiés
+
+- `src/hooks/useCustomTheme.ts` (assouplir la garde `enabled` pendant `isDirty`)
+- `src/components/appearance/CustomThemeSheet.tsx` (activer le draft à l'ouverture pour un preview immédiat)

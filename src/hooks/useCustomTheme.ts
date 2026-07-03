@@ -92,7 +92,9 @@ function applyToDom() {
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
   const active = activeForDom();
-  if (!active.enabled || active.chips.length === 0) {
+  // During editing (isDirty), preview the draft even if `enabled` is still false.
+  const shouldRender = (active.enabled || snap.isDirty) && active.chips.length > 0;
+  if (!shouldRender) {
     root.classList.remove(HTML_CLASS);
     root.style.removeProperty('--ct-gradient');
     root.style.removeProperty('--ct-intensity');

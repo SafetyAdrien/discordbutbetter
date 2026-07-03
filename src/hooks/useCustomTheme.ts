@@ -30,7 +30,7 @@ export type CustomThemeState = {
 export const DEFAULT_CUSTOM_THEME: CustomThemeState = {
   enabled: false,
   chips: ['#5865F2'],
-  intensity: 60,
+  intensity: 74,
   angle: 135,
 };
 

@@ -5,11 +5,13 @@
  * store, so dragging stays 60fps even on mid-range hardware.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { cn } from '@/lib/utils';
 
 export interface HsvColorPickerProps {
   hex: string;
   onChange: (hex: string) => void;
   onCommit?: (hex: string) => void;
+  className?: string;
 }
 
 function clamp01(v: number) { return Math.max(0, Math.min(1, v)); }
@@ -54,18 +56,25 @@ export function hsvToHex(h: number, s: number, v: number): string {
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
 }
 
-export function HsvColorPicker({ hex, onChange, onCommit }: HsvColorPickerProps) {
+export function HsvColorPicker({ hex, onChange, onCommit, className }: HsvColorPickerProps) {
   const svRef = useRef<HTMLDivElement | null>(null);
   const hueRef = useRef<HTMLDivElement | null>(null);
   const draggingRef = useRef<'sv' | 'hue' | null>(null);
 
   const [hsv, setHsv] = useState(() => hexToHsv(hex));
+  const hsvRef = useRef(hsv);
+
+  useEffect(() => {
+    hsvRef.current = hsv;
+  }, [hsv]);
 
   // Sync from external hex changes (e.g. hex input, chip switch) — but not
   // while the user is actively dragging.
   useEffect(() => {
     if (draggingRef.current) return;
-    setHsv(hexToHsv(hex));
+    const next = hexToHsv(hex);
+    hsvRef.current = next;
+    setHsv(next);
   }, [hex]);
 
   const emit = useCallback((h: number, s: number, v: number, commit: boolean) => {
@@ -84,8 +93,10 @@ export function HsvColorPicker({ hex, onChange, onCommit }: HsvColorPickerProps)
     const rect = el.getBoundingClientRect();
     const s = clamp01((clientX - rect.left) / rect.width);
     const v = 1 - clamp01((clientY - rect.top) / rect.height);
-    setHsv((prev) => ({ ...prev, s, v }));
-    emit(hsv.h, s, v, commit);
+    const next = { ...hsvRef.current, s, v };
+    hsvRef.current = next;
+    setHsv(next);
+    emit(next.h, s, v, commit);
   };
   const onSvPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (draggingRef.current !== 'sv') return;
@@ -106,8 +117,10 @@ export function HsvColorPicker({ hex, onChange, onCommit }: HsvColorPickerProps)
     const el = hueRef.current; if (!el) return;
     const rect = el.getBoundingClientRect();
     const h = clamp01((clientX - rect.left) / rect.width) * 360;
-    setHsv((prev) => ({ ...prev, h }));
-    emit(h, hsv.s, hsv.v, commit);
+    const next = { ...hsvRef.current, h };
+    hsvRef.current = next;
+    setHsv(next);
+    emit(h, next.s, next.v, commit);
   };
   const onHuePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (draggingRef.current !== 'hue') return;
@@ -123,7 +136,7 @@ export function HsvColorPicker({ hex, onChange, onCommit }: HsvColorPickerProps)
   const svBaseColor = hsvToHex(hsv.h, 1, 1);
 
   return (
-    <div className="space-y-3 select-none">
+    <div className={cn('space-y-2.5 select-none', className)}>
       {/* SV square */}
       <div
         ref={svRef}
@@ -134,7 +147,7 @@ export function HsvColorPicker({ hex, onChange, onCommit }: HsvColorPickerProps)
         onPointerMove={onSvPointerMove}
         onPointerUp={onSvPointerUp}
         onPointerCancel={onSvPointerUp}
-        className="relative w-full aspect-[16/10] rounded-xl overflow-hidden touch-none cursor-crosshair border border-border/60"
+        className="discord-hsv-square relative w-full aspect-[7/4] overflow-hidden touch-none cursor-crosshair"
         style={{ background: svBaseColor }}
       >
         <div
@@ -149,7 +162,7 @@ export function HsvColorPicker({ hex, onChange, onCommit }: HsvColorPickerProps)
         />
         <div
           aria-hidden
-          className="absolute w-4 h-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-md pointer-events-none"
+          className="discord-hsv-thumb absolute -translate-x-1/2 -translate-y-1/2 rounded-full pointer-events-none"
           style={{
             left: `${hsv.s * 100}%`,
             top: `${(1 - hsv.v) * 100}%`,
@@ -168,12 +181,12 @@ export function HsvColorPicker({ hex, onChange, onCommit }: HsvColorPickerProps)
         onPointerMove={onHuePointerMove}
         onPointerUp={onHuePointerUp}
         onPointerCancel={onHuePointerUp}
-        className="relative w-full h-3 rounded-full touch-none cursor-pointer"
+        className="discord-hue-slider relative w-full touch-none cursor-pointer"
         style={{ background: hueBg }}
       >
         <div
           aria-hidden
-          className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-white shadow-md pointer-events-none"
+          className="discord-hue-thumb absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full pointer-events-none"
           style={{ left: `${(hsv.h / 360) * 100}%`, background: `hsl(${hsv.h} 100% 50%)` }}
         />
       </div>

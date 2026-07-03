@@ -1,29 +1,29 @@
 /**
- * CustomThemeSheet — reproduction fidèle du side sheet "Customize your theme"
- * de la référence (voir vidéo). Non-modal, glisse depuis la droite, laisse
- * toute l'interface visible et interactive derrière.
+ * CustomThemeSheet — Discord-like side sheet shown after clicking the
+ * personalization card. It is intentionally non-modal: the app stays visible
+ * behind it and receives the live theme preview.
  */
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Sparkles, Plus, X, Share2, Pipette, Moon, Sun, Check } from 'lucide-react';
+import { Dice5, Moon, Pipette, Plus, RotateCcw, Share2, Sun, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
-import { HsvColorPicker } from './HsvColorPicker';
-import { ShareCustomThemeDialog } from './ShareCustomThemeDialog';
+import { Slider } from '@/components/ui/slider';
 import { useTheme, type ThemePreference } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
 import {
-  useCustomThemeSnapshot,
-  setDraft,
-  setChip,
   addChip,
-  removeChip,
-  randomizeDraft,
-  discardDraft,
   applyDraft,
+  discardDraft,
+  randomizeDraft,
+  removeChip,
   resetCustomTheme,
+  setChip,
+  setDraft,
+  useCustomThemeSnapshot,
 } from '@/hooks/useCustomTheme';
+import { HsvColorPicker } from './HsvColorPicker';
+import { ShareCustomThemeDialog } from './ShareCustomThemeDialog';
 
 interface CustomThemeSheetProps {
   open: boolean;
@@ -40,9 +40,7 @@ function normalizeHex(input: string): string | null {
 }
 
 const SectionLabel = ({ children }: { children: React.ReactNode }) => (
-  <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-    {children}
-  </div>
+  <div className="discord-theme-section-label">{children}</div>
 );
 
 export function CustomThemeSheet({ open, onOpenChange }: CustomThemeSheetProps) {
@@ -82,7 +80,9 @@ export function CustomThemeSheet({ open, onOpenChange }: CustomThemeSheetProps) 
 
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close(false); };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') close(false);
+    };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -90,7 +90,6 @@ export function CustomThemeSheet({ open, onOpenChange }: CustomThemeSheetProps) 
 
   const handleApply = () => {
     if (draft.chips.length > 0 && !draft.enabled) setDraft({ enabled: true });
-    // Apply on next tick so the enabled flag is picked up.
     requestAnimationFrame(() => applyDraft());
   };
 
@@ -113,8 +112,8 @@ export function CustomThemeSheet({ open, onOpenChange }: CustomThemeSheetProps) 
   if (!mounted) return null;
 
   const themeCards: Array<{ value: ThemePreference; label: string; icon: typeof Moon }> = [
-    { value: 'dark', label: 'Sombre', icon: Moon },
-    { value: 'light', label: 'Clair', icon: Sun },
+    { value: 'dark', label: 'Dark', icon: Moon },
+    { value: 'light', label: 'Light', icon: Sun },
   ];
 
   const panel = (
@@ -123,36 +122,25 @@ export function CustomThemeSheet({ open, onOpenChange }: CustomThemeSheetProps) 
       aria-label="Personnalisez votre thème"
       data-ct-lift="true"
       className={cn(
-        'fixed inset-y-0 right-0 z-[80] w-full sm:w-[380px]',
-        'bg-background border-l border-border/60',
-        'shadow-[-12px_0_40px_-12px_rgba(0,0,0,0.35)]',
-        'flex flex-col',
+        'discord-theme-sheet fixed inset-y-0 right-0 z-[80] w-full sm:w-[290px] flex flex-col',
         'transition-transform duration-300 ease-out motion-reduce:transition-none',
         entered ? 'translate-x-0' : 'translate-x-full',
       )}
     >
-      {/* Header */}
-      <div className="px-5 pt-4 pb-3 flex items-center justify-between gap-3 border-b border-border/40">
-        <h2 className="text-[15px] font-semibold leading-tight">Personnalisez votre thème</h2>
-        <button
-          type="button"
-          onClick={() => close(false)}
-          aria-label="Fermer"
-          className="flex flex-col items-center gap-0.5 text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <span className="w-7 h-7 rounded-full border border-border/70 grid place-items-center">
-            <X className="w-3.5 h-3.5" />
-          </span>
-          <span className="text-[10px] font-semibold tracking-wider">ESC</span>
+      <div className="discord-theme-header">
+        <h2 className="discord-theme-title">
+          Customize your theme
+          <RotateCcw className="discord-theme-title-icon" aria-hidden />
+        </h2>
+        <button type="button" onClick={() => close(false)} aria-label="Fermer" className="discord-theme-close">
+          <X className="w-5 h-5" />
         </button>
       </div>
 
-      {/* Body */}
-      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5 min-h-0">
-        {/* Appearance */}
-        <section>
-          <SectionLabel>Apparence</SectionLabel>
-          <div className="grid grid-cols-2 gap-2.5">
+      <div className="discord-theme-body flex-1 overflow-y-auto min-h-0">
+        <section className="discord-theme-section">
+          <SectionLabel>Appearance</SectionLabel>
+          <div className="discord-theme-segmented" role="radiogroup" aria-label="Apparence">
             {themeCards.map(({ value, label, icon: Icon }) => {
               const active = theme === value;
               return (
@@ -160,43 +148,25 @@ export function CustomThemeSheet({ open, onOpenChange }: CustomThemeSheetProps) 
                   key={value}
                   type="button"
                   onClick={() => setTheme(value)}
-                  className={cn(
-                    'relative flex flex-col items-start gap-2 p-3 rounded-xl border text-left transition-all',
-                    active
-                      ? 'border-primary bg-primary/5'
-                      : 'border-border/50 bg-card hover:border-primary/40',
-                  )}
+                  role="radio"
+                  aria-checked={active}
+                  aria-label={label}
+                  className={cn('discord-theme-mode-button', active && 'discord-theme-mode-button-active')}
                 >
-                  <div className="flex items-center justify-between w-full">
-                    <Icon className="w-4 h-4 text-muted-foreground" />
-                    {active && (
-                      <span className="w-4 h-4 rounded-full bg-primary grid place-items-center">
-                        <Check className="w-2.5 h-2.5 text-primary-foreground" />
-                      </span>
-                    )}
-                  </div>
-                  <span className="text-xs font-medium">{label}</span>
+                  <Icon className="w-4 h-4" />
                 </button>
               );
             })}
           </div>
         </section>
 
-        {/* Colors */}
-        <section>
-          <SectionLabel>Couleurs</SectionLabel>
-          <div className="space-y-3">
-            <HsvColorPicker
-              hex={draft.chips[selectedChip] ?? '#000000'}
-              onChange={(h) => setChip(selectedChip, h)}
-            />
+        <section className="discord-theme-section">
+          <SectionLabel>Colors</SectionLabel>
+          <div className="discord-theme-color-stack">
+            <HsvColorPicker hex={draft.chips[selectedChip] ?? '#000000'} onChange={(h) => setChip(selectedChip, h)} />
 
-            {/* Hex row */}
-            <div className="flex items-center gap-2">
-              <div
-                className="w-9 h-9 rounded-lg border border-border/60 shrink-0"
-                style={{ background: draft.chips[selectedChip] ?? '#000000' }}
-              />
+            <div className="discord-theme-hex-row">
+              <div className="discord-theme-swatch" style={{ background: draft.chips[selectedChip] ?? '#000000' }} />
               <Input
                 value={hexInput}
                 onChange={(e) => {
@@ -208,7 +178,7 @@ export function CustomThemeSheet({ open, onOpenChange }: CustomThemeSheetProps) 
                 placeholder="#5865F2"
                 spellCheck={false}
                 maxLength={7}
-                className="font-mono text-sm h-9"
+                className="discord-theme-hex-input"
               />
               <button
                 type="button"
@@ -216,35 +186,29 @@ export function CustomThemeSheet({ open, onOpenChange }: CustomThemeSheetProps) 
                 disabled={!eyedropperSupported}
                 aria-label="Prélever une couleur à l'écran"
                 title={eyedropperSupported ? 'Prélever une couleur' : 'Non supporté par ce navigateur'}
-                className="w-9 h-9 shrink-0 rounded-lg border border-border/60 grid place-items-center text-muted-foreground hover:text-foreground hover:bg-muted/50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="discord-theme-eyedropper"
               >
                 <Pipette className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Chips row (when more than one) */}
             {draft.chips.length > 1 && (
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="discord-theme-chips-row">
                 {draft.chips.map((hex, i) => (
-                  <div key={i} className="relative">
+                  <div key={`${hex}-${i}`} className="discord-theme-chip-wrap">
                     <button
                       type="button"
                       onClick={() => setSelectedChip(i)}
                       aria-label={`Couleur ${i + 1}`}
                       aria-pressed={selectedChip === i}
-                      className={cn(
-                        'w-9 h-9 rounded-lg border-2 transition-all',
-                        selectedChip === i
-                          ? 'border-primary shadow-[0_0_0_2px_hsl(var(--primary)/0.3)]'
-                          : 'border-border/60 hover:border-border',
-                      )}
+                      className={cn('discord-theme-chip', selectedChip === i && 'discord-theme-chip-active')}
                       style={{ background: hex }}
                     />
                     <button
                       type="button"
                       onClick={() => removeChip(i)}
                       aria-label={`Supprimer la couleur ${i + 1}`}
-                      className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-background border border-border grid place-items-center hover:bg-destructive hover:text-destructive-foreground transition-colors"
+                      className="discord-theme-chip-remove"
                     >
                       <X className="w-2.5 h-2.5" />
                     </button>
@@ -253,7 +217,6 @@ export function CustomThemeSheet({ open, onOpenChange }: CustomThemeSheetProps) 
               </div>
             )}
 
-            {/* Add color */}
             <button
               type="button"
               disabled={draft.chips.length >= 3}
@@ -261,27 +224,21 @@ export function CustomThemeSheet({ open, onOpenChange }: CustomThemeSheetProps) 
                 addChip();
                 setSelectedChip(Math.min(2, draft.chips.length));
               }}
-              className={cn(
-                'w-full h-10 rounded-full border-2 border-dashed border-border/70',
-                'flex items-center justify-center gap-1.5 text-sm font-medium',
-                'text-muted-foreground hover:text-primary hover:border-primary/50 hover:bg-primary/5',
-                'disabled:opacity-40 disabled:cursor-not-allowed transition-all',
-              )}
+              className="discord-theme-wide-button"
             >
-              <Plus className="w-4 h-4" />
-              Ajouter une couleur
+              <Plus className="w-5 h-5" />
+              Add Color
             </button>
           </div>
         </section>
 
-        {/* Controls */}
-        <section>
-          <SectionLabel>Réglages</SectionLabel>
+        <section className="discord-theme-section discord-theme-controls">
+          <SectionLabel>Controls</SectionLabel>
           {draft.chips.length >= 2 && (
-            <>
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-sm">Direction du dégradé</span>
-                <span className="text-xs tabular-nums text-muted-foreground">{draft.angle}°</span>
+            <div className="discord-theme-control-block">
+              <div className="discord-theme-control-row">
+                <span>Gradient Direction</span>
+                <span className="discord-theme-control-value">{draft.angle}°</span>
               </div>
               <Slider
                 value={[draft.angle]}
@@ -289,65 +246,45 @@ export function CustomThemeSheet({ open, onOpenChange }: CustomThemeSheetProps) 
                 max={360}
                 step={1}
                 onValueChange={([v]) => setDraft({ angle: v })}
-                className="mb-4"
+                className="discord-theme-slider"
               />
-            </>
+            </div>
           )}
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-sm">Intensité</span>
-            <span className="text-xs tabular-nums text-muted-foreground">{draft.intensity}%</span>
+          <div className="discord-theme-control-block">
+            <div className="discord-theme-control-row">
+              <span>Color Intensity</span>
+              <span className="discord-theme-control-value">{draft.intensity}%</span>
+            </div>
+            <Slider
+              value={[draft.intensity]}
+              min={0}
+              max={100}
+              step={1}
+              onValueChange={([v]) => setDraft({ intensity: v })}
+              className="discord-theme-slider"
+            />
           </div>
-          <Slider
-            value={[draft.intensity]}
-            min={0}
-            max={100}
-            step={1}
-            onValueChange={([v]) => setDraft({ intensity: v })}
-          />
         </section>
 
-
-        {/* Actions centrées */}
-        <div className="pt-2 flex flex-col items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={randomizeDraft}
-            className="rounded-full px-5"
-          >
-            <Sparkles className="w-3.5 h-3.5 mr-1.5" /> Surprends-moi
-          </Button>
-          <button
-            type="button"
-            onClick={resetCustomTheme}
-            className="text-xs text-muted-foreground hover:text-foreground transition-colors underline-offset-2 hover:underline"
-          >
-            Réinitialiser
+        <div className="discord-theme-action-stack">
+          <button type="button" onClick={randomizeDraft} className="discord-theme-wide-button discord-theme-surprise">
+            <Dice5 className="w-5 h-5" /> Surprise Me!
+          </button>
+          <button type="button" onClick={resetCustomTheme} className="discord-theme-wide-button discord-theme-reset">
+            Reset
           </button>
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="border-t border-border/60 bg-background/95 backdrop-blur px-3 py-2.5 flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => setShareOpen(true)}
-          aria-label="Partager le thème"
-          className="w-9 h-9 rounded-lg grid place-items-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-        >
+      <div className="discord-theme-footer">
+        <button type="button" onClick={() => setShareOpen(true)} aria-label="Partager le thème" className="discord-theme-footer-icon">
           <Share2 className="w-4 h-4" />
         </button>
-        <div className="flex-1" />
-        <Button variant="ghost" size="sm" onClick={() => close(false)}>
-          {snap.isDirty ? 'Retour' : 'Fermer'}
+        <Button variant="ghost" size="sm" onClick={() => close(false)} className="discord-theme-footer-secondary">
+          Back
         </Button>
-        <Button
-          size="sm"
-          onClick={handleApply}
-          disabled={!snap.isDirty}
-          className="min-w-[92px]"
-        >
-          Appliquer
+        <Button size="sm" onClick={handleApply} disabled={!snap.isDirty} className="discord-theme-apply">
+          Apply
         </Button>
       </div>
 

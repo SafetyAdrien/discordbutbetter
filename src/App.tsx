@@ -43,6 +43,7 @@ const App = () => (
       <CacheRehydrateBridge />
       <AuthProvider>
         <CustomThemeTintLayer />
+        <CustomThemeSheetHost />
         <PresenceProvider>
           <VoiceProvider>
             <TooltipProvider delayDuration={0}>

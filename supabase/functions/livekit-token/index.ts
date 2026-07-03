@@ -49,7 +49,8 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const room = body?.room;
-    const identity = body?.identity || userData.user.id;
+    // SECURITY: Always use server-verified user ID. Never trust client-supplied identity.
+    const identity = userData.user.id;
     const name = body?.name || userData.user.user_metadata?.display_name || userData.user.email || identity;
     const metadata = body?.metadata;
 

@@ -14,13 +14,11 @@ import {
 import { connectToLiveKitRoom, LiveKitTokenResponse } from '@/lib/livekit';
 
 export interface UseLiveKitOptions {
-  identity?: string;
   name?: string;
   audio?: boolean;
   video?: boolean;
   screenShare?: boolean;
   metadata?: Record<string, unknown>;
-  adminRoom?: boolean;
   roomOptions?: Partial<RoomOptions>;
   onConnected?: (room: Room) => void;
   onDisconnected?: (reason?: DisconnectReason) => void;
@@ -45,7 +43,7 @@ export interface UseLiveKitReturn {
 
 export function useLiveKit(roomName: string | null, options: UseLiveKitOptions = {}): UseLiveKitReturn {
   const { user } = useAuth();
-  const identity = options.identity || user?.id || '';
+  const identity = user?.id || '';
 
   const [room, setRoom] = useState<Room | null>(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -139,10 +137,9 @@ export function useLiveKit(roomName: string | null, options: UseLiveKitOptions =
     setError(null);
     setIsConnected(false);
 
-    connectToLiveKitRoom(roomName, identity, {
+    connectToLiveKitRoom(roomName, {
       name: options.name,
       metadata: options.metadata,
-      adminRoom: options.adminRoom,
       roomOptions: options.roomOptions,
     })
       .then(async ({ room: r }) => {
@@ -231,7 +228,7 @@ export function useLiveKit(roomName: string | null, options: UseLiveKitOptions =
       mounted = false;
       disconnect();
     };
-  }, [roomName, identity, options.name, options.adminRoom, options.metadata, disconnect, updateParticipants, updateLocalTracks]);
+  }, [roomName, identity, options.name, options.metadata, disconnect, updateParticipants, updateLocalTracks]);
 
   const localParticipant = room?.localParticipant || null;
 

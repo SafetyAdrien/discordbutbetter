@@ -39,9 +39,9 @@ const CacheRehydrateBridge = () => {
 const App = () => (
   <ThemeProvider>
     <QueryClientProvider client={queryClient}>
-      <CustomThemeTintLayer />
       <CacheRehydrateBridge />
       <AuthProvider>
+        <CustomThemeTintLayer />
         <PresenceProvider>
           <VoiceProvider>
             <TooltipProvider delayDuration={0}>

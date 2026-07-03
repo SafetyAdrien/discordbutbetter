@@ -13,6 +13,7 @@
  *  - Supabase `user_ui_preferences.custom_theme`: cross-device sync
  */
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 

@@ -137,10 +137,9 @@ export function useLiveKit(roomName: string | null, options: UseLiveKitOptions =
     setError(null);
     setIsConnected(false);
 
-    connectToLiveKitRoom(roomName, identity, {
+    connectToLiveKitRoom(roomName, {
       name: options.name,
       metadata: options.metadata,
-      adminRoom: options.adminRoom,
       roomOptions: options.roomOptions,
     })
       .then(async ({ room: r }) => {

@@ -87,18 +87,15 @@ export function createLiveKitRoom(url: string, token: string, options?: Partial<
 
 export async function connectToLiveKitRoom(
   roomName: string,
-  identity?: string,
   options?: {
     name?: string;
     metadata?: Record<string, unknown>;
-    adminRoom?: boolean;
     roomOptions?: Partial<RoomOptions>;
   }
 ): Promise<{ room: Room; tokenResponse: LiveKitTokenResponse }> {
-  const tokenResponse = await fetchLiveKitToken(roomName, identity, {
+  const tokenResponse = await fetchLiveKitToken(roomName, {
     name: options?.name,
     metadata: options?.metadata,
-    adminRoom: options?.adminRoom,
   });
 
   const room = createLiveKitRoom(tokenResponse.url, tokenResponse.token, options?.roomOptions);

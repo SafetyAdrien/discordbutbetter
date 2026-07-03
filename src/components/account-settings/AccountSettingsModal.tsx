@@ -57,6 +57,8 @@ import {
 import { searchSettings, type SettingsSearchResult } from '@/lib/settings/SettingsSearchIndex';
 import { getSectionsForTab, type SettingsSectionConfig } from '@/lib/settings/SettingsSectionRegistry';
 import { useSettingsScrollSpy, scrollToSettingsSection } from '@/hooks/useSettingsScrollSpy';
+import { useCategoryCasePreferences } from '@/hooks/useCategoryCasePreferences';
+import { caseClass } from '@/lib/ui/categoryCase';
 
 type SettingsTab = UserSettingsTabType | 'help-markdown';
 

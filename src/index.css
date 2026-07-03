@@ -1040,3 +1040,19 @@
     overscroll-behavior: contain;
   }
 }
+
+/* ============================================================
+ * Custom theme overlay
+ * Uses screen blend for readable, non-washed tinting; only paints
+ * when html.custom-theme is present. Keep this at the very end so
+ * it overrides any component background.
+ * ============================================================ */
+html.custom-theme body {
+  /* keep base tokens intact; overlay renders on top with blend */
+}
+html.custom-theme .custom-theme-overlay {
+  mix-blend-mode: screen;
+}
+html.light.custom-theme .custom-theme-overlay {
+  mix-blend-mode: multiply;
+}

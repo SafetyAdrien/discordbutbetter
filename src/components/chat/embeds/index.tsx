@@ -4,6 +4,8 @@ import { YouTubeEmbed } from './YouTubeEmbed';
 import { TwitchEmbed } from './TwitchEmbed';
 import { LinkEmbed, LinkEmbeds as FallbackLinkEmbeds } from '@/components/chat/LinkEmbed';
 import { extractUrls } from '@/hooks/useUrlMetadata';
+import { extractThemesFromContent } from '@/lib/customTheme/encode';
+import { ThemeCardEmbeds } from './ThemeCardEmbed';
 
 interface SmartLinkEmbedProps {
   url: string;

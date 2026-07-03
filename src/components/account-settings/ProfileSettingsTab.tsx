@@ -375,9 +375,7 @@ export function ProfileSettingsTab() {
             overflow-y-auto isolé ci-dessus). */}
         <div className="lg:w-[320px] lg:shrink-0 space-y-4 mb-4 lg:mb-0 order-1 lg:order-2">
           <section className="space-y-2">
-            <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Aperçu du profil
-            </Label>
+            <FieldLabel>Aperçu du profil</FieldLabel>
             <button
               type="button"
               onClick={() => setPreviewOpen(true)}

@@ -300,7 +300,20 @@ export function useMountCustomTheme() {
       }
     };
     document.addEventListener('visibilitychange', onVis);
-    return () => document.removeEventListener('visibilitychange', onVis);
+    // Re-derive the palette whenever the light/dark class flips.
+    const mo = new MutationObserver((records) => {
+      for (const r of records) {
+        if (r.type === 'attributes' && r.attributeName === 'class') {
+          scheduleApply();
+          break;
+        }
+      }
+    });
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => {
+      document.removeEventListener('visibilitychange', onVis);
+      mo.disconnect();
+    };
   }, []);
 
   // Cross-device sync via Supabase

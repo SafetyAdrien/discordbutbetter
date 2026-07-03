@@ -1042,19 +1042,12 @@
 }
 
 /* ============================================================
- * Custom theme overlay
- * A single fixed layer sitting just above the app content and
- * below the customization side sheet, blended with `soft-light`
- * so a dark chip darkens the UI and a bright chip warms it, both
- * without washing out — matches the reference video's behavior.
+ * Custom theme
+ * The `custom-theme` class is added to <html> when the user has an
+ * active custom palette; token retinting happens via inline CSS
+ * variables written by useCustomTheme. No overlay layer is used.
+ * The side sheet keeps its own scoped tokens below so it stays crisp.
  * ============================================================ */
-html.custom-theme .custom-theme-overlay {
-  mix-blend-mode: soft-light;
-}
-html.light.custom-theme .custom-theme-overlay {
-  mix-blend-mode: soft-light;
-}
-/* The side sheet opts out of the tint so it stays perfectly crisp. */
 [data-ct-lift='true'] {
   isolation: isolate;
 }

@@ -43,7 +43,7 @@ export interface UseLiveKitReturn {
 
 export function useLiveKit(roomName: string | null, options: UseLiveKitOptions = {}): UseLiveKitReturn {
   const { user } = useAuth();
-  const identity = options.identity || user?.id || '';
+  const identity = user?.id || '';
 
   const [room, setRoom] = useState<Room | null>(null);
   const [isConnected, setIsConnected] = useState(false);

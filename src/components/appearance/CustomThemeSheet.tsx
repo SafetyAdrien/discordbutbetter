@@ -121,6 +121,7 @@ export function CustomThemeSheet({ open, onOpenChange }: CustomThemeSheetProps) 
     <div
       role="dialog"
       aria-label="Personnalisez votre thème"
+      data-ct-lift="true"
       className={cn(
         'fixed inset-y-0 right-0 z-[80] w-full sm:w-[380px]',
         'bg-background border-l border-border/60',

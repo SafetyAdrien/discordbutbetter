@@ -97,7 +97,7 @@ export function useCategoryCasePreferences() {
     await supabase
       .from('user_ui_preferences')
       .upsert(
-        { user_id: user.id, category_case: merged, updated_at: new Date().toISOString() },
+        [{ user_id: user.id, category_case: merged as unknown as never, updated_at: new Date().toISOString() }],
         { onConflict: 'user_id' },
       );
   }, [user?.id]);

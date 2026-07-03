@@ -199,7 +199,7 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
           {getTabsByCategory().map(([category, categoryTabs]) => (
             <div key={category} className="mb-2">
               <div className="px-4 mb-1 mt-3 first:mt-0">
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                <h3 className={cn("text-xs font-semibold text-muted-foreground tracking-wider", caseClass('userSettings', casePrefs) === 'normal-case' ? 'uppercase' : caseClass('userSettings', casePrefs))}>
                   {SETTINGS_CATEGORY_LABELS[category]}
                 </h3>
               </div>

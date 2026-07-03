@@ -122,7 +122,7 @@ export function CustomThemeSheet({ open, onOpenChange }: CustomThemeSheetProps) 
       aria-label="Personnalisez votre thème"
       data-ct-lift="true"
       className={cn(
-        'discord-theme-sheet fixed inset-y-0 right-0 z-[80] w-full sm:w-[380px] flex flex-col',
+        'discord-theme-sheet fixed inset-y-0 right-0 z-[80] w-full sm:w-[290px] flex flex-col',
         'transition-transform duration-300 ease-out motion-reduce:transition-none',
         entered ? 'translate-x-0' : 'translate-x-full',
       )}
@@ -281,10 +281,10 @@ export function CustomThemeSheet({ open, onOpenChange }: CustomThemeSheetProps) 
           <Share2 className="w-4 h-4" />
         </button>
         <Button variant="ghost" size="sm" onClick={() => close(false)} className="discord-theme-footer-secondary">
-          {snap.isDirty ? 'Retour' : 'Fermer'}
+          Back
         </Button>
         <Button size="sm" onClick={handleApply} disabled={!snap.isDirty} className="discord-theme-apply">
-          Appliquer
+          Apply
         </Button>
       </div>
 

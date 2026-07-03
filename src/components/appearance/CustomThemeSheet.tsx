@@ -1,27 +1,21 @@
 /**
  * CustomThemeSheet — full-featured editor matching the reference flow.
  *
- * Layout:
- *  - Desktop  : Sheet slides in from the right (420px)
- *  - Mobile   : Full-screen Drawer from the bottom
- *
- * Sections (top → bottom):
- *  1. Live preview card
- *  2. HSV color picker (SV + Hue) bound to the *selected* chip
- *  3. Hex input + swatch chips row (add / remove / select — max 3)
- *  4. Angle & Intensity sliders
- *  5. "Surprise" / "Réinitialiser" / on-off switch
- *  6. Footer with "Annuler" / "Appliquer" / "Partager"
+ * Behavior:
+ *  - Slides in from the right (420px on desktop, full width on mobile).
+ *  - NON-MODAL: no backdrop, no body-scroll lock, no focus trap. The app
+ *    behind (channel list, chat, settings modal) stays fully visible and
+ *    interactive so the live preview tints everything in real time,
+ *    exactly like the reference video.
+ *  - Escape or the footer buttons close it.
  */
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Shuffle, RotateCcw, Plus, X, Share2, Check } from 'lucide-react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
-import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { HsvColorPicker } from './HsvColorPicker';
 import { ShareCustomThemeDialog } from './ShareCustomThemeDialog';
 import {
@@ -51,13 +45,27 @@ function normalizeHex(input: string): string | null {
 }
 
 export function CustomThemeSheet({ open, onOpenChange }: CustomThemeSheetProps) {
-  const { isMobile } = useBreakpoint();
   const snap = useCustomThemeSnapshot();
   const draft = snap.draft;
 
   const [selectedChip, setSelectedChip] = useState(0);
   const [hexInput, setHexInput] = useState('');
   const [shareOpen, setShareOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [entered, setEntered] = useState(false);
+
+  // Mount/unmount with slide transition
+  useEffect(() => {
+    if (open) {
+      setMounted(true);
+      // Next frame: trigger the slide-in
+      const id = requestAnimationFrame(() => setEntered(true));
+      return () => cancelAnimationFrame(id);
+    }
+    setEntered(false);
+    const t = window.setTimeout(() => setMounted(false), 300);
+    return () => window.clearTimeout(t);
+  }, [open]);
 
   // Keep chip index in range.
   useEffect(() => {
@@ -69,7 +77,17 @@ export function CustomThemeSheet({ open, onOpenChange }: CustomThemeSheetProps) 
     setHexInput(draft.chips[selectedChip] ?? '#000000');
   }, [selectedChip, draft.chips]);
 
-  // Discard uncommitted draft when the sheet closes via Cancel path.
+  // Escape key closes (only when open).
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') close(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, snap.isDirty]);
+
   const close = (nextOpen: boolean) => {
     if (!nextOpen && snap.isDirty) {
       discardDraft();
@@ -84,10 +102,40 @@ export function CustomThemeSheet({ open, onOpenChange }: CustomThemeSheetProps) 
     return `linear-gradient(${draft.angle}deg, ${stops})`;
   }, [draft.chips, draft.angle]);
 
-  const body = (
-    <div className="flex flex-col h-full min-h-0">
+  if (!mounted) return null;
+
+  const panel = (
+    <div
+      role="dialog"
+      aria-label="Éditeur de thème personnalisé"
+      className={[
+        'fixed inset-y-0 right-0 z-[80]',
+        'w-full sm:w-[420px]',
+        'bg-background border-l border-border/60',
+        'shadow-[-12px_0_40px_-12px_rgba(0,0,0,0.35)]',
+        'flex flex-col',
+        'transition-transform duration-300 ease-out motion-reduce:transition-none',
+        entered ? 'translate-x-0' : 'translate-x-full',
+      ].join(' ')}
+    >
+      {/* Header */}
+      <div className="px-5 pt-5 pb-2 flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold leading-tight">Thème personnalisé</h2>
+          <p className="text-sm text-muted-foreground">Composez, prévisualisez, appliquez.</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => close(false)}
+          aria-label="Fermer"
+          className="p-1.5 rounded-lg hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
       {/* Scrollable body */}
-      <div className="flex-1 overflow-y-auto px-5 pt-4 pb-6 space-y-5">
+      <div className="flex-1 overflow-y-auto px-5 pt-2 pb-6 space-y-5 min-h-0">
         {/* Live preview */}
         <div className="rounded-2xl overflow-hidden border border-border/60 shadow-sm">
           <div
@@ -286,29 +334,5 @@ export function CustomThemeSheet({ open, onOpenChange }: CustomThemeSheetProps) 
     </div>
   );
 
-  if (isMobile) {
-    return (
-      <Drawer open={open} onOpenChange={close}>
-        <DrawerContent className="h-[92vh] p-0">
-          <DrawerHeader className="text-left px-5 pt-5 pb-2">
-            <DrawerTitle>Thème personnalisé</DrawerTitle>
-            <DrawerDescription>Composez, prévisualisez, appliquez.</DrawerDescription>
-          </DrawerHeader>
-          {body}
-        </DrawerContent>
-      </Drawer>
-    );
-  }
-
-  return (
-    <Sheet open={open} onOpenChange={close}>
-      <SheetContent side="right" className="w-[420px] sm:max-w-[420px] p-0 flex flex-col">
-        <SheetHeader className="p-5 pb-2">
-          <SheetTitle>Thème personnalisé</SheetTitle>
-          <SheetDescription>Composez, prévisualisez, appliquez.</SheetDescription>
-        </SheetHeader>
-        {body}
-      </SheetContent>
-    </Sheet>
-  );
+  return createPortal(panel, document.body);
 }

@@ -1,8 +1,7 @@
 import { useEffect, useState, type ImgHTMLAttributes, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { useImageGuardProps } from '@/hooks/useDownloadPermissions';
-import { useIsBirthday } from '@/hooks/useBirthday';
-import { BirthdayAvatarCrown } from '@/components/profile/BirthdayAvatarCrown';
+
 
 interface UserAvatarImageProps {
   src?: string | null;

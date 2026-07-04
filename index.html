@@ -53,6 +53,7 @@
           : pref;
         var root = document.documentElement;
         if (resolved === 'dark') root.classList.add('dark');
+        else root.classList.add('light');
         root.style.colorScheme = resolved;
       } catch (e) {
         document.documentElement.classList.add('dark');

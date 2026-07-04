@@ -10,7 +10,7 @@ export function useIsBirthday(userId?: string | null) {
     enabled: !!userId,
     queryFn: async (): Promise<boolean> => {
       if (!userId) return false;
-      const { data, error } = await supabase.rpc('is_birthday_today', { uid: userId });
+      const { data, error } = await (supabase.rpc as never as (fn: string, args: unknown) => Promise<{ data: unknown; error: unknown }>)('is_birthday_today', { uid: userId });
       if (error) return false;
       return !!data;
     },
@@ -32,7 +32,7 @@ export function useBirthdaysToday(userIds: (string | null | undefined)[]) {
     queryKey: ['birthdays-today', ids],
     enabled: ids.length > 0,
     queryFn: async (): Promise<string[]> => {
-      const { data, error } = await supabase.rpc('are_birthdays_today', { uids: ids });
+      const { data, error } = await (supabase.rpc as never as (fn: string, args: unknown) => Promise<{ data: unknown; error: unknown }>)('are_birthdays_today', { uids: ids });
       if (error || !data) return [];
       return (data as Array<{ user_id: string }>).map((r) => r.user_id);
     },
@@ -55,7 +55,7 @@ export function useMyBirthdayStatus() {
       if (!user?.id) return { isBirthday: false };
       const { data: profile } = await supabase
         .from('profiles')
-        .select('birthday')
+        .select('birthday' as never)
         .eq('id', user.id)
         .maybeSingle();
       const b = (profile as { birthday?: string | null } | null)?.birthday;
@@ -72,7 +72,7 @@ export function useMyBirthdayStatus() {
 }
 
 export async function claimMyBirthdayBadge() {
-  const { data, error } = await supabase.rpc('claim_my_birthday_badge');
+  const { data, error } = await (supabase.rpc as never as (fn: string) => Promise<{ data: unknown; error: unknown }>)('claim_my_birthday_badge');
   if (error) throw error;
   return data as string | null;
 }

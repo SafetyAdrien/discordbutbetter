@@ -181,26 +181,7 @@ export function FullUserProfileModal({
             }}
             {...bannerGuard}
           />
-          {/* Top-right overlay: badges + copy username (opposite the avatar) */}
-          <div className="absolute top-2 right-3 z-20 flex flex-col items-end gap-1.5 max-w-[70%]">
-            <InlineBadgeStrip
-              userId={user.id}
-              max={isMobile ? 3 : isTablet ? 4 : 5}
-              variant="overlay"
-            />
-            <Button
-              variant="secondary"
-              size="icon"
-              className="h-7 w-7 rounded-full bg-black/40 backdrop-blur-sm text-white hover:bg-black/60 border-0 shadow-md"
-              onClick={() => {
-                void navigator.clipboard.writeText(`@${user.username.toLowerCase()}`);
-                toast.success("Nom d'utilisateur copié");
-              }}
-              aria-label="Copier le nom d'utilisateur"
-            >
-              <Copy className="w-3.5 h-3.5" />
-            </Button>
-          </div>
+          {/* (No overlay in hero — badges now live inside the Identity card) */}
           <div className="px-6 -mt-14 relative z-10 flex items-end justify-between gap-3">
             <div className="relative min-w-0 shrink-0">
               <div className="relative">

@@ -222,6 +222,54 @@ export function PrivacySettings() {
         </CardContent>
       </Card>
 
+      {/* Birthday */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Cake className="w-5 h-5" />
+            Anniversaire
+          </CardTitle>
+          <CardDescription>
+            Le jour J, un badge festif, une couronne dorée sur ton avatar et des confettis
+            sur ton profil apparaîtront pour toi et les autres. L'année n'est jamais partagée.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="birthday-date">Date de naissance</Label>
+            <Input
+              id="birthday-date"
+              type="date"
+              value={birthday}
+              disabled={birthdaySaving}
+              onChange={(e) => {
+                const v = e.target.value;
+                setBirthday(v);
+                void saveBirthday(v || null, birthdayPublic);
+              }}
+              className="max-w-xs"
+            />
+          </div>
+          <div className="flex items-center justify-between pt-2 border-t border-border/40">
+            <div className="space-y-0.5">
+              <Label>Célébrer publiquement mon anniversaire</Label>
+              <p className="text-sm text-muted-foreground">
+                Désactivé par défaut. Active pour permettre aux autres de voir la couronne
+                festive et le bandeau sur ton profil le jour J.
+              </p>
+            </div>
+            <Switch
+              checked={birthdayPublic}
+              disabled={birthdaySaving || !birthday}
+              onCheckedChange={(checked) => {
+                setBirthdayPublic(checked);
+                void saveBirthday(birthday || null, checked);
+              }}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Data Privacy */}
       <Card>
         <CardHeader>

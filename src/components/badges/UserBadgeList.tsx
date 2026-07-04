@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { useBadges, type Badge } from '@/hooks/useBadges';
 import { useUserBadges } from '@/hooks/useUserBadges';
 import { useBirthdayGrantYears } from '@/hooks/useBirthdayGrants';
+import { useIsBirthday } from '@/hooks/useBirthday';
 
 interface UserBadgeListProps {
   userId?: string | null;
@@ -23,12 +24,18 @@ export function UserBadgeList({ userId, size = 'sm', className, showEmpty = fals
   const { data: catalog, isFetching: catalogFetching } = useBadges();
   const { data: rows, isFetching: rowsFetching } = useUserBadges(userId);
   const birthdayYears = useBirthdayGrantYears(userId);
+  const isBirthday = useIsBirthday(userId);
 
   const badges = useMemo<Badge[]>(() => {
     if (!catalog || !rows) return [];
     const ids = new Set(rows.map((r) => r.badge_id));
-    return catalog.filter((b) => ids.has(b.id));
-  }, [catalog, rows]);
+    const owned = catalog.filter((b) => ids.has(b.id));
+    if (isBirthday && !owned.some((b) => b.key === 'birthday')) {
+      const bd = catalog.find((b) => b.key === 'birthday');
+      if (bd) return [bd, ...owned];
+    }
+    return owned;
+  }, [catalog, rows, isBirthday]);
 
   const sz = SIZE_MAP[size];
 

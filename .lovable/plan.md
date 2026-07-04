@@ -1,43 +1,54 @@
-## Correction de l'emplacement des badges
+## Corrections à apporter
 
-### Ce qui a été mal compris
-J'ai placé les badges + le bouton copier **à l'intérieur** de la carte « Identity », alignés à droite du `display_name`. Or la demande était :
-- Les badges vont **au-dessus** de la section Display name (donc dans la zone hero, pas dans la carte identity).
-- Aligné **à l'opposé** du bloc identité (donc à droite du hero, en face de l'avatar).
-- **Juste au-dessus de l'icône copier-coller** du username/DisplayName (donc badges empilés au-dessus du bouton copier, ensemble en haut à droite du hero).
+Deux problèmes à corriger sans toucher aux icônes de copie existantes.
 
-### Nouvel emplacement — dans le hero (banner)
+### 1. Annuler l'ajout d'icône copier dans le hero
 
-Structure cible de la section hero du `FullUserProfileModal` :
+Dans `src/components/profile/FullUserProfileModal.tsx` :
+- Supprimer le bouton `Copy` ajouté dans l'overlay hero (lignes 191-202) — je n'aurais pas dû l'ajouter.
+- Supprimer aussi l'import `Copy` de `lucide-react` s'il n'est plus utilisé.
 
-```text
-+----------------------------------------------------------+
-|  [ banner image ]                          🎂 ⭐ ✨ +2    |  <- badges strip
-|                                              [copy icon]  |  <- copy username
-|                                                           |
-|  [avatar]                       [ Message ] [ Ajouter ]   |  <- existing row
-+----------------------------------------------------------+
-```
+### 2. Badge d'anniversaire visible sur tous les profils le jour J
 
-- **Retirer** la colonne badges + copier de la carte Identity (retour au layout d'origine : display_name + @username plein largeur).
-- **Ajouter** dans la section hero, en `absolute top-2 right-3`, un `<div className="flex flex-col items-end gap-1.5 z-20">` contenant :
-  - `<InlineBadgeStrip userId={user.id} max={4} />` — strip inline avec fond translucide (`bg-black/40 backdrop-blur-sm rounded-full px-2 py-1`) pour rester lisible sur n'importe quelle bannière.
-  - Bouton copier `@username` (`variant="secondary"`, `size="icon"`, `h-7 w-7`, même fond translucide) avec toast « Nom d'utilisateur copié ».
+Aujourd'hui la liste des badges lit uniquement `user_badges` en base. Le badge n'est inséré qu'au premier login du jour de l'utilisateur → il n'apparaît donc pas sur le profil d'un utilisateur qui n'a pas encore ouvert l'app aujourd'hui.
 
-### Responsive
+Solution : **injection virtuelle** du badge d'anniversaire côté UI, sans écriture en base, dès que `useIsBirthday(userId)` renvoie vrai.
 
-- **Mobile 360px** : `right-3 top-2`, `max={3}` sur mobile via un plafond dynamique (composant `InlineBadgeStrip` accepte déjà `max`, on passe `useBreakpoint`-conditionnel : 3 sur mobile, 4 sur tablette, 5 sur desktop). `flex-wrap justify-end` sur la strip pour absorber un overflow inattendu.
-- **Tablette/desktop** : même position, plus d'espace, plus de badges visibles.
-- Sur `!isOwnProfile`, les boutons Message/Ajouter existent déjà en bas de la même section — les badges au top-right ne se chevauchent pas car ils sont sur une ligne différente (top vs bottom du hero).
-- Sur `isOwnProfile`, aucun bouton action en bas → badges + copier restent seuls en top-right, cohérent.
+Modifier :
+
+**`src/components/badges/UserBadgeList.tsx`**
+- Ajouter `import { useIsBirthday } from '@/hooks/useBirthday';`
+- Récupérer `const isBirthday = useIsBirthday(userId);`
+- Dans le `useMemo` qui construit `badges`, si `isBirthday` et qu'aucun badge avec `key === 'birthday'` n'est déjà présent, injecter en tête l'entrée du catalogue correspondante (`catalog.find(b => b.key === 'birthday')`).
+- Ajouter `isBirthday` aux deps.
+- Traiter aussi le cas `showEmpty` : si `isBirthday` et catalogue chargé mais rows vides, ne pas afficher "Aucun badge" — le badge virtuel compte.
+
+**`src/components/badges/InlineBadgeStrip.tsx`**
+- Même logique : injection virtuelle du badge `birthday` en tête de `badges` quand `useIsBirthday(userId)` est vrai et absent de la liste.
+
+Le tooltip continue d'utiliser `useBirthdayGrantYears` : si aucun grant historique n'existe encore, il n'affiche simplement pas la ligne "Célébré en …", ce qui est cohérent.
+
+### 3. Placement des badges (Mobile + Desktop)
+
+Sur mobile, la carte identité de `MobileProfileView.tsx` (lignes 255-290) contient à droite la pile d'icônes copier (display_name + username). C'est l'endroit visé par la demande initiale.
+
+**`src/components/mobile/MobileProfileView.tsx`**
+- Dans la carte identité (autour de la ligne 266, colonne de droite), au-dessus des deux boutons copier existants, insérer :
+  ```tsx
+  <InlineBadgeStrip userId={profile?.id} max={4} className="mb-1 justify-end" />
+  ```
+- Import : `import { InlineBadgeStrip } from '@/components/badges/InlineBadgeStrip';`
+
+**`src/components/profile/FullUserProfileModal.tsx` (Desktop/Tablette)**
+- Supprimer complètement l'overlay hero `absolute top-2 right-3 …` (lignes 184-203).
+- Dans la carte Identity (lignes 272-283), transformer l'en-tête en flex row : à gauche le bloc `display_name` + `@username` + pronoms, à droite `<InlineBadgeStrip userId={user.id} max={isMobile ? 3 : isTablet ? 4 : 5} className="justify-end shrink-0" />`.
+- Supprimer aussi la section « Badges » séparée en dessous (lignes 286-289) puisque les badges sont maintenant dans l'identité — OU la garder pour l'affichage détaillé `size="lg"`. À conserver : elle donne la liste complète avec `showEmpty`.
 
 ### Fichiers touchés
 
-- `src/components/profile/FullUserProfileModal.tsx` :
-  - Ajouter l'overlay hero top-right (badges + copier).
-  - Retirer la colonne droite ajoutée dans la carte Identity, restaurer le layout précédent.
-- `src/components/badges/InlineBadgeStrip.tsx` :
-  - Nouvelle prop optionnelle `variant?: 'plain' | 'overlay'` pour styler avec fond translucide quand posé sur une image (utilisée dans le hero).
-  - `flex-wrap justify-end` pour la sécurité.
+- `src/components/badges/UserBadgeList.tsx` (injection badge virtuel)
+- `src/components/badges/InlineBadgeStrip.tsx` (injection badge virtuel)
+- `src/components/profile/FullUserProfileModal.tsx` (retirer bouton Copy, replacer strip dans Identity)
+- `src/components/mobile/MobileProfileView.tsx` (ajout strip au-dessus des icônes copier)
 
-Aucune migration, aucune écriture DB, aucun impact ailleurs.
+Aucune migration, aucune écriture en base, aucun changement sur `UserProfilePopup` (le popup compact serveur continue d'utiliser `UserBadgeList` qui héritera automatiquement du badge virtuel).

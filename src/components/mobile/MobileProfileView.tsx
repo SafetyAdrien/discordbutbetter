@@ -209,30 +209,28 @@ export function MobileProfileView({
 
           {/* Avatar + Custom status bubble (Desktop-style compact) */}
           <div className="px-4 -mt-12 relative z-10">
-            <div className="flex items-end justify-between gap-4">
-              <button
-                onClick={() => {
-                  haptics.light();
-                  setShowStatusSheet(true);
-                }}
-                className="relative active:opacity-80 transition-opacity shrink-0"
-                aria-label="Changer le statut en ligne"
-              >
-                <Avatar className="w-24 h-24 ring-[5px] ring-background">
-                  <AvatarImage src={profile?.avatar_url || undefined} />
-                  <AvatarFallback className="bg-primary/20 text-primary text-3xl font-semibold">
-                    {initial}
-                  </AvatarFallback>
-                </Avatar>
-                <StatusIndicator
-                  status={currentStatus}
-                  className="absolute bottom-1 right-1 w-6 h-6 border-[4px] border-background"
-                  bgClassName="bg-background"
-                />
-              </button>
-              <InlineBadgeStrip userId={profile?.id} max={4} className="mb-2 max-w-[52vw] justify-end" />
-            </div>
+            <button
+              onClick={() => {
+                haptics.light();
+                setShowStatusSheet(true);
+              }}
+              className="relative active:opacity-80 transition-opacity shrink-0"
+              aria-label="Changer le statut en ligne"
+            >
+              <Avatar className="w-24 h-24 ring-[5px] ring-background">
+                <AvatarImage src={profile?.avatar_url || undefined} />
+                <AvatarFallback className="bg-primary/20 text-primary text-3xl font-semibold">
+                  {initial}
+                </AvatarFallback>
+              </Avatar>
+              <StatusIndicator
+                status={currentStatus}
+                className="absolute bottom-1 right-1 w-6 h-6 border-[4px] border-background"
+                bgClassName="bg-background"
+              />
+            </button>
           </div>
+
 
           {/* Custom status bubble — unified across all profile views */}
           <div
@@ -254,7 +252,10 @@ export function MobileProfileView({
           </div>
         </section>
 
-        <section className="mx-4 mt-4 rounded-2xl bg-card border border-border/50 p-4">
+        <InlineBadgeStrip userId={profile?.id} max={4} className="mx-4 mb-2 justify-end" />
+
+        <section className="mx-4 mt-0 rounded-2xl bg-card border border-border/50 p-4">
+
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <h2 className="font-bold text-xl truncate">

@@ -149,11 +149,16 @@ export function FullUserProfileModal({
       <DialogContent className="max-w-2xl p-0 gap-0 overflow-hidden rounded-2xl border border-border bg-background shadow-2xl max-h-[88vh] flex flex-col">
         {/* Hero — Banner + Avatar */}
         <section className="relative shrink-0">
+          {isBirthday && <BirthdayRibbon displayName={user.display_name} />}
           <div
             className={user.banner_url ? 'h-44 w-full' : 'h-32 w-full'}
             style={{
               backgroundColor: user.banner_url ? undefined : 'hsl(var(--primary))',
-              backgroundImage: user.banner_url ? `url(${user.banner_url})` : undefined,
+              backgroundImage: user.banner_url
+                ? `url(${user.banner_url})`
+                : isBirthday
+                  ? 'linear-gradient(135deg, #ff9500 0%, #f5b301 50%, #ffd54a 100%)'
+                  : undefined,
               backgroundSize: 'cover',
               backgroundPosition: 'center',
             }}

@@ -3,7 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Shield, MessageSquare, UserPlus, Eye, Download, Camera, ChevronRight } from 'lucide-react';
+import { Shield, MessageSquare, UserPlus, Eye, Download, Camera, ChevronRight, Cake } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -19,6 +20,9 @@ export function PrivacySettings() {
   });
   const [notifyScreenshotCapture, setNotifyScreenshotCapture] = useState<boolean>(true);
   const [view, setView] = useState<'main' | 'downloads'>('main');
+  const [birthday, setBirthday] = useState<string>('');
+  const [birthdayPublic, setBirthdayPublic] = useState<boolean>(false);
+  const [birthdaySaving, setBirthdaySaving] = useState(false);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -26,15 +30,33 @@ export function PrivacySettings() {
     (async () => {
       const { data } = await supabase
         .from('profiles')
-        .select('notify_screenshot_capture')
+        .select('notify_screenshot_capture, birthday, birthday_public')
         .eq('id', user.id)
         .maybeSingle();
-      if (!cancelled && data && typeof (data as any).notify_screenshot_capture === 'boolean') {
-        setNotifyScreenshotCapture((data as any).notify_screenshot_capture);
+      if (!cancelled && data) {
+        const d = data as {
+          notify_screenshot_capture?: boolean | null;
+          birthday?: string | null;
+          birthday_public?: boolean | null;
+        };
+        if (typeof d.notify_screenshot_capture === 'boolean') setNotifyScreenshotCapture(d.notify_screenshot_capture);
+        if (d.birthday) setBirthday(d.birthday);
+        if (typeof d.birthday_public === 'boolean') setBirthdayPublic(d.birthday_public);
       }
     })();
     return () => { cancelled = true; };
   }, [user?.id]);
+
+  const saveBirthday = async (nextDate: string | null, nextPublic: boolean) => {
+    if (!user?.id) return;
+    setBirthdaySaving(true);
+    const { error } = await supabase
+      .from('profiles')
+      .update({ birthday: nextDate, birthday_public: nextPublic } as never)
+      .eq('id', user.id);
+    setBirthdaySaving(false);
+    if (error) console.error('[privacy] update birthday failed', error);
+  };
 
   const updateSetting = (key: keyof typeof settings, value: boolean) => {
     setSettings(prev => ({ ...prev, [key]: value }));
@@ -197,6 +219,54 @@ export function PrivacySettings() {
             <span className="text-sm font-medium">Gérer la liste d'autorisation</span>
             <ChevronRight className="w-4 h-4 text-muted-foreground" />
           </button>
+        </CardContent>
+      </Card>
+
+      {/* Birthday */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Cake className="w-5 h-5" />
+            Anniversaire
+          </CardTitle>
+          <CardDescription>
+            Le jour J, un badge festif, une couronne dorée sur ton avatar et des confettis
+            sur ton profil apparaîtront pour toi et les autres. L'année n'est jamais partagée.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="birthday-date">Date de naissance</Label>
+            <Input
+              id="birthday-date"
+              type="date"
+              value={birthday}
+              disabled={birthdaySaving}
+              onChange={(e) => {
+                const v = e.target.value;
+                setBirthday(v);
+                void saveBirthday(v || null, birthdayPublic);
+              }}
+              className="max-w-xs"
+            />
+          </div>
+          <div className="flex items-center justify-between pt-2 border-t border-border/40">
+            <div className="space-y-0.5">
+              <Label>Célébrer publiquement mon anniversaire</Label>
+              <p className="text-sm text-muted-foreground">
+                Désactivé par défaut. Active pour permettre aux autres de voir la couronne
+                festive et le bandeau sur ton profil le jour J.
+              </p>
+            </div>
+            <Switch
+              checked={birthdayPublic}
+              disabled={birthdaySaving || !birthday}
+              onCheckedChange={(checked) => {
+                setBirthdayPublic(checked);
+                void saveBirthday(birthday || null, checked);
+              }}
+            />
+          </div>
         </CardContent>
       </Card>
 

@@ -23,6 +23,9 @@ import { ProfileCalendar } from '@/components/profile/calendar/ProfileCalendar';
 import { EventListBelow } from '@/components/profile/calendar/EventListBelow';
 import { StatusIndicator } from '@/components/ui/StatusIndicator';
 import { UserBadgeList } from '@/components/badges/UserBadgeList';
+import { useIsBirthday } from '@/hooks/useBirthday';
+import { BirthdayRibbon } from '@/components/profile/BirthdayRibbon';
+import { ConfettiCanvas } from '@/components/effects/ConfettiCanvas';
 
 const statusColors: Record<string, string> = {
   online: 'bg-green-500',
@@ -83,6 +86,15 @@ export function FullUserProfileModal({
 
   const isOwnProfile = currentUser?.id === user?.id;
   const bannerGuard = useImageGuardProps(isOwnProfile ? null : user?.id ?? null);
+  const isBirthday = useIsBirthday(user?.id ?? null);
+  const [birthdayConfetti, setBirthdayConfetti] = useState(false);
+  useEffect(() => {
+    if (open && isBirthday) {
+      setBirthdayConfetti(false);
+      const t = window.setTimeout(() => setBirthdayConfetti(true), 200);
+      return () => window.clearTimeout(t);
+    }
+  }, [open, isBirthday, user?.id]);
 
   const friendship = friends.find(
     (f) =>
@@ -133,15 +145,34 @@ export function FullUserProfileModal({
 
   return (
     <>
+    {birthdayConfetti && (
+      <ConfettiCanvas
+        active
+        count={90}
+        duration={3000}
+        colors={[
+          'hsl(45, 95%, 58%)',
+          'hsl(38, 95%, 60%)',
+          'hsl(50, 100%, 65%)',
+          'hsl(30, 100%, 55%)',
+        ]}
+        onComplete={() => setBirthdayConfetti(false)}
+      />
+    )}
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl p-0 gap-0 overflow-hidden rounded-2xl border border-border bg-background shadow-2xl max-h-[88vh] flex flex-col">
         {/* Hero — Banner + Avatar */}
         <section className="relative shrink-0">
+          {isBirthday && <BirthdayRibbon displayName={user.display_name} />}
           <div
             className={user.banner_url ? 'h-44 w-full' : 'h-32 w-full'}
             style={{
               backgroundColor: user.banner_url ? undefined : 'hsl(var(--primary))',
-              backgroundImage: user.banner_url ? `url(${user.banner_url})` : undefined,
+              backgroundImage: user.banner_url
+                ? `url(${user.banner_url})`
+                : isBirthday
+                  ? 'linear-gradient(135deg, #ff9500 0%, #f5b301 50%, #ffd54a 100%)'
+                  : undefined,
               backgroundSize: 'cover',
               backgroundPosition: 'center',
             }}

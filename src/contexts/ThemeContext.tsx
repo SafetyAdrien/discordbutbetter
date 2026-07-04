@@ -56,6 +56,7 @@ function applyThemeClass(resolved: ResolvedTheme, animate = false) {
     }, TRANSITION_MS);
   }
   root.classList.toggle('dark', shouldBeDark);
+  root.classList.toggle('light', !shouldBeDark);
   root.style.colorScheme = resolved;
 }
 

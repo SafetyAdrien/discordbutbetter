@@ -3,7 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Shield, MessageSquare, UserPlus, Eye, Download, Camera, ChevronRight } from 'lucide-react';
+import { Shield, MessageSquare, UserPlus, Eye, Download, Camera, ChevronRight, Cake } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -19,6 +20,9 @@ export function PrivacySettings() {
   });
   const [notifyScreenshotCapture, setNotifyScreenshotCapture] = useState<boolean>(true);
   const [view, setView] = useState<'main' | 'downloads'>('main');
+  const [birthday, setBirthday] = useState<string>('');
+  const [birthdayPublic, setBirthdayPublic] = useState<boolean>(false);
+  const [birthdaySaving, setBirthdaySaving] = useState(false);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -26,15 +30,33 @@ export function PrivacySettings() {
     (async () => {
       const { data } = await supabase
         .from('profiles')
-        .select('notify_screenshot_capture')
+        .select('notify_screenshot_capture, birthday, birthday_public')
         .eq('id', user.id)
         .maybeSingle();
-      if (!cancelled && data && typeof (data as any).notify_screenshot_capture === 'boolean') {
-        setNotifyScreenshotCapture((data as any).notify_screenshot_capture);
+      if (!cancelled && data) {
+        const d = data as {
+          notify_screenshot_capture?: boolean | null;
+          birthday?: string | null;
+          birthday_public?: boolean | null;
+        };
+        if (typeof d.notify_screenshot_capture === 'boolean') setNotifyScreenshotCapture(d.notify_screenshot_capture);
+        if (d.birthday) setBirthday(d.birthday);
+        if (typeof d.birthday_public === 'boolean') setBirthdayPublic(d.birthday_public);
       }
     })();
     return () => { cancelled = true; };
   }, [user?.id]);
+
+  const saveBirthday = async (nextDate: string | null, nextPublic: boolean) => {
+    if (!user?.id) return;
+    setBirthdaySaving(true);
+    const { error } = await supabase
+      .from('profiles')
+      .update({ birthday: nextDate, birthday_public: nextPublic } as never)
+      .eq('id', user.id);
+    setBirthdaySaving(false);
+    if (error) console.error('[privacy] update birthday failed', error);
+  };
 
   const updateSetting = (key: keyof typeof settings, value: boolean) => {
     setSettings(prev => ({ ...prev, [key]: value }));

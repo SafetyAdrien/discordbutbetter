@@ -27,6 +27,7 @@ import { InlineBadgeStrip } from '@/components/badges/InlineBadgeStrip';
 import { useIsBirthday } from '@/hooks/useBirthday';
 import { BirthdayRibbon } from '@/components/profile/BirthdayRibbon';
 import { ConfettiCanvas } from '@/components/effects/ConfettiCanvas';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 const statusColors: Record<string, string> = {
   online: 'bg-green-500',
@@ -86,6 +87,7 @@ export function FullUserProfileModal({
   };
 
   const isOwnProfile = currentUser?.id === user?.id;
+  const { isMobile, isTablet } = useBreakpoint();
   const bannerGuard = useImageGuardProps(isOwnProfile ? null : user?.id ?? null);
   const isBirthday = useIsBirthday(user?.id ?? null);
   const [birthdayConfetti, setBirthdayConfetti] = useState(false);
@@ -179,6 +181,26 @@ export function FullUserProfileModal({
             }}
             {...bannerGuard}
           />
+          {/* Top-right overlay: badges + copy username (opposite the avatar) */}
+          <div className="absolute top-2 right-3 z-20 flex flex-col items-end gap-1.5 max-w-[70%]">
+            <InlineBadgeStrip
+              userId={user.id}
+              max={isMobile ? 3 : isTablet ? 4 : 5}
+              variant="overlay"
+            />
+            <Button
+              variant="secondary"
+              size="icon"
+              className="h-7 w-7 rounded-full bg-black/40 backdrop-blur-sm text-white hover:bg-black/60 border-0 shadow-md"
+              onClick={() => {
+                void navigator.clipboard.writeText(`@${user.username.toLowerCase()}`);
+                toast.success("Nom d'utilisateur copié");
+              }}
+              aria-label="Copier le nom d'utilisateur"
+            >
+              <Copy className="w-3.5 h-3.5" />
+            </Button>
+          </div>
           <div className="px-6 -mt-14 relative z-10 flex items-end justify-between gap-3">
             <div className="relative min-w-0 shrink-0">
               <div className="relative">
@@ -248,35 +270,16 @@ export function FullUserProfileModal({
         <div className="flex-1 overflow-y-auto px-6 pt-4 pb-6 space-y-4">
           {/* Identity */}
           <section className="rounded-2xl bg-card border border-border/50 p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <h2 className="text-xl font-bold leading-tight truncate">{user.display_name}</h2>
-                <p className="text-sm text-muted-foreground truncate">@{user.username.toLowerCase()}</p>
-                {user.pronouns && (
-                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-muted-foreground">{user.pronouns}</span>
-                  </div>
-                )}
-                {memberSince && (
-                  <p className="mt-3 text-[11px] text-muted-foreground">Membre depuis {memberSince}</p>
-                )}
+            <h2 className="text-xl font-bold leading-tight">{user.display_name}</h2>
+            <p className="text-sm text-muted-foreground">@{user.username.toLowerCase()}</p>
+            {user.pronouns && (
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                <span className="rounded-full bg-muted px-2 py-0.5 text-muted-foreground">{user.pronouns}</span>
               </div>
-              <div className="flex flex-col items-end gap-1.5 shrink-0">
-                <InlineBadgeStrip userId={user.id} max={5} />
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground"
-                  onClick={() => {
-                    void navigator.clipboard.writeText(`@${user.username.toLowerCase()}`);
-                    toast.success("Nom d'utilisateur copié");
-                  }}
-                  aria-label="Copier le nom d'utilisateur"
-                >
-                  <Copy className="w-3.5 h-3.5" />
-                </Button>
-              </div>
-            </div>
+            )}
+            {memberSince && (
+              <p className="mt-3 text-[11px] text-muted-foreground">Membre depuis {memberSince}</p>
+            )}
           </section>
 
           {/* Badges */}

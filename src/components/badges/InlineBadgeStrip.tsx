@@ -10,13 +10,15 @@ interface InlineBadgeStripProps {
   userId?: string | null;
   max?: number;
   className?: string;
+  /** 'plain' (default) for card backgrounds; 'overlay' adds a translucent pill for banners. */
+  variant?: 'plain' | 'overlay';
 }
 
 /**
  * Compact right-aligned badge strip for profile headers.
  * Shows up to `max` badge icons with tooltips, plus a "+N" overflow chip.
  */
-export function InlineBadgeStrip({ userId, max = 5, className }: InlineBadgeStripProps) {
+export function InlineBadgeStrip({ userId, max = 5, className, variant = 'plain' }: InlineBadgeStripProps) {
   const { data: catalog } = useBadges();
   const { data: rows } = useUserBadges(userId);
   const birthdayYears = useBirthdayGrantYears(userId);
@@ -35,7 +37,14 @@ export function InlineBadgeStrip({ userId, max = 5, className }: InlineBadgeStri
   const hidden = badges.slice(max);
 
   return (
-    <div className={cn('flex items-center gap-1', className)}>
+    <div
+      className={cn(
+        'flex items-center gap-1 flex-wrap justify-end',
+        variant === 'overlay' &&
+          'bg-black/40 backdrop-blur-sm rounded-full px-2 py-1 shadow-md',
+        className,
+      )}
+    >
       {visible.map((b) => {
         const isBirthday = b.key === 'birthday';
         return (

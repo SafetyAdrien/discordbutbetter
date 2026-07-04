@@ -145,6 +145,20 @@ export function FullUserProfileModal({
 
   return (
     <>
+    {birthdayConfetti && (
+      <ConfettiCanvas
+        active
+        count={90}
+        duration={3000}
+        colors={[
+          'hsl(45, 95%, 58%)',
+          'hsl(38, 95%, 60%)',
+          'hsl(50, 100%, 65%)',
+          'hsl(30, 100%, 55%)',
+        ]}
+        onComplete={() => setBirthdayConfetti(false)}
+      />
+    )}
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl p-0 gap-0 overflow-hidden rounded-2xl border border-border bg-background shadow-2xl max-h-[88vh] flex flex-col">
         {/* Hero — Banner + Avatar */}

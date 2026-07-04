@@ -22,6 +22,7 @@ import { useUrlMetadataRealtime } from "@/hooks/useUrlMetadata";
 import { CustomThemeTintLayer } from "@/components/appearance/CustomThemeTintLayer";
 import { CustomThemeSheetHost } from "@/components/appearance/CustomThemeSheetHost";
 import { BirthdayLoginCelebration } from "@/components/birthday/BirthdayLoginCelebration";
+import { RequireAuth } from "@/components/auth/RequireAuth";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -55,11 +56,11 @@ const App = () => (
               <DndProvider options={dndMultiBackendPipeline}>
                 <BrowserRouter>
                   <Routes>
-                    <Route path="/" element={<Index />} />
+                    <Route path="/" element={<RequireAuth><Index /></RequireAuth>} />
                     <Route path="/auth" element={<Auth />} />
                     <Route path="/invite/:code" element={<Invite />} />
                     <Route path="/install" element={<Install />} />
-                    <Route path="/admin/badges" element={<AdminBadges />} />
+                    <Route path="/admin/badges" element={<RequireAuth><AdminBadges /></RequireAuth>} />
                     <Route path="/trust" element={<Trust />} />
                     <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

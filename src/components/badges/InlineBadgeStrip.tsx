@@ -72,10 +72,10 @@ export function InlineBadgeStrip({ userId, max = 5, className, variant = 'plain'
             </TooltipTrigger>
             <TooltipContent side="top" className="max-w-[180px] px-2 py-1">
               <div className="text-xs font-semibold" style={{ color: b.color }}>{b.name}</div>
-              {b.description && (
+              {!isBirthday && b.description && (
                 <div className="text-[10px] text-muted-foreground mt-0.5">{b.description}</div>
               )}
-              {isBirthday && birthdayYears.length > 0 && (
+              {!isBirthday && birthdayYears.length > 0 && (
                 <div className="text-[10px] text-muted-foreground mt-1">
                   Célébré en {birthdayYears.join(', ')}
                 </div>

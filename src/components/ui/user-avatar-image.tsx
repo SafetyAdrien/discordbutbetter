@@ -37,7 +37,9 @@ export function UserAvatarImage({
   const [loaded, setLoaded] = useState(false);
   const [errored, setErrored] = useState(false);
   const guard = useImageGuardProps(ownerId);
-  const isBirthday = useIsBirthday(showBirthdayCrown ? ownerId ?? null : null);
+  void showBirthdayCrown;
+  void birthdayCrownSize;
+
 
   useEffect(() => {
     setLoaded(false);

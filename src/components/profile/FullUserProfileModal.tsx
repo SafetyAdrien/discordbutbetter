@@ -16,7 +16,7 @@ import { useUserNote, useSaveUserNote } from '@/hooks/useUserNotes';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { MessageCircle, UserPlus, UserMinus, Check, CalendarDays, Users, Server, Copy } from 'lucide-react';
+import { MessageCircle, UserPlus, UserMinus, Check, CalendarDays, Users, Server } from 'lucide-react';
 import { parseMarkdown, setMarkdownContext, getMarkdownContext } from '@/lib/markdown';
 import { toast } from 'sonner';
 import { ProfileCalendar } from '@/components/profile/calendar/ProfileCalendar';

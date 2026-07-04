@@ -1,76 +1,69 @@
-## Système "Jour J d'anniversaire" 🎂
+## 1. Badge d'anniversaire annuel stable
 
-Une expérience festive qui se déclenche uniquement le jour même de la date de naissance de l'utilisateur, respectant un opt-in explicite.
+### Problème actuel
+Chaque année crée un nouveau badge `birthday_YYYY` (2026, 2027…) — la liste des badges explose et il n'y a jamais de « badge anniversaire » unique et pérenne.
 
----
+### Nouvelle architecture
+- **Un seul badge permanent** de clé `birthday` (nom : « Anniversaire », icône 🎂 dorée). Il ne se re-crée jamais.
+- **Nouvelle table `user_badge_grants`** pour conserver l'historique année par année :
+  - `user_id`, `badge_id`, `granted_for` (int — l'année, ex. `2026`), `granted_at`.
+  - `UNIQUE(user_id, badge_id, granted_for)` → une célébration par an au maximum.
+- La table `user_badges` reste inchangée (une seule ligne par badge attribué) et sert d'index d'affichage. `granted_at` reste la 1ʳᵉ attribution.
+- Tooltip du badge sur le profil : « Anniversaire — célébré en 2024, 2025, 2026 » (années lues depuis `user_badge_grants`).
 
-### 1. Données & confidentialité
+### Migration idempotente
+1. Créer le badge `birthday` s'il n'existe pas.
+2. Créer `user_badge_grants` (+ GRANTs + RLS : lecture publique authentifiée, écriture via RPC uniquement).
+3. Migrer les anciens `birthday_YYYY` :
+   - Pour chaque `user_badges` pointant vers un badge `birthday_YYYY`, insérer dans `user_badge_grants(user_id, birthday_badge_id, YYYY, granted_at)`.
+   - Insérer une ligne `user_badges(user_id, birthday_badge_id)` (ON CONFLICT DO NOTHING).
+   - Supprimer les anciennes lignes `user_badges` pointant vers `birthday_YYYY`.
+   - Supprimer les badges `birthday_YYYY` de la table `badges`.
+4. Réécrire `claim_my_birthday_badge()` : garantit `user_badges(birthday)` + insère `user_badge_grants(..., année_courante)` (`ON CONFLICT DO NOTHING`), retourne l'`badge_id`.
 
-- Nouveau champ `birthday DATE` sur `profiles` (nullable, année stockée mais jamais exposée publiquement).
-- Nouveau champ `birthday_public BOOLEAN DEFAULT false` — **opt-in explicite requis**. Rien ne se déclenche tant qu'il est `false`.
-- Fonction SQL `SECURITY DEFINER` `is_birthday_today(uid uuid) → boolean` : compare `(EXTRACT(MONTH/DAY FROM birthday)) = (aujourd'hui)` **uniquement si `birthday_public = true`**. Utilisée par les hooks pour éviter d'exposer la date brute.
-- Réglage dans `Settings → Confidentialité` : champ date + toggle "Célébrer publiquement mon anniversaire".
-
-### 2. Effets publics (visibles par les autres)
-
-**a. Couronne d'avatar animée + badge 🎂**
-- Nouveau composant `<BirthdayAvatarCrown />` : anneau SVG dégradé doré animé (rotation lente 8s) + petit émoji 🎂 en overlay bas-droit sur l'avatar.
-- Appliqué partout où l'avatar apparaît : `MemberList`, `ChatMessage`, `FullUserProfileModal`, `DMList`, mentions inline.
-- Hook `useIsBirthday(userId)` qui interroge la RPC (cache 1h via React Query).
-
-**b. Confettis à l'ouverture du profil**
-- Dans `FullUserProfileModal`, si `isBirthday(user.id)` → déclenche `ConfettiCanvas` (déjà existant) au mount, une seule fois par session/profil.
-- Bandeau ruban doré au-dessus du banner : "🎉 C'est l'anniversaire de {displayName} aujourd'hui !"
-
-**c. Message système auto dans les serveurs communs**
-- Job côté client (au premier login du jour) : pour chaque serveur commun avec un ami/membre dont c'est l'anniversaire, insérer **une seule fois** un `messages` avec `is_system=true` et contenu `🎂 C'est l'anniversaire de @{user} aujourd'hui — envoyez-lui un mot !`.
-- Protection anti-doublon : table `birthday_wishes_sent (wisher_id, birthday_user_id, channel_id, sent_on DATE, UNIQUE)`.
-- Rendu spécial dans `ChatMessage` (fond dégradé doré discret, bouton réaction 🎉 en un clic).
-
-### 3. Effets privés (sur son propre écran)
-
-**a. Toast + confettis au login**
-- `AuthContext` détecte `is_birthday_today(currentUser)` au montage → `toast.success("🎂 Joyeux anniversaire, {displayName} !")` + `ConfettiCanvas` plein écran (2s).
-- Flag `localStorage['birthday-celebrated-YYYY-MM-DD']` pour ne le faire qu'une fois par jour.
-
-**b. Thème doré temporaire 24h**
-- Nouveau hook dans `ThemeContext` : si jour J, applique une couche `--primary-birthday: 45 90% 55%` (or) qui override subtilement le primary courant (10% de mix) — compatible light/dark/custom theme.
-- Bouton "Désactiver pour aujourd'hui" dans le toast.
-
-**c. Badge permanent annuel**
-- À chaque jour J, insérer un badge dans `user_badges` : `birthday_2026`, `birthday_2027`, etc. (le système `badges` existe déjà).
-- Icône gâteau + tooltip "Anniversaire célébré en 2026".
-- Insertion idempotente via `ON CONFLICT DO NOTHING` sur `(user_id, badge_id)`.
+### Hook côté client
+- Nouveau `useBirthdayGrantYears(userId)` : renvoie `number[]` des années.
+- `UserBadgeList` (tooltip) : si `badge.key === 'birthday'`, ajouter « Célébré en 2024, 2025, 2026 » sous la description.
 
 ---
 
-### Détails techniques
+## 2. Badges inline dans l'en-tête d'identité du profil
+
+### Emplacement
+Dans `FullUserProfileModal` → section « Identity » (celle avec `display_name` + `@username`) :
+- Restructurer la section en **flex `justify-between`** :
+  - **Gauche** (existant) : `display_name`, `@username`, pronouns, « Membre depuis… ».
+  - **Droite (nouveau)** : petite pile verticale contenant :
+    - Les badges (taille `sm`, max 5 visibles + « +N » condensé si plus) — juste au-dessus…
+    - Un **bouton copier** discret (icône `Copy` de lucide, `ghost` `size="icon"`, `h-7 w-7`) qui copie le `@username` dans le presse-papier avec toast « Nom d'utilisateur copié ».
+
+### Nouveau composant
+`InlineBadgeStrip` (dans `src/components/badges/InlineBadgeStrip.tsx`) :
+- Reçoit `userId`, `max = 5`.
+- Utilise `useBadges` + `useUserBadges` (déjà cache-first via IndexedDB, aucun coût réseau supplémentaire).
+- Affiche jusqu'à `max` icônes avec `Tooltip` (réutilise le rendu du `UserBadgeList` en version compacte).
+- Au-delà, badge « +N » ouvrant… on garde simple, un `Tooltip` listant les noms restants.
+
+### Section « Badges » complète (existante)
+On la **conserve** telle quelle plus bas dans le scrollable body — la strip inline sert de teaser rapide, la section complète reste pour le détail (labels + descriptions).
+
+### Cas vide
+Si l'utilisateur n'a aucun badge, la colonne de droite affiche uniquement le bouton copier (pas de vide bizarre).
+
+---
+
+## Fichiers touchés
+
+**Migration**
+- 1 migration `supabase--migration` : création badge `birthday` stable, création `user_badge_grants`, migration des anciens `birthday_YYYY`, réécriture de `claim_my_birthday_badge()`.
 
 **Nouveaux fichiers**
-- `src/hooks/useBirthday.ts` — `useIsBirthday(userId)`, `useMyBirthdayCelebration()`
-- `src/components/profile/BirthdayAvatarCrown.tsx`
-- `src/components/profile/BirthdayRibbon.tsx`
-- `src/components/birthday/BirthdayLoginCelebration.tsx` (monté dans `App.tsx`)
+- `src/components/badges/InlineBadgeStrip.tsx`
+- `src/hooks/useBirthdayGrants.ts` — `useBirthdayGrantYears(userId)`.
 
-**Migrations**
-1. `ALTER TABLE profiles ADD COLUMN birthday DATE, ADD COLUMN birthday_public BOOLEAN DEFAULT false;`
-2. `CREATE FUNCTION public.is_birthday_today(uid uuid) RETURNS boolean SECURITY DEFINER ...`
-3. `CREATE TABLE public.birthday_wishes_sent (...)` + GRANT + RLS
-4. Trigger/fonction `award_birthday_badge()` appelée depuis le hook, ou RPC dédiée `claim_birthday_badge()`.
-5. Insertion des badges `birthday_YYYY` dans la table `badges`.
+**Modifiés**
+- `src/components/badges/UserBadgeList.tsx` — enrichit le tooltip pour le badge `birthday` avec la liste d'années.
+- `src/components/profile/FullUserProfileModal.tsx` — restructure la section Identity avec la colonne de droite (strip + bouton copier).
+- `src/components/birthday/BirthdayLoginCelebration.tsx` — inchangé (le RPC gère déjà tout).
 
-**Fichiers modifiés (surface minimale)**
-- `src/components/ui/user-avatar-image.tsx` : accepte prop `showBirthdayCrown` (opt-in par composant parent).
-- `MemberList`, `ChatMessage`, `FullUserProfileModal`, `DMList` : passent la prop selon `useIsBirthday`.
-- `src/App.tsx` : monte `<BirthdayLoginCelebration />`.
-- `src/contexts/ThemeContext.tsx` : injection variable `--primary-birthday` conditionnelle.
-- Paramètres de confidentialité : ajout champ date + toggle.
-
-**Performance**
-- `useIsBirthday` batché : une seule RPC `are_birthdays_today(uids[])` pour toute la MemberList (évite N requêtes).
-- Cache React Query : `staleTime: 1h`, `gcTime: 6h`.
-
-**Confidentialité respectée**
-- Année de naissance jamais renvoyée à d'autres utilisateurs (la RPC ne retourne qu'un booléen).
-- Aucune célébration si `birthday_public = false`.
-- Aucun log, aucune analytics — conforme à la politique zéro collecte.
+Aucun impact sur les autres écrans, aucun changement UX ailleurs.

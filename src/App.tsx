@@ -21,6 +21,7 @@ import { useCacheRehydrate } from "@/hooks/useCacheRehydrate";
 import { useUrlMetadataRealtime } from "@/hooks/useUrlMetadata";
 import { CustomThemeTintLayer } from "@/components/appearance/CustomThemeTintLayer";
 import { CustomThemeSheetHost } from "@/components/appearance/CustomThemeSheetHost";
+import { BirthdayLoginCelebration } from "@/components/birthday/BirthdayLoginCelebration";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -47,6 +48,7 @@ const App = () => (
         <CustomThemeTintLayer />
         <CustomThemeSheetHost />
         <Toaster />
+        <BirthdayLoginCelebration />
         <PresenceProvider>
           <VoiceProvider>
             <TooltipProvider delayDuration={0}>

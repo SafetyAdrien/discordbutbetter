@@ -28,6 +28,7 @@ import { StatusIndicator } from '@/components/ui/StatusIndicator';
 import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { CustomStatusBubble } from '@/components/profile/CustomStatusBubble';
+import { InlineBadgeStrip } from '@/components/badges/InlineBadgeStrip';
 import { haptics } from '@/lib/haptics';
 import { toast } from 'sonner';
 import { uuidToSnowflake } from '@/lib/snowflake';

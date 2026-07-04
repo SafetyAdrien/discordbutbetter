@@ -28,6 +28,7 @@ import { StatusIndicator } from '@/components/ui/StatusIndicator';
 import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { CustomStatusBubble } from '@/components/profile/CustomStatusBubble';
+import { InlineBadgeStrip } from '@/components/badges/InlineBadgeStrip';
 import { haptics } from '@/lib/haptics';
 import { toast } from 'sonner';
 import { uuidToSnowflake } from '@/lib/snowflake';
@@ -263,7 +264,8 @@ export function MobileProfileView({
                 <p className="text-xs text-muted-foreground mt-0.5">{profile.pronouns}</p>
               )}
             </div>
-            <div className="flex flex-col items-center shrink-0">
+            <div className="flex flex-col items-end shrink-0 gap-1">
+              <InlineBadgeStrip userId={profile?.id} max={4} className="justify-end" />
               <button
                 onClick={handleCopyDisplayName}
                 className="w-7 h-7 rounded-full active:bg-muted/60 transition-colors flex items-center justify-center"

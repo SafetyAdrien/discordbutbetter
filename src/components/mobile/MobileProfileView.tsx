@@ -252,7 +252,10 @@ export function MobileProfileView({
           </div>
         </section>
 
-        <section className="mx-4 mt-4 rounded-2xl bg-card border border-border/50 p-4">
+        <InlineBadgeStrip userId={profile?.id} max={4} className="mx-4 mb-2 justify-end" />
+
+        <section className="mx-4 mt-0 rounded-2xl bg-card border border-border/50 p-4">
+
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <h2 className="font-bold text-xl truncate">

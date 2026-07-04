@@ -2239,6 +2239,8 @@ export type Database = {
           avatar_url: string | null
           banner_url: string | null
           bio: string | null
+          birthday: string | null
+          birthday_public: boolean
           connections: Json
           created_at: string | null
           custom_status: string | null
@@ -2262,6 +2264,8 @@ export type Database = {
           avatar_url?: string | null
           banner_url?: string | null
           bio?: string | null
+          birthday?: string | null
+          birthday_public?: boolean
           connections?: Json
           created_at?: string | null
           custom_status?: string | null
@@ -2285,6 +2289,8 @@ export type Database = {
           avatar_url?: string | null
           banner_url?: string | null
           bio?: string | null
+          birthday?: string | null
+          birthday_public?: boolean
           connections?: Json
           created_at?: string | null
           custom_status?: string | null
@@ -3931,6 +3937,12 @@ export type Database = {
           username: string
         }[]
       }
+      are_birthdays_today: {
+        Args: { uids: string[] }
+        Returns: {
+          user_id: string
+        }[]
+      }
       ban_member: {
         Args: { _reason?: string; _server_id: string; _user_id: string }
         Returns: undefined
@@ -3960,6 +3972,7 @@ export type Database = {
         Args: { p_username: string }
         Returns: boolean
       }
+      claim_my_birthday_badge: { Args: never; Returns: string }
       cleanup_old_typing_indicators: { Args: never; Returns: undefined }
       cleanup_old_voice_signals: { Args: never; Returns: undefined }
       create_dm_conversation: {
@@ -4095,6 +4108,7 @@ export type Database = {
         Returns: undefined
       }
       is_app_admin: { Args: never; Returns: boolean }
+      is_birthday_today: { Args: { uid: string }; Returns: boolean }
       is_dm_participant: {
         Args: { _conversation_id: string; _user_id: string }
         Returns: boolean

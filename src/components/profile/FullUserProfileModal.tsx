@@ -86,6 +86,15 @@ export function FullUserProfileModal({
 
   const isOwnProfile = currentUser?.id === user?.id;
   const bannerGuard = useImageGuardProps(isOwnProfile ? null : user?.id ?? null);
+  const isBirthday = useIsBirthday(user?.id ?? null);
+  const [birthdayConfetti, setBirthdayConfetti] = useState(false);
+  useEffect(() => {
+    if (open && isBirthday) {
+      setBirthdayConfetti(false);
+      const t = window.setTimeout(() => setBirthdayConfetti(true), 200);
+      return () => window.clearTimeout(t);
+    }
+  }, [open, isBirthday, user?.id]);
 
   const friendship = friends.find(
     (f) =>

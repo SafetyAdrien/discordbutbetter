@@ -27,6 +27,7 @@ import { InlineBadgeStrip } from '@/components/badges/InlineBadgeStrip';
 import { useIsBirthday } from '@/hooks/useBirthday';
 import { BirthdayRibbon } from '@/components/profile/BirthdayRibbon';
 import { ConfettiCanvas } from '@/components/effects/ConfettiCanvas';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 const statusColors: Record<string, string> = {
   online: 'bg-green-500',
@@ -86,6 +87,7 @@ export function FullUserProfileModal({
   };
 
   const isOwnProfile = currentUser?.id === user?.id;
+  const { isMobile, isTablet } = useBreakpoint();
   const bannerGuard = useImageGuardProps(isOwnProfile ? null : user?.id ?? null);
   const isBirthday = useIsBirthday(user?.id ?? null);
   const [birthdayConfetti, setBirthdayConfetti] = useState(false);

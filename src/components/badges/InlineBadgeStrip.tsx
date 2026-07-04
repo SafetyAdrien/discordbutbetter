@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { useBadges, type Badge } from '@/hooks/useBadges';
 import { useUserBadges } from '@/hooks/useUserBadges';
 import { useBirthdayGrantYears } from '@/hooks/useBirthdayGrants';
+import { useIsBirthday } from '@/hooks/useBirthday';
 
 interface InlineBadgeStripProps {
   userId?: string | null;
@@ -22,14 +23,20 @@ export function InlineBadgeStrip({ userId, max = 5, className, variant = 'plain'
   const { data: catalog } = useBadges();
   const { data: rows } = useUserBadges(userId);
   const birthdayYears = useBirthdayGrantYears(userId);
+  const isBirthday = useIsBirthday(userId);
 
   const badges = useMemo<Badge[]>(() => {
     if (!catalog || !rows) return [];
     const ids = new Set(rows.map((r) => r.badge_id));
-    return catalog
+    const owned = catalog
       .filter((b) => ids.has(b.id))
       .sort((a, b) => a.sort_order - b.sort_order);
-  }, [catalog, rows]);
+    if (isBirthday && !owned.some((b) => b.key === 'birthday')) {
+      const bd = catalog.find((b) => b.key === 'birthday');
+      if (bd) return [bd, ...owned];
+    }
+    return owned;
+  }, [catalog, rows, isBirthday]);
 
   if (!badges.length) return null;
 

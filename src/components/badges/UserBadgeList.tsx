@@ -79,13 +79,8 @@ export function UserBadgeList({ userId, size = 'sm', className, showEmpty = fals
           </TooltipTrigger>
           <TooltipContent side="top" className="max-w-[240px]">
             <div className="font-semibold" style={{ color: b.color }}>{b.name}</div>
-            {b.description && (
+            {b.key !== 'birthday' && b.description && (
               <div className="text-xs text-muted-foreground mt-0.5">{b.description}</div>
-            )}
-            {b.key === 'birthday' && birthdayYears.length > 0 && (
-              <div className="text-xs text-muted-foreground mt-1">
-                Célébré en {birthdayYears.join(', ')}
-              </div>
             )}
           </TooltipContent>
         </Tooltip>

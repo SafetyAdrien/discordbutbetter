@@ -1,3 +1,16 @@
+/**
+ * ============================================================================
+ * CRITICAL — AUTH CONTRACT — DO NOT MODIFY WITHOUT READING mem://architecture/auth-contract
+ * ============================================================================
+ * Règles inviolables (toute violation casse le login) :
+ *   1. JAMAIS d'`await` dans `onAuthStateChange` (fire-and-forget uniquement).
+ *   2. `onAuthStateChange` est enregistré AVANT `getSession()`.
+ *   3. `setLoading(false)` doit TOUJOURS être atteint (safety net 4s conservé).
+ *   4. Aucun composant ne doit lire `user/session` avant `loading === false` —
+ *      utiliser `useAuthReady()` ou `<RequireAuth>`.
+ *   5. Toute mutation du profil passe par `updateProfile` / `updateStatus`.
+ * ============================================================================
+ */
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { User, Session, AuthError } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -75,18 +88,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let resolved = false;
     const resolve = (nextSession: Session | null) => {
+      if (resolved) {
+        // Update session on subsequent auth changes (SIGNED_IN/OUT/TOKEN_REFRESHED)
+        applySession(nextSession);
+        return;
+      }
       resolved = true;
       applySession(nextSession);
     };
 
+    // 1. Enregistrer onAuthStateChange EN PREMIER (règle #2 du contrat).
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, nextSession) => {
       resolve(nextSession);
     });
 
+    // 2. Puis restaurer la session existante depuis le storage.
+    // Résilience : si getSession renvoie null MAIS qu'un token Supabase est
+    // présent en localStorage (cas mobile Safari/PWA), on attend l'événement
+    // INITIAL_SESSION jusqu'au safety net plutôt que de basculer en logout.
+    const hasStoredToken = (() => {
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith('sb-') && k.endsWith('-auth-token')) return true;
+        }
+      } catch { /* storage inaccessible */ }
+      return false;
+    })();
+
     supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
-      resolve(existingSession);
+      if (existingSession || !hasStoredToken) {
+        resolve(existingSession);
+      }
+      // sinon : on laisse onAuthStateChange/safety net décider
     }).catch(() => {
-      if (!resolved) resolve(null);
+      if (!resolved && !hasStoredToken) resolve(null);
     });
 
     // Safety net: never let the loading screen hang forever (mobile Safari /

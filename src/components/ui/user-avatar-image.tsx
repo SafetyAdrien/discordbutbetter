@@ -87,9 +87,7 @@ export function UserAvatarImage({
           </div>
         )}
       </div>
-      {isBirthday && showBirthdayCrown && (
-        <BirthdayAvatarCrown size={birthdayCrownSize} />
-      )}
     </div>
   );
 }
+

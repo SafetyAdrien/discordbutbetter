@@ -4,6 +4,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { cn } from '@/lib/utils';
 import { useBadges, type Badge } from '@/hooks/useBadges';
 import { useUserBadges } from '@/hooks/useUserBadges';
+import { useBirthdayGrantYears } from '@/hooks/useBirthdayGrants';
 
 interface UserBadgeListProps {
   userId?: string | null;
@@ -21,6 +22,7 @@ const SIZE_MAP = {
 export function UserBadgeList({ userId, size = 'sm', className, showEmpty = false }: UserBadgeListProps) {
   const { data: catalog, isFetching: catalogFetching } = useBadges();
   const { data: rows, isFetching: rowsFetching } = useUserBadges(userId);
+  const birthdayYears = useBirthdayGrantYears(userId);
 
   const badges = useMemo<Badge[]>(() => {
     if (!catalog || !rows) return [];

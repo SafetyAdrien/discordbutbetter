@@ -23,6 +23,9 @@ import { ProfileCalendar } from '@/components/profile/calendar/ProfileCalendar';
 import { EventListBelow } from '@/components/profile/calendar/EventListBelow';
 import { StatusIndicator } from '@/components/ui/StatusIndicator';
 import { UserBadgeList } from '@/components/badges/UserBadgeList';
+import { useIsBirthday } from '@/hooks/useBirthday';
+import { BirthdayRibbon } from '@/components/profile/BirthdayRibbon';
+import { ConfettiCanvas } from '@/components/effects/ConfettiCanvas';
 
 const statusColors: Record<string, string> = {
   online: 'bg-green-500',

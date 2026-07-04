@@ -1,69 +1,43 @@
-## 1. Badge d'anniversaire annuel stable
+## Correction de l'emplacement des badges
 
-### Problème actuel
-Chaque année crée un nouveau badge `birthday_YYYY` (2026, 2027…) — la liste des badges explose et il n'y a jamais de « badge anniversaire » unique et pérenne.
+### Ce qui a été mal compris
+J'ai placé les badges + le bouton copier **à l'intérieur** de la carte « Identity », alignés à droite du `display_name`. Or la demande était :
+- Les badges vont **au-dessus** de la section Display name (donc dans la zone hero, pas dans la carte identity).
+- Aligné **à l'opposé** du bloc identité (donc à droite du hero, en face de l'avatar).
+- **Juste au-dessus de l'icône copier-coller** du username/DisplayName (donc badges empilés au-dessus du bouton copier, ensemble en haut à droite du hero).
 
-### Nouvelle architecture
-- **Un seul badge permanent** de clé `birthday` (nom : « Anniversaire », icône 🎂 dorée). Il ne se re-crée jamais.
-- **Nouvelle table `user_badge_grants`** pour conserver l'historique année par année :
-  - `user_id`, `badge_id`, `granted_for` (int — l'année, ex. `2026`), `granted_at`.
-  - `UNIQUE(user_id, badge_id, granted_for)` → une célébration par an au maximum.
-- La table `user_badges` reste inchangée (une seule ligne par badge attribué) et sert d'index d'affichage. `granted_at` reste la 1ʳᵉ attribution.
-- Tooltip du badge sur le profil : « Anniversaire — célébré en 2024, 2025, 2026 » (années lues depuis `user_badge_grants`).
+### Nouvel emplacement — dans le hero (banner)
 
-### Migration idempotente
-1. Créer le badge `birthday` s'il n'existe pas.
-2. Créer `user_badge_grants` (+ GRANTs + RLS : lecture publique authentifiée, écriture via RPC uniquement).
-3. Migrer les anciens `birthday_YYYY` :
-   - Pour chaque `user_badges` pointant vers un badge `birthday_YYYY`, insérer dans `user_badge_grants(user_id, birthday_badge_id, YYYY, granted_at)`.
-   - Insérer une ligne `user_badges(user_id, birthday_badge_id)` (ON CONFLICT DO NOTHING).
-   - Supprimer les anciennes lignes `user_badges` pointant vers `birthday_YYYY`.
-   - Supprimer les badges `birthday_YYYY` de la table `badges`.
-4. Réécrire `claim_my_birthday_badge()` : garantit `user_badges(birthday)` + insère `user_badge_grants(..., année_courante)` (`ON CONFLICT DO NOTHING`), retourne l'`badge_id`.
+Structure cible de la section hero du `FullUserProfileModal` :
 
-### Hook côté client
-- Nouveau `useBirthdayGrantYears(userId)` : renvoie `number[]` des années.
-- `UserBadgeList` (tooltip) : si `badge.key === 'birthday'`, ajouter « Célébré en 2024, 2025, 2026 » sous la description.
+```text
++----------------------------------------------------------+
+|  [ banner image ]                          🎂 ⭐ ✨ +2    |  <- badges strip
+|                                              [copy icon]  |  <- copy username
+|                                                           |
+|  [avatar]                       [ Message ] [ Ajouter ]   |  <- existing row
++----------------------------------------------------------+
+```
 
----
+- **Retirer** la colonne badges + copier de la carte Identity (retour au layout d'origine : display_name + @username plein largeur).
+- **Ajouter** dans la section hero, en `absolute top-2 right-3`, un `<div className="flex flex-col items-end gap-1.5 z-20">` contenant :
+  - `<InlineBadgeStrip userId={user.id} max={4} />` — strip inline avec fond translucide (`bg-black/40 backdrop-blur-sm rounded-full px-2 py-1`) pour rester lisible sur n'importe quelle bannière.
+  - Bouton copier `@username` (`variant="secondary"`, `size="icon"`, `h-7 w-7`, même fond translucide) avec toast « Nom d'utilisateur copié ».
 
-## 2. Badges inline dans l'en-tête d'identité du profil
+### Responsive
 
-### Emplacement
-Dans `FullUserProfileModal` → section « Identity » (celle avec `display_name` + `@username`) :
-- Restructurer la section en **flex `justify-between`** :
-  - **Gauche** (existant) : `display_name`, `@username`, pronouns, « Membre depuis… ».
-  - **Droite (nouveau)** : petite pile verticale contenant :
-    - Les badges (taille `sm`, max 5 visibles + « +N » condensé si plus) — juste au-dessus…
-    - Un **bouton copier** discret (icône `Copy` de lucide, `ghost` `size="icon"`, `h-7 w-7`) qui copie le `@username` dans le presse-papier avec toast « Nom d'utilisateur copié ».
+- **Mobile 360px** : `right-3 top-2`, `max={3}` sur mobile via un plafond dynamique (composant `InlineBadgeStrip` accepte déjà `max`, on passe `useBreakpoint`-conditionnel : 3 sur mobile, 4 sur tablette, 5 sur desktop). `flex-wrap justify-end` sur la strip pour absorber un overflow inattendu.
+- **Tablette/desktop** : même position, plus d'espace, plus de badges visibles.
+- Sur `!isOwnProfile`, les boutons Message/Ajouter existent déjà en bas de la même section — les badges au top-right ne se chevauchent pas car ils sont sur une ligne différente (top vs bottom du hero).
+- Sur `isOwnProfile`, aucun bouton action en bas → badges + copier restent seuls en top-right, cohérent.
 
-### Nouveau composant
-`InlineBadgeStrip` (dans `src/components/badges/InlineBadgeStrip.tsx`) :
-- Reçoit `userId`, `max = 5`.
-- Utilise `useBadges` + `useUserBadges` (déjà cache-first via IndexedDB, aucun coût réseau supplémentaire).
-- Affiche jusqu'à `max` icônes avec `Tooltip` (réutilise le rendu du `UserBadgeList` en version compacte).
-- Au-delà, badge « +N » ouvrant… on garde simple, un `Tooltip` listant les noms restants.
+### Fichiers touchés
 
-### Section « Badges » complète (existante)
-On la **conserve** telle quelle plus bas dans le scrollable body — la strip inline sert de teaser rapide, la section complète reste pour le détail (labels + descriptions).
+- `src/components/profile/FullUserProfileModal.tsx` :
+  - Ajouter l'overlay hero top-right (badges + copier).
+  - Retirer la colonne droite ajoutée dans la carte Identity, restaurer le layout précédent.
+- `src/components/badges/InlineBadgeStrip.tsx` :
+  - Nouvelle prop optionnelle `variant?: 'plain' | 'overlay'` pour styler avec fond translucide quand posé sur une image (utilisée dans le hero).
+  - `flex-wrap justify-end` pour la sécurité.
 
-### Cas vide
-Si l'utilisateur n'a aucun badge, la colonne de droite affiche uniquement le bouton copier (pas de vide bizarre).
-
----
-
-## Fichiers touchés
-
-**Migration**
-- 1 migration `supabase--migration` : création badge `birthday` stable, création `user_badge_grants`, migration des anciens `birthday_YYYY`, réécriture de `claim_my_birthday_badge()`.
-
-**Nouveaux fichiers**
-- `src/components/badges/InlineBadgeStrip.tsx`
-- `src/hooks/useBirthdayGrants.ts` — `useBirthdayGrantYears(userId)`.
-
-**Modifiés**
-- `src/components/badges/UserBadgeList.tsx` — enrichit le tooltip pour le badge `birthday` avec la liste d'années.
-- `src/components/profile/FullUserProfileModal.tsx` — restructure la section Identity avec la colonne de droite (strip + bouton copier).
-- `src/components/birthday/BirthdayLoginCelebration.tsx` — inchangé (le RPC gère déjà tout).
-
-Aucun impact sur les autres écrans, aucun changement UX ailleurs.
+Aucune migration, aucune écriture DB, aucun impact ailleurs.

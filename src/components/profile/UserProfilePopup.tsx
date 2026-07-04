@@ -515,8 +515,8 @@ export function UserProfilePopup({
             </div>
           </div>
 
-          {/* Badges row (from DB) */}
-          <UserBadgeList userId={user.id} size="sm" />
+
+
 
 
           {/* Activity */}

@@ -60,7 +60,7 @@ import { CustomStatusModal } from '@/components/profile/CustomStatusModal';
 import { useVoice } from '@/contexts/VoiceContext';
 import { useVoiceUserSettings } from '@/hooks/useVoiceUserSettings';
 import { useServerProfile } from '@/hooks/useServerProfile';
-import { UserBadgeList } from '@/components/badges/UserBadgeList';
+import { InlineBadgeStrip } from '@/components/badges/InlineBadgeStrip';
 
 const ROLE_PANEL_TOP_FALLBACK = 366;
 

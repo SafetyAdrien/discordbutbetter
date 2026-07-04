@@ -1,8 +1,7 @@
 import { useEffect, useState, type ImgHTMLAttributes, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { useImageGuardProps } from '@/hooks/useDownloadPermissions';
-import { useIsBirthday } from '@/hooks/useBirthday';
-import { BirthdayAvatarCrown } from '@/components/profile/BirthdayAvatarCrown';
+
 
 interface UserAvatarImageProps {
   src?: string | null;
@@ -38,7 +37,9 @@ export function UserAvatarImage({
   const [loaded, setLoaded] = useState(false);
   const [errored, setErrored] = useState(false);
   const guard = useImageGuardProps(ownerId);
-  const isBirthday = useIsBirthday(showBirthdayCrown ? ownerId ?? null : null);
+  void showBirthdayCrown;
+  void birthdayCrownSize;
+
 
   useEffect(() => {
     setLoaded(false);
@@ -86,9 +87,7 @@ export function UserAvatarImage({
           </div>
         )}
       </div>
-      {isBirthday && showBirthdayCrown && (
-        <BirthdayAvatarCrown size={birthdayCrownSize} />
-      )}
     </div>
   );
 }
+

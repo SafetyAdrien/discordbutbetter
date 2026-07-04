@@ -1,69 +1,38 @@
-## Objectif
+## Contexte
 
-Le fichier `src/contexts/AuthContext.tsx` fonctionne correctement aujourd'hui (session restaurée via `getSession` + `onAuthStateChange`, safety net 4s, cache profil). Le vrai risque n'est pas le code actuel — c'est qu'une future implémentation le casse par inadvertance (await dans `onAuthStateChange`, requête avant session prête, redirection cassée, etc.).
+Sur le popup profil desktop (`UserProfilePopup`), le système d'anniversaire pose 3 problèmes visuels :
 
-Ce plan met en place **des garde-fous permanents** autour du login, sans changer son comportement visible.
+1. Un anneau doré animé + emoji 🎂 sont superposés sur l'avatar (au niveau du point de statut).
+2. Le badge d'anniversaire s'affiche dans une ligne dédiée sous `@username`, au lieu d'être aligné à droite de la ligne avatar (comme sur mobile).
+3. Le tooltip du badge est trop grand.
 
----
+## Changements
 
-## Ce que je vais faire
+### 1. Supprimer la décoration anniversaire sur l'avatar (desktop uniquement)
 
-### 1. Geler le contrat d'authentification
-- Ajouter un en-tête « CRITICAL — DO NOT MODIFY without reading … » en haut de `AuthContext.tsx` documentant les 5 règles inviolables :
-  1. Jamais d'`await` (hors "fire and forget") dans `onAuthStateChange`.
-  2. `getSession` + `onAuthStateChange` sont enregistrés dans cet ordre.
-  3. `setLoading(false)` doit toujours être appelé (safety net 4s conservé).
-  4. Aucun composant ne doit lire `session/user` avant que `loading === false`.
-  5. Toute mutation du profil passe par `updateProfile` / `updateStatus`.
-- Enregistrer ces règles dans `mem://architecture/auth-contract` pour que toute session future les respecte automatiquement.
+Dans `src/components/ui/user-avatar-image.tsx`, ajouter une prop `showBirthdayCrown` déjà présente — l'utiliser à `false` là où c'est desktop. Plus simple : puisque la couronne dorée est jugée « inutile et moche », la supprimer partout (mobile et desktop) — mobile n'utilisait de toute façon pas `UserAvatarImage` (il utilise `Avatar` shadcn). Concrètement :
 
-### 2. Ajouter un hook central `useAuthReady()`
-- Nouveau fichier `src/hooks/useAuthReady.ts` qui expose `{ user, session, isReady }` en dérivant de `AuthContext`.
-- `isReady` = `!loading` (source unique de vérité).
-- À utiliser dans tout nouveau hook Supabase via `enabled: isAuthReady && !!user` pour éliminer les race conditions RLS (`auth.uid() === null`).
+- Retirer le bloc `{isBirthday && showBirthdayCrown && <BirthdayAvatarCrown ... />}` dans `UserAvatarImage`.
+- Ne plus importer `BirthdayAvatarCrown` ni `useIsBirthday` dans ce fichier.
+- Le fichier `BirthdayAvatarCrown.tsx` devient orphelin (peut rester, non supprimé — évite les régressions).
 
-### 3. Créer un composant `<RequireAuth>` réutilisable
-- `src/components/auth/RequireAuth.tsx` : affiche `LoadingScreen` pendant `authLoading`, redirige vers `/auth` si pas d'utilisateur, sinon rend les enfants.
-- Envelopper toutes les routes protégées dans `App.tsx` (`/`, `/admin/badges`, `/install`, etc.) — les redirections ad-hoc dans `Index.tsx` restent en fallback.
-- Bénéfice : plus jamais de « page blanche » ou de « je vois brièvement la page avant redirect » lors d'un ajout de route.
+Effet : plus d'anneau doré ni d'emoji 🎂 collé au statut sur les profils desktop, DM, membres, etc.
 
-### 4. Sauvegarde/récupération de session résiliente
-- Ajouter dans `AuthContext` une double vérification : si `getSession()` renvoie `null` mais que `localStorage` contient un token Supabase valide (clé `sb-*-auth-token`), attendre l'événement `INITIAL_SESSION` de `onAuthStateChange` avant de basculer `loading=false` (jusqu'à la limite du safety net).
-- Évite les faux « déconnexions » sur mobile Safari / PWA après implémentations.
+### 2. Déplacer le badge d'anniversaire à droite de l'avatar dans `UserProfilePopup`
 
-### 5. Test de fumée automatisé
-- Ajouter `tests/auth-smoke.spec.ts` (Playwright, exécutable via `bunx playwright test`) :
-  1. Charger `/` sans session → doit rediriger vers `/auth` en < 5s.
-  2. Charger `/auth` → formulaire visible, pas d'erreur console.
-  3. Charger `/` avec session injectée en `localStorage` → page principale visible, pas de redirect.
-- Documenté dans `README.md` comme « à lancer avant tout merge touchant à l'auth ».
+Dans `src/components/profile/UserProfilePopup.tsx` :
 
-### 6. Mémoire projet
-- Créer `mem://architecture/auth-contract` listant les 5 règles + le fait qu'il faut utiliser `useAuthReady` et `<RequireAuth>`.
-- Ajouter une ligne Core dans `mem://index.md` : « Auth : ne jamais modifier `AuthContext.tsx` sans lire `mem://architecture/auth-contract`. `useAuthReady` + `<RequireAuth>` obligatoires. »
+- Remplacer `UserBadgeList` (ligne ~513, sous la carte nom/username) par `InlineBadgeStrip` positionné dans la ligne avatar (ligne ~457-485), aligné à droite, à la manière mobile.
+- Structure : wrap `<div className="relative -mt-10 mb-2 flex items-end justify-between gap-2">` avec l'avatar (existant) à gauche et `<InlineBadgeStrip userId={user.id} max={4} className="mb-1 max-w-[60%] justify-end" />` à droite.
+- Retirer complètement le bloc `UserBadgeList` situé après le nom.
 
----
+### 3. Réduire la taille du tooltip du badge anniversaire
 
-## Ce que je NE touche PAS
+Dans `src/components/badges/InlineBadgeStrip.tsx` :
 
-- Le flux visuel de `/auth` (design, textes, providers).
-- Les icônes de copie, les badges, ou tout code hors authentification.
-- Le schéma DB, les policies RLS, la configuration OAuth managée.
-- Le comportement actuel du login (aucun changement visible pour l'utilisateur).
+- Passer `TooltipContent` de `max-w-[240px]` à `max-w-[180px]`.
+- Réduire le nom : `font-semibold` → `text-xs font-semibold`.
+- Réduire la description : `text-xs` → `text-[10px]`.
+- Réduire l'année : `text-xs` → `text-[10px]`.
 
----
-
-## Détails techniques
-
-```text
-src/
-├── contexts/AuthContext.tsx        ← en-tête + double check localStorage
-├── hooks/useAuthReady.ts           ← NEW
-├── components/auth/RequireAuth.tsx ← NEW
-└── App.tsx                         ← wrap routes protégées
-tests/auth-smoke.spec.ts            ← NEW (Playwright)
-mem://architecture/auth-contract    ← NEW
-mem://index.md                      ← +1 ligne Core
-```
-
-Aucune migration DB. Aucune dépendance ajoutée (Playwright déjà dispo dans le sandbox).
+Aucun autre fichier touché. Aucune logique métier modifiée. Rien touché aux icônes de copie.

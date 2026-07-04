@@ -181,7 +181,7 @@ export function FullUserProfileModal({
             }}
             {...bannerGuard}
           />
-          {/* (No overlay in hero — badges now live inside the Identity card) */}
+          {/* Header row — avatar left, badges/actions right */}
           <div className="px-6 -mt-14 relative z-10 flex items-end justify-between gap-3">
             <div className="relative min-w-0 shrink-0">
               <div className="relative">
@@ -212,38 +212,45 @@ export function FullUserProfileModal({
                 </div>
               )}
             </div>
-            {!isOwnProfile && (
-              <div className="flex gap-2 mb-2 shrink-0">
-                <Button size="sm" onClick={handleSendMessage} disabled={createDM.isPending} className="rounded-full">
-                  <MessageCircle className="w-4 h-4 mr-1.5" />
-                  Message
-                </Button>
-                <Button
-                  size="sm"
-                  variant={isFriend ? 'destructive' : isPending ? 'secondary' : 'outline'}
-                  onClick={handleFriendAction}
-                  disabled={isPending}
-                  className="rounded-full"
-                >
-                  {isFriend ? (
-                    <>
-                      <UserMinus className="w-4 h-4 mr-1.5" />
-                      Retirer
-                    </>
-                  ) : isPending ? (
-                    <>
-                      <Check className="w-4 h-4 mr-1.5" />
-                      En attente
-                    </>
-                  ) : (
-                    <>
-                      <UserPlus className="w-4 h-4 mr-1.5" />
-                      Ajouter
-                    </>
-                  )}
-                </Button>
-              </div>
-            )}
+            <div className="mb-2 flex min-w-0 shrink flex-col items-end gap-2">
+              <InlineBadgeStrip
+                userId={user.id}
+                max={isMobile ? 3 : isTablet ? 4 : 5}
+                className="max-w-[min(52vw,320px)] justify-end"
+              />
+              {!isOwnProfile && (
+                <div className="flex flex-wrap justify-end gap-2">
+                  <Button size="sm" onClick={handleSendMessage} disabled={createDM.isPending} className="rounded-full">
+                    <MessageCircle className="w-4 h-4 mr-1.5" />
+                    Message
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={isFriend ? 'destructive' : isPending ? 'secondary' : 'outline'}
+                    onClick={handleFriendAction}
+                    disabled={isPending}
+                    className="rounded-full"
+                  >
+                    {isFriend ? (
+                      <>
+                        <UserMinus className="w-4 h-4 mr-1.5" />
+                        Retirer
+                      </>
+                    ) : isPending ? (
+                      <>
+                        <Check className="w-4 h-4 mr-1.5" />
+                        En attente
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus className="w-4 h-4 mr-1.5" />
+                        Ajouter
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
         </section>
 
@@ -251,24 +258,17 @@ export function FullUserProfileModal({
         <div className="flex-1 overflow-y-auto px-6 pt-4 pb-6 space-y-4">
           {/* Identity */}
           <section className="rounded-2xl bg-card border border-border/50 p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <h2 className="text-xl font-bold leading-tight truncate">{user.display_name}</h2>
-                <p className="text-sm text-muted-foreground truncate">@{user.username.toLowerCase()}</p>
-                {user.pronouns && (
-                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-muted-foreground">{user.pronouns}</span>
-                  </div>
-                )}
-                {memberSince && (
-                  <p className="mt-3 text-[11px] text-muted-foreground">Membre depuis {memberSince}</p>
-                )}
-              </div>
-              <InlineBadgeStrip
-                userId={user.id}
-                max={isMobile ? 3 : isTablet ? 4 : 5}
-                className="shrink-0 justify-end"
-              />
+            <div className="min-w-0">
+              <h2 className="text-xl font-bold leading-tight truncate">{user.display_name}</h2>
+              <p className="text-sm text-muted-foreground truncate">@{user.username.toLowerCase()}</p>
+              {user.pronouns && (
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-muted-foreground">{user.pronouns}</span>
+                </div>
+              )}
+              {memberSince && (
+                <p className="mt-3 text-[11px] text-muted-foreground">Membre depuis {memberSince}</p>
+              )}
             </div>
           </section>
 

@@ -209,7 +209,7 @@ export function MobileProfileView({
 
           {/* Avatar + Custom status bubble (Desktop-style compact) */}
           <div className="px-4 -mt-12 relative z-10">
-            <div className="flex items-end gap-4">
+            <div className="flex items-end justify-between gap-4">
               <button
                 onClick={() => {
                   haptics.light();
@@ -230,6 +230,7 @@ export function MobileProfileView({
                   bgClassName="bg-background"
                 />
               </button>
+              <InlineBadgeStrip userId={profile?.id} max={4} className="mb-2 max-w-[52vw] justify-end" />
             </div>
           </div>
 
@@ -265,7 +266,6 @@ export function MobileProfileView({
               )}
             </div>
             <div className="flex flex-col items-end shrink-0 gap-1">
-              <InlineBadgeStrip userId={profile?.id} max={4} className="justify-end" />
               <button
                 onClick={handleCopyDisplayName}
                 className="w-7 h-7 rounded-full active:bg-muted/60 transition-colors flex items-center justify-center"

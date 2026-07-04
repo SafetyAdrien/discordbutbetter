@@ -251,16 +251,25 @@ export function FullUserProfileModal({
         <div className="flex-1 overflow-y-auto px-6 pt-4 pb-6 space-y-4">
           {/* Identity */}
           <section className="rounded-2xl bg-card border border-border/50 p-4">
-            <h2 className="text-xl font-bold leading-tight">{user.display_name}</h2>
-            <p className="text-sm text-muted-foreground">@{user.username.toLowerCase()}</p>
-            {user.pronouns && (
-              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                <span className="rounded-full bg-muted px-2 py-0.5 text-muted-foreground">{user.pronouns}</span>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <h2 className="text-xl font-bold leading-tight truncate">{user.display_name}</h2>
+                <p className="text-sm text-muted-foreground truncate">@{user.username.toLowerCase()}</p>
+                {user.pronouns && (
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-muted-foreground">{user.pronouns}</span>
+                  </div>
+                )}
+                {memberSince && (
+                  <p className="mt-3 text-[11px] text-muted-foreground">Membre depuis {memberSince}</p>
+                )}
               </div>
-            )}
-            {memberSince && (
-              <p className="mt-3 text-[11px] text-muted-foreground">Membre depuis {memberSince}</p>
-            )}
+              <InlineBadgeStrip
+                userId={user.id}
+                max={isMobile ? 3 : isTablet ? 4 : 5}
+                className="shrink-0 justify-end"
+              />
+            </div>
           </section>
 
           {/* Badges */}

@@ -14,11 +14,11 @@ interface BirthdayAvatarCrownProps {
 export function BirthdayAvatarCrown({ className }: BirthdayAvatarCrownProps) {
   return (
     <>
-      {/* Rotating golden ring, ~3px thick, sitting just outside the avatar edge */}
+      {/* Rotating golden ring, ~1px thick, sitting just outside the avatar edge */}
       <span
         aria-hidden
         className={cn(
-          'pointer-events-none absolute inset-[-4px] rounded-full',
+          'pointer-events-none absolute inset-[-2px] rounded-full',
           'bg-[conic-gradient(from_0deg,#f5b301,#ffd54a,#ff9500,#f5b301)]',
           'animate-[spin_8s_linear_infinite]',
           'opacity-95',
@@ -26,22 +26,23 @@ export function BirthdayAvatarCrown({ className }: BirthdayAvatarCrownProps) {
         )}
         style={{
           WebkitMask:
-            'radial-gradient(circle, transparent calc(50% - 3px), #000 calc(50% - 2px))',
-          mask: 'radial-gradient(circle, transparent calc(50% - 3px), #000 calc(50% - 2px))',
+            'radial-gradient(circle, transparent calc(50% - 1.5px), #000 calc(50% - 0.5px))',
+          mask: 'radial-gradient(circle, transparent calc(50% - 1.5px), #000 calc(50% - 0.5px))',
         }}
       />
       {/* Static gift icon pinned on the ring path at 12 o'clock */}
       <span
         aria-label="Birthday"
-        className="pointer-events-none absolute left-1/2 top-[-6px] z-10 -translate-x-1/2 leading-none drop-shadow-[0_0_3px_rgba(245,179,1,0.6)]"
+        className="pointer-events-none absolute left-1/2 top-[-5px] z-10 -translate-x-1/2 leading-none drop-shadow-[0_0_3px_rgba(245,179,1,0.6)]"
       >
         <Gift
-          size={12}
+          size={10}
           className="text-[#f5b301]"
           fill="currentColor"
           strokeWidth={1.5}
         />
       </span>
+
     </>
   );
 }

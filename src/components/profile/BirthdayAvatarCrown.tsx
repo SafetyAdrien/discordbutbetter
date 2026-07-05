@@ -14,12 +14,10 @@ interface BirthdayAvatarCrownProps {
  * both tiny (24px) and large (96px+) avatars.
  */
 export function BirthdayAvatarCrown({ className, avatarSizePx = 40 }: BirthdayAvatarCrownProps) {
-  const ringThickness = Math.max(1, Math.round(avatarSizePx * 0.035 * 10) / 10);
-  const offset = Math.max(1, Math.round(avatarSizePx * 0.025));
-  const iconSize = Math.max(6, Math.round(avatarSizePx * 0.16));
-  const iconTop = -Math.round(iconSize * 0.55);
-  const maskOuter = ringThickness * 1.5;
-  const maskInner = ringThickness * 0.5;
+  const ringThickness = Math.min(1.5, Math.max(1, Math.round(avatarSizePx * 0.014 * 10) / 10));
+  const offset = Math.min(2, Math.max(0.5, Math.round(avatarSizePx * 0.012 * 10) / 10));
+  const iconSize = Math.max(9, Math.min(30, Math.round(avatarSizePx * 0.28)));
+  const iconTop = -Math.round(iconSize * 0.42 + offset);
 
   return (
     <>
@@ -33,8 +31,11 @@ export function BirthdayAvatarCrown({ className, avatarSizePx = 40 }: BirthdayAv
         )}
         style={{
           inset: `-${offset}px`,
-          WebkitMask: `radial-gradient(circle, transparent calc(50% - ${maskOuter}px), #000 calc(50% - ${maskInner}px))`,
-          mask: `radial-gradient(circle, transparent calc(50% - ${maskOuter}px), #000 calc(50% - ${maskInner}px))`,
+          padding: `${ringThickness}px`,
+          WebkitMask: 'linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)',
+          WebkitMaskComposite: 'xor',
+          mask: 'linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)',
+          maskComposite: 'exclude',
         }}
       />
       <span

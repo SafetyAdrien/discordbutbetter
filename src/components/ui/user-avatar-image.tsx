@@ -1,6 +1,9 @@
 import { useEffect, useState, type ImgHTMLAttributes, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { useImageGuardProps } from '@/hooks/useDownloadPermissions';
+import { BirthdayAvatarCrown } from '@/components/profile/BirthdayAvatarCrown';
+import { useIsBirthday } from '@/hooks/useBirthday';
+
 
 
 interface UserAvatarImageProps {
@@ -14,10 +17,8 @@ interface UserAvatarImageProps {
   loading?: ImgHTMLAttributes<HTMLImageElement>['loading'];
   decoding?: ImgHTMLAttributes<HTMLImageElement>['decoding'];
   ownerId?: string | null;
-  /** Show golden birthday crown when it's this user's public birthday. Default true. */
+  /** Show golden birthday ring + gift icon when it's this user's public birthday. Default true. */
   showBirthdayCrown?: boolean;
-  /** Size tier for the birthday crown overlay. */
-  birthdayCrownSize?: 'xs' | 'sm' | 'md' | 'lg';
 }
 
 export function UserAvatarImage({
@@ -32,13 +33,11 @@ export function UserAvatarImage({
   decoding = 'async',
   ownerId,
   showBirthdayCrown = true,
-  birthdayCrownSize = 'sm',
 }: UserAvatarImageProps) {
   const [loaded, setLoaded] = useState(false);
   const [errored, setErrored] = useState(false);
   const guard = useImageGuardProps(ownerId);
-  void showBirthdayCrown;
-  void birthdayCrownSize;
+  const isBirthday = useIsBirthday(ownerId ?? null);
 
 
   useEffect(() => {
@@ -87,7 +86,9 @@ export function UserAvatarImage({
           </div>
         )}
       </div>
+      {showBirthdayCrown && isBirthday && <BirthdayAvatarCrown />}
     </div>
+
   );
 }
 

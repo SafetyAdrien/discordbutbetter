@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUpdateProfile, useUploadAvatar, useUploadBanner } from '@/hooks/useProfile';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { UserAvatarImage } from '@/components/ui/user-avatar-image';
 import { Camera, Loader2, ChevronLeft, CalendarDays } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -150,12 +150,14 @@ export function MobileEditProfileView({ onBack }: Props) {
                 className="relative active:opacity-80 transition-opacity shrink-0"
                 aria-label="Changer l'avatar"
               >
-                <Avatar className="w-24 h-24 ring-[5px] ring-background">
-                  <AvatarImage src={profile?.avatar_url || undefined} />
-                  <AvatarFallback className="bg-primary/20 text-primary text-3xl font-semibold">
-                    {initial}
-                  </AvatarFallback>
-                </Avatar>
+                <UserAvatarImage
+                  src={profile?.avatar_url}
+                  alt={profile?.display_name}
+                  className="w-24 h-24 ring-[5px] ring-background"
+                  fallbackClassName="bg-primary/20 text-primary text-3xl font-semibold"
+                  fallback={initial}
+                  ownerId={profile?.id}
+                />
                 <div className="absolute bottom-1 right-1 w-6 h-6 rounded-full border-[4px] border-background bg-primary flex items-center justify-center">
                   <Camera className="w-2.5 h-2.5 text-primary-foreground" />
                 </div>

@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Settings, X, ExternalLink, Plus } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { UserAvatarImage } from '@/components/ui/user-avatar-image';
 import { useAuth } from '@/contexts/AuthContext';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useSwipeBack } from '@/hooks/useSwipeBack';
@@ -108,12 +108,14 @@ export function MobileFullProfileView({ onBack }: Props) {
             {/* Avatar */}
             <div className="px-4 -mt-12 relative">
               <div className="relative inline-block">
-                <Avatar className="w-24 h-24 ring-[5px] ring-background">
-                  <AvatarImage src={profile?.avatar_url || undefined} />
-                  <AvatarFallback className="bg-primary/20 text-primary text-3xl font-semibold">
-                    {initial}
-                  </AvatarFallback>
-                </Avatar>
+                <UserAvatarImage
+                  src={profile?.avatar_url}
+                  alt={profile?.display_name}
+                  className="w-24 h-24 ring-[5px] ring-background"
+                  fallbackClassName="bg-primary/20 text-primary text-3xl font-semibold"
+                  fallback={initial}
+                  ownerId={profile?.id ?? user?.id}
+                />
                 <StatusIndicator
                   status={currentStatus}
                   className="absolute bottom-1 right-1 w-6 h-6 border-[4px] border-background"

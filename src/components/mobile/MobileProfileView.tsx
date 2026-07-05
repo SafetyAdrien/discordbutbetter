@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { UserAvatarImage } from '@/components/ui/user-avatar-image';
 import {
   Settings,
   Pencil,
@@ -217,12 +217,14 @@ export function MobileProfileView({
               className="relative active:opacity-80 transition-opacity shrink-0"
               aria-label="Changer le statut en ligne"
             >
-              <Avatar className="w-24 h-24 ring-[5px] ring-background">
-                <AvatarImage src={profile?.avatar_url || undefined} />
-                <AvatarFallback className="bg-primary/20 text-primary text-3xl font-semibold">
-                  {initial}
-                </AvatarFallback>
-              </Avatar>
+              <UserAvatarImage
+                src={profile?.avatar_url}
+                alt={profile?.display_name}
+                className="w-24 h-24 ring-[5px] ring-background"
+                fallbackClassName="bg-primary/20 text-primary text-3xl font-semibold"
+                fallback={initial}
+                ownerId={profile?.id ?? user?.id}
+              />
               <StatusIndicator
                 status={currentStatus}
                 className="absolute bottom-1 right-1 w-6 h-6 border-[4px] border-background"

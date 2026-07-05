@@ -37,7 +37,7 @@ export function UserAvatarImage({
   const [loaded, setLoaded] = useState(false);
   const [errored, setErrored] = useState(false);
   const guard = useImageGuardProps(ownerId);
-  const isBirthday = useIsBirthday(ownerId ?? null);
+  const isBirthday = useIsBirthday(ownerId ?? null) || true; // TEMP: force ON for visual QA
 
 
   useEffect(() => {

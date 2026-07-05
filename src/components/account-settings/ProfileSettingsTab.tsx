@@ -202,6 +202,7 @@ export function ProfileSettingsTab() {
                   className="w-28 h-28 ring-[5px] ring-background"
                   fallbackClassName="bg-primary/20 text-primary text-4xl font-semibold"
                   fallback={initial}
+                  ownerId={profile?.id}
                 />
                 <div className="absolute bottom-1 right-1 w-7 h-7 rounded-full border-[4px] border-background bg-primary flex items-center justify-center">
                   {uploadAvatar.isPending ? (
@@ -406,6 +407,7 @@ export function ProfileSettingsTab() {
                       className="w-20 h-20 border-[6px] border-card"
                       fallbackClassName="bg-primary/20 text-primary text-2xl font-semibold"
                       fallback={initial}
+                      ownerId={profile?.id}
                     />
                     <span
                       className={`absolute bottom-0.5 right-0.5 w-4 h-4 rounded-full border-[3px] border-card ${statusDotColors[status] || statusDotColors.offline}`}

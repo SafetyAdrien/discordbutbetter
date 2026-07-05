@@ -68,12 +68,14 @@ export function UserAvatarImage({
 
   return (
     <div
+      ref={wrapperRef}
       className={cn(
         'relative flex shrink-0 overflow-visible rounded-full bg-muted',
         className
       )}
       onContextMenu={guard.onContextMenu}
     >
+
       <div className="absolute inset-0 overflow-hidden rounded-full">
         {showImage && !loaded && !disableSkeleton && (
           <div className="absolute inset-0 animate-pulse bg-muted/60" />

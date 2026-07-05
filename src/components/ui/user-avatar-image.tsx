@@ -42,12 +42,27 @@ export function UserAvatarImage({
   const guard = useImageGuardProps(ownerId);
   const isBirthday = useIsBirthday(ownerId ?? null);
   const showOwnBirthdayPreview = !!ownerId && ownerId === user?.id;
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const [avatarPx, setAvatarPx] = useState<number>(40);
 
+  useLayoutEffect(() => {
+    const el = wrapperRef.current;
+    if (!el) return;
+    const update = () => {
+      const w = el.clientWidth;
+      if (w > 0) setAvatarPx(w);
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   useEffect(() => {
     setLoaded(false);
     setErrored(false);
   }, [src]);
+
 
   const showImage = !!src && !errored;
 

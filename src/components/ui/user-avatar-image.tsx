@@ -1,9 +1,10 @@
-import { useEffect, useState, type ImgHTMLAttributes, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ImgHTMLAttributes, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { useImageGuardProps } from '@/hooks/useDownloadPermissions';
 import { BirthdayAvatarCrown } from '@/components/profile/BirthdayAvatarCrown';
 import { useIsBirthday } from '@/hooks/useBirthday';
 import { useAuth } from '@/contexts/AuthContext';
+
 
 
 

@@ -185,7 +185,9 @@ function tokenizeInline(text: string): MarkdownToken[] {
 
     const linkMatch = /\[([^\]]+)\]\(([^)]+)\)/.exec(remaining);
     if (linkMatch && (earliestMatch === null || linkMatch.index < earliestMatch.index)) {
-      earliestMatch = { index: linkMatch.index, length: linkMatch[0].length, content: linkMatch[1], type: 'link', url: linkMatch[2] };
+      const rawUrl = linkMatch[2].trim();
+      const safeUrl = /^(https?:\/\/|mailto:|\/|#)/i.test(rawUrl) ? rawUrl : undefined;
+      earliestMatch = { index: linkMatch.index, length: linkMatch[0].length, content: linkMatch[1], type: 'link', url: safeUrl };
     }
 
     const timestampRegex = /<t:(\d+):([tTdDfFR])>/g;

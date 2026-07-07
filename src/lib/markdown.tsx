@@ -185,7 +185,9 @@ function tokenizeInline(text: string): MarkdownToken[] {
 
     const linkMatch = /\[([^\]]+)\]\(([^)]+)\)/.exec(remaining);
     if (linkMatch && (earliestMatch === null || linkMatch.index < earliestMatch.index)) {
-      earliestMatch = { index: linkMatch.index, length: linkMatch[0].length, content: linkMatch[1], type: 'link', url: linkMatch[2] };
+      const rawUrl = linkMatch[2].trim();
+      const safeUrl = /^(https?:\/\/|mailto:|\/|#)/i.test(rawUrl) ? rawUrl : undefined;
+      earliestMatch = { index: linkMatch.index, length: linkMatch[0].length, content: linkMatch[1], type: 'link', url: safeUrl };
     }
 
     const timestampRegex = /<t:(\d+):([tTdDfFR])>/g;
@@ -345,7 +347,7 @@ function renderInlineToken(token: MarkdownToken, key: number, context: MarkdownC
     case 'strikethrough': return <del key={key} className="text-muted-foreground">{renderContent(token.content)}</del>;
     case 'code': return <code key={key} className="px-[5px] py-px bg-[hsl(var(--surface-elevated))] border border-[hsl(var(--border))] rounded-[4px] text-[0.85em] font-mono text-foreground/90 whitespace-pre-wrap">{token.content as string}</code>;
     case 'spoiler': return <span key={key} className="spoiler" onClick={(e) => e.currentTarget.classList.toggle('revealed')}>{renderContent(token.content)}</span>;
-    case 'link': return <a key={key} href={token.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{token.content as string}</a>;
+    case 'link': return token.url ? <a key={key} href={token.url} target="_blank" rel="noopener noreferrer nofollow" className="text-primary hover:underline">{token.content as string}</a> : <span key={key} className="text-primary">{token.content as string}</span>;
     case 'userMention': {
       const mentionId = token.mentionId || (token.content as string);
       const userId = isValidSnowflake(mentionId) ? (snowflakeToUuid(mentionId) || mentionId) : mentionId;

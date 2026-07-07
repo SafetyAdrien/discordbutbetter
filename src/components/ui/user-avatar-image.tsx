@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 import { useImageGuardProps } from '@/hooks/useDownloadPermissions';
 import { BirthdayAvatarCrown } from '@/components/profile/BirthdayAvatarCrown';
 import { useIsBirthday } from '@/hooks/useBirthday';
-import { useAuth } from '@/contexts/AuthContext';
+
 
 
 
@@ -36,12 +36,10 @@ export function UserAvatarImage({
   ownerId,
   showBirthdayCrown = true,
 }: UserAvatarImageProps) {
-  const { user } = useAuth();
   const [loaded, setLoaded] = useState(false);
   const [errored, setErrored] = useState(false);
   const guard = useImageGuardProps(ownerId);
   const isBirthday = useIsBirthday(ownerId ?? null);
-  const showOwnBirthdayPreview = !!ownerId && ownerId === user?.id;
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const [avatarPx, setAvatarPx] = useState<number>(40);
 
@@ -107,7 +105,7 @@ export function UserAvatarImage({
           </div>
         )}
       </div>
-      {showBirthdayCrown && (isBirthday || showOwnBirthdayPreview) && (
+      {showBirthdayCrown && isBirthday && (
         <BirthdayAvatarCrown avatarSizePx={avatarPx} />
       )}
 

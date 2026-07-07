@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 import { useImageGuardProps } from '@/hooks/useDownloadPermissions';
 import { BirthdayAvatarCrown } from '@/components/profile/BirthdayAvatarCrown';
 import { useIsBirthday } from '@/hooks/useBirthday';
-import { useAuth } from '@/contexts/AuthContext';
+
 
 
 

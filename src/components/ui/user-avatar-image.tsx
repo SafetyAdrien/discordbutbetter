@@ -105,7 +105,7 @@ export function UserAvatarImage({
           </div>
         )}
       </div>
-      {showBirthdayCrown && (isBirthday || showOwnBirthdayPreview) && (
+      {showBirthdayCrown && isBirthday && (
         <BirthdayAvatarCrown avatarSizePx={avatarPx} />
       )}
 

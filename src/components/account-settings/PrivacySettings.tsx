@@ -52,13 +52,16 @@ export function PrivacySettings() {
   const saveBirthday = async (nextDate: string | null, nextPublic: boolean) => {
     if (!user?.id) return;
     setBirthdaySaving(true);
-    const { error } = await supabase
-      .from('profiles')
-      .update({ birthday: nextDate, birthday_public: nextPublic } as never)
-      .eq('id', user.id);
+    const { error } = await (supabase.from('user_birthdays' as never) as never as {
+      upsert: (v: unknown, o: unknown) => Promise<{ error: unknown }>;
+    }).upsert(
+      { user_id: user.id, birthday: nextDate, birthday_public: nextPublic },
+      { onConflict: 'user_id' },
+    );
     setBirthdaySaving(false);
     if (error) console.error('[privacy] update birthday failed', error);
   };
+
 
   const updateSetting = (key: keyof typeof settings, value: boolean) => {
     setSettings(prev => ({ ...prev, [key]: value }));

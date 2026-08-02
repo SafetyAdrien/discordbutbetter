@@ -30,19 +30,21 @@ export function PrivacySettings() {
     (async () => {
       const { data } = await supabase
         .from('profiles')
-        .select('notify_screenshot_capture, birthday, birthday_public')
+        .select('notify_screenshot_capture')
         .eq('id', user.id)
         .maybeSingle();
-      if (!cancelled && data) {
-        const d = data as {
-          notify_screenshot_capture?: boolean | null;
-          birthday?: string | null;
-          birthday_public?: boolean | null;
-        };
+      // Birthday columns are not readable via the table API (privacy); use the owner-only RPC.
+      const { data: bd } = await (supabase.rpc as never as (fn: string) => Promise<{ data: unknown }>)('get_my_birthday');
+      if (!cancelled) {
+        const d = (data ?? {}) as { notify_screenshot_capture?: boolean | null };
         if (typeof d.notify_screenshot_capture === 'boolean') setNotifyScreenshotCapture(d.notify_screenshot_capture);
-        if (d.birthday) setBirthday(d.birthday);
-        if (typeof d.birthday_public === 'boolean') setBirthdayPublic(d.birthday_public);
+        const row = (Array.isArray(bd) ? bd[0] : bd) as
+          | { birthday?: string | null; birthday_public?: boolean | null }
+          | undefined;
+        if (row?.birthday) setBirthday(row.birthday);
+        if (typeof row?.birthday_public === 'boolean') setBirthdayPublic(row.birthday_public);
       }
+
     })();
     return () => { cancelled = true; };
   }, [user?.id]);

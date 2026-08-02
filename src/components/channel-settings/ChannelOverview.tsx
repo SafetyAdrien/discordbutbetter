@@ -163,7 +163,7 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
     e.target.value = '';
   };
 
-  const handleCropComplete = async (blob: Blob) => {
+  const handleCropComplete = (blob: Blob) => {
     if (blobPreviewUrlRef.current) {
       URL.revokeObjectURL(blobPreviewUrlRef.current);
     }

@@ -41,6 +41,8 @@ interface Props {
   ownerId?: string;
   serverId?: string;
   onOpenDM?: (id: string) => void;
+  /** Custom channel icon URL, replaces the default type icon when set. */
+  iconUrl?: string | null;
 }
 
 /**

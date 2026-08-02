@@ -10,6 +10,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { DownloadPermissionsSettings } from './DownloadPermissionsSettings';
 
+type Visibility = 'private' | 'friends' | 'everyone';
+
 export function PrivacySettings() {
   const { user } = useAuth();
   const [settings, setSettings] = useState({

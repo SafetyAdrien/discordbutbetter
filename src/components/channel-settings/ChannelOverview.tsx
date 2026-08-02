@@ -159,6 +159,7 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
       toast.error('Veuillez sélectionner une image');
       return;
     }
+    setIconHasAlpha(sourceMayHaveTransparency(file));
     const url = URL.createObjectURL(file);
     setCropperSrc(url);
     e.target.value = '';

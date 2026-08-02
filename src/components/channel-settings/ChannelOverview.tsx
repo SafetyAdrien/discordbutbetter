@@ -21,7 +21,6 @@ import { useUpdateChannel, type ChannelDetails } from '@/hooks/useChannelSetting
 import { useServerSettings } from '@/hooks/useServerSettings';
 import { ImageCropper } from '@/components/ui/image-cropper';
 import { compressImage } from '@/utils/wasm/ImageCompressor';
-import { sourceMayHaveTransparency, blobHasAlphaPixels } from '@/components/channels/calendar/thumbnailAlpha';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -77,7 +76,6 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
   const [pendingIconBlob, setPendingIconBlob] = useState<Blob | null>(null);
   const [iconRemoved, setIconRemoved] = useState(false);
   const [cropperSrc, setCropperSrc] = useState<string | null>(null);
-  const [iconHasAlpha, setIconHasAlpha] = useState(false);
   const [isUploadingIcon, setIsUploadingIcon] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const blobPreviewUrlRef = useRef<string | null>(null);
@@ -160,18 +158,15 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
       toast.error('Veuillez sélectionner une image');
       return;
     }
-    setIconHasAlpha(sourceMayHaveTransparency(file));
     const url = URL.createObjectURL(file);
     setCropperSrc(url);
     e.target.value = '';
   };
 
-  const handleCropComplete = async (blob: Blob) => {
+  const handleCropComplete = (blob: Blob) => {
     if (blobPreviewUrlRef.current) {
       URL.revokeObjectURL(blobPreviewUrlRef.current);
     }
-    const hasAlpha = await blobHasAlphaPixels(blob);
-    setIconHasAlpha(hasAlpha);
     const previewUrl = URL.createObjectURL(blob);
     blobPreviewUrlRef.current = previewUrl;
     setIconUrl(previewUrl);
@@ -214,8 +209,8 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
           maxHeight: 128,
           quality: 0.9,
           maxBytes: 64 * 1024,
-          // Keep the alpha channel for transparent sources (JPEG would turn it black)
-          ...(iconHasAlpha ? { format: 'image/png' as const } : {}),
+          // Channel icons are always PNG: format detection must never flatten alpha.
+          format: 'image/png',
         });
 
         const ext = compressed.format === 'image/webp' ? 'webp' : compressed.format === 'image/png' ? 'png' : 'jpg';
@@ -413,7 +408,7 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
           aspectRatio={1}
           circularCrop
           onCropComplete={handleCropComplete}
-          outputFormat={iconHasAlpha ? 'image/png' : 'image/jpeg'}
+          outputFormat="image/png"
           maxDimension={128}
         />
       )}

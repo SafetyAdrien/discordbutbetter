@@ -209,6 +209,8 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
           maxHeight: 128,
           quality: 0.9,
           maxBytes: 64 * 1024,
+          // Keep the alpha channel for transparent sources (JPEG would turn it black)
+          ...(iconHasAlpha ? { format: 'image/png' as const } : {}),
         });
 
         const ext = compressed.format === 'image/webp' ? 'webp' : compressed.format === 'image/png' ? 'png' : 'jpg';

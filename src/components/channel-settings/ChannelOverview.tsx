@@ -304,11 +304,6 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
               </button>
             )}
           </div>
-          {channel.icon_url && !iconUrl?.startsWith('blob:') && (channel.icon_url.endsWith('.jpg') || channel.icon_url.endsWith('.jpeg') || channel.icon_url.endsWith('.webp')) && (
-            <p className="text-xs text-muted-foreground">
-              L'icône actuelle a été enregistrée sans transparence. Réimportez une image PNG/WebP transparente pour retrouver un fond transparent.
-            </p>
-          )}
           <Input
             id="channel-name"
             value={name}
@@ -318,6 +313,11 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
             className="flex-1"
           />
         </div>
+        {channel.icon_url && !iconUrl?.startsWith('blob:') && (channel.icon_url.endsWith('.jpg') || channel.icon_url.endsWith('.jpeg')) && (
+          <p className="text-xs text-muted-foreground">
+            L'icône actuelle a été enregistrée sans transparence. Réimportez une image PNG/WebP transparente pour retrouver un fond transparent.
+          </p>
+        )}
         {shouldFormatStrict && name !== formatStrictChannelName(name) && (
           <p className="text-xs text-muted-foreground">Les caractères spéciaux seront convertis à l'enregistrement.</p>
         )}

@@ -76,6 +76,7 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
   const [pendingIconBlob, setPendingIconBlob] = useState<Blob | null>(null);
   const [iconRemoved, setIconRemoved] = useState(false);
   const [cropperSrc, setCropperSrc] = useState<string | null>(null);
+  const [iconHasAlpha, setIconHasAlpha] = useState(false);
   const [isUploadingIcon, setIsUploadingIcon] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const blobPreviewUrlRef = useRef<string | null>(null);

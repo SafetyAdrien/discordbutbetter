@@ -14,7 +14,14 @@ Correctif :
 - À l'upload, forcer un format qui conserve l'alpha : WebP si le navigateur le supporte, sinon PNG — jamais JPEG pour ces images.
 - Les images opaques (JPG classiques) gardent le comportement actuel, donc aucune régression de poids de fichier.
 
-Résultat : une icône PNG avec fond transparent reste transparente dans la liste des salons.
+Résultat : une icône PNG avec fond transparent reste transparente dans la liste des salons (les icônes déjà enregistrées en JPEG devront être réimportées une fois).
+
+## 3. Icône personnalisée absente du header du salon
+
+Le header du salon (barre du haut, avec le sujet cliquable) affiche toujours l'icône `#` par défaut, même si le salon a une icône personnalisée.
+
+Correctif : afficher l'icône personnalisée à la place du `#` lorsqu'elle existe (même rendu que dans la liste des salons), sur desktop et sur la vue mobile du salon.
+
 
 ## 2. Zone cliquable du header de serveur
 

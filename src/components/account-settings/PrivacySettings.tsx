@@ -21,8 +21,9 @@ export function PrivacySettings() {
   const [notifyScreenshotCapture, setNotifyScreenshotCapture] = useState<boolean>(true);
   const [view, setView] = useState<'main' | 'downloads'>('main');
   const [birthday, setBirthday] = useState<string>('');
-  const [birthdayPublic, setBirthdayPublic] = useState<boolean>(false);
+  const [birthdayVisibility, setBirthdayVisibility] = useState<Visibility>('private');
   const [birthdaySaving, setBirthdaySaving] = useState(false);
+  const [badgeVisibility, setBadgeVisibility] = useState<Visibility>('everyone');
 
   useEffect(() => {
     if (!user?.id) return;
@@ -30,37 +31,58 @@ export function PrivacySettings() {
     (async () => {
       const { data } = await supabase
         .from('profiles')
-        .select('notify_screenshot_capture')
+        .select('notify_screenshot_capture, badge_visibility' as never)
         .eq('id', user.id)
         .maybeSingle();
       // Birthday columns are not readable via the table API (privacy); use the owner-only RPC.
       const { data: bd } = await (supabase.rpc as never as (fn: string) => Promise<{ data: unknown }>)('get_my_birthday');
       if (!cancelled) {
-        const d = (data ?? {}) as { notify_screenshot_capture?: boolean | null };
+        const d = (data ?? {}) as { notify_screenshot_capture?: boolean | null; badge_visibility?: Visibility | null };
         if (typeof d.notify_screenshot_capture === 'boolean') setNotifyScreenshotCapture(d.notify_screenshot_capture);
+        if (d.badge_visibility) setBadgeVisibility(d.badge_visibility);
         const row = (Array.isArray(bd) ? bd[0] : bd) as
-          | { birthday?: string | null; birthday_public?: boolean | null }
+          | { birthday?: string | null; birthday_visibility?: Visibility | null }
           | undefined;
         if (row?.birthday) setBirthday(row.birthday);
-        if (typeof row?.birthday_public === 'boolean') setBirthdayPublic(row.birthday_public);
+        if (row?.birthday_visibility) setBirthdayVisibility(row.birthday_visibility);
       }
 
     })();
     return () => { cancelled = true; };
   }, [user?.id]);
 
-  const saveBirthday = async (nextDate: string | null, nextPublic: boolean) => {
+  const saveBirthday = async (nextDate: string | null, nextVisibility: Visibility) => {
     if (!user?.id) return;
     setBirthdaySaving(true);
     const { error } = await (supabase.from('user_birthdays' as never) as never as {
       upsert: (v: unknown, o: unknown) => Promise<{ error: unknown }>;
     }).upsert(
-      { user_id: user.id, birthday: nextDate, birthday_public: nextPublic },
+      {
+        user_id: user.id,
+        birthday: nextDate,
+        birthday_visibility: nextVisibility,
+        birthday_public: nextVisibility === 'everyone',
+      },
       { onConflict: 'user_id' },
     );
     setBirthdaySaving(false);
     if (error) console.error('[privacy] update birthday failed', error);
   };
+
+  const saveBadgeVisibility = async (next: Visibility) => {
+    const previous = badgeVisibility;
+    setBadgeVisibility(next);
+    if (!user?.id) return;
+    const { error } = await supabase
+      .from('profiles')
+      .update({ badge_visibility: next } as never)
+      .eq('id', user.id);
+    if (error) {
+      setBadgeVisibility(previous);
+      console.error('[privacy] update badge_visibility failed', error);
+    }
+  };
+
 
 
   const updateSetting = (key: keyof typeof settings, value: boolean) => {

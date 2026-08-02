@@ -41,6 +41,8 @@ interface Props {
   ownerId?: string;
   serverId?: string;
   onOpenDM?: (id: string) => void;
+  /** Custom channel icon URL, replaces the default type icon when set. */
+  iconUrl?: string | null;
 }
 
 /**
@@ -60,6 +62,7 @@ export function MobileChannelHeader({
   ownerId,
   serverId,
   onOpenDM,
+  iconUrl,
 }: Props) {
   const Icon = channelIcons[channelType] || StreamlineHash;
   const [membersOpen, setMembersOpen] = useState(false);
@@ -72,8 +75,12 @@ export function MobileChannelHeader({
       className="flex-1 min-w-0 flex items-center gap-2.5 px-1 py-1.5 rounded-xl active:bg-primary/8 transition-colors text-left"
       aria-label={hasMembersSheet ? `Membres du salon ${channelName}` : `Détails du salon ${channelName}`}
     >
-      <div className="w-9 h-9 rounded-full bg-muted/40 flex items-center justify-center flex-shrink-0">
-        <Icon className="w-[22px] h-[22px] text-muted-foreground" />
+      <div className="w-9 h-9 rounded-full bg-muted/40 flex items-center justify-center flex-shrink-0 overflow-hidden">
+        {iconUrl ? (
+          <img src={iconUrl} alt="" className="w-[22px] h-[22px] rounded-sm object-contain" />
+        ) : (
+          <Icon className="w-[22px] h-[22px] text-muted-foreground" />
+        )}
       </div>
       <div className="min-w-0 flex-1 leading-tight">
         <div className="flex items-center gap-0.5 min-w-0">

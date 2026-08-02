@@ -1136,7 +1136,11 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
           }}
         >
           <div className="flex items-center gap-2 min-w-0 flex-shrink">
-            <Hash className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+            {channel.icon_url ? (
+              <img src={channel.icon_url} alt="" className="w-5 h-5 rounded-sm object-contain flex-shrink-0" />
+            ) : (
+              <Hash className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+            )}
             <h2 className="font-semibold text-foreground truncate">{channel.name}</h2>
           </div>
 

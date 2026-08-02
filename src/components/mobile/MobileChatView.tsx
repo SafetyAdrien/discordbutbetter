@@ -186,6 +186,7 @@ export function MobileChatView({
       <MobileChannelHeader
         channelName={channel.name}
         channelType={channel.type}
+        iconUrl={(channel as { icon_url?: string | null }).icon_url ?? null}
         description={channel.description}
         onlineCount={onlineCount}
         onBack={onBack}

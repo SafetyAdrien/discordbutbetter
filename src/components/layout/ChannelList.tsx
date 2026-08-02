@@ -1818,7 +1818,7 @@ export function ChannelList({
 
           {/* Action icons - right side of header */}
           <div className={cn(
-            "flex items-center gap-1 pr-2 relative z-10",
+            "flex items-center gap-1 pr-2 relative z-10 ml-auto",
             showBanner && server.bannerUrl ? "self-end pb-2" : ""
           )}>
             {canAccessSettings &&

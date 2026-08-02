@@ -166,10 +166,12 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
     e.target.value = '';
   };
 
-  const handleCropComplete = (blob: Blob) => {
+  const handleCropComplete = async (blob: Blob) => {
     if (blobPreviewUrlRef.current) {
       URL.revokeObjectURL(blobPreviewUrlRef.current);
     }
+    const hasAlpha = await blobHasAlphaPixels(blob);
+    setIconHasAlpha(hasAlpha);
     const previewUrl = URL.createObjectURL(blob);
     blobPreviewUrlRef.current = previewUrl;
     setIconUrl(previewUrl);

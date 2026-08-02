@@ -2239,8 +2239,6 @@ export type Database = {
           avatar_url: string | null
           banner_url: string | null
           bio: string | null
-          birthday: string | null
-          birthday_public: boolean
           connections: Json
           created_at: string | null
           custom_status: string | null
@@ -2264,8 +2262,6 @@ export type Database = {
           avatar_url?: string | null
           banner_url?: string | null
           bio?: string | null
-          birthday?: string | null
-          birthday_public?: boolean
           connections?: Json
           created_at?: string | null
           custom_status?: string | null
@@ -2289,8 +2285,6 @@ export type Database = {
           avatar_url?: string | null
           banner_url?: string | null
           bio?: string | null
-          birthday?: string | null
-          birthday_public?: boolean
           connections?: Json
           created_at?: string | null
           custom_status?: string | null
@@ -3516,6 +3510,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_birthdays: {
+        Row: {
+          birthday: string | null
+          birthday_public: boolean
+          created_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          birthday?: string | null
+          birthday_public?: boolean
+          created_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          birthday?: string | null
+          birthday_public?: boolean
+          created_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       user_channel_settings: {
         Row: {

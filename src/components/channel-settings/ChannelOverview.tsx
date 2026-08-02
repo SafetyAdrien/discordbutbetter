@@ -21,6 +21,7 @@ import { useUpdateChannel, type ChannelDetails } from '@/hooks/useChannelSetting
 import { useServerSettings } from '@/hooks/useServerSettings';
 import { ImageCropper } from '@/components/ui/image-cropper';
 import { compressImage } from '@/utils/wasm/ImageCompressor';
+import { sourceMayHaveTransparency } from '@/components/channels/calendar/thumbnailAlpha';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';

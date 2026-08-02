@@ -4075,6 +4075,13 @@ export type Database = {
           uses: number
         }[]
       }
+      get_my_birthday: {
+        Args: never
+        Returns: {
+          birthday: string
+          birthday_public: boolean
+        }[]
+      }
       get_server_channel_permissions: {
         Args: { _server_id: string; _user_id: string }
         Returns: {

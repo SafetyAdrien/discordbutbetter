@@ -2237,6 +2237,7 @@ export type Database = {
           activity_text: string | null
           activity_type: string | null
           avatar_url: string | null
+          badge_visibility: Database["public"]["Enums"]["visibility_level"]
           banner_url: string | null
           bio: string | null
           connections: Json
@@ -2260,6 +2261,7 @@ export type Database = {
           activity_text?: string | null
           activity_type?: string | null
           avatar_url?: string | null
+          badge_visibility?: Database["public"]["Enums"]["visibility_level"]
           banner_url?: string | null
           bio?: string | null
           connections?: Json
@@ -2283,6 +2285,7 @@ export type Database = {
           activity_text?: string | null
           activity_type?: string | null
           avatar_url?: string | null
+          badge_visibility?: Database["public"]["Enums"]["visibility_level"]
           banner_url?: string | null
           bio?: string | null
           connections?: Json
@@ -3515,6 +3518,7 @@ export type Database = {
         Row: {
           birthday: string | null
           birthday_public: boolean
+          birthday_visibility: Database["public"]["Enums"]["visibility_level"]
           created_at: string
           updated_at: string
           user_id: string
@@ -3522,6 +3526,7 @@ export type Database = {
         Insert: {
           birthday?: string | null
           birthday_public?: boolean
+          birthday_visibility?: Database["public"]["Enums"]["visibility_level"]
           created_at?: string
           updated_at?: string
           user_id: string
@@ -3529,6 +3534,7 @@ export type Database = {
         Update: {
           birthday?: string | null
           birthday_public?: boolean
+          birthday_visibility?: Database["public"]["Enums"]["visibility_level"]
           created_at?: string
           updated_at?: string
           user_id?: string
@@ -4010,6 +4016,14 @@ export type Database = {
         Args: { _server_id: string; _user_id: string }
         Returns: boolean
       }
+      can_view_by_visibility: {
+        Args: {
+          _level: Database["public"]["Enums"]["visibility_level"]
+          _owner_id: string
+          _viewer_id: string
+        }
+        Returns: boolean
+      }
       can_view_message_attachment: {
         Args: { _path: string; _user_id: string }
         Returns: boolean
@@ -4098,6 +4112,7 @@ export type Database = {
         Returns: {
           birthday: string
           birthday_public: boolean
+          birthday_visibility: Database["public"]["Enums"]["visibility_level"]
         }[]
       }
       get_server_channel_permissions: {
@@ -4395,6 +4410,7 @@ export type Database = {
         | "view_poll_voters"
         | "moderate_polls"
       user_status: "online" | "idle" | "dnd" | "offline"
+      visibility_level: "private" | "friends" | "everyone"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -4651,6 +4667,7 @@ export const Constants = {
         "moderate_polls",
       ],
       user_status: ["online", "idle", "dnd", "offline"],
+      visibility_level: ["private", "friends", "everyone"],
     },
   },
 } as const

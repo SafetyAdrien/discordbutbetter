@@ -284,7 +284,7 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
               )}
             >
               {iconUrl ? (
-                <img src={iconUrl} alt="Icône" className="w-full h-full object-cover" />
+                <img src={iconUrl} alt="Icône" className="w-full h-full object-contain" />
               ) : (
                 <TypeIcon className="w-4 h-4 text-muted-foreground" />
               )}
@@ -304,6 +304,11 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
               </button>
             )}
           </div>
+          {channel.icon_url && !iconUrl?.startsWith('blob:') && (channel.icon_url.endsWith('.jpg') || channel.icon_url.endsWith('.jpeg') || channel.icon_url.endsWith('.webp')) && (
+            <p className="text-xs text-muted-foreground">
+              L'icône actuelle a été enregistrée sans transparence. Réimportez une image PNG/WebP transparente pour retrouver un fond transparent.
+            </p>
+          )}
           <Input
             id="channel-name"
             value={name}

@@ -272,30 +272,66 @@ export function PrivacySettings() {
               onChange={(e) => {
                 const v = e.target.value;
                 setBirthday(v);
-                void saveBirthday(v || null, birthdayPublic);
+                void saveBirthday(v || null, birthdayVisibility);
               }}
               className="max-w-xs"
             />
           </div>
-          <div className="flex items-center justify-between pt-2 border-t border-border/40">
-            <div className="space-y-0.5">
-              <Label>Célébrer publiquement mon anniversaire</Label>
-              <p className="text-sm text-muted-foreground">
-                Désactivé par défaut. Active pour permettre aux autres de voir la couronne
-                festive et le bandeau sur ton profil le jour J.
-              </p>
-            </div>
-            <Switch
-              checked={birthdayPublic}
+          <div className="space-y-2 pt-2 border-t border-border/40">
+            <Label>Qui peut voir mon anniversaire</Label>
+            <p className="text-sm text-muted-foreground">
+              « Moi uniquement » masque totalement la célébration aux autres. L'année n'est
+              jamais partagée.
+            </p>
+            <Select
+              value={birthdayVisibility}
               disabled={birthdaySaving || !birthday}
-              onCheckedChange={(checked) => {
-                setBirthdayPublic(checked);
-                void saveBirthday(birthday || null, checked);
+              onValueChange={(v) => {
+                const next = v as Visibility;
+                setBirthdayVisibility(next);
+                void saveBirthday(birthday || null, next);
               }}
-            />
+            >
+              <SelectTrigger className="max-w-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="private">Moi uniquement</SelectItem>
+                <SelectItem value="friends">Mes amis</SelectItem>
+                <SelectItem value="everyone">Tout le monde (serveurs et MP)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
+
+      {/* Badges */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Award className="w-5 h-5" />
+            Badges
+          </CardTitle>
+          <CardDescription>
+            Choisis qui peut voir tes badges et ton historique de badges (années
+            d'anniversaire célébrées, etc.).
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <Label>Qui peut voir mes badges</Label>
+          <Select value={badgeVisibility} onValueChange={(v) => void saveBadgeVisibility(v as Visibility)}>
+            <SelectTrigger className="max-w-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="private">Moi uniquement</SelectItem>
+              <SelectItem value="friends">Mes amis</SelectItem>
+              <SelectItem value="everyone">Tout le monde (serveurs et MP)</SelectItem>
+            </SelectContent>
+          </Select>
+        </CardContent>
+      </Card>
+
 
       {/* Data Privacy */}
       <Card>

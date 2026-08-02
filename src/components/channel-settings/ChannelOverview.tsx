@@ -21,7 +21,7 @@ import { useUpdateChannel, type ChannelDetails } from '@/hooks/useChannelSetting
 import { useServerSettings } from '@/hooks/useServerSettings';
 import { ImageCropper } from '@/components/ui/image-cropper';
 import { compressImage } from '@/utils/wasm/ImageCompressor';
-import { sourceMayHaveTransparency } from '@/components/channels/calendar/thumbnailAlpha';
+import { sourceMayHaveTransparency, blobHasAlphaPixels } from '@/components/channels/calendar/thumbnailAlpha';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -166,10 +166,12 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
     e.target.value = '';
   };
 
-  const handleCropComplete = (blob: Blob) => {
+  const handleCropComplete = async (blob: Blob) => {
     if (blobPreviewUrlRef.current) {
       URL.revokeObjectURL(blobPreviewUrlRef.current);
     }
+    const hasAlpha = await blobHasAlphaPixels(blob);
+    setIconHasAlpha(hasAlpha);
     const previewUrl = URL.createObjectURL(blob);
     blobPreviewUrlRef.current = previewUrl;
     setIconUrl(previewUrl);
@@ -282,7 +284,7 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
               )}
             >
               {iconUrl ? (
-                <img src={iconUrl} alt="Icône" className="w-full h-full object-cover" />
+                <img src={iconUrl} alt="Icône" className="w-full h-full object-contain" />
               ) : (
                 <TypeIcon className="w-4 h-4 text-muted-foreground" />
               )}
@@ -311,6 +313,11 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
             className="flex-1"
           />
         </div>
+        {channel.icon_url && !iconUrl?.startsWith('blob:') && (channel.icon_url.endsWith('.jpg') || channel.icon_url.endsWith('.jpeg')) && (
+          <p className="text-xs text-muted-foreground">
+            L'icône actuelle a été enregistrée sans transparence. Réimportez une image PNG/WebP transparente pour retrouver un fond transparent.
+          </p>
+        )}
         {shouldFormatStrict && name !== formatStrictChannelName(name) && (
           <p className="text-xs text-muted-foreground">Les caractères spéciaux seront convertis à l'enregistrement.</p>
         )}

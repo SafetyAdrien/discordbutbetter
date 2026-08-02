@@ -747,7 +747,7 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
                   <TooltipTrigger asChild>
                     <span className="flex-shrink-0 flex items-center justify-center">
                       {channel.icon_url && !isVoice && !isStage ? (
-                        <img src={channel.icon_url} alt="" className="w-4 h-4 rounded-sm object-cover" />
+                        <img src={channel.icon_url} alt="" className="w-4 h-4 rounded-sm object-contain" />
                       ) : (
                         <DefaultIcon className={cn("w-4 h-4", (isStage && isLiveStage || isVoice && participants.length > 0) && "text-[hsl(var(--online))]")} />
                       )}
@@ -2042,7 +2042,7 @@ threads={threadsByChannel[channel.id] || []}
                   return (
                     <div style={ghostStyle} className="flex items-center gap-2 px-2 py-1.5 ml-2">
                       {channel?.icon_url && channel.type !== "voice" && channel.type !== "stage" ? (
-                        <img src={channel.icon_url} alt="" className="w-5 h-5 rounded-sm object-cover shrink-0" />
+                        <img src={channel.icon_url} alt="" className="w-5 h-5 rounded-sm object-contain shrink-0" />
                       ) : (
                         <Icon className="w-5 h-5 text-[#949BA4] shrink-0" />
                       )}

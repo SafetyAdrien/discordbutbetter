@@ -406,6 +406,7 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
           aspectRatio={1}
           circularCrop
           onCropComplete={handleCropComplete}
+          outputFormat={iconHasAlpha ? 'image/png' : 'image/jpeg'}
           maxDimension={128}
         />
       )}

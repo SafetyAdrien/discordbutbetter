@@ -38,3 +38,5 @@ Correctif :
 - `src/components/channel-settings/ChannelOverview.tsx` : conserver le `File` sélectionné pour tester la transparence, passer `outputFormat="image/png"` à `ImageCropper` quand nécessaire, et passer `format: 'image/webp' | 'image/png'` à `compressImage` (avec extension/`contentType` alignés).
 - `src/components/channels/calendar/thumbnailAlpha.ts` : réutiliser `sourceMayHaveTransparency` (aucune modification).
 - `src/components/layout/ChannelList.tsx` (~ligne 1711) : remplacer `flex-1 min-w-0` par une largeur auto (`w-fit max-w-full`) sur le `PopoverTrigger`, en gardant le padding et la troncature.
+- `src/components/chat/ChatArea.tsx` (~ligne 1139) : rendre `channel.icon_url` en `<img className="w-5 h-5 rounded-sm object-cover">` à la place du `<Hash />`, avec repli sur `Hash`. Même traitement dans le header mobile du salon (`src/components/mobile/...MobileChatView`).
+

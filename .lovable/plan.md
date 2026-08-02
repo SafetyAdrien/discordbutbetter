@@ -14,7 +14,14 @@ Correctif :
 - À l'upload, forcer un format qui conserve l'alpha : WebP si le navigateur le supporte, sinon PNG — jamais JPEG pour ces images.
 - Les images opaques (JPG classiques) gardent le comportement actuel, donc aucune régression de poids de fichier.
 
-Résultat : une icône PNG avec fond transparent reste transparente dans la liste des salons.
+Résultat : une icône PNG avec fond transparent reste transparente dans la liste des salons (les icônes déjà enregistrées en JPEG devront être réimportées une fois).
+
+## 3. Icône personnalisée absente du header du salon
+
+Le header du salon (barre du haut, avec le sujet cliquable) affiche toujours l'icône `#` par défaut, même si le salon a une icône personnalisée.
+
+Correctif : afficher l'icône personnalisée à la place du `#` lorsqu'elle existe (même rendu que dans la liste des salons), sur desktop et sur la vue mobile du salon.
+
 
 ## 2. Zone cliquable du header de serveur
 
@@ -31,3 +38,5 @@ Correctif :
 - `src/components/channel-settings/ChannelOverview.tsx` : conserver le `File` sélectionné pour tester la transparence, passer `outputFormat="image/png"` à `ImageCropper` quand nécessaire, et passer `format: 'image/webp' | 'image/png'` à `compressImage` (avec extension/`contentType` alignés).
 - `src/components/channels/calendar/thumbnailAlpha.ts` : réutiliser `sourceMayHaveTransparency` (aucune modification).
 - `src/components/layout/ChannelList.tsx` (~ligne 1711) : remplacer `flex-1 min-w-0` par une largeur auto (`w-fit max-w-full`) sur le `PopoverTrigger`, en gardant le padding et la troncature.
+- `src/components/chat/ChatArea.tsx` (~ligne 1139) : rendre `channel.icon_url` en `<img className="w-5 h-5 rounded-sm object-cover">` à la place du `<Hash />`, avec repli sur `Hash`. Même traitement dans le header mobile du salon (`src/components/mobile/...MobileChatView`).
+

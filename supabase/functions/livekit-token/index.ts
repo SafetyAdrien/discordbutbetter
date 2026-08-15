@@ -1,6 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
-import { AccessToken } from 'npm:livekit-server-sdk@^1.9.3';
-import { VideoGrant } from 'npm:livekit-server-sdk@^1.9.3';
+import { AccessToken } from 'npm:livekit-server-sdk@^2.17.0';
+import { VideoGrant } from 'npm:livekit-server-sdk@^2.17.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

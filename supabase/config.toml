@@ -1,4 +1,4 @@
-project_id = "ixdznbvbjjnydqttmaam"
+project_id = "coqpxjsezbqudcvfrnkf"
 
 [functions.summarize-channel]
 verify_jwt = true

@@ -94,7 +94,9 @@ REVOKE ALL ON FUNCTION public.can_access_realtime_topic(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.can_access_realtime_topic(text) TO authenticated, service_role;
 
 -- 2. Topic-level RLS on realtime.messages (applies to channels opened with { config: { private: true }})
-ALTER TABLE realtime.messages ENABLE ROW LEVEL SECURITY;
+-- RLS is already enabled by default on realtime.messages on current Supabase
+-- projects, and the table is owned by supabase_realtime_admin — the migration
+-- role doesn't have ALTER privileges on it, so this statement is skipped.
 
 DROP POLICY IF EXISTS "rt_topic_subscribe_authorized" ON realtime.messages;
 CREATE POLICY "rt_topic_subscribe_authorized"

@@ -38,7 +38,9 @@ REVOKE EXECUTE ON FUNCTION public._audit(uuid, text, uuid, jsonb)     FROM PUBLI
 REVOKE EXECUTE ON FUNCTION public.mark_stale_users_offline()          FROM PUBLIC, anon, authenticated;
 
 -- Heartbeat : retirer anon, garder authenticated (appelé depuis client connecté)
-REVOKE EXECUTE ON FUNCTION public.heartbeat_presence()                FROM PUBLIC, anon;
+-- Note: an argument-less heartbeat_presence() overload existed transiently on
+-- the previous project (created outside the migration history) but was never
+-- part of the versioned schema, so only the current (_active boolean) form is revoked here.
 REVOKE EXECUTE ON FUNCTION public.heartbeat_presence(boolean)         FROM PUBLIC, anon;
 
 -- Capture screen : DM uniquement, utilisateur connecté

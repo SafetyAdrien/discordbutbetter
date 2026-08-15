@@ -2237,6 +2237,7 @@ export type Database = {
           activity_text: string | null
           activity_type: string | null
           avatar_url: string | null
+          badge_visibility: Database["public"]["Enums"]["visibility_level"]
           banner_url: string | null
           bio: string | null
           connections: Json
@@ -2260,6 +2261,7 @@ export type Database = {
           activity_text?: string | null
           activity_type?: string | null
           avatar_url?: string | null
+          badge_visibility?: Database["public"]["Enums"]["visibility_level"]
           banner_url?: string | null
           bio?: string | null
           connections?: Json
@@ -2283,6 +2285,7 @@ export type Database = {
           activity_text?: string | null
           activity_type?: string | null
           avatar_url?: string | null
+          badge_visibility?: Database["public"]["Enums"]["visibility_level"]
           banner_url?: string | null
           bio?: string | null
           connections?: Json
@@ -3447,6 +3450,38 @@ export type Database = {
           },
         ]
       }
+      user_badge_grants: {
+        Row: {
+          badge_id: string
+          granted_at: string
+          granted_for: number
+          id: string
+          user_id: string
+        }
+        Insert: {
+          badge_id: string
+          granted_at?: string
+          granted_for: number
+          id?: string
+          user_id: string
+        }
+        Update: {
+          badge_id?: string
+          granted_at?: string
+          granted_for?: number
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_badge_grants_badge_id_fkey"
+            columns: ["badge_id"]
+            isOneToOne: false
+            referencedRelation: "badges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_badges: {
         Row: {
           badge_id: string
@@ -3478,6 +3513,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_birthdays: {
+        Row: {
+          birthday: string | null
+          birthday_public: boolean
+          birthday_visibility: Database["public"]["Enums"]["visibility_level"]
+          created_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          birthday?: string | null
+          birthday_public?: boolean
+          birthday_visibility?: Database["public"]["Enums"]["visibility_level"]
+          created_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          birthday?: string | null
+          birthday_public?: boolean
+          birthday_visibility?: Database["public"]["Enums"]["visibility_level"]
+          created_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       user_channel_settings: {
         Row: {
@@ -3635,6 +3697,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_ui_preferences: {
+        Row: {
+          category_case: Json
+          created_at: string
+          custom_theme: Json | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category_case?: Json
+          created_at?: string
+          custom_theme?: Json | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category_case?: Json
+          created_at?: string
+          custom_theme?: Json | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       voice_signals: {
         Row: {
@@ -3907,6 +3993,12 @@ export type Database = {
           username: string
         }[]
       }
+      are_birthdays_today: {
+        Args: { uids: string[] }
+        Returns: {
+          user_id: string
+        }[]
+      }
       ban_member: {
         Args: { _reason?: string; _server_id: string; _user_id: string }
         Returns: undefined
@@ -3924,6 +4016,14 @@ export type Database = {
         Args: { _server_id: string; _user_id: string }
         Returns: boolean
       }
+      can_view_by_visibility: {
+        Args: {
+          _level: Database["public"]["Enums"]["visibility_level"]
+          _owner_id: string
+          _viewer_id: string
+        }
+        Returns: boolean
+      }
       can_view_message_attachment: {
         Args: { _path: string; _user_id: string }
         Returns: boolean
@@ -3936,6 +4036,7 @@ export type Database = {
         Args: { p_username: string }
         Returns: boolean
       }
+      claim_my_birthday_badge: { Args: never; Returns: string }
       cleanup_old_typing_indicators: { Args: never; Returns: undefined }
       cleanup_old_voice_signals: { Args: never; Returns: undefined }
       create_dm_conversation: {
@@ -4006,6 +4107,14 @@ export type Database = {
           uses: number
         }[]
       }
+      get_my_birthday: {
+        Args: never
+        Returns: {
+          birthday: string
+          birthday_public: boolean
+          birthday_visibility: Database["public"]["Enums"]["visibility_level"]
+        }[]
+      }
       get_server_channel_permissions: {
         Args: { _server_id: string; _user_id: string }
         Returns: {
@@ -4071,6 +4180,7 @@ export type Database = {
         Returns: undefined
       }
       is_app_admin: { Args: never; Returns: boolean }
+      is_birthday_today: { Args: { uid: string }; Returns: boolean }
       is_dm_participant: {
         Args: { _conversation_id: string; _user_id: string }
         Returns: boolean
@@ -4300,6 +4410,7 @@ export type Database = {
         | "view_poll_voters"
         | "moderate_polls"
       user_status: "online" | "idle" | "dnd" | "offline"
+      visibility_level: "private" | "friends" | "everyone"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -4556,6 +4667,7 @@ export const Constants = {
         "moderate_polls",
       ],
       user_status: ["online", "idle", "dnd", "offline"],
+      visibility_level: ["private", "friends", "everyone"],
     },
   },
 } as const

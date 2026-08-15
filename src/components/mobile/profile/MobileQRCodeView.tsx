@@ -19,7 +19,7 @@ export function MobileQRCodeView({ onBack }: Props) {
   const snowflake = user?.id ? uuidToSnowflake(user.id) : '';
 
   // Construct an "add friend" deep-link payload so QR scans work in-app
-  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://lovable.app';
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://nexuschat.app';
   const qrPayload = `${baseUrl}/?addFriend=${profile?.username || ''}`;
 
   const handleCopy = async () => {
@@ -32,7 +32,7 @@ export function MobileQRCodeView({ onBack }: Props) {
 
   const handleShare = async () => {
     haptics.light();
-    const text = `Ajoute-moi sur Lovable : @${profile?.username}`;
+    const text = `Ajoute-moi sur BCord : @${profile?.username}`;
     if (navigator.share) {
       try {
         await navigator.share({ title: 'Ajoute-moi', text, url: qrPayload });

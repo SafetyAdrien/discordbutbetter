@@ -1,4 +1,7 @@
 import { cn } from "@/lib/utils";
+import { useCategoryCasePreferences } from "@/hooks/useCategoryCasePreferences";
+import { caseClass } from "@/lib/ui/categoryCase";
+import { resolveCategoryDropTarget, pickCategoryDropTarget } from "@/lib/dnd/categoryDropTarget";
 import { uuidToSnowflake } from "@/lib/snowflake";
 import { useScrollAwareContextMenuGuard } from "@/hooks/useScrollAwareContextMenuGuard";
 import {
@@ -200,6 +203,7 @@ interface Server {
   id: string;
   name: string;
   ownerId: string;
+  secondaryOwnerId?: string;
   categories: Category[];
   iconUrl?: string;
   bannerUrl?: string;
@@ -292,13 +296,15 @@ function SortableCategory({
 
 }: {category: Category;children: React.ReactNode;isCollapsed: boolean;onToggle: () => void;onEdit: () => void;onCreateChannel: () => void;onDelete: () => void;showDropIndicator?: boolean;dropPosition?: "before" | "after";canManageChannels?: boolean;serverId: string;showInsideHighlight?: boolean;}) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const { prefs: casePrefs } = useCategoryCasePreferences();
   const { attributes, listeners, setNodeRef, transform, isDragging } = useSortable({
     id: `category-${category.id}`,
     data: {
       type: "category",
       categoryId: category.id
     },
-    transition: null
+    transition: null,
+    disabled: !canManageChannels
   });
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -340,7 +346,7 @@ function SortableCategory({
                 className="flex items-center gap-px flex-1">
 
                 <ChevronDown className={cn("w-3 h-3 transition-transform duration-200", isCollapsed && "-rotate-90")} />
-                <span className="tracking-wide font-ginto text-[14px] font-medium my-0 py-0 px-[2px] mx-[2px] text-muted-foreground">
+                <span className={cn("tracking-wide font-ginto text-[14px] font-medium my-0 py-0 px-[2px] mx-[2px] text-muted-foreground", caseClass('channelCategories', casePrefs))}>
                   {category.name}
                 </span>
               </button>
@@ -690,7 +696,8 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
       data: {
         type: "channel",
         channelId: channel.id
-      }
+      },
+      disabled: !canManageChannels
     });
     const style = {
       transform: CSS.Transform.toString(transform),
@@ -740,7 +747,7 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
                   <TooltipTrigger asChild>
                     <span className="flex-shrink-0 flex items-center justify-center">
                       {channel.icon_url && !isVoice && !isStage ? (
-                        <img src={channel.icon_url} alt="" className="w-4 h-4 rounded-sm object-cover" />
+                        <img src={channel.icon_url} alt="" className="w-4 h-4 rounded-sm object-contain" />
                       ) : (
                         <DefaultIcon className={cn("w-4 h-4", (isStage && isLiveStage || isVoice && participants.length > 0) && "text-[hsl(var(--online))]")} />
                       )}
@@ -959,7 +966,43 @@ export function ChannelList({
   // (avoids stale closure when React batches setState between dragOver and dragEnd)
   const dropPositionRef = useRef<"before" | "after">("after");
   const dropModeRef = useRef<"before" | "after" | "inside">("after");
+  // Position Y réelle de la souris, mise à jour indépendamment des événements
+  // du shim react-dnd. Le shim planifie un requestAnimationFrame PAR élément
+  // survolé, avec un instantané de delta figé au moment de la planification
+  // (voir src/lib/dnd-shim/use-sortable.tsx). Si le curseur traverse plusieurs
+  // catégories rapidement (typiquement en survolant vers le haut, où les
+  // catégories sont plus rapprochées), ces callbacks peuvent s'exécuter dans
+  // un ordre différent de celui du survol réel et faire retomber l'indicateur
+  // sur une position intermédiaire au lieu de la position finale sous le
+  // curseur — d'où l'indicateur qui "part dans le mauvais sens" lors de
+  // mouvements rapides.
+  //
+  // IMPORTANT : on écoute "dragover", PAS "pointermove"/"mousemove". Le
+  // backend utilisé ici (react-dnd-html5-backend) s'appuie sur l'API native
+  // HTML5 Drag & Drop du navigateur — pendant un drag natif actif, le
+  // navigateur NE déclenche PAS pointermove/mousemove sur la page (c'est un
+  // comportement standard des navigateurs), seulement dragover. Écouter
+  // pointermove ici ne capte donc rien pendant un vrai drag et retombe en
+  // silence sur l'ancien calcul basé sur l'événement du shim.
+  const liveClientYRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!activeId) {
+      liveClientYRef.current = null;
+      return;
+    }
+    const handleNativeDragOver = (e: DragEvent) => {
+      liveClientYRef.current = e.clientY;
+    };
+    window.addEventListener("dragover", handleNativeDragOver, { passive: true });
+    return () => window.removeEventListener("dragover", handleNativeDragOver);
+  }, [activeId]);
+
   const getDragClientY = useCallback((event: DragOverEvent | DragEndEvent) => {
+    if (liveClientYRef.current !== null) return liveClientYRef.current;
+
+    // Repli si aucun dragover natif n'a encore été capté (ex: tout premier
+    // instant du drag) : ancien calcul basé sur l'événement du shim.
     const activatorEvent = event.activatorEvent as MouseEvent | TouchEvent | null;
     if (!activatorEvent) return null;
 
@@ -973,6 +1016,7 @@ export function ChannelList({
     return touch ? touch.clientY + event.delta.y : null;
   }, []);
 
+
   const getCategoryDropTarget = useCallback((activeCategoryId: string, event: DragOverEvent | DragEndEvent) => {
     const clientY = getDragClientY(event);
     if (clientY === null) return null;
@@ -984,29 +1028,12 @@ export function ChannelList({
         id: element.dataset.categoryId,
         rect: element.getBoundingClientRect()
       }))
-      .filter((item): item is { id: string; rect: DOMRect } => !!item.id && item.id !== activeCategoryId)
-      .sort((a, b) => a.rect.top - b.rect.top);
+      .filter((item): item is { id: string; rect: DOMRect } => !!item.id && item.id !== activeCategoryId);
 
-    if (categoryHeaders.length === 0) return null;
-
-    const target = categoryHeaders.reduce((closest, current) => {
-      const currentDistance =
-        clientY < current.rect.top ? current.rect.top - clientY :
-        clientY > current.rect.bottom ? clientY - current.rect.bottom :
-        0;
-      const closestDistance =
-        clientY < closest.rect.top ? closest.rect.top - clientY :
-        clientY > closest.rect.bottom ? clientY - closest.rect.bottom :
-        0;
-
-      return currentDistance < closestDistance ? current : closest;
-    }, categoryHeaders[0]);
-
-    const midpoint = target.rect.top + target.rect.height / 2;
-    return {
-      overCatId: target.id,
-      position: clientY < midpoint ? "before" as const : "after" as const
-    };
+    return resolveCategoryDropTarget(
+      categoryHeaders.map((h) => ({ id: h.id, top: h.rect.top, height: h.rect.height })),
+      clientY,
+    );
   }, [getDragClientY]);
   const { profile, signOut, updateStatus } = useAuth();
   const { voiceState, joinChannel, leaveChannel, toggleMute, toggleDeafen, isConnected, speakingUsers } = useVoice();
@@ -1024,14 +1051,27 @@ export function ChannelList({
   // Check if user can access server settings
   const canAccessSettings = useCanAccessServerSettings(server.id);
 
+  // Check if user is the owner (cannot leave, must delete). Calculé
+  // directement depuis la prop `server` de cette page (source garantie à
+  // jour pour le serveur affiché), à ne pas confondre avec le isGod/isOwner
+  // interne de usePermissions() qui dépend d'une liste séparée
+  // (useServers(), la liste de TOUS les serveurs de l'utilisateur) pouvant
+  // être désynchronisée par rapport au serveur réellement affiché — c'est ce
+  // qui bloquait le drag pour de vrais propriétaires/gestionnaires après
+  // l'ajout de `disabled: !canManageChannels`.
+  const isOwner = profile?.id === server.ownerId;
+  // Même logique pour le système de double propriétaire (second propriétaire) :
+  // un vrai second propriétaire ne doit pas dépendre uniquement du isGod de
+  // usePermissions() (même risque de désynchronisation que pour isOwner).
+  const isSecondaryOwner = !!server.secondaryOwnerId && profile?.id === server.secondaryOwnerId;
+
   // Check if user can manage channels
   const { hasPermission, isGod } = usePermissions(server.id);
-  const canManageChannels = isGod || hasPermission("manage_channels") || hasPermission("administrator");
+  const canManageChannels = isGod || isOwner || isSecondaryOwner || hasPermission("manage_channels") || hasPermission("administrator");
+
   // Create-invite is gated server-side by owner/admin (RLS on `invites`), not the unused `create_invites` permission enum.
   const canCreateInvite = isGod || hasPermission("administrator");
 
-  // Check if user is the owner (cannot leave, must delete)
-  const isOwner = profile?.id === server.ownerId;
 
   // BATCH: Get all channel permissions (view + connect) with a SINGLE RPC call
   // Replaces useChannelsVisibility + useVoiceChannelLocks (N+M calls → 1 call)
@@ -1217,6 +1257,14 @@ export function ChannelList({
     });
   };
   const handleDragStart = (event: DragStartEvent) => {
+    // Défense en profondeur : useSortable({ disabled: !canManageChannels })
+    // empêche déjà le drag de démarrer côté catégories/salons, mais on
+    // bloque aussi ici au cas où un autre point d'entrée déclencherait un
+    // drag (ex: futur code qui oublierait de passer `disabled`).
+    const activeIdStr = event.active.id as string;
+    if (!canManageChannels && (activeIdStr.startsWith("category-") || activeIdStr.startsWith("channel-"))) {
+      return;
+    }
     dropPositionRef.current = "after";
     dropModeRef.current = "after";
     setOverId(null);
@@ -1355,9 +1403,11 @@ export function ChannelList({
     setOverId(overIdStr);
   };
   const handleDragEnd = (event: DragEndEvent) => {
-    // Snapshot ref values synchronously — handleDragOver writes them; state may be stale here
+    // Snapshot ref/state values synchronously — handleDragOver writes them, et on
+    // les lit avant que setOverId(null)/setActiveId(null) ne les réinitialisent.
     const currentDropPosition = dropPositionRef.current;
     const currentDropMode = dropModeRef.current;
+    const lastOverId = overId; // état React qui pilote RÉELLEMENT le DropIndicator affiché à l'écran
     setOverId(null);
     const { active, over } = event;
     setActiveId(null);
@@ -1367,13 +1417,26 @@ export function ChannelList({
     // Handle category reordering with precise position
     if (activeIdStr.startsWith("category-")) {
       const activeCatId = activeIdStr.replace("category-", "");
-      const resolvedTarget = getCategoryDropTarget(activeCatId, event) ??
-        (overIdStr?.startsWith("category-") && overIdStr !== activeIdStr ? {
-          overCatId: overIdStr.replace("category-", ""),
-          position: currentDropPosition
-        } : null);
+      // IMPORTANT : on utilise `lastOverId` (l'état React `overId`), PAS
+      // `overIdStr` (event.over?.id). Ce dernier vient du hit-test natif du
+      // shim react-dnd (ctx.state.lastOverId côté use-sortable.tsx) : il ne se
+      // met à jour QUE quand le curseur est physiquement au-dessus de la fine
+      // bande DOM de l'en-tête d'une catégorie. Notre calcul personnalisé
+      // (getCategoryDropTarget, appelé depuis handleDragOver) résout au
+      // contraire une cible même dans les zones "creuses" entre catégories —
+      // et c'est LUI qui pilote le DropIndicator affiché via `overId`/`setOverId`.
+      // Utiliser overIdStr créait exactement le bug rapporté : l'indicateur
+      // était au bon endroit, mais si le curseur n'était pas *exactement* sur
+      // la bande DOM d'un en-tête au moment du lâcher, overIdStr restait périmé
+      // (dernier en-tête réellement survolé au sens du hit-test natif), donc le
+      // drop se résolvait ailleurs.
+      const hoverTarget = lastOverId?.startsWith("category-") && lastOverId !== activeIdStr ?
+        { overCatId: lastOverId.replace("category-", ""), position: currentDropPosition } :
+        null;
+      const resolvedTarget = pickCategoryDropTarget(hoverTarget, getCategoryDropTarget(activeCatId, event));
 
       if (!resolvedTarget) return;
+
 
       const overCatId = resolvedTarget.overCatId;
       const oldIndex = orderedServerCategories.findIndex((c) => c.id === activeCatId);
@@ -1648,12 +1711,12 @@ export function ChannelList({
           <Popover>
             <PopoverTrigger asChild>
               <button className={cn(
-                "flex items-center justify-start gap-2 flex-1 min-w-0 transition-colors relative z-10 h-full rounded-tl-xl",
+                "flex items-center justify-start gap-2 min-w-0 max-w-full w-fit transition-colors relative z-10 h-full rounded-tl-xl",
                 showBanner && server.bannerUrl ? "hover:bg-transparent" : "hover:bg-muted/30"
               )}>
 
                 <div className={cn(
-                  "flex-1 min-w-0 text-left relative z-10 px-4",
+                  "min-w-0 text-left relative z-10 px-4",
                   showBanner && server.bannerUrl ? "self-end pb-2" : ""
                 )}>
                   <p className={cn(
@@ -1755,7 +1818,7 @@ export function ChannelList({
 
           {/* Action icons - right side of header */}
           <div className={cn(
-            "flex items-center gap-1 pr-2 relative z-10",
+            "flex items-center gap-1 pr-2 relative z-10 ml-auto",
             showBanner && server.bannerUrl ? "self-end pb-2" : ""
           )}>
             {canAccessSettings &&
@@ -1979,7 +2042,7 @@ threads={threadsByChannel[channel.id] || []}
                   return (
                     <div style={ghostStyle} className="flex items-center gap-2 px-2 py-1.5 ml-2">
                       {channel?.icon_url && channel.type !== "voice" && channel.type !== "stage" ? (
-                        <img src={channel.icon_url} alt="" className="w-5 h-5 rounded-sm object-cover shrink-0" />
+                        <img src={channel.icon_url} alt="" className="w-5 h-5 rounded-sm object-contain shrink-0" />
                       ) : (
                         <Icon className="w-5 h-5 text-[#949BA4] shrink-0" />
                       )}
@@ -2213,22 +2276,26 @@ function VoiceParticipantsSidebar({
   );
 }
 
-function ChannelListScrollContainer({
-  onScroll,
-  children,
-}: {
-  onScroll: React.UIEventHandler<HTMLDivElement>;
-  children: React.ReactNode;
-}) {
+const ChannelListScrollContainer = forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement> & {
+    onScroll: React.UIEventHandler<HTMLDivElement>;
+    children: React.ReactNode;
+  }
+>(function ChannelListScrollContainer({ onScroll, children, className, ...rest }, ref) {
   const guard = useScrollAwareContextMenuGuard();
   return (
     <div
-      className="flex-1 overflow-y-auto scrollbar-thin py-2 px-1 relative"
+      ref={ref}
+      className={cn("flex-1 overflow-y-auto scrollbar-thin py-2 px-1 relative", className)}
       onScroll={onScroll}
       {...guard}
+      {...rest}
     >
       {children}
     </div>
   );
-}
+});
+
+
 

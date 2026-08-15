@@ -36,6 +36,7 @@ export interface Channel {
   description?: string;
   unreadCount?: number;
   server_id?: string;
+  icon_url?: string | null;
 }
 
 export interface RepliedMessageRef {

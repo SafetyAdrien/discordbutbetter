@@ -196,7 +196,7 @@ export function StageChannel({ channel, serverId, hideHeader = false }: StageCha
       <div className="flex-1 flex flex-col bg-[hsl(var(--surface-2)/0.3)]">
         {/* Header */}
         {!hideHeader && (
-        <div className="h-12 flex items-center px-4 bg-[hsl(var(--surface-2))]" style={{ borderBottom: "1px solid hsl(var(--border) / 0.5)", boxShadow: "var(--shadow-elevation-1)", borderRadius: "0 0 var(--radius-xl) var(--radius-xl)" }}>
+        <div className="h-12 flex items-center px-4 bg-[hsl(var(--surface-2))]" style={{ borderBottom: "1px solid hsl(var(--border) / 0.5)", boxShadow: "var(--shadow-elevation-1)" }}>
           <Radio className="w-5 h-5 mr-2 text-muted-foreground" />
           <span className="font-semibold">{channel.name}</span>
         </div>
@@ -233,7 +233,7 @@ export function StageChannel({ channel, serverId, hideHeader = false }: StageCha
       <div className={cn(
         "h-12 flex items-center px-2 sm:px-4 justify-between transition-colors gap-2 w-full bg-[hsl(var(--surface-2))]",
         isLive && "bg-[hsl(var(--online))]/10"
-      )} style={{ borderBottom: isLive ? "1px solid hsl(var(--online))" : "1px solid hsl(var(--border) / 0.5)", boxShadow: "var(--shadow-elevation-1)", borderRadius: "0 0 var(--radius-xl) var(--radius-xl)" }}>
+      )} style={{ borderBottom: isLive ? "1px solid hsl(var(--online))" : "1px solid hsl(var(--border) / 0.5)", boxShadow: "var(--shadow-elevation-1)" }}>
         <div className="flex items-center gap-2 min-w-0 flex-shrink">
           <Radio className={cn("w-5 h-5 flex-shrink-0", isLive && "text-[hsl(var(--online))] animate-pulse")} />
           <span className="font-semibold truncate">{channel.name}</span>

@@ -129,7 +129,7 @@ var RnnoiseProcessor = class {
    * @returns {Float} Contains VAD score in the interval 0 - 1 i.e. 0.90 .
    */
   processAudioFrame(pcmFrame, shouldDenoise = false) {
-    // LOVABLE LOCAL PATCH (Fix I) — clamp Float32 input to [-1, 1] before
+    // LOCAL PATCH (Fix I) — clamp Float32 input to [-1, 1] before
     // scaling by 32768. Upstream @timephy/rnnoise-wasm assumes a normalized
     // signal; without the clamp, any pre-gain (e.g. low-shelf boost) that
     // pushes samples beyond ±1.0 produces out-of-range int16 values inside

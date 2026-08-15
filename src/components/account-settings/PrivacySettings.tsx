@@ -3,11 +3,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Shield, MessageSquare, UserPlus, Eye, Download, Camera, ChevronRight } from 'lucide-react';
+import { Shield, MessageSquare, UserPlus, Eye, Download, Camera, ChevronRight, Cake, Award } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { DownloadPermissionsSettings } from './DownloadPermissionsSettings';
+
+type Visibility = 'private' | 'friends' | 'everyone';
 
 export function PrivacySettings() {
   const { user } = useAuth();
@@ -19,6 +22,10 @@ export function PrivacySettings() {
   });
   const [notifyScreenshotCapture, setNotifyScreenshotCapture] = useState<boolean>(true);
   const [view, setView] = useState<'main' | 'downloads'>('main');
+  const [birthday, setBirthday] = useState<string>('');
+  const [birthdayVisibility, setBirthdayVisibility] = useState<Visibility>('private');
+  const [birthdaySaving, setBirthdaySaving] = useState(false);
+  const [badgeVisibility, setBadgeVisibility] = useState<Visibility>('everyone');
 
   useEffect(() => {
     if (!user?.id) return;
@@ -26,15 +33,59 @@ export function PrivacySettings() {
     (async () => {
       const { data } = await supabase
         .from('profiles')
-        .select('notify_screenshot_capture')
+        .select('notify_screenshot_capture, badge_visibility' as never)
         .eq('id', user.id)
         .maybeSingle();
-      if (!cancelled && data && typeof (data as any).notify_screenshot_capture === 'boolean') {
-        setNotifyScreenshotCapture((data as any).notify_screenshot_capture);
+      // Birthday columns are not readable via the table API (privacy); use the owner-only RPC.
+      const { data: bd } = await (supabase.rpc as never as (fn: string) => Promise<{ data: unknown }>)('get_my_birthday');
+      if (!cancelled) {
+        const d = (data ?? {}) as { notify_screenshot_capture?: boolean | null; badge_visibility?: Visibility | null };
+        if (typeof d.notify_screenshot_capture === 'boolean') setNotifyScreenshotCapture(d.notify_screenshot_capture);
+        if (d.badge_visibility) setBadgeVisibility(d.badge_visibility);
+        const row = (Array.isArray(bd) ? bd[0] : bd) as
+          | { birthday?: string | null; birthday_visibility?: Visibility | null }
+          | undefined;
+        if (row?.birthday) setBirthday(row.birthday);
+        if (row?.birthday_visibility) setBirthdayVisibility(row.birthday_visibility);
       }
+
     })();
     return () => { cancelled = true; };
   }, [user?.id]);
+
+  const saveBirthday = async (nextDate: string | null, nextVisibility: Visibility) => {
+    if (!user?.id) return;
+    setBirthdaySaving(true);
+    const { error } = await (supabase.from('user_birthdays' as never) as never as {
+      upsert: (v: unknown, o: unknown) => Promise<{ error: unknown }>;
+    }).upsert(
+      {
+        user_id: user.id,
+        birthday: nextDate,
+        birthday_visibility: nextVisibility,
+        birthday_public: nextVisibility === 'everyone',
+      },
+      { onConflict: 'user_id' },
+    );
+    setBirthdaySaving(false);
+    if (error) console.error('[privacy] update birthday failed', error);
+  };
+
+  const saveBadgeVisibility = async (next: Visibility) => {
+    const previous = badgeVisibility;
+    setBadgeVisibility(next);
+    if (!user?.id) return;
+    const { error } = await supabase
+      .from('profiles')
+      .update({ badge_visibility: next } as never)
+      .eq('id', user.id);
+    if (error) {
+      setBadgeVisibility(previous);
+      console.error('[privacy] update badge_visibility failed', error);
+    }
+  };
+
+
 
   const updateSetting = (key: keyof typeof settings, value: boolean) => {
     setSettings(prev => ({ ...prev, [key]: value }));
@@ -199,6 +250,90 @@ export function PrivacySettings() {
           </button>
         </CardContent>
       </Card>
+
+      {/* Birthday */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Cake className="w-5 h-5" />
+            Anniversaire
+          </CardTitle>
+          <CardDescription>
+            Le jour J, un badge festif, une couronne dorée sur ton avatar et des confettis
+            sur ton profil apparaîtront pour toi et les autres. L'année n'est jamais partagée.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="birthday-date">Date de naissance</Label>
+            <Input
+              id="birthday-date"
+              type="date"
+              value={birthday}
+              disabled={birthdaySaving}
+              onChange={(e) => {
+                const v = e.target.value;
+                setBirthday(v);
+                void saveBirthday(v || null, birthdayVisibility);
+              }}
+              className="max-w-xs"
+            />
+          </div>
+          <div className="space-y-2 pt-2 border-t border-border/40">
+            <Label>Qui peut voir mon anniversaire</Label>
+            <p className="text-sm text-muted-foreground">
+              « Moi uniquement » masque totalement la célébration aux autres. L'année n'est
+              jamais partagée.
+            </p>
+            <Select
+              value={birthdayVisibility}
+              disabled={birthdaySaving || !birthday}
+              onValueChange={(v) => {
+                const next = v as Visibility;
+                setBirthdayVisibility(next);
+                void saveBirthday(birthday || null, next);
+              }}
+            >
+              <SelectTrigger className="max-w-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="private">Moi uniquement</SelectItem>
+                <SelectItem value="friends">Mes amis</SelectItem>
+                <SelectItem value="everyone">Tout le monde (serveurs et MP)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Badges */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Award className="w-5 h-5" />
+            Badges
+          </CardTitle>
+          <CardDescription>
+            Choisis qui peut voir tes badges et ton historique de badges (années
+            d'anniversaire célébrées, etc.).
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <Label>Qui peut voir mes badges</Label>
+          <Select value={badgeVisibility} onValueChange={(v) => void saveBadgeVisibility(v as Visibility)}>
+            <SelectTrigger className="max-w-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="private">Moi uniquement</SelectItem>
+              <SelectItem value="friends">Mes amis</SelectItem>
+              <SelectItem value="everyone">Tout le monde (serveurs et MP)</SelectItem>
+            </SelectContent>
+          </Select>
+        </CardContent>
+      </Card>
+
 
       {/* Data Privacy */}
       <Card>

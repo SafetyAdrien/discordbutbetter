@@ -209,6 +209,8 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
           maxHeight: 128,
           quality: 0.9,
           maxBytes: 64 * 1024,
+          // Channel icons are always PNG: format detection must never flatten alpha.
+          format: 'image/png',
         });
 
         const ext = compressed.format === 'image/webp' ? 'webp' : compressed.format === 'image/png' ? 'png' : 'jpg';
@@ -277,7 +279,7 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
               )}
             >
               {iconUrl ? (
-                <img src={iconUrl} alt="Icône" className="w-full h-full object-cover" />
+                <img src={iconUrl} alt="Icône" className="w-full h-full object-contain" />
               ) : (
                 <TypeIcon className="w-4 h-4 text-muted-foreground" />
               )}
@@ -306,6 +308,11 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
             className="flex-1"
           />
         </div>
+        {channel.icon_url && !iconUrl?.startsWith('blob:') && (channel.icon_url.endsWith('.jpg') || channel.icon_url.endsWith('.jpeg')) && (
+          <p className="text-xs text-muted-foreground">
+            L'icône actuelle a été enregistrée sans transparence. Réimportez une image PNG/WebP transparente pour retrouver un fond transparent.
+          </p>
+        )}
         {shouldFormatStrict && name !== formatStrictChannelName(name) && (
           <p className="text-xs text-muted-foreground">Les caractères spéciaux seront convertis à l'enregistrement.</p>
         )}
@@ -401,6 +408,7 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
           aspectRatio={1}
           circularCrop
           onCropComplete={handleCropComplete}
+          outputFormat="image/png"
           maxDimension={128}
         />
       )}

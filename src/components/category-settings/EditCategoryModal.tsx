@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { cn } from '@/lib/utils';
+import { useCategoryCasePreferences } from '@/hooks/useCategoryCasePreferences';
+import { caseClass } from '@/lib/ui/categoryCase';
 import { CategoryOverview } from './CategoryOverview';
 import { CategoryPermissions } from './CategoryPermissions';
 import { CategoryDangerZone } from './CategoryDangerZone';
@@ -32,6 +35,7 @@ export function EditCategoryModal({
   const [activeTab, setActiveTab] = useState('overview');
   const [category, setCategory] = useState<CategoryDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { prefs: casePrefs } = useCategoryCasePreferences();
 
   useEffect(() => {
     const fetchCategory = async () => {
@@ -71,7 +75,7 @@ export function EditCategoryModal({
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
           <TabsList className="grid w-full grid-cols-2 px-1">
             {tabItems.map(item => (
-              <TabsTrigger key={item.id} value={item.id}>{item.label}</TabsTrigger>
+              <TabsTrigger key={item.id} value={item.id} className={cn(caseClass('categoryModal', casePrefs))}>{item.label}</TabsTrigger>
             ))}
           </TabsList>
 

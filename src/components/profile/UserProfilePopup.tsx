@@ -60,7 +60,7 @@ import { CustomStatusModal } from '@/components/profile/CustomStatusModal';
 import { useVoice } from '@/contexts/VoiceContext';
 import { useVoiceUserSettings } from '@/hooks/useVoiceUserSettings';
 import { useServerProfile } from '@/hooks/useServerProfile';
-import { UserBadgeList } from '@/components/badges/UserBadgeList';
+import { InlineBadgeStrip } from '@/components/badges/InlineBadgeStrip';
 
 const ROLE_PANEL_TOP_FALLBACK = 366;
 
@@ -454,7 +454,7 @@ export function UserProfilePopup({
       {/* Body */}
       <div className="px-3 pb-3">
         {/* Avatar row */}
-        <div className="relative -mt-10 mb-2">
+        <div className="relative -mt-10 mb-2 flex items-end justify-between gap-2">
           <div className="relative inline-block">
             <UserAvatarImage
               src={effectiveUser.avatar}
@@ -470,6 +470,12 @@ export function UserProfilePopup({
               className="absolute bottom-0.5 right-0.5 w-[18px] h-[18px] border-[4px] border-card"
             />
           </div>
+          <InlineBadgeStrip
+            userId={user.id}
+            max={4}
+            className="mb-1 max-w-[60%] justify-end"
+          />
+
 
           {(user.customStatus || isOwnProfile) && user.status !== 'offline' && (
             <div className="absolute left-[88px] bottom-[14px] z-20 max-w-[180px]">
@@ -485,7 +491,7 @@ export function UserProfilePopup({
         </div>
 
         {/* Inner card */}
-        <div className="rounded-lg bg-background/40 p-3 space-y-2.5">
+        <div className="rounded-lg bg-muted/60 dark:bg-background/40 p-3 space-y-2.5">
           {/* Name + pronouns */}
           <div>
             <div className="flex items-center gap-1.5 flex-wrap">
@@ -509,8 +515,8 @@ export function UserProfilePopup({
             </div>
           </div>
 
-          {/* Badges row (from DB) */}
-          <UserBadgeList userId={user.id} size="sm" />
+
+
 
 
           {/* Activity */}

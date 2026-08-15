@@ -4,6 +4,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { cn } from '@/lib/utils';
 import { useBadges, type Badge } from '@/hooks/useBadges';
 import { useUserBadges } from '@/hooks/useUserBadges';
+import { useBirthdayGrantYears } from '@/hooks/useBirthdayGrants';
+import { useIsBirthday } from '@/hooks/useBirthday';
 
 interface UserBadgeListProps {
   userId?: string | null;
@@ -21,12 +23,19 @@ const SIZE_MAP = {
 export function UserBadgeList({ userId, size = 'sm', className, showEmpty = false }: UserBadgeListProps) {
   const { data: catalog, isFetching: catalogFetching } = useBadges();
   const { data: rows, isFetching: rowsFetching } = useUserBadges(userId);
+  const birthdayYears = useBirthdayGrantYears(userId);
+  const isBirthday = useIsBirthday(userId);
 
   const badges = useMemo<Badge[]>(() => {
     if (!catalog || !rows) return [];
     const ids = new Set(rows.map((r) => r.badge_id));
-    return catalog.filter((b) => ids.has(b.id));
-  }, [catalog, rows]);
+    const owned = catalog.filter((b) => ids.has(b.id));
+    if (isBirthday && !owned.some((b) => b.key === 'birthday')) {
+      const bd = catalog.find((b) => b.key === 'birthday');
+      if (bd) return [bd, ...owned];
+    }
+    return owned;
+  }, [catalog, rows, isBirthday]);
 
   const sz = SIZE_MAP[size];
 
@@ -61,14 +70,16 @@ export function UserBadgeList({ userId, size = 'sm', className, showEmpty = fals
             >
               {b.icon_url ? (
                 <img src={b.icon_url} alt={b.name} className={cn(sz.img, 'object-contain')} />
+              ) : b.key === 'birthday' ? (
+                <span className={cn(sz.img, 'flex items-center justify-center leading-none')} style={{ fontSize: size === 'lg' ? '20px' : size === 'md' ? '15px' : '12px' }}>🎂</span>
               ) : (
                 <Award className={sz.img} />
               )}
             </span>
           </TooltipTrigger>
-          <TooltipContent side="top" className="max-w-[220px]">
+          <TooltipContent side="top" className="max-w-[240px]">
             <div className="font-semibold" style={{ color: b.color }}>{b.name}</div>
-            {b.description && (
+            {b.key !== 'birthday' && b.description && (
               <div className="text-xs text-muted-foreground mt-0.5">{b.description}</div>
             )}
           </TooltipContent>

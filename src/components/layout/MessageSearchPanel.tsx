@@ -24,6 +24,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import {
   useGlobalSearch,
@@ -684,52 +685,65 @@ export function MessageSearchPanel({
     />
   );
 
+  const sharedInputHandlers = {
+    value: query,
+    onChange: (e: React.ChangeEvent<HTMLInputElement>) => setQuery(e.target.value),
+    onKeyDown: handleKeyDown,
+    onFocus: () => setShowSuggestions(true),
+  };
+
   // Shared input bar: chip + editable input.
+  // ⚠️ VERROUS ANTI-RÉGRESSION :
+  // - Hauteur EXACTE 32px (h-8) sur le conteneur ET l'input : jamais de padding
+  //   vertical additionnel, jamais de shadow qui augmenterait la hauteur.
+  // - Sans préfixe actif, utiliser le VRAI composant Input, pas un div+input
+  //   reconstruit : le placeholder doit garder la même baseline native que
+  //   MemberList. C'est le verrou définitif contre le micro-décalage au clic.
+  // - La loupe reste une icône ABSOLUE à right-2.5, comme l'Input MemberList
+  //   au repos. Ne pas la remettre dans le flux flex : cela décale/upscale
+  //   visuellement l'icône au clic et recrée la régression vidéo.
+  // - Ne pas ajouter l'icône Inbox ici : le vrai bouton Inbox reste hors de la
+  //   barre, à droite, dans MemberList/Index. Le dupliquer dans l'input crée un
+  //   chevauchement et un mouvement apparent des icônes.
   const searchInputBar = (
-    <div className="relative flex-1">
-      <div
-        className={cn(
-          'flex items-center gap-1.5 h-8 pl-2.5 pr-2 rounded-xl bg-input',
-          'focus-within:bg-input',
-        )}
-        onClick={() => inputRef.current?.focus()}
-      >
-        {submenu && (
+    <div className="relative flex-1 min-w-0">
+      {!submenu ? (
+        <>
+          {/* Pixel-identique à MemberList: même Input, même classes, même loupe.
+              Ne pas remplacer par un wrapper flex : les baselines natives de
+              placeholder diffèrent et recréent le micro-décalage vidéo. */}
+          <Input
+            ref={inputRef}
+            autoFocus
+            placeholder="Rechercher"
+            {...sharedInputHandlers}
+            className="h-8 pr-8 pl-3 text-sm bg-input"
+          />
+          <Search className="w-4 h-4 absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground z-10 pointer-events-none" />
+        </>
+      ) : (
+        <div
+          className={cn(
+            'relative flex items-center gap-1.5 h-8 min-h-8 max-h-8 pl-3 pr-8 rounded-xl bg-input box-border overflow-hidden border border-border',
+          )}
+          onClick={() => inputRef.current?.focus()}
+        >
           <span className="inline-flex items-center h-5 px-1.5 rounded bg-surface-2 text-xs font-medium text-foreground shrink-0 select-none">
             {PREFIX_MAP[submenu]}
           </span>
-        )}
-        <input
-          ref={inputRef}
-          autoFocus
-          placeholder={submenu ? '' : 'Rechercher'}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={handleKeyDown}
-          onFocus={() => setShowSuggestions(true)}
-          className="flex-1 min-w-0 h-full bg-transparent border-0 outline-none text-sm placeholder:text-muted-foreground"
-        />
-        {(query || submenu) && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setQuery('');
-              setSubmenu(null);
-              inputRef.current?.focus();
-            }}
-            className="text-muted-foreground hover:text-foreground shrink-0"
-            aria-label="Effacer"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        )}
-        {!query && !submenu && (
-          <Search className="w-4 h-4 text-muted-foreground shrink-0 pointer-events-none" />
-        )}
-      </div>
+          <input
+            ref={inputRef}
+            autoFocus
+            placeholder=""
+            {...sharedInputHandlers}
+            className="flex-1 min-w-0 h-8 leading-8 bg-transparent border-0 outline-none text-sm placeholder:text-muted-foreground p-0 m-0"
+          />
+          <Search className="absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+        </div>
+      )}
     </div>
   );
+
 
   // Popover variant: input bar + dropdown (overlays MemberList input).
   if (variant === 'popover') {
@@ -769,22 +783,24 @@ export function MessageSearchPanel({
 
   return (
     <div className="w-full sm:w-60 bg-surface-1 flex flex-col sm:border-l sm:border-border/30 h-full">
-      <div className="px-3 pt-3 bg-surface-1">
-        <div className="flex items-center gap-2">
-          {searchInputBar}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 shrink-0"
-            onClick={onClose}
-            aria-label="Fermer la recherche"
-          >
-            <X className="w-4 h-4" />
-          </Button>
-        </div>
+      <div
+        className="h-12 px-3 sm:px-4 flex items-center gap-2 flex-shrink-0 bg-surface-1 w-full"
+        style={{
+          borderBottom: "1px solid hsl(var(--border) / 0.5)",
+        }}
+      >
+        {searchInputBar}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 shrink-0"
+          onClick={onClose}
+          aria-label="Fermer la recherche"
+        >
+          <X className="w-4 h-4" />
+        </Button>
       </div>
 
-      <Separator className="mt-3" />
 
       {showSuggestions && !submitted && (
         <div className="px-2 pt-2">

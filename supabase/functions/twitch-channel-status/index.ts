@@ -1,5 +1,7 @@
-// Twitch channel/stream status via the Lovable connector gateway (Helix).
+// Twitch channel/stream status via the Twitch Helix API directly.
 // Returns a normalized payload regardless of online/offline state.
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
+
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -7,7 +9,8 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-const GATEWAY = 'https://connector-gateway.lovable.dev/twitch';
+const HELIX = 'https://api.twitch.tv/helix';
+const OAUTH_TOKEN_URL = 'https://id.twitch.tv/oauth2/token';
 
 interface RequestBody {
   login?: string;
@@ -25,19 +28,47 @@ interface NormalizedStatus {
   login: string;
 }
 
-async function gatewayGet(path: string, lovableKey: string, twitchKey: string) {
-  const res = await fetch(`${GATEWAY}${path}`, {
+// App access tokens are valid for ~60 days; cache in memory across warm invocations.
+let cachedToken: { token: string; expiresAt: number } | null = null;
+
+async function getAppAccessToken(clientId: string, clientSecret: string): Promise<string> {
+  if (cachedToken && cachedToken.expiresAt > Date.now() + 60_000) {
+    return cachedToken.token;
+  }
+  const res = await fetch(OAUTH_TOKEN_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      grant_type: 'client_credentials',
+    }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Twitch OAuth ${res.status}: ${text.slice(0, 200)}`);
+  }
+  const json = await res.json();
+  cachedToken = {
+    token: json.access_token as string,
+    expiresAt: Date.now() + (json.expires_in as number) * 1000,
+  };
+  return cachedToken.token;
+}
+
+async function helixGet(path: string, clientId: string, token: string) {
+  const res = await fetch(`${HELIX}${path}`, {
     method: 'GET',
     headers: {
-      'Authorization': `Bearer ${lovableKey}`,
-      'X-Connection-Api-Key': twitchKey,
+      'Authorization': `Bearer ${token}`,
+      'Client-Id': clientId,
     },
   });
   const text = await res.text();
   let json: unknown = null;
   try { json = text ? JSON.parse(text) : null; } catch { /* noop */ }
   if (!res.ok) {
-    throw new Error(`Twitch gateway ${res.status}: ${text.slice(0, 200)}`);
+    throw new Error(`Twitch Helix ${res.status}: ${text.slice(0, 200)}`);
   }
   return json as { data?: Array<Record<string, unknown>> };
 }
@@ -46,14 +77,37 @@ Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
-    const lovableKey = Deno.env.get('LOVABLE_API_KEY');
-    const twitchKey = Deno.env.get('TWITCH_API_KEY');
-    if (!lovableKey || !twitchKey) {
+    // Require an authenticated caller to prevent unauthenticated abuse of the
+    // Twitch API quota.
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: userData, error: userError } = await supabaseAuth.auth.getUser();
+    if (userError || !userData?.user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const clientId = Deno.env.get('TWITCH_CLIENT_ID');
+    const clientSecret = Deno.env.get('TWITCH_CLIENT_SECRET');
+    if (!clientId || !clientSecret) {
       return new Response(JSON.stringify({ error: 'missing_credentials' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
 
     const body = (await req.json().catch(() => ({}))) as RequestBody;
     const login = (body.login || '').trim().toLowerCase();
@@ -64,11 +118,13 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    const token = await getAppAccessToken(clientId, clientSecret);
+
     // 1) User lookup (profile + display name)
-    const userResp = await gatewayGet(
+    const userResp = await helixGet(
       `/users?login=${encodeURIComponent(login)}`,
-      lovableKey,
-      twitchKey,
+      clientId,
+      token,
     );
     const user = userResp.data?.[0] as Record<string, unknown> | undefined;
     if (!user) {
@@ -83,10 +139,10 @@ Deno.serve(async (req: Request) => {
     }
 
     // 2) Stream lookup
-    const streamResp = await gatewayGet(
+    const streamResp = await helixGet(
       `/streams?user_login=${encodeURIComponent(login)}`,
-      lovableKey,
-      twitchKey,
+      clientId,
+      token,
     );
     const stream = streamResp.data?.[0] as Record<string, unknown> | undefined;
 
@@ -107,7 +163,7 @@ Deno.serve(async (req: Request) => {
     });
   } catch (err) {
     console.error('twitch-channel-status error', err);
-    return new Response(JSON.stringify({ error: (err as Error).message }), {
+    return new Response(JSON.stringify({ error: 'Internal error' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

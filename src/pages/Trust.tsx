@@ -80,7 +80,7 @@ export default function Trust() {
             <h2 className="text-xl font-semibold">Hébergement & infrastructure</h2>
           </div>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            L'application s'appuie sur Lovable Cloud pour l'authentification, la base de données
+            L'application s'appuie sur Supabase pour l'authentification, la base de données
             et le stockage. Les responsabilités sont partagées : la plateforme fournit
             l'infrastructure et les contrôles techniques, l'équipe de l'application définit les
             règles d'accès et le traitement des données, et chaque utilisateur reste responsable

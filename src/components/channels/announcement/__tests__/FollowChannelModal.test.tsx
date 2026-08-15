@@ -43,7 +43,7 @@ function renderModal() {
         onClose={() => {}}
         sourceChannelId="source-channel"
         sourceChannelName="annonces"
-        sourceServerName="Lovable Community"
+        sourceServerName="Communauté BCord"
         onSuccess={onSuccess}
       />
     </TooltipProvider>
@@ -92,7 +92,7 @@ describe("FollowChannelModal — flow 'Suivre un salon sur un autre serveur'", (
     });
     expect(sendSystemMutate).toHaveBeenCalledWith({
       targetChannelId: "channel-1",
-      sourceServerName: "Lovable Community",
+      sourceServerName: "Communauté BCord",
       sourceChannelName: "annonces",
     });
     expect(onSuccess).toHaveBeenCalledTimes(1);
@@ -140,7 +140,7 @@ describe("FollowChannelModal — flow 'Suivre un salon sur un autre serveur'", (
     });
     expect(sendSystemMutate).toHaveBeenCalledWith({
       targetChannelId: "channel-1",
-      sourceServerName: "Lovable Community",
+      sourceServerName: "Communauté BCord",
       sourceChannelName: "annonces",
     });
     expect(onSuccess).toHaveBeenCalledTimes(1);

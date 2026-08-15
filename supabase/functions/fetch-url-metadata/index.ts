@@ -87,27 +87,115 @@ function parseRetryAfterMs(header: string | null): number | null {
 
 const MAX_ATTEMPTS = 3;
 const BUDGET_MS = 5000;
+const MAX_REDIRECTS = 5;
+
+// ---- SSRF hostname validation (shared for initial URL + redirects) ----
+function isPrivateHostname(rawHostname: string): boolean {
+  if (!rawHostname) return true;
+  // Strip IPv6 brackets
+  let hostname = rawHostname.toLowerCase().replace(/^\[|\]$/g, '');
+
+  // Reject numeric/octal/hex IPv4 representations (e.g. 2130706433, 0x7f000001, 0177.0.0.1)
+  if (/^0x[0-9a-f]+$/i.test(hostname)) return true;
+  if (/^\d+$/.test(hostname)) return true; // decimal IP as single integer
+  // Octal-leading octets in dotted form: any octet starting with 0 and length > 1
+  if (/^\d+(\.\d+){1,3}$/.test(hostname)) {
+    const parts = hostname.split('.');
+    for (const p of parts) {
+      if (p.length > 1 && p.startsWith('0')) return true;
+      if (/^0x/i.test(p)) return true;
+    }
+  }
+
+  if (
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname === '::1' ||
+    hostname === '0.0.0.0' ||
+    hostname.endsWith('.local') ||
+    hostname.endsWith('.internal') ||
+    hostname.startsWith('10.') ||
+    hostname.startsWith('192.168.') ||
+    hostname.startsWith('169.254.') ||
+    hostname.startsWith('127.') ||
+    hostname.startsWith('0.') ||
+    hostname.startsWith('172.16.') || hostname.startsWith('172.17.') ||
+    hostname.startsWith('172.18.') || hostname.startsWith('172.19.') ||
+    hostname.startsWith('172.20.') || hostname.startsWith('172.21.') ||
+    hostname.startsWith('172.22.') || hostname.startsWith('172.23.') ||
+    hostname.startsWith('172.24.') || hostname.startsWith('172.25.') ||
+    hostname.startsWith('172.26.') || hostname.startsWith('172.27.') ||
+    hostname.startsWith('172.28.') || hostname.startsWith('172.29.') ||
+    hostname.startsWith('172.30.') || hostname.startsWith('172.31.') ||
+    /^fe80:/i.test(hostname) ||
+    /^fd[0-9a-f]{2}:/i.test(hostname)
+  ) {
+    return true;
+  }
+
+  // CGNAT range 100.64.0.0/10 => 100.64.0.0 - 100.127.255.255
+  const cgnat = /^100\.(\d{1,3})\./.exec(hostname);
+  if (cgnat) {
+    const second = parseInt(cgnat[1], 10);
+    if (second >= 64 && second <= 127) return true;
+  }
+
+  return false;
+}
+
+function isSafeUrl(u: URL): boolean {
+  if (!['http:', 'https:'].includes(u.protocol)) return false;
+  if (isPrivateHostname(u.hostname)) return false;
+  return true;
+}
 
 async function fetchWithRetry(target: string): Promise<Response | { upstreamStatus: number | null }> {
   const startedAt = Date.now();
   const controller = new AbortController();
   const overallTimeout = setTimeout(() => controller.abort(), BUDGET_MS);
 
+  const doFetch = async (url: string): Promise<Response | null> => {
+    // Manual redirect handling — revalidate each hop against SSRF blocklist.
+    let current = url;
+    for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+      const res = await fetch(current, {
+        signal: controller.signal,
+        redirect: 'manual',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; DiscordBot/2.0)',
+          'Accept': 'text/html',
+        },
+      });
+
+      if (res.status >= 300 && res.status < 400 && res.status !== 304) {
+        const loc = res.headers.get('location');
+        try { await res.body?.cancel(); } catch { /* noop */ }
+        if (!loc) return res;
+        let next: URL;
+        try {
+          next = new URL(loc, current);
+        } catch {
+          return null;
+        }
+        if (!isSafeUrl(next)) return null;
+        current = next.toString();
+        continue;
+      }
+
+      return res;
+    }
+    return null; // too many redirects
+  };
+
   try {
     let lastStatus: number | null = null;
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
       try {
-        const res = await fetch(target, {
-          signal: controller.signal,
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (compatible; DiscordBot/2.0)',
-            'Accept': 'text/html',
-          },
-        });
+        const res = await doFetch(target);
+        if (!res) return { upstreamStatus: null };
 
         if (res.status === 429 || res.status === 503) {
           lastStatus = res.status;
-          // Drain body to free the connection
           try { await res.body?.cancel(); } catch { /* noop */ }
 
           if (attempt === MAX_ATTEMPTS - 1) break;
@@ -173,29 +261,7 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: 'Invalid protocol' }, 400);
     }
 
-    const hostname = parsedUrl.hostname.toLowerCase();
-    const isPrivate =
-      hostname === 'localhost' ||
-      hostname === '127.0.0.1' ||
-      hostname === '::1' ||
-      hostname === '0.0.0.0' ||
-      hostname.endsWith('.local') ||
-      hostname.endsWith('.internal') ||
-      hostname.startsWith('10.') ||
-      hostname.startsWith('192.168.') ||
-      hostname.startsWith('169.254.') ||
-      hostname.startsWith('172.16.') || hostname.startsWith('172.17.') ||
-      hostname.startsWith('172.18.') || hostname.startsWith('172.19.') ||
-      hostname.startsWith('172.20.') || hostname.startsWith('172.21.') ||
-      hostname.startsWith('172.22.') || hostname.startsWith('172.23.') ||
-      hostname.startsWith('172.24.') || hostname.startsWith('172.25.') ||
-      hostname.startsWith('172.26.') || hostname.startsWith('172.27.') ||
-      hostname.startsWith('172.28.') || hostname.startsWith('172.29.') ||
-      hostname.startsWith('172.30.') || hostname.startsWith('172.31.') ||
-      /^\[?fe80:/i.test(hostname) ||
-      /^\[?fd[0-9a-f]{2}:/i.test(hostname);
-
-    if (isPrivate) {
+    if (isPrivateHostname(parsedUrl.hostname)) {
       return jsonResponse({ error: 'Invalid URL' }, 400);
     }
 

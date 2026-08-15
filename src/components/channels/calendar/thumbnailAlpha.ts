@@ -55,6 +55,23 @@ export function canvasHasTransparentPixels(data: Uint8ClampedArray) {
   return false;
 }
 
+export async function blobHasAlphaPixels(blob: Blob): Promise<boolean> {
+  if (typeof window === 'undefined') return false;
+  const bitmap = await createImageBitmap(blob);
+  const canvas = document.createElement('canvas');
+  canvas.width = bitmap.width;
+  canvas.height = bitmap.height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    bitmap.close?.();
+    return false;
+  }
+  ctx.drawImage(bitmap, 0, 0);
+  bitmap.close?.();
+  const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+  return canvasHasTransparentPixels(data);
+}
+
 export function cropCanvasToOpaqueBounds(canvas: HTMLCanvasElement, alphaThreshold = 1) {
   const ctx = canvas.getContext('2d');
   if (!ctx) return canvas;

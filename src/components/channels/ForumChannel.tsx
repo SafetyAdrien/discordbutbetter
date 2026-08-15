@@ -66,7 +66,7 @@ export function ForumChannel({ channel, serverId, onToggleMembers, showMembers, 
 
       {/* Header */}
       {!hideHeader && (
-      <div className="h-12 px-2 sm:px-4 flex items-center gap-2 sm:gap-4 flex-shrink-0 bg-[hsl(var(--surface-2))] w-full" style={{ borderBottom: "1px solid hsl(var(--border) / 0.5)", boxShadow: "var(--shadow-elevation-1)", borderRadius: "0 0 var(--radius-xl) var(--radius-xl)" }}>
+      <div className="h-12 px-2 sm:px-4 flex items-center gap-2 sm:gap-4 flex-shrink-0 bg-[hsl(var(--surface-2))] w-full" style={{ borderBottom: "1px solid hsl(var(--border) / 0.5)", boxShadow: "var(--shadow-elevation-1)" }}>
         <div className="flex items-center gap-2 min-w-0 flex-shrink">
           <StreamlineForum className="text-muted-foreground flex-shrink-0" size={16} />
           <h2 className="font-semibold text-foreground truncate">{channel.name}</h2>

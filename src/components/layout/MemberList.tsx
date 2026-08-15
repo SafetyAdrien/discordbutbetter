@@ -48,7 +48,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { copyToClipboard } from "@/lib/clipboard";
 import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
+
 import { useServerRoles, RoleWithPermissions } from "@/hooks/useRoles";
 import { Shield, Pencil } from "lucide-react";
 
@@ -93,7 +93,18 @@ interface MemberListProps {
   onOpenDM?: (conversationId: string) => void;
   onOpenGlobalSearch?: () => void;
   serverRoles?: Role[];
+  /**
+   * Remplit toute la hauteur du parent (h-full) au lieu de s'ajuster au
+   * contenu. À activer UNIQUEMENT quand le parent immédiat a une hauteur
+   * définie en display normal (ex: colonne desktop avec `h-full`) — sinon
+   * ça peut casser la mise en page (ex: mobile Sheet, qui empile ses
+   * enfants en flux normal, pas en flex). Par défaut `false` pour ne rien
+   * changer aux autres emplacements où MemberList est monté.
+   */
+  fillHeight?: boolean;
+  className?: string;
 }
+
 const statusColors: Record<string, string> = {
   online: "bg-[hsl(var(--online))]",
   idle: "bg-[hsl(var(--idle))]",
@@ -177,7 +188,7 @@ function InboxButton() {
 }
 
 export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function MemberList(
-  { members, ownerId, serverId, onOpenDM, onOpenGlobalSearch, serverRoles = [] },
+  { members, ownerId, serverId, onOpenDM, onOpenGlobalSearch, serverRoles = [], fillHeight = false, className },
   ref,
 ) {
   const { user: currentUser } = useAuth();
@@ -541,24 +552,33 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
   const filterableRoles = allRoles.filter((r) => !r.is_default);
   return (
     <>
-      <div ref={ref} className="w-full sm:w-60 bg-surface-1 flex flex-col sm:border-l sm:border-border/30">
-        {/* Search input and Inbox */}
-        <div className="px-3 pt-3 bg-surface-1">
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1">
-              <Input
-                readOnly
-                placeholder="Rechercher"
-                onFocus={() => onOpenGlobalSearch?.()}
-                onClick={() => onOpenGlobalSearch?.()}
-                className="h-8 pr-8 pl-3 text-sm bg-input cursor-pointer"
-              />
-              <Search className="w-4 h-4 absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground z-10 pointer-events-none" />
-            </div>
-            <InboxButton />
+      <div
+        ref={ref}
+        className={cn(
+          "w-full sm:w-60 bg-surface-1 flex flex-col sm:border-l sm:border-border/30",
+          fillHeight && "h-full",
+          className
+        )}
+      >
+        {/* Search input and Inbox — même style de barre "collée" que le header de salon : hauteur h-12, pleine largeur, pas d'arrondi sur la barre elle-même. */}
+        <div
+          className="h-12 px-3 sm:px-4 flex items-center gap-2 flex-shrink-0 bg-surface-1 w-full"
+          style={{
+            borderBottom: "1px solid hsl(var(--border) / 0.5)",
+          }}
+        >
+          <div className="relative flex-1">
+            <Input
+              readOnly
+              placeholder="Rechercher"
+              onFocus={() => onOpenGlobalSearch?.()}
+              onClick={() => onOpenGlobalSearch?.()}
+              className="h-8 pr-8 pl-3 text-sm bg-input cursor-pointer"
+            />
+            <Search className="w-4 h-4 absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground z-10 pointer-events-none" />
           </div>
+          <InboxButton />
         </div>
-        <Separator className="mt-3" />
         {selectedRoleFilters.length > 0 && (
           <div className="px-2 pt-2 flex flex-wrap items-center gap-1.5">
             <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Filtré par</span>

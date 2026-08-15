@@ -23,6 +23,11 @@ import { ProfileCalendar } from '@/components/profile/calendar/ProfileCalendar';
 import { EventListBelow } from '@/components/profile/calendar/EventListBelow';
 import { StatusIndicator } from '@/components/ui/StatusIndicator';
 import { UserBadgeList } from '@/components/badges/UserBadgeList';
+import { InlineBadgeStrip } from '@/components/badges/InlineBadgeStrip';
+import { useIsBirthday } from '@/hooks/useBirthday';
+import { BirthdayRibbon } from '@/components/profile/BirthdayRibbon';
+import { ConfettiCanvas } from '@/components/effects/ConfettiCanvas';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 const statusColors: Record<string, string> = {
   online: 'bg-green-500',
@@ -82,7 +87,17 @@ export function FullUserProfileModal({
   };
 
   const isOwnProfile = currentUser?.id === user?.id;
+  const { isMobile, isTablet } = useBreakpoint();
   const bannerGuard = useImageGuardProps(isOwnProfile ? null : user?.id ?? null);
+  const isBirthday = useIsBirthday(user?.id ?? null);
+  const [birthdayConfetti, setBirthdayConfetti] = useState(false);
+  useEffect(() => {
+    if (open && isBirthday) {
+      setBirthdayConfetti(false);
+      const t = window.setTimeout(() => setBirthdayConfetti(true), 200);
+      return () => window.clearTimeout(t);
+    }
+  }, [open, isBirthday, user?.id]);
 
   const friendship = friends.find(
     (f) =>
@@ -133,20 +148,40 @@ export function FullUserProfileModal({
 
   return (
     <>
+    {birthdayConfetti && (
+      <ConfettiCanvas
+        active
+        count={90}
+        duration={3000}
+        colors={[
+          'hsl(45, 95%, 58%)',
+          'hsl(38, 95%, 60%)',
+          'hsl(50, 100%, 65%)',
+          'hsl(30, 100%, 55%)',
+        ]}
+        onComplete={() => setBirthdayConfetti(false)}
+      />
+    )}
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl p-0 gap-0 overflow-hidden rounded-2xl border border-border bg-background shadow-2xl max-h-[88vh] flex flex-col">
         {/* Hero — Banner + Avatar */}
         <section className="relative shrink-0">
+          {isBirthday && <BirthdayRibbon displayName={user.display_name} />}
           <div
             className={user.banner_url ? 'h-44 w-full' : 'h-32 w-full'}
             style={{
               backgroundColor: user.banner_url ? undefined : 'hsl(var(--primary))',
-              backgroundImage: user.banner_url ? `url(${user.banner_url})` : undefined,
+              backgroundImage: user.banner_url
+                ? `url(${user.banner_url})`
+                : isBirthday
+                  ? 'linear-gradient(135deg, #ff9500 0%, #f5b301 50%, #ffd54a 100%)'
+                  : undefined,
               backgroundSize: 'cover',
               backgroundPosition: 'center',
             }}
             {...bannerGuard}
           />
+          {/* Header row — avatar left, badges/actions right */}
           <div className="px-6 -mt-14 relative z-10 flex items-end justify-between gap-3">
             <div className="relative min-w-0 shrink-0">
               <div className="relative">
@@ -177,38 +212,45 @@ export function FullUserProfileModal({
                 </div>
               )}
             </div>
-            {!isOwnProfile && (
-              <div className="flex gap-2 mb-2 shrink-0">
-                <Button size="sm" onClick={handleSendMessage} disabled={createDM.isPending} className="rounded-full">
-                  <MessageCircle className="w-4 h-4 mr-1.5" />
-                  Message
-                </Button>
-                <Button
-                  size="sm"
-                  variant={isFriend ? 'destructive' : isPending ? 'secondary' : 'outline'}
-                  onClick={handleFriendAction}
-                  disabled={isPending}
-                  className="rounded-full"
-                >
-                  {isFriend ? (
-                    <>
-                      <UserMinus className="w-4 h-4 mr-1.5" />
-                      Retirer
-                    </>
-                  ) : isPending ? (
-                    <>
-                      <Check className="w-4 h-4 mr-1.5" />
-                      En attente
-                    </>
-                  ) : (
-                    <>
-                      <UserPlus className="w-4 h-4 mr-1.5" />
-                      Ajouter
-                    </>
-                  )}
-                </Button>
-              </div>
-            )}
+            <div className="mb-2 flex min-w-0 shrink flex-col items-end gap-2">
+              <InlineBadgeStrip
+                userId={user.id}
+                max={isMobile ? 3 : isTablet ? 4 : 5}
+                className="max-w-[min(52vw,320px)] justify-end"
+              />
+              {!isOwnProfile && (
+                <div className="flex flex-wrap justify-end gap-2">
+                  <Button size="sm" onClick={handleSendMessage} disabled={createDM.isPending} className="rounded-full">
+                    <MessageCircle className="w-4 h-4 mr-1.5" />
+                    Message
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={isFriend ? 'destructive' : isPending ? 'secondary' : 'outline'}
+                    onClick={handleFriendAction}
+                    disabled={isPending}
+                    className="rounded-full"
+                  >
+                    {isFriend ? (
+                      <>
+                        <UserMinus className="w-4 h-4 mr-1.5" />
+                        Retirer
+                      </>
+                    ) : isPending ? (
+                      <>
+                        <Check className="w-4 h-4 mr-1.5" />
+                        En attente
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus className="w-4 h-4 mr-1.5" />
+                        Ajouter
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
         </section>
 
@@ -216,16 +258,18 @@ export function FullUserProfileModal({
         <div className="flex-1 overflow-y-auto px-6 pt-4 pb-6 space-y-4">
           {/* Identity */}
           <section className="rounded-2xl bg-card border border-border/50 p-4">
-            <h2 className="text-xl font-bold leading-tight">{user.display_name}</h2>
-            <p className="text-sm text-muted-foreground">@{user.username.toLowerCase()}</p>
-            {user.pronouns && (
-              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                <span className="rounded-full bg-muted px-2 py-0.5 text-muted-foreground">{user.pronouns}</span>
-              </div>
-            )}
-            {memberSince && (
-              <p className="mt-3 text-[11px] text-muted-foreground">Membre depuis {memberSince}</p>
-            )}
+            <div className="min-w-0">
+              <h2 className="text-xl font-bold leading-tight truncate">{user.display_name}</h2>
+              <p className="text-sm text-muted-foreground truncate">@{user.username.toLowerCase()}</p>
+              {user.pronouns && (
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-muted-foreground">{user.pronouns}</span>
+                </div>
+              )}
+              {memberSince && (
+                <p className="mt-3 text-[11px] text-muted-foreground">Membre depuis {memberSince}</p>
+              )}
+            </div>
           </section>
 
           {/* Badges */}

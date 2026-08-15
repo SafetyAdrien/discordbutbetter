@@ -185,7 +185,9 @@ function tokenizeInline(text: string): MarkdownToken[] {
 
     const linkMatch = /\[([^\]]+)\]\(([^)]+)\)/.exec(remaining);
     if (linkMatch && (earliestMatch === null || linkMatch.index < earliestMatch.index)) {
-      earliestMatch = { index: linkMatch.index, length: linkMatch[0].length, content: linkMatch[1], type: 'link', url: linkMatch[2] };
+      const rawUrl = linkMatch[2].trim();
+      const safeUrl = /^(https?:\/\/|mailto:|\/|#)/i.test(rawUrl) ? rawUrl : undefined;
+      earliestMatch = { index: linkMatch.index, length: linkMatch[0].length, content: linkMatch[1], type: 'link', url: safeUrl };
     }
 
     const timestampRegex = /<t:(\d+):([tTdDfFR])>/g;
@@ -345,7 +347,7 @@ function renderInlineToken(token: MarkdownToken, key: number, context: MarkdownC
     case 'strikethrough': return <del key={key} className="text-muted-foreground">{renderContent(token.content)}</del>;
     case 'code': return <code key={key} className="px-[5px] py-px bg-[hsl(var(--surface-elevated))] border border-[hsl(var(--border))] rounded-[4px] text-[0.85em] font-mono text-foreground/90 whitespace-pre-wrap">{token.content as string}</code>;
     case 'spoiler': return <span key={key} className="spoiler" onClick={(e) => e.currentTarget.classList.toggle('revealed')}>{renderContent(token.content)}</span>;
-    case 'link': return <a key={key} href={token.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{token.content as string}</a>;
+    case 'link': return token.url ? <a key={key} href={token.url} target="_blank" rel="noopener noreferrer nofollow" className="text-primary hover:underline">{token.content as string}</a> : <span key={key} className="text-primary">{token.content as string}</span>;
     case 'userMention': {
       const mentionId = token.mentionId || (token.content as string);
       const userId = isValidSnowflake(mentionId) ? (snowflakeToUuid(mentionId) || mentionId) : mentionId;
@@ -397,9 +399,27 @@ function renderBlockToken(block: BlockToken, key: number, context: MarkdownConte
   const renderInlineContent = (content: string) => tokenizeInline(content).map((token, i) => renderInlineToken(token, i, context));
   const compact = context.variant === 'chat';
   switch (block.type) {
-    case 'header1': return <h1 key={key} className={cn("font-bold text-foreground leading-tight", "text-[1.5rem]", compact ? "mt-2 mb-1 first:mt-0" : "mt-3 mb-2 first:mt-0")}>{renderInlineContent(block.content)}</h1>;
-    case 'header2': return <h2 key={key} className={cn("font-bold text-foreground leading-tight", "text-[1.25rem]", compact ? "mt-1.5 mb-1 first:mt-0" : "mt-2.5 mb-1.5 first:mt-0")}>{renderInlineContent(block.content)}</h2>;
-    case 'header3': return <h3 key={key} className={cn("font-semibold text-foreground leading-tight", "text-[1rem]", compact ? "mt-1 mb-0.5 first:mt-0" : "mt-2 mb-1 first:mt-0")}>{renderInlineContent(block.content)}</h3>;
+    case 'header1': return (
+      <React.Fragment key={key}>
+        <h1 className={cn("font-bold text-foreground leading-tight", "text-[1.5rem]", compact ? "mt-2 mb-0 first:mt-0" : "mt-3 mb-0 first:mt-0")}>{renderInlineContent(block.content)}</h1>
+        {/* Séparateur "Components V2" (divider: true, spacing: large) — ligne fine
+            identique au séparateur --- standard, mais avec un espacement large de
+            part et d'autre plutôt qu'un trait épais. */}
+        <hr className={cn("border-t border-[hsl(var(--border))]", compact ? "mt-1.5 mb-2" : "mt-2 mb-3")} />
+      </React.Fragment>
+    );
+    case 'header2': return (
+      <React.Fragment key={key}>
+        <h2 className={cn("font-bold text-foreground leading-tight", "text-[1.25rem]", compact ? "mt-1.5 mb-0 first:mt-0" : "mt-2.5 mb-0 first:mt-0")}>{renderInlineContent(block.content)}</h2>
+        <hr className={cn("border-t border-[hsl(var(--border))]", compact ? "mt-1 mb-1.5" : "mt-1.5 mb-2.5")} />
+      </React.Fragment>
+    );
+    case 'header3': return (
+      <React.Fragment key={key}>
+        <h3 className={cn("font-semibold text-foreground leading-tight", "text-[1rem]", compact ? "mt-1 mb-0 first:mt-0" : "mt-2 mb-0 first:mt-0")}>{renderInlineContent(block.content)}</h3>
+        <hr className={cn("border-t border-[hsl(var(--border))]", compact ? "mt-0.5 mb-1" : "mt-1 mb-1.5")} />
+      </React.Fragment>
+    );
     case 'subtext': return <p key={key} className="text-[0.75rem] text-muted-foreground leading-4 mt-0.5">{renderInlineContent(block.content)}</p>;
     case 'blockquote': return <blockquote key={key} className={cn("border-l-[4px] border-[hsl(var(--border))] pl-3 text-foreground/90", compact ? "my-0" : "my-0.5")}>{renderInlineContent(block.content)}</blockquote>;
     case 'multiBlockquote': return <blockquote key={key} className={cn("border-l-[4px] border-[hsl(var(--border))] pl-3 text-foreground/90 whitespace-pre-wrap", compact ? "my-0" : "my-0.5")}>{renderInlineContent(block.content)}</blockquote>;
@@ -520,12 +540,17 @@ export const MarkdownText = React.forwardRef<HTMLDivElement, { content: string; 
     useSyncExternalStore(subscribeGlobal, getGlobalSnapshot);
     const activeContext = reactContext || globalMarkdownContext;
     const ctxWithVariant = variant ? { ...activeContext, variant } : activeContext;
-    const hasAlert = content.includes('> [!');
+    // Strip custom-theme markers — they're rendered as ThemeCardEmbeds below the message.
+    const cleaned = content.indexOf('[[nexuschat-theme:') !== -1
+      ? content.replace(/\[\[nexuschat-theme:v1:[A-Za-z0-9_\-=]+\]\]/g, '').replace(/[ \t]+\n/g, '\n').trim()
+      : content;
+    const hasAlert = cleaned.includes('> [!');
+    if (!cleaned) return null;
     return <div ref={ref} className={cn(
       variant === 'chat' && hasAlert ? 'block w-full' : 'inline-block max-w-full min-w-0 align-top',
       variant === 'chat' && 'chat-markdown',
       className
-    )}>{parseMarkdown(content, ctxWithVariant)}</div>;
+    )}>{parseMarkdown(cleaned, ctxWithVariant)}</div>;
   }
 );
 MarkdownText.displayName = 'MarkdownText';

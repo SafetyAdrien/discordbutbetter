@@ -104,6 +104,12 @@ export async function fetchMetadata(url: string): Promise<UrlMetadata | null> {
 
   const promise = (async () => {
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData?.session) {
+        metadataCache.set(url, null);
+        notify(url, null);
+        return null;
+      }
       const { data, error } = await supabase.functions.invoke('fetch-url-metadata', {
         body: { url },
       });

@@ -380,7 +380,7 @@ export function StageChannel({ channel, serverId, hideHeader = false }: StageCha
 
           {/* Audience section (collapsible) */}
           <div className="border-t border-border">
-            <button
+            <button type="button"
               onClick={() => setShowAudience(!showAudience)}
               className="w-full px-4 py-2 flex items-center justify-between hover:bg-muted/50 transition-colors"
             >

@@ -27,12 +27,13 @@ export interface ServerSticker {
 export function useServerEmojis(serverId: string | null) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   useEffect(() => {
     if (!serverId) return;
 
     const channel = supabase
-      .channel(`server-emojis-rt-${serverId}`)
+      .channel(`server-emojis-rt-${serverId}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'server_emojis', filter: `server_id=eq.${serverId}` },
@@ -143,7 +144,7 @@ export function useUploadEmoji() {
 
       const blobUrl = URL.createObjectURL(file);
       const tempEmoji: ServerEmoji = {
-        id: `temp-${Date.now()}`,
+        id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         name,
         url: blobUrl,
         server_id: serverId,
@@ -170,7 +171,7 @@ export function useUploadEmoji() {
     },
     onSuccess: (_, variables, context) => {
       if (context?.blobUrl) URL.revokeObjectURL(context.blobUrl);
-      if (!variables.silent) toast.success('Emoji ajouté !');
+      void variables.silent;
     },
     onSettled: (_, __, { serverId }) => {
       queryClient.invalidateQueries({ queryKey: ['server-emojis', serverId] });
@@ -208,7 +209,6 @@ export function useDeleteEmoji() {
       toast.error('Erreur lors de la suppression de l\'emoji');
     },
     onSuccess: () => {
-      toast.success('Emoji supprimé !');
     },
     onSettled: (_, __, { serverId }) => {
       queryClient.invalidateQueries({ queryKey: ['server-emojis', serverId] });
@@ -219,12 +219,13 @@ export function useDeleteEmoji() {
 export function useServerStickers(serverId: string | null) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   useEffect(() => {
     if (!serverId) return;
 
     const channel = supabase
-      .channel(`server-stickers-rt-${serverId}`)
+      .channel(`server-stickers-rt-${serverId}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'server_stickers', filter: `server_id=eq.${serverId}` },
@@ -338,7 +339,7 @@ export function useUploadSticker() {
 
       const blobUrl = URL.createObjectURL(file);
       const tempSticker: ServerSticker = {
-        id: `temp-${Date.now()}`,
+        id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         name,
         description: description || null,
         url: blobUrl,
@@ -361,7 +362,7 @@ export function useUploadSticker() {
     },
     onSuccess: (_, variables, context) => {
       if (context?.blobUrl) URL.revokeObjectURL(context.blobUrl);
-      if (!variables.silent) toast.success('Sticker ajouté !');
+      void variables.silent;
     },
     onSettled: (_, __, { serverId }) => {
       queryClient.invalidateQueries({ queryKey: ['server-stickers', serverId] });
@@ -399,7 +400,6 @@ export function useDeleteSticker() {
       toast.error('Erreur lors de la suppression du sticker');
     },
     onSuccess: () => {
-      toast.success('Sticker supprimé !');
     },
     onSettled: (_, __, { serverId }) => {
       queryClient.invalidateQueries({ queryKey: ['server-stickers', serverId] });
@@ -460,7 +460,6 @@ export function useUpdateServerInfo() {
       toast.error('Erreur lors de la mise à jour du serveur');
     },
     onSuccess: () => {
-      toast.success('Serveur mis à jour !');
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['servers'] });
@@ -517,7 +516,6 @@ export function useUploadServerIcon() {
     },
     onSuccess: (_, __, context) => {
       if (context?.blobUrl) URL.revokeObjectURL(context.blobUrl);
-      toast.success('Icône du serveur mise à jour !');
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['servers'] });
@@ -574,7 +572,6 @@ export function useUploadServerBanner() {
     },
     onSuccess: (_, __, context) => {
       if (context?.blobUrl) URL.revokeObjectURL(context.blobUrl);
-      toast.success('Bannière du serveur mise à jour !');
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['servers'] });
@@ -609,11 +606,12 @@ async function signSoundUrls(rows: ServerSound[]): Promise<ServerSound[]> {
 export function useServerSounds(serverId: string | null) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   useEffect(() => {
     if (!serverId) return;
     const channel = supabase
-      .channel(`server-sounds-rt-${serverId}`)
+      .channel(`server-sounds-rt-${serverId}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'server_sounds', filter: `server_id=eq.${serverId}` },
@@ -739,7 +737,7 @@ export function useUploadSound() {
     },
     onSuccess: (_, variables, context) => {
       if (context?.blobUrl) URL.revokeObjectURL(context.blobUrl);
-      if (!variables?.silent) toast.success('Son ajouté !');
+      void variables?.silent;
     },
     onSettled: (_, __, { serverId }) => {
       queryClient.invalidateQueries({ queryKey: ['server-sounds', serverId] });
@@ -775,7 +773,6 @@ export function useDeleteSound() {
       toast.error('Erreur lors de la suppression du son');
     },
     onSuccess: () => {
-      toast.success('Son supprimé !');
     },
     onSettled: (_, __, { serverId }) => {
       queryClient.invalidateQueries({ queryKey: ['server-sounds', serverId] });
@@ -790,12 +787,13 @@ export function useDeleteSound() {
  */
 export function useServerAssetsRealtime(serverId: string | null) {
   const queryClient = useQueryClient();
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   useEffect(() => {
     if (!serverId) return;
 
     const channel = supabase
-      .channel(`server-assets-rt-${serverId}`)
+      .channel(`server-assets-rt-${serverId}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'server_emojis', filter: `server_id=eq.${serverId}` },

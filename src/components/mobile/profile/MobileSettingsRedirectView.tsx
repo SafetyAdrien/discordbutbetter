@@ -2,7 +2,6 @@ import { ReactNode } from 'react';
 import { ChevronRight, Bell, Palette, Shield, BellOff, Volume2, Moon, Sun, Monitor, EyeOff, FileText } from 'lucide-react';
 import { MobileProfileSubpage } from './MobileProfileSubpage';
 import { haptics } from '@/lib/haptics';
-import { toast } from 'sonner';
 
 type Variant = 'notifications' | 'appearance' | 'privacy';
 
@@ -55,10 +54,9 @@ export function MobileSettingsRedirectView({ onBack, variant, onOpenFullSettings
         {config.rows.map((row, idx) => (
           <div key={row.label}>
             {idx > 0 && <div className="h-px bg-border/40 mx-4" />}
-            <button
+            <button type="button"
               onClick={() => {
                 haptics.light();
-                toast.info('Bientôt disponible sur mobile');
               }}
               className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-muted/40 transition-colors"
             >
@@ -74,7 +72,7 @@ export function MobileSettingsRedirectView({ onBack, variant, onOpenFullSettings
       </section>
 
       <div className="px-6 pt-6">
-        <button
+        <button type="button"
           onClick={() => {
             haptics.light();
             onOpenFullSettings();

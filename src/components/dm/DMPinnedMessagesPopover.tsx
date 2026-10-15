@@ -4,8 +4,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Pin, X } from 'lucide-react';
 import { useDMPinnedMessages, useUnpinDMMessage } from '@/hooks/useDMPinnedMessages';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { format } from '@/lib/dateUtils';
+import { fr } from '@/lib/dateUtils';
 import { cn } from '@/lib/utils';
 
 interface DMPinnedMessagesPopoverProps {

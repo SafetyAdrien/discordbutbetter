@@ -6,7 +6,7 @@ import { DiscordHeadphones } from '@/components/icons/DiscordHeadphones';
 import { DiscordHeadphonesOff } from '@/components/icons/DiscordHeadphonesOff';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { useVoice } from '@/contexts/VoiceContext';
+import { useVoice, useVoiceLevels } from '@/contexts/VoiceContext';
 import { VoiceConnectionIndicator } from '@/components/channels/voice/VoiceConnectionIndicator';
 import { MicrophoneSettingsPopover } from '@/components/channels/voice/MicrophoneSettingsPopover';
 import { OutputSettingsPopover } from '@/components/channels/voice/OutputSettingsPopover';
@@ -31,8 +31,7 @@ export function VoiceControls({
   onDisconnect,
 }: VoiceControlsProps) {
   const { 
-    localAudioLevel, 
-    microphoneError, 
+        microphoneError, 
     hasMicrophoneAccess, 
     retryMicrophone,
     isPushToTalkMode,
@@ -60,6 +59,7 @@ export function VoiceControls({
     refreshDevices,
     requestMicPermission,
   } = useVoice();
+  const { localAudioLevel } = useVoiceLevels();
 
   return (
     <div className="px-2.5 py-2.5 bg-[hsl(var(--surface-2))] rounded-2xl mx-1 mb-1" style={{ boxShadow: 'var(--shadow-elevation-1)' }}>

@@ -1,15 +1,16 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders as buildCorsHeaders, preflight } from '../_shared/cors.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+
+
+// Origin-restricted CORS (see _shared/cors.ts) — no more blanket '*'.
+const corsHeaders = (req: Request) => buildCorsHeaders(req);
 
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return preflight(req);
   }
 
   try {
@@ -19,16 +20,19 @@ serve(async (req) => {
       console.error('No authorization header provided');
       return new Response(
         JSON.stringify({ error: 'Authorization required' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 401, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } }
       );
     }
 
     const { channelId } = await req.json();
-    
-    if (!channelId) {
+
+    // Validate the shape of the id BEFORE it reaches any query. Without this,
+    // a malformed value produces a DB error instead of a clean 400.
+    if (!channelId || typeof channelId !== 'string' ||
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(channelId)) {
       return new Response(
-        JSON.stringify({ error: 'channelId is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'channelId must be a valid UUID' }),
+        { status: 400, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } }
       );
     }
 
@@ -41,7 +45,7 @@ serve(async (req) => {
       console.error('OPENAI_API_KEY is not configured');
       return new Response(
         JSON.stringify({ error: 'AI service not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } }
       );
     }
 
@@ -51,6 +55,51 @@ serve(async (req) => {
         headers: { Authorization: authHeader }
       }
     });
+
+    const supabaseServiceForRateLimit = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
+
+    // SECURITY: verify the JWT actually belongs to a user. Relying on the
+    // presence of an Authorization header alone would let any caller drive
+    // unbounded OpenAI calls.
+    const { data: userData, error: userError } = await supabaseAuth.auth.getUser();
+    if (userError || !userData?.user) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Rate limit per user, enforced in Postgres so the counter survives edge
+    // instance restarts and is shared across instances (an in-memory counter
+    // would be reset on every cold start and per-region).
+    const WINDOW_HOURS = 24;
+    const MAX_PER_DAY = 20;
+    const { data: usage, error: usageError } = await supabaseServiceForRateLimit
+      .rpc('check_summarize_quota', {
+        _user_id: userData.user.id,
+        _window_hours: WINDOW_HOURS,
+        _max_calls: MAX_PER_DAY,
+      });
+
+    if (usageError) {
+      console.error('Quota check failed:', usageError);
+      return new Response(
+        JSON.stringify({ error: 'Rate limit unavailable' }),
+        { status: 503, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } }
+      );
+    }
+    if (!usage?.allowed) {
+      return new Response(
+        JSON.stringify({
+          error: 'Rate limit exceeded',
+          retryAfterHours: usage?.retry_after_hours ?? WINDOW_HOURS,
+        }),
+        {
+          status: 429,
+          headers: { ...corsHeaders(req), 'Content-Type': 'application/json', 'Retry-After': String(3600) },
+        }
+      );
+    }
 
     // First, verify the user has access to this channel by checking RLS
     // This query will fail if the user is not a member of the server
@@ -64,7 +113,7 @@ serve(async (req) => {
       console.error('Channel access denied or not found:', accessError);
       return new Response(
         JSON.stringify({ error: 'Channel not found or access denied' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 403, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } }
       );
     }
 
@@ -93,14 +142,14 @@ serve(async (req) => {
       console.error('Error fetching messages:', messagesError);
       return new Response(
         JSON.stringify({ error: 'Failed to fetch messages' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } }
       );
     }
 
     if (!messages || messages.length === 0) {
       return new Response(
         JSON.stringify({ summaries: [], message: 'No messages to summarize' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } }
       );
     }
 
@@ -160,14 +209,14 @@ Maximum 5 sujets. Si la conversation est trop courte ou sans sujet clair, retour
       if (aiResponse.status === 429) {
         return new Response(
           JSON.stringify({ error: 'Rate limit exceeded, please try again later' }),
-          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 429, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } }
         );
       }
       const errorText = await aiResponse.text();
       console.error('OpenAI error:', aiResponse.status, errorText);
       return new Response(
         JSON.stringify({ error: 'AI service error' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } }
       );
     }
 
@@ -178,7 +227,7 @@ Maximum 5 sujets. Si la conversation est trop courte ou sans sujet clair, retour
       console.error('No content in AI response');
       return new Response(
         JSON.stringify({ summaries: [] }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } }
       );
     }
 
@@ -231,14 +280,14 @@ Maximum 5 sujets. Si la conversation est trop courte ou sans sujet clair, retour
 
     return new Response(
       JSON.stringify({ summaries: savedSummaries }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
     console.error('Error in summarize-channel function:', error);
     return new Response(
       JSON.stringify({ error: 'An internal error occurred. Please try again.' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 500, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } }
     );
   }
 

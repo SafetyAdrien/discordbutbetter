@@ -110,10 +110,10 @@ export function MediaStoryViewer({ posts, startIndex, onClose, onSeen }: Props) 
             {new Date(post.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
           </span>
           <div className="flex-1" />
-          <button onClick={() => setPaused((p) => !p)} className="text-white/80 hover:text-white p-1.5">
+          <button type="button" onClick={() => setPaused((p) => !p)} className="text-white/80 hover:text-white p-1.5">
             {paused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
           </button>
-          <button onClick={onClose} className="text-white/80 hover:text-white p-1.5">
+          <button type="button" onClick={onClose} className="text-white/80 hover:text-white p-1.5">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -139,10 +139,10 @@ export function MediaStoryViewer({ posts, startIndex, onClose, onSeen }: Props) 
         </div>
 
         {/* Tap zones */}
-        <button onClick={back} className="absolute left-0 top-16 bottom-16 w-1/3 z-10" aria-label="Précédent">
+        <button type="button" onClick={back} className="absolute left-0 top-16 bottom-16 w-1/3 z-10" aria-label="Précédent">
           <ChevronLeft className="w-6 h-6 text-white/0" />
         </button>
-        <button onClick={advance} className="absolute right-0 top-16 bottom-16 w-1/3 z-10" aria-label="Suivant">
+        <button type="button" onClick={advance} className="absolute right-0 top-16 bottom-16 w-1/3 z-10" aria-label="Suivant">
           <ChevronRight className="w-6 h-6 text-white/0 ml-auto" />
         </button>
 

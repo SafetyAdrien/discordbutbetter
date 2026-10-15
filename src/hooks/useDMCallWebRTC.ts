@@ -45,6 +45,7 @@ export function useDMCallWebRTC(): UseDMCallWebRTCReturn {
   const audioLevelIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const statsIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const pendingSignalsRef = useRef<SignalData[]>([]);
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   // Send signal via Supabase
   const sendSignal = useCallback(async (signal: SignalData) => {
@@ -143,7 +144,7 @@ export function useDMCallWebRTC(): UseDMCallWebRTCReturn {
 
       // Set up signal subscription (non-blocking creation)
       signalSubscriptionRef.current = supabase
-        .channel(`dm-call-signals:${callId}`, { config: { private: true } })
+        .channel(`dm-call-signals:${callId}-${instanceIdRef.current}`, { config: { private: true } })
         .on(
           'postgres_changes',
           {
@@ -169,7 +170,7 @@ export function useDMCallWebRTC(): UseDMCallWebRTCReturn {
 
       // Set up broadcast channel for mute/video state sync
       broadcastChannelRef.current = supabase
-        .channel(`dm-call-state:${callId}`, { config: { private: true } })
+        .channel(`dm-call-state:${callId}-${instanceIdRef.current}`, { config: { private: true } })
         .on('broadcast', { event: 'mute-state' }, (payload) => {
           if (payload.payload?.userId !== user.id) {
             setRemoteMuted(!!payload.payload?.isMuted);

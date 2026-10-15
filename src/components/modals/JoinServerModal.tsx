@@ -107,7 +107,7 @@ export function JoinServerModal({ onClose, onBack, onJoinSuccess, onDiscoverClic
 
           {/* Discover link */}
           <div className="pt-2 border-t border-border">
-            <button 
+            <button type="button" 
               onClick={() => {
                 onClose();
                 onDiscoverClick?.();

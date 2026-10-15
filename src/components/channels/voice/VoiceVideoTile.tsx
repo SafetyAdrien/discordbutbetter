@@ -31,20 +31,25 @@ export function VoiceVideoTile({
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
-    if (videoRef.current && stream) {
-      videoRef.current.srcObject = stream;
+    const el = videoRef.current;
+    if (el && stream) {
+      el.srcObject = stream;
     }
     return () => {
-      if (videoRef.current) {
-        videoRef.current.srcObject = null;
-      }
+      // Detach from the element captured at setup time: by cleanup time
+      // `videoRef.current` is already null (React detaches refs before
+      // running effect cleanups), so reading it here was a no-op and leaked
+      // the MediaStream reference on the detached element.
+      if (el) el.srcObject = null;
     };
   }, [stream]);
 
   return (
     <div
       className={cn(
-        'relative rounded-xl overflow-hidden bg-background transition-colors duration-150 border-2',
+        // No colour transition on the speaking border: it added a visible
+        // ~150 ms ramp after the VAD had already decided, which read as lag.
+        'relative rounded-xl overflow-hidden bg-background border-2',
         type === 'screen' && 'col-span-2 row-span-2',
         isSpeaking ? 'border-[hsl(var(--online))]' : 'border-transparent',
         className

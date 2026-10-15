@@ -36,40 +36,46 @@ if (typeof window !== "undefined") {
     return false;
   };
 
-  window.addEventListener(
-    "keydown",
-    (e) => {
-      if (!isRefreshShortcut(e)) return;
-      if (refreshing) return;
-      refreshing = true;
-      e.preventDefault();
-      e.stopPropagation();
+  // Named so HMR can remove it: a module-scope anonymous listener is never
+  // torn down, so every hot reload stacked another copy onto `window`.
+  const handleHardRefresh = (e: KeyboardEvent) => {
+    if (!isRefreshShortcut(e)) return;
+    if (refreshing) return;
+    refreshing = true;
+    e.preventDefault();
+    e.stopPropagation();
 
-      const reload = () => {
+    const reload = () => {
+      try {
+        // @ts-ignore
+        window.location.reload(true);
+      } catch {
+        window.location.reload();
+      }
+    };
+
+    Promise.resolve(purgeAllCaches())
+      .catch(() => undefined)
+      .finally(() => {
         try {
-          // @ts-ignore
-          window.location.reload(true);
-        } catch {
-          window.location.reload();
-        }
-      };
+          if ("caches" in window) {
+            caches
+              .keys()
+              .then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
+              .catch(() => undefined)
+              .finally(reload);
+            return;
+          }
+        } catch {}
+        reload();
+      });
+  };
 
-      Promise.resolve(purgeAllCaches())
-        .catch(() => undefined)
-        .finally(() => {
-          try {
-            if ("caches" in window) {
-              caches
-                .keys()
-                .then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
-                .catch(() => undefined)
-                .finally(reload);
-              return;
-            }
-          } catch {}
-          reload();
-        });
-    },
-    { capture: true }
-  );
+  window.addEventListener("keydown", handleHardRefresh, { capture: true });
+
+  if (import.meta.hot) {
+    import.meta.hot.dispose(() => {
+      window.removeEventListener("keydown", handleHardRefresh, { capture: true });
+    });
+  }
 }

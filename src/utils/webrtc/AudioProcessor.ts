@@ -46,10 +46,13 @@ const DEFAULT_CONFIG: AudioProcessorConfig = {
 };
 
 // VAD sensitivity presets
+// Silence samples required before the adaptive noise floor is trusted.
+const AMBIENT_WARMUP_SAMPLES = 8;
+
 const VAD_PRESETS: Record<VADSensitivity, { spectralSpeak: number; spectralStop: number; holdMs: number }> = {
-  low:    { spectralSpeak: 0.40, spectralStop: 0.25, holdMs: 300 },
-  medium: { spectralSpeak: 0.30, spectralStop: 0.18, holdMs: 220 },
-  high:   { spectralSpeak: 0.25, spectralStop: 0.12, holdMs: 180 },
+  low:    { spectralSpeak: 0.34, spectralStop: 0.22, holdMs: 300 },
+  medium: { spectralSpeak: 0.24, spectralStop: 0.15, holdMs: 220 },
+  high:   { spectralSpeak: 0.18, spectralStop: 0.10, holdMs: 180 },
 };
 
 // Vocal fundamental frequency range (Hz)
@@ -95,10 +98,21 @@ export class AudioProcessor {
   private ambientSamples: number[] = [];
   private readonly AMBIENT_SAMPLE_SIZE = 60;
   private readonly AMBIENT_UPDATE_INTERVAL = 50;
+  /** Warm-up sample counter; the floor is frozen until enough silence is seen. */
+  private ambientWarmup = 0;
   
   // Spectral VAD history for smoothing (exponential weighting)
   private spectralHistory: number[] = [];
   private readonly SPECTRAL_HISTORY_SIZE = 5;
+  /**
+   * Smoothing factor for the spectral score, applied per poll.
+   *
+   * Higher = more responsive to a voice onset (less lag), lower = smoother.
+   * This is deliberately faster than a plain average: the user perceives the
+   * indicator lighting up late as "broken", whereas a little jitter while
+   * already speaking is invisible — that flapping is absorbed by the hold timer.
+   */
+  private readonly SPECTRAL_ATTACK_ALPHA = 0.75;
   
   // Noise gate state
   private isGateOpen = false;
@@ -266,8 +280,23 @@ export class AudioProcessor {
     // The analyser is a side-chain (not in the transmission path) so it does
     // not need to feed destination.
     this.analyserNode = this.audioContext.createAnalyser();
-    this.analyserNode.fftSize = 4096;
-    this.analyserNode.smoothingTimeConstant = 0.3;
+    // Latency budget for the speaking indicator.
+    //
+    // The analyser's FFT window IS the detection latency: with fftSize 4096 at
+    // 48 kHz the window is 85 ms, so the level reported by getByteFrequencyData
+    // is already 85 ms stale before any smoothing is applied. Combined with the
+    // spectral history and the 50 ms poll interval, the indicator lagged the
+    // voice by ~250-300 ms.
+    //
+    // 2048 halves that to ~43 ms while keeping ~23 Hz bin resolution — enough to
+    // resolve the 85-300 Hz fundamental band (VOICE_FREQ_LOW/HIGH) that the
+    // voice score depends on.
+    this.analyserNode.fftSize = 2048;
+    // Lower smoothing = faster attack. This is the single biggest contributor
+    // to perceived lag: at 0.3, the value only reaches ~63% of a new level after
+    // two polls. 0.1 reacts almost immediately; visual jitter is handled by the
+    // hysteresis + hold timer in getVADState, not by heavy smoothing.
+    this.analyserNode.smoothingTimeConstant = 0.1;
     lastNode.connect(this.analyserNode);
 
     // Noise gate gain — the VAD opens/closes this without touching mic volume (Fix #2).
@@ -455,33 +484,49 @@ export class AudioProcessor {
 
     const rawScore = normalizedFundamental * 0.4 + normalizedFormant * 0.6;
 
-    // Exponential weighted smoothing (recent samples count more)
-    this.spectralHistory.push(rawScore);
+    // Asymmetric smoothing: rise almost immediately, fall gently.
+    //
+    // The previous exponential weighting gave the newest sample only 38% of the
+    // total, so after ONE poll of sustained speech the score only reached 0.38
+    // against a 0.30 threshold — on a quieter voice it never crossed on the
+    // first poll at all, adding another 50-100 ms before the indicator lit up.
+    const prev = this.spectralHistory.length > 0
+      ? this.spectralHistory[this.spectralHistory.length - 1]
+      : 0;
+    const alpha = rawScore > prev ? this.SPECTRAL_ATTACK_ALPHA : 0.45;
+    const smoothed = prev + (rawScore - prev) * alpha;
+
+    this.spectralHistory.push(smoothed);
     if (this.spectralHistory.length > this.SPECTRAL_HISTORY_SIZE) {
       this.spectralHistory.shift();
     }
 
-    let weightedSum = 0;
-    let weightTotal = 0;
-    for (let i = 0; i < this.spectralHistory.length; i++) {
-      const weight = Math.pow(1.5, i); // Exponential: newer samples weighted more
-      weightedSum += this.spectralHistory[i] * weight;
-      weightTotal += weight;
-    }
-    const smoothedScore = weightedSum / weightTotal;
-
-    return Math.min(1, smoothedScore);
+    return Math.min(1, smoothed);
   }
 
   /**
-   * Update ambient noise level for adaptive VAD
+   * Update the ambient noise estimate for the adaptive VAD.
+   *
+   * Samples are only admitted while the user is NOT speaking. Feeding speech
+   * into this estimate created a feedback loop: speaking raised the measured
+   * "ambient" level, which raised `speakStartThreshold`, which suppressed the
+   * very detection that had raised it — so a sustained speaker could fade out
+   * of their own indicator. Only silence should move the noise floor.
    */
-  updateAmbientNoise(level: number): void {
+  updateAmbientNoise(level: number, isSpeaking: boolean): void {
+    if (isSpeaking) return;
+
     this.ambientSamples.push(level);
-    
+    this.ambientWarmup++;
+
     if (this.ambientSamples.length > this.AMBIENT_SAMPLE_SIZE) {
       this.ambientSamples.shift();
     }
+
+    // Hold the default floor until there is enough silence to be meaningful.
+    // Adapting from a 2-3 sample window made the very first utterance after
+    // joining meet an over-confident (too high) threshold.
+    if (this.ambientWarmup < AMBIENT_WARMUP_SAMPLES) return;
 
     const sorted = [...this.ambientSamples].sort((a, b) => a - b);
     const percentileIndex = Math.floor(sorted.length * 0.2);
@@ -494,8 +539,9 @@ export class AudioProcessor {
   getVADState(): VADState {
     const level = this.getAudioLevel();
     const spectralVoiceScore = this.computeSpectralVoiceScore();
-    
-    this.updateAmbientNoise(level);
+
+    // Only silence updates the noise floor — see updateAmbientNoise.
+    this.updateAmbientNoise(level, this.speakingState);
 
     const adaptiveThreshold = Math.max(
       0.04,

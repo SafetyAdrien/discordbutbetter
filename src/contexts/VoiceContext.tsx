@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWebRTC } from '@/hooks/useWebRTC';
 import { supabase } from '@/integrations/supabase/client';
@@ -8,6 +8,61 @@ import { soundEffects } from '@/utils/audio/SoundEffects';
 import { audioProcessor, type NoiseSuppressonMode, type VADSensitivity } from '@/utils/webrtc/AudioProcessor';
 import type { ScreenShareOptions } from '@/utils/webrtc/MediaManager';
 import { mediaManager } from '@/utils/webrtc/MediaManager';
+
+/**
+ * Build the speaking set from the local user + remote peers, keeping the
+ * previous identity when the content is unchanged.
+ */
+function useStableSpeakingSet(
+  localSpeakingId: string | null,
+  peers: Map<string, { isSpeaking: boolean }>,
+): Set<string> {
+  const ref = useRef<Set<string>>(new Set());
+
+  const next = new Set<string>();
+  if (localSpeakingId) next.add(localSpeakingId);
+  peers.forEach((peer, peerId) => {
+    if (peer.isSpeaking) next.add(peerId);
+  });
+
+  const prev = ref.current;
+  if (prev.size === next.size) {
+    let same = true;
+    for (const id of next) {
+      if (!prev.has(id)) { same = false; break; }
+    }
+    if (same) return prev;
+  }
+  ref.current = next;
+  return next;
+}
+
+/** Same idea for the per-peer audio-level map, with a delta threshold. */
+function useStableLevelsMap(
+  localUserId: string | undefined,
+  localLevel: number,
+  peers: Map<string, { audioLevel: number }>,
+): Map<string, number> {
+  const ref = useRef<Map<string, number>>(new Map());
+
+  const next = new Map<string, number>();
+  if (localUserId) next.set(localUserId, localLevel);
+  peers.forEach((peer, peerId) => next.set(peerId, peer.audioLevel));
+
+  const prev = ref.current;
+  if (prev.size === next.size) {
+    let same = true;
+    for (const [id, value] of next) {
+      const before = prev.get(id);
+      if (before === undefined || Math.abs(before - value) > 0.05) { same = false; break; }
+    }
+    if (same) return prev;
+  }
+  ref.current = next;
+  return next;
+}
+
+
 
 // Re-export useVoiceParticipants from dedicated hook file
 export { useVoiceParticipants } from '@/hooks/useVoiceParticipants';
@@ -20,6 +75,27 @@ export interface VoiceState {
   isMuted: boolean;
   isDeafened: boolean;
 }
+
+/**
+ * High-frequency voice telemetry, split out of VoiceContext.
+ *
+ * `speakingUsers`, `audioLevels` and `localAudioLevel` are refreshed on every
+ * 25 ms audio tick. Sharing a context with the connection state meant that
+ * every tick invalidated the context for ALL 15 consumers — including the
+ * channel list and pages that never display a level — so the main thread was
+ * busy 40x/second. That contention is itself a source of perceived lag: the
+ * speaking ring cannot paint until React is done re-rendering the tree.
+ *
+ * Components that only display an indicator now subscribe here, and only they
+ * re-render on a level change.
+ */
+interface VoiceLevelsContextValue {
+  speakingUsers: Set<string>;
+  audioLevels: Map<string, number>;
+  localAudioLevel: number;
+}
+
+const VoiceLevelsContext = createContext<VoiceLevelsContextValue | undefined>(undefined);
 
 interface VoiceContextType {
   voiceState: VoiceState;
@@ -87,9 +163,9 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   const { user, profile } = useAuth();
   const queryClient = useQueryClient();
   const webrtc = useWebRTC();
-  const [speakingUsers, setSpeakingUsers] = useState<Set<string>>(new Set());
-  const [audioLevels, setAudioLevels] = useState<Map<string, number>>(new Map());
-  const [localAudioLevel, setLocalAudioLevel] = useState(0);
+  // speakingUsers / audioLevels / localAudioLevel are DERIVED below (see
+  // useStableSpeakingSet) instead of being mirrored into state via an effect,
+  // which used to cost an extra React commit and desynchronised the rings.
   
   // Noise suppression state (persisted in localStorage)
   const [noiseSuppression, setNoiseSuppressionState] = useState<NoiseSuppressonMode>(() => {
@@ -111,6 +187,12 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       return (localStorage.getItem('voice-vad-sensitivity') as VADSensitivity) || 'high';
     } catch { return 'high'; }
   });
+
+  // Apply the persisted sensitivity to the remote VAD on mount, so remote
+  // speakers use the same thresholds the user configured for themselves.
+  useEffect(() => {
+    mediaManager.setVADSensitivity(vadSensitivity);
+  }, [vadSensitivity]);
 
   // Audio filters (persisted)
   const [audioFilters, setAudioFilters] = useState(() => {
@@ -236,6 +318,11 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     isDeafened: false,
   });
   const wasMutedBeforeDeafenRef = useRef(false);
+  // Mirror of voiceState kept in a ref so async handlers (mute/deafen) read the
+  // value as of the last commit instead of a stale closure. Declared BEFORE the
+  // callbacks that use it: referencing it earlier would hit the TDZ at runtime.
+  const voiceStateRef = useRef(voiceState);
+  useEffect(() => { voiceStateRef.current = voiceState; }, [voiceState]);
   // Track whether we have an active local voice session (to prevent DB overwrites)
   const hasActiveLocalSessionRef = useRef(false);
   // Track whether initial hydration from DB has happened
@@ -303,44 +390,39 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     }
   }, [dbVoiceState]);
 
-  // Update speaking users and audio levels from WebRTC (VAD - Voice Activity Detection)
-  useEffect(() => {
-    const newSpeaking = new Set<string>();
-    const newAudioLevels = new Map<string, number>();
+  /**
+   * Speaking set + audio levels, derived DURING render rather than in an effect.
+   *
+   * This used to be a `useEffect` that copied `webrtc.peers` /
+   * `webrtc.localIsSpeaking` into state. That created a two-stage pipeline:
+   *
+   *   audio tick -> setState in useWebRTC -> React commit #1
+   *              -> useEffect -> setState here    -> React commit #2
+   *
+   * The two commits are separate paints, so the speaking ring could render from
+   * `webrtc.peers` while `speakingUsers` still described the previous tick.
+   * That is precisely the "the ring lags / the three indicators disagree"
+   * symptom. Effects are also flushed asynchronously, adding a further frame.
+   *
+   * Deriving here collapses it to a single commit: every consumer of
+   * `speakingUsers` (the big card ring, the channel-list ring, the profile ring)
+   * now repaints in the same frame from the same source.
+   *
+   * Identity is still preserved when nothing changed, so an unrelated re-render
+   * does not invalidate the context.
+   */
+  const speakingUsers = useStableSpeakingSet(
+    user?.id && webrtc.localIsSpeaking && !voiceState.isMuted ? user.id : null,
+    webrtc.peers,
+  );
 
-    // Check if local user is speaking (audio level > threshold and not muted)
-    if (webrtc.localIsSpeaking && !voiceState.isMuted && user?.id) {
-      newSpeaking.add(user.id);
-    }
+  const audioLevels = useStableLevelsMap(user?.id, webrtc.audioLevel, webrtc.peers);
 
-    if (user?.id) {
-      newAudioLevels.set(user.id, webrtc.audioLevel);
-    }
-    
-    // Check remote peers speaking status and audio levels
-    webrtc.peers.forEach((peer, peerId) => {
-      if (peer.isSpeaking) {
-        newSpeaking.add(peerId);
-      }
-      newAudioLevels.set(peerId, peer.audioLevel);
-    });
-    
-    setSpeakingUsers(newSpeaking);
-    setAudioLevels(newAudioLevels);
-    setLocalAudioLevel(webrtc.audioLevel);
-  }, [webrtc.peers, webrtc.audioLevel, webrtc.localIsSpeaking, voiceState.isMuted, user?.id]);
+  const localAudioLevel = webrtc.audioLevel;
 
   // Show toast when microphone access fails
   useEffect(() => {
     if (webrtc.microphoneError && voiceState.channelId) {
-      toast.warning('Mode écoute seule', {
-        description: 'Impossible d\'accéder au microphone. Vous pouvez écouter mais pas parler.',
-        action: {
-          label: 'Réessayer',
-          onClick: () => webrtc.retryMicrophone(),
-        },
-        duration: 10000,
-      });
     }
   }, [webrtc.microphoneError, voiceState.channelId]);
 
@@ -411,7 +493,6 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       serverName,
     }));
     soundEffects.playJoin();
-    toast.success(`Connecté à ${channelName}`);
 
     // 2. Optimistic: remove self from ALL voice-participants caches (cross-channel cleanup)
     queryClient.setQueriesData(
@@ -542,7 +623,6 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       isDeafened: false,
     });
     soundEffects.playLeave();
-    toast.success(`Déconnecté de ${prevChannelName}`);
 
     // 2. Optimistic removal from participants cache (prevents ghost)
     if (prevChannelId) {
@@ -571,7 +651,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     if (!user) return;
     
     // Allow pre-mute when not connected
-    if (!voiceState.channelId) {
+    if (!voiceStateRef.current.channelId) {
       setVoiceState(prev => {
         const newMuted = !prev.isMuted;
         newMuted ? soundEffects.playMute() : soundEffects.playUnmute();
@@ -581,21 +661,24 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // Use functional update to avoid stale closure
-    let newMuted: boolean;
-    setVoiceState(prev => {
-      newMuted = !prev.isMuted;
-      return { ...prev, isMuted: newMuted };
-    });
-    // We need the value outside setState too
-    newMuted = !voiceState.isMuted;
-    
+    // Derive the new value from a ref, NOT from the setState updater.
+    //
+    // The previous code assigned `newMuted` inside the setState callback and
+    // then reassigned it from `voiceState.isMuted`. Because React runs the
+    // updater later (and may run it twice in StrictMode), the variable ended up
+    // holding the value computed from a stale closure: a double-click on mute
+    // applied the same value twice instead of toggling back, and the DB write
+    // could disagree with the audio state.
+    const newMuted = !voiceStateRef.current.isMuted;
+
+    setVoiceState(prev => ({ ...prev, isMuted: newMuted }));
+
     // Instant audio feedback
     webrtc.setMuted(newMuted);
     newMuted ? soundEffects.playMute() : soundEffects.playUnmute();
 
     // Optimistic cache update for participants list
-    const channelId = voiceState.channelId;
+    const channelId = voiceStateRef.current.channelId;
     queryClient.setQueryData(['voice-participants', channelId], (old: any) =>
       old?.map((p: any) => p.user_id === user.id ? { ...p, muted: newMuted } : p)
     );
@@ -613,13 +696,13 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         await supabase.from('voice_states').update({ muted: newMuted }).eq('user_id', user.id);
       }, 1000);
     }
-  }, [user, voiceState.channelId, voiceState.isMuted, webrtc, queryClient]);
+  }, [user, webrtc, queryClient]);
 
   const toggleDeafen = useCallback(async () => {
     if (!user) return;
     
     // Allow pre-deafen when not connected
-    if (!voiceState.channelId) {
+    if (!voiceStateRef.current.channelId) {
       setVoiceState(prev => {
         const newDeafened = !prev.isDeafened;
         if (newDeafened) {
@@ -639,13 +722,15 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const newDeafened = !voiceState.isDeafened;
+    // Same stale-closure fix as toggleMute: read from the ref, not the closure.
+    const current = voiceStateRef.current;
+    const newDeafened = !current.isDeafened;
     const updates: { deafened: boolean; muted?: boolean } = { deafened: newDeafened };
-    let finalMuted = voiceState.isMuted;
+    let finalMuted = current.isMuted;
 
     if (newDeafened) {
-      wasMutedBeforeDeafenRef.current = voiceState.isMuted;
-      if (!voiceState.isMuted) {
+      wasMutedBeforeDeafenRef.current = current.isMuted;
+      if (!current.isMuted) {
         updates.muted = true;
         finalMuted = true;
       }
@@ -665,7 +750,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     newDeafened ? soundEffects.playDeafen() : soundEffects.playUndeafen();
 
     // Optimistic cache
-    const channelId = voiceState.channelId;
+    const channelId = voiceStateRef.current.channelId;
     queryClient.setQueryData(['voice-participants', channelId], (old: any) =>
       old?.map((p: any) => p.user_id === user.id
         ? { ...p, deafened: newDeafened, muted: finalMuted }
@@ -685,7 +770,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         await supabase.from('voice_states').update(updates).eq('user_id', user.id);
       }, 1000);
     }
-  }, [user, voiceState.channelId, voiceState.isDeafened, voiceState.isMuted, webrtc, queryClient]);
+  }, [user, webrtc, queryClient]);
 
   const togglePushToTalkMode = useCallback(() => {
     webrtc.setPushToTalkMode(!webrtc.isPushToTalkMode);
@@ -694,7 +779,6 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   const retryMicrophone = useCallback(async () => {
     const success = await webrtc.retryMicrophone();
     if (success) {
-      toast.success('Microphone activé');
     } else {
       toast.error('Impossible d\'accéder au microphone');
     }
@@ -703,10 +787,8 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
 
   // Toggle camera
   // Cleanup voice_states on tab close / component unmount
-  const voiceStateRef = useRef(voiceState);
   const userRef = useRef(user);
   const sessionTokenRef = useRef<string | null>(null);
-  useEffect(() => { voiceStateRef.current = voiceState; }, [voiceState]);
   useEffect(() => { userRef.current = user; }, [user]);
 
   // Keep session token cached for beforeunload (can't await in sync handler)
@@ -752,10 +834,8 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     try {
       if (webrtc.isCameraActive) {
         webrtc.stopCamera();
-        toast.success('Caméra désactivée');
       } else {
         await webrtc.startCamera();
-        toast.success('Caméra activée');
       }
     } catch (error) {
       toast.error('Impossible d\'accéder à la caméra');
@@ -767,10 +847,8 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     try {
       if (webrtc.isScreenSharing) {
         webrtc.stopScreenShare();
-        toast.success('Partage d\'écran arrêté');
       } else {
         await webrtc.startScreenShare(options);
-        toast.success('Partage d\'écran démarré');
       }
     } catch (error) {
       console.log('[VoiceContext] Screen share cancelled or failed');
@@ -792,6 +870,9 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   const setVadSensitivity = useCallback((s: VADSensitivity) => {
     setVadSensitivityState(s);
     audioProcessor.setVADSensitivity(s);
+    // Keep remote detection on the same sensitivity, otherwise the rings for
+    // other people would follow the setting while yours did not.
+    mediaManager.setVADSensitivity(s);
     try { localStorage.setItem('voice-vad-sensitivity', s); } catch {}
   }, []);
 
@@ -835,10 +916,11 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     }
   }, [webrtc]);
 
-  return (
-    <VoiceContext.Provider
-      value={{
-        voiceState,
+  // Memoized: an inline object literal would give every consumer a brand new
+  // context value on each render, re-rendering the whole tree on every voice
+  // tick (audio levels / speaking users change several times per second).
+  const contextValue = useMemo(() => ({
+    voiceState,
         joinChannel,
         leaveChannel,
         toggleMute,
@@ -891,14 +973,38 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         setOutputDeviceId,
         outputSinkSupported,
         outputSinkPartial,
-        micPermission,
-        refreshDevices,
-        requestMicPermission,
-      }}
-    >
-      {children}
-    </VoiceContext.Provider>
+    micPermission,
+    refreshDevices,
+    requestMicPermission,
+  }), [
+    // NOTE: speakingUsers / audioLevels / localAudioLevel are intentionally NOT
+    // dependencies here — they live in VoiceLevelsContext below.
+    voiceState, joinChannel, leaveChannel, toggleMute, toggleDeafen, webrtc,
+    retryMicrophone, toggleCamera, outputSinkPartial, micPermission,
+    refreshDevices, requestMicPermission,
+  ]);
+
+  const levelsValue = useMemo<VoiceLevelsContextValue>(
+    () => ({ speakingUsers, audioLevels, localAudioLevel }),
+    [speakingUsers, audioLevels, localAudioLevel],
   );
+
+  return (
+    <VoiceLevelsContext.Provider value={levelsValue}>
+      <VoiceContext.Provider value={contextValue}>
+        {children}
+      </VoiceContext.Provider>
+    </VoiceLevelsContext.Provider>
+  );
+}
+
+/** Subscribe to the audio-level telemetry (updates ~40x/second). */
+export function useVoiceLevels(): VoiceLevelsContextValue {
+  const ctx = useContext(VoiceLevelsContext);
+  if (!ctx) {
+    return { speakingUsers: new Set(), audioLevels: new Map(), localAudioLevel: 0 };
+  }
+  return ctx;
 }
 
 const defaultVoiceContext: VoiceContextType = {

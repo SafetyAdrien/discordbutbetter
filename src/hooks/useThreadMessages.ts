@@ -10,15 +10,16 @@ import { useAuth } from '@/contexts/AuthContext';
 export const useThreadMessages = (threadId: string | undefined) => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  
+
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
-  
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
+
   // Real-time subscription — skip own INSERTs (handled by optimistic update)
   useEffect(() => {
     if (!threadId) return;
-    
+
     const channel = supabase
-      .channel(`thread-messages-${threadId}`)
+      .channel(`thread-messages-${threadId}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         {
@@ -134,18 +135,26 @@ export const useSendThreadMessage = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ threadId, content, replyToId }: { threadId: string; content: string; replyToId?: string | null }) => {
+    mutationFn: async ({ threadId, content, replyToId, externalAttachment }: {
+      threadId: string;
+      content: string;
+      replyToId?: string | null;
+      externalAttachment?: { url: string; name: string; type: 'sticker' | 'gif' };
+    }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
-      
-      if (content.trim().length === 0 || content.length > 2000) {
+
+      if ((content.trim().length === 0 && !externalAttachment) || content.length > 2000) {
         throw new Error('Message must be between 1 and 2000 characters');
       }
-      
+
       const insertPayload: any = {
         thread_id: threadId,
         author_id: user.id,
         content: content.trim(),
+        attachments: externalAttachment
+          ? [{ id: crypto.randomUUID(), url: externalAttachment.url, name: externalAttachment.name, type: externalAttachment.type, size: 0 }]
+          : [],
       };
       if (replyToId) insertPayload.reply_to_id = replyToId;
 
@@ -158,7 +167,7 @@ export const useSendThreadMessage = () => {
       if (error) throw error;
       return data;
     },
-    onMutate: async ({ threadId, content, replyToId }) => {
+    onMutate: async ({ threadId, content, replyToId, externalAttachment }) => {
       await queryClient.cancelQueries({ queryKey: ['thread-messages', threadId] });
       const previous = queryClient.getQueryData(['thread-messages', threadId]);
       const prevList = (previous as ThreadMessage[] | undefined) || [];
@@ -187,13 +196,16 @@ export const useSendThreadMessage = () => {
       queryClient.setQueryData(['thread-messages', threadId], (old: ThreadMessage[] = []) => [
         ...old,
         {
-          id: `temp-${Date.now()}`,
+          id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           thread_id: threadId,
           content,
           created_at: new Date().toISOString(),
           author: null,
           reply_to_id: replyToId ?? null,
           repliedMessage,
+          attachments: externalAttachment
+            ? [{ id: `temp-ext-${Date.now()}`, url: externalAttachment.url, name: externalAttachment.name, type: externalAttachment.type, size: 0 }]
+            : [],
         } as ThreadMessage,
       ]);
       
@@ -247,7 +259,6 @@ export const useEditThreadMessage = () => {
       toast.error('Erreur lors de la modification');
     },
     onSuccess: () => {
-      toast.success('Message modifié');
     },
     onSettled: (_, __, { threadId }) => {
       queryClient.invalidateQueries({ queryKey: ['thread-messages', threadId] });
@@ -285,7 +296,6 @@ export const useDeleteThreadMessage = () => {
       toast.error('Erreur lors de la suppression');
     },
     onSuccess: () => {
-      toast.success('Message supprimé');
     },
     onSettled: (_, __, { threadId }) => {
       queryClient.invalidateQueries({ queryKey: ['thread-messages', threadId] });

@@ -64,7 +64,7 @@ export const DiscoverModal = forwardRef<HTMLDivElement, DiscoverModalProps>(
               {categories.map((category) => {
                 const Icon = category.icon;
                 return (
-                  <button
+                  <button type="button"
                     key={category.id}
                     onClick={() => setActiveCategory(category.id)}
                     className={cn(
@@ -90,7 +90,7 @@ export const DiscoverModal = forwardRef<HTMLDivElement, DiscoverModalProps>(
             <div className="flex items-center justify-between mb-3">
               {isMobile ? (
                 <div className="flex items-center gap-2">
-                  <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted">
+                  <button type="button" onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted">
                     <ChevronLeft className="w-5 h-5" />
                   </button>
                   <h1 className="font-semibold text-sm">Découvrir</h1>
@@ -112,7 +112,7 @@ export const DiscoverModal = forwardRef<HTMLDivElement, DiscoverModalProps>(
             {isMobile && (
               <div className="flex gap-2 overflow-x-auto pb-2 mb-2 -mx-1 px-1 scrollbar-thin">
                 {categories.map((cat) => (
-                  <button
+                  <button type="button"
                     key={cat.id}
                     onClick={() => setActiveCategory(cat.id)}
                     className={cn(

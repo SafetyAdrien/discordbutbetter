@@ -1,45 +1,62 @@
-import { useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { useServerEmojis, useServerStickers } from '@/hooks/useServerAssets';
 import { EMOJI_CATEGORIES } from '@/data/emojis';
+import { getEmojiKeywords, preloadEmojiKeywords } from '@/data/emojiKeywords';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
-import { EmojiPickerHeader } from './emoji-picker/EmojiPickerHeader';
+import { EmojiPickerHeader, type PickerTab } from './emoji-picker/EmojiPickerHeader';
 import { EmojiCategoryNav, type CategoryEntry } from './emoji-picker/EmojiCategoryNav';
 import { EmojiGrid, type EmojiGridHandle, type EmojiSection } from './emoji-picker/EmojiGrid';
 import { StickerGrid } from './emoji-picker/StickerGrid';
+import { GifGrid } from './emoji-picker/GifGrid';
+import { useGifSearch } from './emoji-picker/useGifSearch';
 import { useRecentEmojis } from './emoji-picker/useRecentEmojis';
+import { useFavorites, type FavoriteItem } from './emoji-picker/useFavorites';
+import { FavoritesRow } from './emoji-picker/FavoritesRow';
 
 interface EmojiStickerPickerProps {
   serverId: string | null;
   onEmojiSelect: (emoji: string) => void;
   onStickerSelect?: (stickerUrl: string, stickerName: string) => void;
+  onGifSelect?: (gifUrl: string, gifName: string) => void;
   trigger: React.ReactNode;
-  defaultTab?: 'emoji' | 'sticker';
+  defaultTab?: PickerTab;
 }
 
 export function EmojiStickerPicker({
   serverId,
   onEmojiSelect,
   onStickerSelect,
+  onGifSelect,
   trigger,
   defaultTab = 'emoji',
 }: EmojiStickerPickerProps) {
   const [open, setOpen] = useState(false);
-  const [tab, setTab] = useState<'emoji' | 'sticker'>(defaultTab);
+  const [tab, setTab] = useState<PickerTab>(defaultTab);
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('recent');
   const gridRef = useRef<EmojiGridHandle>(null);
+
+  // The CLDR keyword indexes (~700 KB) are only needed once the user types in
+  // the search box. Fetch them on first keystroke so they stay out of the
+  // entry bundle while keyword search still works.
+  const handleSearchChange = useCallback((value: string) => {
+    setSearch(value);
+    if (value.trim()) void preloadEmojiKeywords();
+  }, []);
 
   const { data: serverEmojis = [] } = useServerEmojis(serverId);
   const { data: serverStickers = [] } = useServerStickers(serverId);
   const { isMobile } = useBreakpoint();
   const { recent, push: pushRecent, clear: clearRecent } = useRecentEmojis();
+  const { isFavorite, toggle: toggleFavorite, byKind: favoritesByKind } = useFavorites();
 
-  const totalEmojis = useMemo(
-    () => EMOJI_CATEGORIES.reduce((acc, c) => acc + c.emojis.length, 0) + serverEmojis.length,
-    [serverEmojis.length],
-  );
+  const {
+    data: gifs = [],
+    isLoading: gifsLoading,
+    isFetching: gifsFetching,
+  } = useGifSearch(tab === 'gif' ? search : '');
 
   const sections: EmojiSection[] = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -73,16 +90,35 @@ export function EmojiStickerPicker({
     }
 
     // Standard categories
-    EMOJI_CATEGORIES.forEach((cat) => {
-      // Without alias data, search matches by category name only.
-      const matchesCat = !q || cat.name.toLowerCase().includes(q);
-      if (!matchesCat && q) return;
-      out.push({
-        id: cat.name,
-        label: cat.name,
-        items: cat.emojis.map((char) => ({ kind: 'unicode' as const, char })),
+    if (!q) {
+      EMOJI_CATEGORIES.forEach((cat) => {
+        out.push({
+          id: cat.name,
+          label: cat.name,
+          items: cat.emojis.map((char) => ({ kind: 'unicode' as const, char })),
+        });
       });
-    });
+    } else {
+      // Match against French + English CLDR keywords per emoji, falling back
+      // to the category name so broad terms like "nourriture"/"food" work too.
+      const matched: Array<{ kind: 'unicode'; char: string }> = [];
+      const seen = new Set<string>();
+      EMOJI_CATEGORIES.forEach((cat) => {
+        const catMatches = cat.name.toLowerCase().includes(q);
+        cat.emojis.forEach((char) => {
+          if (seen.has(char)) return;
+          const keywords = getEmojiKeywords(char);
+          const emojiMatches = keywords.some((k) => k.includes(q));
+          if (catMatches || emojiMatches) {
+            seen.add(char);
+            matched.push({ kind: 'unicode', char });
+          }
+        });
+      });
+      if (matched.length > 0) {
+        out.push({ id: 'search-results', label: 'Résultats', items: matched });
+      }
+    }
 
     return out;
   }, [search, recent, serverEmojis]);
@@ -112,30 +148,78 @@ export function EmojiStickerPicker({
     setOpen(false);
   };
 
+  const handleGifPick = (url: string, name: string) => {
+    onGifSelect?.(url, name);
+    setOpen(false);
+  };
+
+  const handleFavoritePick = (item: FavoriteItem) => {
+    if (item.kind === 'emoji-unicode') handleEmojiPick(item.char);
+    else if (item.kind === 'emoji-custom') handleEmojiPick(item.insertText);
+    else if (item.kind === 'sticker') handleStickerPick(item.url, item.name);
+    else if (item.kind === 'gif') handleGifPick(item.url, item.name);
+  };
+
+  const toggleFavoriteUnicode = (char: string) => {
+    toggleFavorite({ kind: 'emoji-unicode', id: `emoji-${char}`, char });
+  };
+
+  const toggleFavoriteCustomEmoji = (item: { id: string; name: string; url: string; insertText: string }) => {
+    toggleFavorite({ kind: 'emoji-custom', id: `emoji-custom-${item.id}`, name: item.name, url: item.url, insertText: item.insertText });
+  };
+
+  const toggleFavoriteSticker = (sticker: { id: string; name: string; url: string }) => {
+    toggleFavorite({ kind: 'sticker', id: `sticker-${sticker.id}`, name: sticker.name, url: sticker.url });
+  };
+
+  const toggleFavoriteGif = (gif: { id: string; title: string; url: string; previewUrl: string }) => {
+    toggleFavorite({ kind: 'gif', id: `gif-${gif.id}`, name: gif.title || 'GIF', url: gif.url, previewUrl: gif.previewUrl });
+  };
+
+  const favoriteEmojis = useMemo(
+    () => [...favoritesByKind('emoji-unicode'), ...favoritesByKind('emoji-custom')],
+    [favoritesByKind],
+  );
+  const favoriteStickers = useMemo(() => favoritesByKind('sticker'), [favoritesByKind]);
+  const favoriteGifs = useMemo(() => favoritesByKind('gif'), [favoritesByKind]);
+
   const gridHeight = isMobile ? Math.round(window.innerHeight * 0.45) : 280;
 
   const pickerContent = (
     <div className="w-full">
       <EmojiPickerHeader
         tab={tab}
-        onTabChange={setTab}
+        onTabChange={(t) => {
+          setTab(t);
+          setSearch('');
+        }}
         search={search}
-        onSearchChange={setSearch}
-        totalCount={totalEmojis}
-        serverCount={serverEmojis.length}
+        onSearchChange={handleSearchChange}
       />
 
-      {tab === 'emoji' ? (
+      {!search.trim() && tab === 'emoji' && (
+        <FavoritesRow items={favoriteEmojis} onPick={handleFavoritePick} isMobile={isMobile} />
+      )}
+      {tab === 'sticker' && (
+        <FavoritesRow items={favoriteStickers} onPick={handleFavoritePick} isMobile={isMobile} />
+      )}
+      {!search.trim() && tab === 'gif' && (
+        <FavoritesRow items={favoriteGifs} onPick={handleFavoritePick} isMobile={isMobile} />
+      )}
+
+      {tab === 'emoji' && (
         <>
-          <EmojiCategoryNav
-            categories={categories}
-            activeId={activeCategory}
-            onSelect={(id) => {
-              setActiveCategory(id);
-              gridRef.current?.scrollToSection(id);
-            }}
-            orientation="horizontal"
-          />
+          <div className={search.trim() ? 'invisible pointer-events-none' : undefined}>
+            <EmojiCategoryNav
+              categories={categories}
+              activeId={activeCategory}
+              onSelect={(id) => {
+                setActiveCategory(id);
+                gridRef.current?.scrollToSection(id);
+              }}
+              orientation="horizontal"
+            />
+          </div>
           <EmojiGrid
             ref={gridRef}
             sections={sections}
@@ -143,14 +227,35 @@ export function EmojiStickerPicker({
             onClearRecent={clearRecent}
             height={gridHeight}
             isMobile={isMobile}
+            onActiveSectionChange={setActiveCategory}
+            isFavorite={isFavorite}
+            onToggleFavoriteUnicode={toggleFavoriteUnicode}
+            onToggleFavoriteCustom={toggleFavoriteCustomEmoji}
           />
         </>
-      ) : (
+      )}
+
+      {tab === 'sticker' && (
         <StickerGrid
           stickers={filteredStickers}
           onPick={handleStickerPick}
           height={gridHeight + 32}
           isMobile={isMobile}
+          isFavorite={(id) => isFavorite(`sticker-${id}`)}
+          onToggleFavorite={toggleFavoriteSticker}
+        />
+      )}
+
+      {tab === 'gif' && (
+        <GifGrid
+          gifs={gifs}
+          isLoading={gifsLoading}
+          isSearching={gifsFetching && !gifsLoading}
+          onPick={handleGifPick}
+          height={gridHeight + 32}
+          isMobile={isMobile}
+          isFavorite={(id) => isFavorite(`gif-${id}`)}
+          onToggleFavorite={toggleFavoriteGif}
         />
       )}
     </div>
@@ -176,8 +281,12 @@ export function EmojiStickerPicker({
       <PopoverContent
         side="top"
         align="end"
-        className="w-[380px] p-0 bg-popover border-0 rounded-2xl overflow-hidden"
-        style={{ boxShadow: 'var(--shadow-elevation-3)' }}
+        collisionPadding={12}
+        className="z-[110] w-[380px] p-0 bg-popover border-0 rounded-2xl overflow-hidden"
+        style={{
+          boxShadow: 'var(--shadow-elevation-3)',
+          maxHeight: 'var(--radix-popover-content-available-height)',
+        }}
       >
         {pickerContent}
       </PopoverContent>

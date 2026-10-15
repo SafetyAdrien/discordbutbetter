@@ -24,28 +24,45 @@ export function AudioLevelIndicator({
   const prevLevelRef = useRef(0);
   const animationRef = useRef<number>();
 
-  // Smooth the level changes for visual appeal
+  // Smooth the level changes for visual appeal.
+  //
+  // This used to run its own requestAnimationFrame loop keyed on `level`. Since
+  // `level` is updated ~40x/second, the effect tore down and restarted a rAF
+  // loop on every single tick, so the smoothing never actually accumulated: it
+  // only ever moved 30% of the way per restart. That is both wasted work (one
+  // rAF per participant per tick) and extra latency.
+  //
+  // Now the target is kept in a ref and a single rAF loop runs continuously,
+  // easing the displayed value toward the latest level.
+  const levelRef = useRef(level);
+  levelRef.current = level;
+
   useEffect(() => {
-    const smoothingFactor = 0.3; // Higher = more responsive, lower = smoother
-    
+    let running = true;
+
     const animate = () => {
+      if (!running) return;
       setSmoothedLevel(prev => {
-        const target = level;
-        const newLevel = prev + (target - prev) * smoothingFactor;
-        prevLevelRef.current = newLevel;
-        return newLevel;
+        const target = levelRef.current;
+        // Asymmetric easing: rise fast (so the indicator reacts at once),
+        // fall gently (so it does not flicker between syllables).
+        const factor = target > prev ? 0.5 : 0.15;
+        const next = prev + (target - prev) * factor;
+        // Snap once we are close enough to avoid pointless re-renders forever.
+        return Math.abs(target - next) < 0.001 ? target : next;
       });
       animationRef.current = requestAnimationFrame(animate);
     };
 
     animationRef.current = requestAnimationFrame(animate);
-    
+
     return () => {
+      running = false;
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [level]);
+  }, []);
 
   // Don't render if silent and showWhenSilent is false
   if (!showWhenSilent && !isSpeaking && smoothedLevel < 0.01) {
@@ -56,7 +73,7 @@ export function AudioLevelIndicator({
     return (
       <div 
         className={cn(
-          'absolute inset-0 rounded-full pointer-events-none transition-opacity duration-150',
+          'absolute inset-0 rounded-full pointer-events-none',
           isSpeaking ? 'opacity-100' : 'opacity-0',
           className
         )}

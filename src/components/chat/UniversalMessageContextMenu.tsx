@@ -122,7 +122,7 @@ export function UniversalMessageContextMenu({
       {canAddReactions && (
         <div className="flex items-center gap-1 p-2 pb-3 border-b border-border mb-1">
           {CONTEXT_MENU_REACTIONS.map(emoji => (
-            <button 
+            <button type="button" 
               key={emoji} 
               onClick={() => { onAddReaction(emoji); onAction?.(); }} 
               className="p-1.5 hover:bg-muted rounded text-lg transition-colors"
@@ -134,40 +134,40 @@ export function UniversalMessageContextMenu({
       )}
       
       {showReply && (
-        <button onClick={() => { onReply?.(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
+        <button type="button" onClick={() => { onReply?.(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
           <Reply className="w-4 h-4 text-muted-foreground" /> Répondre
         </button>
       )}
       {showCopyText && (
-        <button onClick={() => { onCopyText?.(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
+        <button type="button" onClick={() => { onCopyText?.(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
           <Copy className="w-4 h-4 text-muted-foreground" /> Copier le texte
         </button>
       )}
       {onPin && (
-        <button onClick={() => { onPin(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
+        <button type="button" onClick={() => { onPin(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
           <Pin className="w-4 h-4 text-muted-foreground" /> {isPinned ? 'Désépingler' : 'Épingler'}
         </button>
       )}
       {showCreateThread && (
-        <button onClick={() => { onCreateThread?.(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
+        <button type="button" onClick={() => { onCreateThread?.(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
           <StreamlineThreads className="w-4 h-4 text-muted-foreground" /> Créer un thread
         </button>
       )}
-      <button onClick={() => { onCopyLink(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
+      <button type="button" onClick={() => { onCopyLink(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
         <Link className="w-4 h-4 text-muted-foreground" /> {copyLinkLabel ?? 'Copier le lien'}
       </button>
-      <button onClick={() => { onCopyId(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
+      <button type="button" onClick={() => { onCopyId(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
         <Hash className="w-4 h-4 text-muted-foreground" /> {copyIdLabel ?? "Copier l'ID"}
       </button>
 
       {hasReactions && onViewReactions && (
         <>
           <div className="h-px bg-border my-1" />
-          <button onClick={() => { onViewReactions(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
+          <button type="button" onClick={() => { onViewReactions(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
             <Eye className="w-4 h-4 text-muted-foreground" /> Voir les réactions
           </button>
           {canManageReactions && onClearAllReactions && (
-            <button onClick={() => { onClearAllReactions(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-destructive/10 rounded-md transition-colors text-sm text-destructive">
+            <button type="button" onClick={() => { onClearAllReactions(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-destructive/10 rounded-md transition-colors text-sm text-destructive">
               <Trash2 className="w-4 h-4" /> Supprimer toutes les réactions
             </button>
           )}
@@ -181,12 +181,12 @@ export function UniversalMessageContextMenu({
       {isOwnMessage ? (
         <>
           {showEdit && (
-            <button onClick={() => { onEdit?.(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
+            <button type="button" onClick={() => { onEdit?.(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
               <Pencil className="w-4 h-4 text-muted-foreground" /> Modifier
             </button>
           )}
           {onDelete && (
-            <button onClick={(e) => handleDeleteClick(e, onAction)} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-destructive/10 rounded-md transition-colors text-sm text-destructive">
+            <button type="button" onClick={(e) => handleDeleteClick(e, onAction)} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-destructive/10 rounded-md transition-colors text-sm text-destructive">
               <Trash2 className="w-4 h-4" /> Supprimer
             </button>
           )}
@@ -194,12 +194,12 @@ export function UniversalMessageContextMenu({
       ) : (
         <>
           {canManageMessages && onDelete && (
-            <button onClick={(e) => handleDeleteClick(e, onAction)} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-destructive/10 rounded-md transition-colors text-sm text-destructive">
+            <button type="button" onClick={(e) => handleDeleteClick(e, onAction)} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-destructive/10 rounded-md transition-colors text-sm text-destructive">
               <Trash2 className="w-4 h-4" /> Supprimer
             </button>
           )}
           {onReport && (
-            <button onClick={() => { onReport(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-destructive/10 rounded-md transition-colors text-sm text-destructive">
+            <button type="button" onClick={() => { onReport(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-destructive/10 rounded-md transition-colors text-sm text-destructive">
               <Flag className="w-4 h-4" /> Signaler
             </button>
           )}
@@ -258,7 +258,7 @@ export function UniversalMessageContextMenu({
           {canAddReactions && (
             <div className="flex items-center gap-1 p-1 pb-2 border-b border-border mb-1">
               {CONTEXT_MENU_REACTIONS.map(emoji => (
-                <button 
+                <button type="button" 
                   key={emoji} 
                   onClick={() => onAddReaction(emoji)} 
                   className="p-1.5 hover:bg-muted rounded text-lg transition-colors"
@@ -268,14 +268,14 @@ export function UniversalMessageContextMenu({
               ))}
               <Popover>
                 <PopoverTrigger asChild>
-                  <button className="p-1.5 hover:bg-muted rounded transition-colors">
+                  <button type="button" className="p-1.5 hover:bg-muted rounded transition-colors">
                     <SmilePlus className="w-5 h-5 text-muted-foreground" />
                   </button>
                 </PopoverTrigger>
                 <PopoverContent side="right" align="start" className="w-64 p-2">
                   <div className="grid grid-cols-8 gap-1">
                     {EMOJI_PICKER_GRID.map((emoji) => (
-                      <button
+                      <button type="button"
                         key={emoji}
                         onClick={() => onAddReaction(emoji)}
                         className="p-1 hover:bg-muted rounded text-lg transition-colors"

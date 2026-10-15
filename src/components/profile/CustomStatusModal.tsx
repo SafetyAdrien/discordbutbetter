@@ -153,7 +153,7 @@ export function CustomStatusModal({ open, onOpenChange }: CustomStatusModalProps
             <div className="flex items-center gap-2 bg-muted/40 rounded-xl px-1 py-1">
               <Popover open={emojiOpen} onOpenChange={setEmojiOpen}>
                 <PopoverTrigger asChild>
-                  <button
+                  <button type="button"
                     className="w-9 h-9 rounded-lg flex items-center justify-center hover:bg-muted/60 shrink-0"
                     aria-label="Choisir un émoji"
                   >
@@ -167,7 +167,7 @@ export function CustomStatusModal({ open, onOpenChange }: CustomStatusModalProps
                 <PopoverContent className="w-[320px] p-2" align="start">
                   <div className="grid grid-cols-8 gap-1">
                     {COMMON_EMOJIS.map((emoji) => (
-                      <button
+                      <button type="button"
                         key={emoji}
                         onClick={() => {
                           setStatusEmoji(emoji);
@@ -191,7 +191,7 @@ export function CustomStatusModal({ open, onOpenChange }: CustomStatusModalProps
               />
 
               {hasStatus && (
-                <button
+                <button type="button"
                   onClick={() => {
                     setStatusEmoji('');
                     setStatusText('');
@@ -254,7 +254,7 @@ export function CustomStatusModal({ open, onOpenChange }: CustomStatusModalProps
             {/* Duration */}
             <Popover>
               <PopoverTrigger asChild>
-                <button className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-muted/40 hover:bg-muted/60 text-sm transition-colors">
+                <button type="button" className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-muted/40 hover:bg-muted/60 text-sm transition-colors">
                   <span className="text-muted-foreground">Effacer après</span>
                   <span className="flex items-center gap-1 font-medium">
                     {DURATION_OPTIONS.find((o) => o.value === duration)?.label}
@@ -264,7 +264,7 @@ export function CustomStatusModal({ open, onOpenChange }: CustomStatusModalProps
               </PopoverTrigger>
               <PopoverContent className="w-56 p-1" align="end">
                 {DURATION_OPTIONS.map((opt) => (
-                  <button
+                  <button type="button"
                     key={opt.value}
                     onClick={() => setDuration(opt.value)}
                     className={cn(

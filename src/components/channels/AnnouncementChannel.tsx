@@ -60,7 +60,6 @@ import { FollowSuccessModal } from "./announcement/FollowSuccessModal";
 import { PublishPrompt } from "./announcement/PublishPrompt";
 import { PublishedMessageHeader } from "./announcement/PublishedMessageHeader";
 import { useChannelFollowers, usePublishMessage, useDismissPublishPrompt } from "@/hooks/useChannelFollowers";
-import { toast } from "sonner";
 import StreamlineThreads from "@/components/icons/StreamlineThreads";
 import ThreadsPopover from "@/components/threads/ThreadsPopover";
 import CreateThreadModal from "@/components/threads/CreateThreadModal";
@@ -533,7 +532,7 @@ export function AnnouncementChannel({
             <div className="w-px h-6 bg-border hidden sm:block" />
             <Popover>
               <PopoverTrigger asChild>
-                <button className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded hover:bg-muted/50 transition-colors max-w-[150px] md:max-w-[250px] lg:max-w-[350px] min-w-0">
+                <button type="button" className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded hover:bg-muted/50 transition-colors max-w-[150px] md:max-w-[250px] lg:max-w-[350px] min-w-0">
                   <MessageSquareText className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                   <span className="text-sm text-muted-foreground truncate [&_.markdown-content]:inline [&_h1]:text-sm [&_h2]:text-sm [&_h3]:text-sm [&_h4]:text-sm [&_p]:inline [&_*]:!m-0">
                     <MarkdownText content={channel.description} variant="chat" className="[&_.markdown-content]:text-muted-foreground" />
@@ -559,15 +558,15 @@ export function AnnouncementChannel({
             <PopoverContent side="bottom" align="end" className="w-64 p-3">
               <h4 className="font-semibold text-foreground mb-3">Notifications</h4>
               <div className="space-y-2">
-                <button className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-muted/50 transition-colors text-sm">
+                <button type="button" className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-muted/50 transition-colors text-sm">
                   <BellRing className="w-4 h-4 text-muted-foreground" />
                   <span>Tous les messages</span>
                 </button>
-                <button className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-muted/50 transition-colors text-sm">
+                <button type="button" className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-muted/50 transition-colors text-sm">
                   <AtSign className="w-4 h-4 text-muted-foreground" />
                   <span>Uniquement les mentions</span>
                 </button>
-                <button className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-muted/50 transition-colors text-sm">
+                <button type="button" className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-muted/50 transition-colors text-sm">
                   <BellOff className="w-4 h-4 text-muted-foreground" />
                   <span>Aucun message</span>
                 </button>
@@ -628,7 +627,7 @@ export function AnnouncementChannel({
                             </p>
                           </div>
                         </div>
-                        <button
+                        <button type="button"
                           onClick={() =>
                             unpinMessage.mutate({
                               messageId: pm.message_id,
@@ -754,7 +753,7 @@ export function AnnouncementChannel({
                             <span>
                               <span className="font-semibold text-foreground">{message.author.displayName}</span>
                               {' '}a créé un thread :{' '}
-                              <button
+                              <button type="button"
                                 onClick={() => onSelectThread?.(threadId)}
                                 className="font-semibold text-primary hover:underline cursor-pointer"
                               >
@@ -782,7 +781,7 @@ export function AnnouncementChannel({
                                   }}
                                 />
                               ) : (
-                                <button
+                                <button type="button"
                                   onClick={() => onSelectThread?.(threadId)}
                                   className="flex items-start gap-2 w-full text-left py-1.5 px-2 rounded transition-colors bg-surface-elevated"
                                 >
@@ -884,7 +883,7 @@ export function AnnouncementChannel({
                         canPublishMessages && isOwnMessage && followers.length > 0 ? (
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <button
+                              <button type="button"
                                 onClick={() => handlePublishMessage(message)}
                                 disabled={publishMessage.isPending}
                                 className="p-1.5 hover:bg-muted rounded transition-colors text-primary"
@@ -938,7 +937,7 @@ export function AnnouncementChannel({
                             </AvatarFallback>
                           </Avatar>
                         ) : (
-                          <button onClick={() => handleUserClick(message.author)} className="flex-shrink-0">
+                          <button type="button" onClick={() => handleUserClick(message.author)} className="flex-shrink-0">
                             <Avatar className="w-10 h-10 mt-0.5 hover:opacity-80 transition-opacity">
                               <AvatarImage src={message.author.avatar} alt={message.author.displayName} />
                               <AvatarFallback className="bg-primary/20 text-primary">
@@ -959,7 +958,7 @@ export function AnnouncementChannel({
                                 </Badge>
                               </>
                             ) : (
-                              <button
+                              <button type="button"
                                 onClick={() => handleUserClick(message.author)}
                                 className="font-semibold hover:underline cursor-pointer truncate max-w-[200px] flex-shrink-0"
                                 style={{ color: memberRoles?.get(message.author.id)?.[0]?.color || undefined }}
@@ -1048,14 +1047,14 @@ export function AnnouncementChannel({
                                   <span className="text-muted-foreground">
                                     Partage ça avec tes abonnés !
                                   </span>
-                                  <button
+                                  <button type="button"
                                     onClick={() => handlePublishMessage(message)}
                                     disabled={publishMessage.isPending}
                                     className="text-primary hover:underline font-medium"
                                   >
                                     {publishMessage.isPending ? "Publication..." : "Publier"}
                                   </button>
-                                  <button
+                                  <button type="button"
                                     onClick={() => handleDismissPublish(message.id)}
                                     className="ml-auto text-muted-foreground hover:text-foreground transition-colors"
                                     title="Ne plus afficher"
@@ -1140,14 +1139,14 @@ export function AnnouncementChannel({
                                   <span className="text-muted-foreground">
                                     Partage ça avec tes abonnés !
                                   </span>
-                                  <button
+                                  <button type="button"
                                     onClick={() => handlePublishMessage(message)}
                                     disabled={publishMessage.isPending}
                                     className="text-primary hover:underline font-medium"
                                   >
                                     {publishMessage.isPending ? "Publication..." : "Publier"}
                                   </button>
-                                  <button
+                                  <button type="button"
                                     onClick={() => handleDismissPublish(message.id)}
                                     className="ml-auto text-muted-foreground hover:text-foreground transition-colors"
                                   >
@@ -1170,7 +1169,7 @@ export function AnnouncementChannel({
       </ScrollArea>
 
       {/* Input Container */}
-      <div className="flex-shrink-0 w-full px-4 pb-4 pt-2">
+      <div className="flex-shrink-0 w-full">
         <TypingIndicator channelId={channel.id} />
         {replyingTo && (
           <ReplyBanner

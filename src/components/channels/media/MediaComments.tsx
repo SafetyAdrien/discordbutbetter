@@ -165,7 +165,7 @@ export function MediaComments({ postId, serverId = null }: MediaCommentsProps) {
                     {formatRelativeTime(comment.created_at)}
                   </span>
                   <div className="ml-auto flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
+                    <button type="button"
                       onClick={() => handleStartReply(comment)}
                       className="p-1.5 hover:bg-accent rounded transition-colors"
                       aria-label={`Répondre à ${comment.author?.display_name ?? 'utilisateur'}`}
@@ -174,7 +174,7 @@ export function MediaComments({ postId, serverId = null }: MediaCommentsProps) {
                       <Reply className="w-3.5 h-3.5 text-muted-foreground" />
                     </button>
                     {comment.author?.id === user?.id && (
-                      <button
+                      <button type="button"
                         onClick={() => deleteComment.mutate({ id: comment.id, postId })}
                         className="p-1.5 hover:bg-destructive/20 rounded transition-colors"
                         aria-label="Supprimer le commentaire"
@@ -230,7 +230,7 @@ export function MediaComments({ postId, serverId = null }: MediaCommentsProps) {
           >
             {replyingTo.content}
           </span>
-          <button
+          <button type="button"
             onClick={() => setReplyingTo(null)}
             className="p-1 hover:bg-accent rounded flex-shrink-0 focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/40"
             aria-label="Annuler la réponse"

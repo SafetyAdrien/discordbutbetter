@@ -17,11 +17,12 @@ export function useMediaCommentReactions(commentIds: string[]) {
   const { user } = useAuth();
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
   const idsKey = commentIds.join(',');
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   useEffect(() => {
     if (commentIds.length === 0) return;
     const channel = supabase
-      .channel(`media-comment-reactions-rt-${commentIds[0]}`)
+      .channel(`media-comment-reactions-rt-${commentIds[0]}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'media_post_comment_reactions' },
@@ -105,7 +106,7 @@ export function useToggleMediaCommentReaction() {
         const next = userHasReacted
           ? list.filter(r => !(r.user_id === user.id && r.emoji === emoji))
           : [...list, {
-              id: `temp-${Date.now()}`,
+              id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
               comment_id: commentId,
               user_id: user.id,
               emoji,

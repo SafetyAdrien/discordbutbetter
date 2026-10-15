@@ -42,7 +42,7 @@ import { UserAvatarImage } from '@/components/ui/user-avatar-image';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { format } from '@/lib/dateUtils';
 
 export type SearchFiltersFocus = 'from' | 'in' | 'has' | 'mentions' | 'date' | 'author' | 'pinned' | null;
 export type HasType = 'image' | 'video' | 'link' | 'file' | 'embed' | 'sound' | 'poll' | 'sticker' | 'forward';
@@ -197,7 +197,7 @@ function MemberMultiSelect({
                 </Avatar>
               )}
               <span className="truncate max-w-[120px]">{m.displayName}</span>
-              <button
+              <button type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   toggle(m.id);
@@ -238,7 +238,7 @@ function MemberMultiSelect({
             {filtered.map((m) => {
               const checked = selectedMap.has(m.id);
               return (
-                <button
+                <button type="button"
                   key={m.id}
                   onClick={() => toggle(m.id)}
                   className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-surface-hover text-left"
@@ -328,7 +328,7 @@ function ChannelMultiSelect({
             >
               <Hash className="w-3 h-3 text-muted-foreground" />
               <span className="truncate max-w-[140px]">{c.name}</span>
-              <button
+              <button type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   toggle(c.id);
@@ -369,7 +369,7 @@ function ChannelMultiSelect({
             {filtered.map((c) => {
               const checked = selectedMap.has(c.id);
               return (
-                <button
+                <button type="button"
                   key={c.id}
                   onClick={() => toggle(c.id)}
                   className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-surface-hover text-left"
@@ -481,7 +481,7 @@ export function SearchFiltersModal({
                 {HAS_OPTIONS.map((opt) => {
                   const active = value.has.includes(opt.value);
                   return (
-                    <button
+                    <button type="button"
                       key={opt.value}
                       onClick={() => setHas(opt.value)}
                       className={cn(
@@ -583,7 +583,7 @@ export function SearchFiltersModal({
                 {AUTHOR_OPTIONS.map((opt) => {
                   const active = value.authorType === opt.value;
                   return (
-                    <button
+                    <button type="button"
                       key={opt.value}
                       onClick={() =>
                         setValue((v) => ({
@@ -616,7 +616,7 @@ export function SearchFiltersModal({
                 ].map((opt) => {
                   const active = value.pinned === opt.v;
                   return (
-                    <button
+                    <button type="button"
                       key={String(opt.v)}
                       onClick={() =>
                         setValue((v) => ({

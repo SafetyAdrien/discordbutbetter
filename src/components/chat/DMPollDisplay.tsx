@@ -1,20 +1,23 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { DMPoll, DMPollVote, useVoteDMPoll, useRemoveDMVote, useEndDMPoll } from '@/hooks/useDMPolls';
+import { DMPoll, DMPollVote, useVoteDMPoll, useRemoveDMVote, useEndDMPoll, closeDMPollAndNotify } from '@/hooks/useDMPolls';
 import { useAuth } from '@/contexts/AuthContext';
-import { isPast } from 'date-fns';
+import { isPast } from '@/lib/dateUtils';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipPortal } from '@/components/ui/tooltip';
+import { ClosePollConfirmDialog } from './ClosePollConfirmDialog';
+import { PollVotersModal } from './PollVotersModal';
+import { computePollWinner } from '@/lib/pollWinner';
 
-function VoterAvatars({ votes }: { votes: DMPollVote[] }) {
+function VoterAvatars({ votes, onOpenVoters }: { votes: DMPollVote[]; onOpenVoters?: () => void }) {
   const maxVisible = 3;
   const visibleVotes = votes.slice(0, maxVisible);
   const remainingCount = votes.length - maxVisible;
   if (votes.length === 0) return null;
   return (
-    <div className="flex items-center -space-x-1.5 transition-all duration-300 ease-out" onClick={(e) => e.stopPropagation()}>
+    <div className="flex items-center -space-x-1.5 transition-all duration-300 ease-out" onClick={(e) => { e.stopPropagation(); onOpenVoters?.(); }}>
       {visibleVotes.map((vote, index) => (
         <Tooltip key={vote.id}>
           <TooltipTrigger asChild>
@@ -61,6 +64,9 @@ export function DMPollDisplay({ poll, conversationId }: DMPollDisplayProps) {
   const [showResults, setShowResults] = useState(false);
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
   const [isEditing, setIsEditing] = useState(false);
+  const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
+  const [votersModalOpen, setVotersModalOpen] = useState(false);
+  const [votersModalOptionId, setVotersModalOptionId] = useState<string | undefined>(undefined);
   const votePoll = useVoteDMPoll();
   const removeVote = useRemoveDMVote();
   const endPoll = useEndDMPoll();
@@ -75,11 +81,19 @@ export function DMPollDisplay({ poll, conversationId }: DMPollDisplayProps) {
   const canVote = !isExpired;
 
   const [timeLeft, setTimeLeft] = useState<{ days: number; hours: number; minutes: number; seconds: number } | null>(null);
+  const expiryNotifiedRef = useRef(false);
   useEffect(() => {
     if (!poll.expires_at || isExpired) { setTimeLeft(null); return; }
     const update = () => {
       const diff = new Date(poll.expires_at!).getTime() - Date.now();
-      if (diff <= 0) { setTimeLeft(null); return; }
+      if (diff <= 0) {
+        setTimeLeft(null);
+        if (!poll.closed_notified && !expiryNotifiedRef.current) {
+          expiryNotifiedRef.current = true;
+          closeDMPollAndNotify(poll.id, false).catch(() => {});
+        }
+        return;
+      }
       setTimeLeft({
         days: Math.floor(diff / 86400000),
         hours: Math.floor((diff % 86400000) / 3600000),
@@ -90,7 +104,7 @@ export function DMPollDisplay({ poll, conversationId }: DMPollDisplayProps) {
     update();
     const i = setInterval(update, 1000);
     return () => clearInterval(i);
-  }, [poll.expires_at, isExpired]);
+  }, [poll.expires_at, isExpired, poll.id, poll.closed_notified]);
 
   const progressPercentage = useMemo(() => {
     if (!poll.expires_at || !poll.created_at) return 0;
@@ -124,6 +138,11 @@ export function DMPollDisplay({ poll, conversationId }: DMPollDisplayProps) {
     return m;
   }, [poll.votes, poll.options]);
 
+  const winnerOptionId = useMemo(() => {
+    if (!isExpired) return null;
+    return computePollWinner({ options: poll.options, votes: poll.votes }).winnerOptionId;
+  }, [isExpired, poll.options, poll.votes]);
+
   const shouldShowResults = (showResults || hasVoted || isExpired) && !isEditing;
 
   const handleOptionClick = (optionId: string) => {
@@ -132,7 +151,7 @@ export function DMPollDisplay({ poll, conversationId }: DMPollDisplayProps) {
       if (poll.allow_multiple) {
         setSelectedOptions((prev) => (prev.includes(optionId) ? prev.filter((id) => id !== optionId) : [...prev, optionId]));
       } else {
-        setSelectedOptions([optionId]);
+        setSelectedOptions((prev) => (prev.includes(optionId) ? [] : [optionId]));
       }
       return;
     }
@@ -140,7 +159,7 @@ export function DMPollDisplay({ poll, conversationId }: DMPollDisplayProps) {
     if (poll.allow_multiple) {
       setSelectedOptions((prev) => (prev.includes(optionId) ? prev.filter((id) => id !== optionId) : [...prev, optionId]));
     } else {
-      setSelectedOptions([optionId]);
+      setSelectedOptions((prev) => (prev.includes(optionId) ? [] : [optionId]));
     }
   };
 
@@ -160,12 +179,15 @@ export function DMPollDisplay({ poll, conversationId }: DMPollDisplayProps) {
 
   const handleStartEdit = () => { setSelectedOptions([...userVotes]); setIsEditing(true); };
   const handleCancelEdit = () => { setIsEditing(false); setSelectedOptions([]); };
+  const handleRemoveVote = () => {
+    userVotes.forEach((optionId) => removeVote.mutate({ pollId: poll.id, optionId, conversationId }));
+  };
   const getPercentage = (id: string) => (totalVotes === 0 ? 0 : Math.round((voteCountByOption[id] / totalVotes) * 100));
 
   return (
-    <div className="bg-poll rounded-xl overflow-hidden w-full max-w-[500px] border border-primary/15 border-l-[3px] border-l-primary/40 shadow-elevation-1">
-      <div className="px-3 pb-3 space-y-3">
-        <p className="text-foreground font-medium my-[11px]">{poll.question}</p>
+    <div className="bg-poll rounded-xl overflow-hidden w-full max-w-[500px] shadow-elevation-1">
+      <div className="px-4 pb-4 space-y-3">
+        <p className="text-foreground font-medium text-base my-3">{poll.question}</p>
 
         {!hasVoted && canVote && !showResults && (
           <p className="text-muted-foreground py-0 text-xs font-thin">
@@ -180,30 +202,80 @@ export function DMPollDisplay({ poll, conversationId }: DMPollDisplayProps) {
             const percentage = getPercentage(option.id);
             const voteCount = voteCountByOption[option.id];
             const optionVotes = votesByOption[option.id];
+            const isWinningOption = winnerOptionId === option.id;
+
+            const optionDisabled = isEditing ? false : (!canVote && !hasVoted) || (showResults && !hasVoted);
 
             return (
-              <button
+              <div
                 key={option.id}
-                onClick={() => handleOptionClick(option.id)}
-                disabled={isEditing ? false : (!canVote && !hasVoted) || (showResults && !hasVoted)}
+                role="button"
+                tabIndex={optionDisabled ? -1 : 0}
+                aria-disabled={optionDisabled}
+                onClick={() => !optionDisabled && handleOptionClick(option.id)}
+                onKeyDown={(e) => {
+                  if (!optionDisabled && (e.key === 'Enter' || e.key === ' ')) {
+                    e.preventDefault();
+                    handleOptionClick(option.id);
+                  }
+                }}
                 className={cn(
                   'w-full relative rounded-md border transition-all duration-300 text-left overflow-hidden',
-                  isSelected || isVoted ? 'border-primary bg-primary/10' : 'border-border hover:border-border/80 bg-[hsl(var(--surface-1))]',
+                  optionDisabled ? 'cursor-default' : 'cursor-pointer',
+                  isWinningOption
+                    ? 'border-emerald-500 bg-emerald-500/10'
+                    : isSelected || isVoted
+                      ? 'border-primary bg-primary/10'
+                      : 'border-transparent hover:bg-[hsl(var(--surface-3))] bg-[hsl(var(--surface-elevated))]',
                 )}
               >
-                <div className="absolute inset-0 bg-primary/20 transition-all duration-500 ease-out" style={{ width: shouldShowResults ? `${percentage}%` : '0%' }} />
-                <div className="relative flex items-center gap-3 p-3">
+                <div
+                  className={cn(
+                    'absolute inset-0 transition-all duration-500 delay-150 ease-out',
+                    isWinningOption ? 'bg-emerald-500/20' : 'bg-primary/20',
+                  )}
+                  style={{ width: shouldShowResults ? `${percentage}%` : '0%' }}
+                />
+                <div className="relative flex items-center gap-3 px-3.5 py-3.5">
                   {option.emoji && <span className="text-lg flex-shrink-0">{option.emoji}</span>}
                   <span className="flex-1 text-sm text-foreground">{option.text}</span>
                   <div className={cn('flex items-center gap-2 flex-shrink-0 transition-all duration-300', shouldShowResults ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-2')}>
                     {shouldShowResults && (
                       <>
-                        <VoterAvatars votes={optionVotes} />
-                        <span className="text-xs text-muted-foreground whitespace-nowrap">
-                          {voteCount} vote{voteCount !== 1 ? 's' : ''} ({percentage}%)
-                        </span>
+                        <VoterAvatars
+                          votes={optionVotes}
+                          onOpenVoters={() => {
+                            setVotersModalOptionId(option.id);
+                            setVotersModalOpen(true);
+                          }}
+                        />
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setVotersModalOptionId(option.id);
+                                setVotersModalOpen(true);
+                              }}
+                              className={cn(
+                                'text-xs whitespace-nowrap hover:underline',
+                                isWinningOption ? 'text-emerald-500 font-semibold' : 'text-muted-foreground hover:text-foreground',
+                              )}
+                            >
+                              {voteCount} vote{voteCount !== 1 ? 's' : ''} ({percentage}%)
+                            </button>
+                          </TooltipTrigger>
+                          {optionVotes.length > 0 && (
+                            <TooltipPortal>
+                              <TooltipContent side="top" sideOffset={20} className="text-xs max-w-[200px]">
+                                {optionVotes.map((v) => v.user?.display_name || 'Inconnu').join(', ')}
+                              </TooltipContent>
+                            </TooltipPortal>
+                          )}
+                        </Tooltip>
                         {isVoted && (
-                          <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                          <div className={cn('w-5 h-5 rounded-full flex items-center justify-center', isWinningOption ? 'bg-emerald-500' : 'bg-primary')}>
                             <Check className="w-3 h-3 text-primary-foreground" />
                           </div>
                         )}
@@ -218,14 +290,27 @@ export function DMPollDisplay({ poll, conversationId }: DMPollDisplayProps) {
                     )}
                   </div>
                 </div>
-              </button>
+              </div>
             );
           })}
         </div>
 
         <div className="flex items-center justify-between gap-2 flex-wrap pt-1">
           <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap min-w-0">
-            <span>{totalVotes} vote{totalVotes !== 1 ? 's' : ''}</span>
+            {totalVotes > 0 ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setVotersModalOptionId(undefined);
+                  setVotersModalOpen(true);
+                }}
+                className="hover:underline hover:text-foreground"
+              >
+                {totalVotes} vote{totalVotes !== 1 ? 's' : ''}
+              </button>
+            ) : (
+              <span>{totalVotes} vote{totalVotes !== 1 ? 's' : ''}</span>
+            )}
             {poll.expires_at && (
               <div className="flex items-center gap-2">
                 {isExpired ? (
@@ -248,11 +333,14 @@ export function DMPollDisplay({ poll, conversationId }: DMPollDisplayProps) {
             {!isExpired && hasVoted && !isEditing && canVote && (
               <Button variant="ghost" size="sm" onClick={handleStartEdit} className="text-xs h-8">Modifier</Button>
             )}
+            {!isExpired && hasVoted && !isEditing && canVote && (
+              <Button variant="ghost" size="sm" onClick={handleRemoveVote} disabled={removeVote.isPending} className="text-xs h-8">Supprimer le vote</Button>
+            )}
             {!isExpired && poll.author_id === user?.id && !isEditing && (
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => endPoll.mutate({ pollId: poll.id, conversationId })}
+                onClick={() => setConfirmCloseOpen(true)}
                 disabled={endPoll.isPending}
                 className="text-xs h-8 text-destructive hover:text-destructive"
               >
@@ -266,7 +354,7 @@ export function DMPollDisplay({ poll, conversationId }: DMPollDisplayProps) {
               <Button variant="ghost" size="sm" onClick={() => setShowResults(true)} className="text-xs h-8">Afficher les résultats</Button>
             )}
             {showResults && !hasVoted && !isEditing && canVote && (
-              <Button variant="ghost" size="sm" onClick={() => setShowResults(false)} className="text-xs h-8">Revenir aux votes</Button>
+              <Button variant="ghost" size="sm" onClick={() => setShowResults(false)} className="text-xs h-8">Revenir au vote</Button>
             )}
             {(!hasVoted || isEditing) && canVote && selectedOptions.length > 0 && (
               <Button onClick={handleVote} disabled={votePoll.isPending} size="sm" className="bg-primary hover:bg-primary/80 text-primary-foreground text-xs h-8">
@@ -276,6 +364,21 @@ export function DMPollDisplay({ poll, conversationId }: DMPollDisplayProps) {
           </div>
         </div>
       </div>
+
+      <ClosePollConfirmDialog
+        open={confirmCloseOpen}
+        onOpenChange={setConfirmCloseOpen}
+        onConfirm={() => endPoll.mutate({ pollId: poll.id, conversationId })}
+      />
+      <PollVotersModal
+        open={votersModalOpen}
+        onOpenChange={setVotersModalOpen}
+        question={poll.question}
+        totalVotes={totalVotes}
+        options={poll.options}
+        votesByOption={votesByOption}
+        initialOptionId={votersModalOptionId}
+      />
     </div>
   );
 }

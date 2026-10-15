@@ -48,7 +48,6 @@ const App = () => (
       <AuthProvider>
         <CustomThemeTintLayer />
         <CustomThemeSheetHost />
-        <Toaster />
         <BirthdayLoginCelebration />
         <PresenceProvider>
           <VoiceProvider>
@@ -68,6 +67,9 @@ const App = () => (
                   </Routes>
                 </BrowserRouter>
                 <PerfOverlay />
+                {/* Doit vivre dans ThemeProvider (resolvedTheme) et hors
+                    BrowserRouter : couvre toutes les routes. */}
+                <Toaster position="bottom-right" richColors closeButton />
               </DndProvider>
             </TooltipProvider>
           </VoiceProvider>

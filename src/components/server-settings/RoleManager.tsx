@@ -2,10 +2,11 @@ import { useState, useRef, useCallback, useMemo, forwardRef } from 'react';
 import { cn } from '@/lib/utils';
 import { useServerRoles, useCreateRole, useDeleteRole, useReorderRoles, useDuplicateRole, useRoleMemberCounts, RoleWithPermissions } from '@/hooks/useRoles';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { RoleEditor } from './RoleEditor';
-import { Plus, Shield, Trash2, Loader2, Copy, Users, AlertTriangle, GripVertical } from 'lucide-react';
+import { Plus, Shield, Trash2, Loader2, Copy, Users, AlertTriangle, GripVertical, ChevronUp, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 
 // DnD Kit imports
@@ -52,6 +53,11 @@ function SortableRole({
   memberCount,
   dropIndicator,
   canDragAbove,
+  showArrows,
+  onMoveUp,
+  onMoveDown,
+  canMoveUp,
+  canMoveDown,
 }: {
   role: RoleWithPermissions;
   isSelected: boolean;
@@ -61,6 +67,11 @@ function SortableRole({
   memberCount: number;
   dropIndicator: 'before' | 'after' | null;
   canDragAbove?: boolean;
+  showArrows?: boolean;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
 }) {
   const isDisabled = !canDragAbove;
 
@@ -126,9 +137,36 @@ function SortableRole({
           <span>{memberCount}</span>
         </div>
 
+        {showArrows && !isDisabled && (
+          <div className="flex flex-col">
+            <button type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onMoveUp?.();
+              }}
+              disabled={!canMoveUp}
+              className="p-0.5 text-muted-foreground/60 hover:text-foreground disabled:opacity-20 disabled:pointer-events-none transition-colors"
+              aria-label="Monter le rôle"
+            >
+              <ChevronUp className="w-3.5 h-3.5" />
+            </button>
+            <button type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onMoveDown?.();
+              }}
+              disabled={!canMoveDown}
+              className="p-0.5 text-muted-foreground/60 hover:text-foreground disabled:opacity-20 disabled:pointer-events-none transition-colors"
+              aria-label="Descendre le rôle"
+            >
+              <ChevronDown className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
         {!role.is_default && (
           <>
-            <button
+            <button type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 onDuplicate();
@@ -138,7 +176,7 @@ function SortableRole({
             >
               <Copy className="w-3.5 h-3.5" />
             </button>
-            <button
+            <button type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 onDelete();
@@ -160,6 +198,7 @@ function SortableRole({
 }
 
 export function RoleManager({ serverId }: RoleManagerProps) {
+  const { isMobile } = useBreakpoint();
   const { data: roles = [], isLoading } = useServerRoles(serverId);
   const { data: memberCounts = {} } = useRoleMemberCounts(serverId);
   const { isGod, canDragRole: canDragRolePosition, userHighestRolePosition } = usePermissions(serverId);
@@ -261,6 +300,27 @@ export function RoleManager({ serverId }: RoleManagerProps) {
     setOverId(null);
     setTimeout(() => { wasDraggingRef.current = false; }, 150);
   }, []);
+
+  // Arrow fallback for touch devices — same reorder logic as drag, one step at a time.
+  const moveRole = useCallback((roleId: string, direction: 'up' | 'down') => {
+    const index = sortableRoleIds.indexOf(roleId);
+    if (index === -1) return;
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= sortableRoleIds.length) return;
+
+    const targetRole = sortableRoles[targetIndex];
+    if (targetRole && !isGod) {
+      const targetPosition = targetRole.position ?? 0;
+      if (targetPosition >= userHighestRolePosition) {
+        toast.error('Vous ne pouvez pas déplacer un rôle au-dessus du vôtre');
+        return;
+      }
+    }
+
+    const newOrder = arrayMove(sortableRoleIds, index, targetIndex);
+    if (defaultRole) newOrder.push(defaultRole.id);
+    reorderRoles.mutate({ serverId, orderedIds: newOrder });
+  }, [sortableRoles, sortableRoleIds, defaultRole, isGod, userHighestRolePosition, serverId, reorderRoles]);
 
   const handleRoleSelect = useCallback((roleId: string) => {
     if (wasDraggingRef.current) return;
@@ -365,7 +425,7 @@ export function RoleManager({ serverId }: RoleManagerProps) {
             strategy={verticalListSortingStrategy}
           >
             <div className={cn("space-y-0", activeId && "cursor-grabbing")}>
-              {sortableRoles.map((role) => (
+              {sortableRoles.map((role, index) => (
                 <SortableRole
                   key={role.id}
                   role={role}
@@ -376,6 +436,11 @@ export function RoleManager({ serverId }: RoleManagerProps) {
                   memberCount={memberCounts[role.id] || 0}
                   dropIndicator={overId === role.id && activeId !== role.id ? dropPosition : null}
                   canDragAbove={canDragRole(role)}
+                  showArrows={isMobile}
+                  onMoveUp={() => moveRole(role.id, 'up')}
+                  onMoveDown={() => moveRole(role.id, 'down')}
+                  canMoveUp={index > 0}
+                  canMoveDown={index < sortableRoles.length - 1}
                 />
               ))}
 

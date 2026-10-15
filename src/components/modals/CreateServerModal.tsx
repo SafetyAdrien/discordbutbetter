@@ -1,9 +1,10 @@
 import { useState, useCallback } from 'react';
-import { X, Camera, ChevronRight, ArrowLeft, Loader2, ImageIcon, Download, Hash, Mic, Megaphone, MessageSquare, Shield } from 'lucide-react';
+import { X, Camera, ChevronRight, ChevronDown, ArrowLeft, Loader2, ImageIcon, Download, Hash, Mic, Megaphone, MessageSquare, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { JoinServerModal } from './JoinServerModal';
 import { ImageCropper } from '@/components/ui/image-cropper';
 import { ServerIconUploadEditor } from '@/components/server-settings/ServerIconUploadEditor';
@@ -32,8 +33,6 @@ interface ImportedTemplate {
   roles: { name: string; color: string | null; hoist: boolean }[];
   usageCount: number;
   creator: { username: string } | null;
-  iconUrl: string | null;
-  bannerUrl: string | null;
 }
 
 type ChannelType = Database['public']['Enums']['channel_type'];
@@ -77,7 +76,9 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
   const [importedData, setImportedData] = useState<ImportedTemplate | null>(null);
   const [importServerName, setImportServerName] = useState('');
   const [isImporting, setIsImporting] = useState(false);
-  
+  const [channelsOpen, setChannelsOpen] = useState(true);
+  const [rolesOpen, setRolesOpen] = useState(true);
+
   // Cropper states
   const [cropperOpen, setCropperOpen] = useState(false);
   const [cropperImage, setCropperImage] = useState<string>('');
@@ -184,6 +185,10 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
 
       setImportedData(data as ImportedTemplate);
       setImportServerName(data.serverName || data.name || '');
+      setIconFile(null);
+      setIconPreview(null);
+      setBannerFile(null);
+      setBannerPreview(null);
       setStep('import-preview');
     } catch (err) {
       console.error('Fetch template error:', err);
@@ -198,15 +203,19 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
     setIsImporting(true);
 
     try {
-      // Create the server with icon/banner from Discord
+      const [iconUrl, bannerUrl] = await Promise.all([
+        iconFile ? uploadToStorage(iconFile, 'server-icons') : Promise.resolve(null),
+        bannerFile ? uploadToStorage(bannerFile, 'server-banners') : Promise.resolve(null),
+      ]);
+
       const { data: server, error: serverError } = await supabase
         .from('servers')
         .insert({
           name: importServerName.trim(),
           description: importedData.description,
           owner_id: (await supabase.auth.getUser()).data.user?.id,
-          icon_url: importedData.iconUrl || null,
-          banner_url: importedData.bannerUrl || null,
+          icon_url: iconUrl,
+          banner_url: bannerUrl,
         })
         .select()
         .single();
@@ -263,7 +272,6 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
         });
       }
 
-      toast.success('Serveur importé avec succès !');
       onClose();
     } catch (err) {
       console.error('Import error:', err);
@@ -290,7 +298,13 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
       <div className="fixed inset-0 z-50 flex items-center justify-center animate-fade-in">
         <div className="absolute inset-0 backdrop-optimized" onClick={onClose} />
         
-        <div className={cn("relative w-full bg-card overflow-hidden animate-slide-in-right gpu-accelerated", isMobile ? "h-full" : "max-w-md rounded-xl border border-border shadow-2xl")}>
+        <div className={cn(
+          "relative w-full bg-card animate-slide-in-right gpu-accelerated",
+          isMobile ? "h-full" : "max-w-md rounded-xl border border-border shadow-2xl",
+          step === 'import-preview'
+            ? cn("overflow-y-auto", !isMobile && "max-h-[85vh]")
+            : "overflow-hidden"
+        )}>
           {/* Header */}
           <div className="p-6 text-center relative">
             <Button 
@@ -360,7 +374,7 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
 
           {step === 'choice' && (
             <div className="px-6 pb-6 space-y-3">
-              <button
+              <button type="button"
                 onClick={() => setStep('type')}
                 className="w-full p-4 bg-surface-elevated rounded-lg border border-border hover:border-primary/50 hover:bg-surface-hover transition-colors duration-200 group text-left"
               >
@@ -377,7 +391,7 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
                 </div>
               </button>
 
-              <button
+              <button type="button"
                 onClick={() => setStep('import-source')}
                 className="w-full p-4 bg-surface-elevated rounded-lg border border-border hover:border-primary/50 hover:bg-surface-hover transition-colors duration-200 group text-left"
               >
@@ -405,7 +419,7 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
 
           {step === 'import-source' && (
             <div className="px-6 pb-6 space-y-3">
-              <button
+              <button type="button"
                 onClick={() => setStep('import-discord')}
                 className="w-full p-4 bg-surface-elevated rounded-lg border border-border hover:border-primary/50 hover:bg-surface-hover transition-colors duration-200 group text-left"
               >
@@ -427,7 +441,7 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
                 </div>
               </button>
 
-              <button
+              <button type="button"
                 disabled
                 className="w-full p-4 bg-surface-elevated rounded-lg border border-border opacity-50 cursor-not-allowed text-left"
               >
@@ -497,30 +511,87 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
 
           {step === 'import-preview' && importedData && (
             <div className="px-6 pb-6 space-y-4">
-              {/* Icon & Banner preview */}
-              {(importedData.iconUrl || importedData.bannerUrl) && (
-                <div className="relative">
-                  {importedData.bannerUrl ? (
+              {/* Icon & Banner upload — Discord's template API never exposes the source server's icon/banner, so pick one manually */}
+              <div>
+                <div className="relative group">
+                  <label className="cursor-pointer block" aria-label="Importer une bannière pour le serveur">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleFileSelect(e, 'banner')}
+                      className="hidden"
+                    />
                     <div
-                      className="h-20 rounded-lg bg-muted overflow-hidden"
-                      style={{
-                        backgroundImage: `url(${importedData.bannerUrl})`,
+                      className="h-20 rounded-lg bg-muted border-2 border-dashed border-muted-foreground/30 hover:border-primary/50 transition-all overflow-hidden flex items-center justify-center"
+                      style={bannerPreview ? {
+                        backgroundImage: `url(${bannerPreview})`,
                         backgroundSize: 'cover',
                         backgroundPosition: 'center',
-                      }}
-                    />
-                  ) : (
-                    <div className="h-20 rounded-lg bg-muted" />
-                  )}
-                  {importedData.iconUrl && (
-                    <div className="flex justify-center -mt-8">
-                      <div className="w-16 h-16 rounded-full border-4 border-card overflow-hidden bg-card shadow-lg">
-                        <img src={importedData.iconUrl} alt="Server icon" className="w-full h-full object-cover" />
-                      </div>
+                      } : undefined}
+                    >
+                      {!bannerPreview && (
+                        <div className="flex flex-col items-center gap-1 text-muted-foreground">
+                          <ImageIcon className="w-5 h-5" />
+                          <span className="text-xs">Ajouter une bannière</span>
+                        </div>
+                      )}
                     </div>
+                    {bannerPreview && (
+                      <div className="absolute inset-0 rounded-lg bg-background/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none">
+                        <Camera className="w-6 h-6 text-foreground" />
+                      </div>
+                    )}
+                  </label>
+                  {bannerPreview && (
+                    <button type="button"
+                      onClick={handleRemoveBanner}
+                      className="absolute top-2 right-2 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center hover:opacity-90 transition-opacity z-10"
+                      aria-label="Supprimer la bannière du serveur"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
                   )}
                 </div>
-              )}
+
+                <div className="flex justify-center -mt-8">
+                  <div className="relative group">
+                    <label className="cursor-pointer block" aria-label="Importer une icône pour le serveur">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleFileSelect(e, 'icon')}
+                        className="hidden"
+                      />
+                      <div className="w-16 h-16 rounded-full border-4 border-card overflow-hidden bg-card shadow-lg flex items-center justify-center">
+                        {iconPreview ? (
+                          <img src={iconPreview} alt="Server icon" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full rounded-full bg-surface-elevated border-2 border-dashed border-muted-foreground/50 flex items-center justify-center group-hover:border-primary/50">
+                            <Camera className="w-6 h-6 text-muted-foreground group-hover:text-primary transition-colors" />
+                          </div>
+                        )}
+                      </div>
+                      {iconPreview && (
+                        <div className="absolute inset-0 rounded-full bg-background/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none">
+                          <Camera className="w-5 h-5 text-foreground" />
+                        </div>
+                      )}
+                    </label>
+                    {iconPreview && (
+                      <button type="button"
+                        onClick={handleRemoveIcon}
+                        className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center hover:opacity-90 transition-opacity z-10"
+                        aria-label="Supprimer l'icône du serveur"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <p className="text-center text-xs text-muted-foreground mt-1">
+                  Discord ne fournit pas l'icône ni la bannière via un template — ajoutez-les manuellement si besoin.
+                </p>
+              </div>
 
               {/* Server name */}
               <div className="space-y-2">
@@ -538,50 +609,60 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
               )}
 
               {/* Channels preview */}
-              <div className="space-y-2 max-h-48 overflow-y-auto">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  Salons ({importedData.categories.reduce((acc, c) => acc + c.channels.length, 0) + importedData.orphanChannels.length})
-                </p>
-                {importedData.categories.map((cat, idx) => (
-                  <div key={idx} className="space-y-0.5">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1">{cat.name}</p>
-                    {cat.channels.map((ch, chIdx) => (
-                      <div key={chIdx} className="flex items-center gap-2 px-3 py-1 text-sm text-foreground">
-                        <ChannelTypeIcon type={ch.type} className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                        <span className="truncate">{ch.name}</span>
-                      </div>
-                    ))}
-                  </div>
-                ))}
-                {importedData.orphanChannels.map((ch, idx) => (
-                  <div key={idx} className="flex items-center gap-2 px-3 py-1 text-sm text-foreground">
-                    <ChannelTypeIcon type={ch.type} className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                    <span className="truncate">{ch.name}</span>
-                  </div>
-                ))}
-              </div>
+              <Collapsible open={channelsOpen} onOpenChange={setChannelsOpen} className="rounded-lg border border-border overflow-hidden">
+                <CollapsibleTrigger className="flex w-full items-center justify-between px-3 py-2 hover:bg-surface-hover transition-colors">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    Salons ({importedData.categories.reduce((acc, c) => acc + c.channels.length, 0) + importedData.orphanChannels.length})
+                  </p>
+                  <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform", channelsOpen && "rotate-180")} />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="px-2 pb-2 space-y-2 max-h-56 overflow-y-auto">
+                  {importedData.categories.map((cat, idx) => (
+                    <div key={idx} className="space-y-0.5">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1">{cat.name}</p>
+                      {cat.channels.map((ch, chIdx) => (
+                        <div key={chIdx} className="channel-item text-sm">
+                          <ChannelTypeIcon type={ch.type} className="w-4 h-4 flex-shrink-0" />
+                          <span className="truncate">{ch.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                  {importedData.orphanChannels.map((ch, idx) => (
+                    <div key={idx} className="channel-item text-sm">
+                      <ChannelTypeIcon type={ch.type} className="w-4 h-4 flex-shrink-0" />
+                      <span className="truncate">{ch.name}</span>
+                    </div>
+                  ))}
+                </CollapsibleContent>
+              </Collapsible>
 
               {/* Roles preview */}
               {importedData.roles.length > 0 && (
-                <div className="space-y-1">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    Rôles ({importedData.roles.length})
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {importedData.roles.map((role, idx) => (
-                      <span
-                        key={idx}
-                        className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs border border-border bg-muted"
-                      >
-                        <div
-                          className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                          style={{ backgroundColor: role.color || '#99AAB5' }}
-                        />
-                        {role.name}
-                      </span>
-                    ))}
-                  </div>
-                </div>
+                <Collapsible open={rolesOpen} onOpenChange={setRolesOpen} className="rounded-lg border border-border overflow-hidden">
+                  <CollapsibleTrigger className="flex w-full items-center justify-between px-3 py-2 hover:bg-surface-hover transition-colors">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                      Rôles ({importedData.roles.length})
+                    </p>
+                    <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform", rolesOpen && "rotate-180")} />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="px-3 pb-3 max-h-56 overflow-y-auto">
+                    <div className="flex flex-wrap gap-1.5">
+                      {importedData.roles.map((role, idx) => (
+                        <span
+                          key={idx}
+                          className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs border border-border bg-muted"
+                        >
+                          <div
+                            className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: role.color || '#99AAB5' }}
+                          />
+                          {role.name}
+                        </span>
+                      ))}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
               )}
 
               {importedData.creator && (
@@ -616,7 +697,7 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
 
           {step === 'type' && (
             <div className="px-6 pb-6 space-y-4">
-              <button
+              <button type="button"
                 onClick={() => handleSelectTemplate(null)}
                 className="w-full p-4 bg-surface-elevated rounded-lg border border-border hover:border-primary/50 hover:bg-surface-hover transition-colors duration-200 group text-left"
               >
@@ -638,7 +719,7 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
                   Commencer à partir d'un modèle
                 </p>
                 {templates.map((template) => (
-                  <button
+                  <button type="button"
                     key={template.id}
                     onClick={() => handleSelectTemplate(template.id)}
                     className="w-full p-3 bg-surface-elevated rounded-lg border border-border hover:border-primary/50 hover:bg-surface-hover transition-colors duration-200 group text-left"
@@ -696,7 +777,7 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
                   )}
                 </label>
                 {bannerPreview && (
-                  <button
+                  <button type="button"
                     onClick={handleRemoveBanner}
                     className="absolute top-2 right-2 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center hover:opacity-90 transition-opacity z-10"
                     aria-label="Supprimer la bannière du serveur"
@@ -732,7 +813,7 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
                     )}
                   </label>
                   {iconPreview && (
-                    <button
+                    <button type="button"
                       onClick={handleRemoveIcon}
                       className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center hover:opacity-90 transition-opacity z-10"
                       aria-label="Supprimer l'icône du serveur"

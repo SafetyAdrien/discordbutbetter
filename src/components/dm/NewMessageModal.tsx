@@ -67,7 +67,7 @@ export function NewMessageModal({ onClose, onOpenDM }: NewMessageModalProps) {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-8 pr-10 py-3 text-lg bg-transparent border-0 focus-visible:ring-0 placeholder:text-muted-foreground/60"
             />
-            <button 
+            <button type="button" 
               onClick={onClose}
               className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded hover:bg-muted transition-colors"
             >
@@ -85,7 +85,7 @@ export function NewMessageModal({ onClose, onOpenDM }: NewMessageModalProps) {
                 Amis
               </p>
               {filteredFriends.slice(0, 6).map(friend => (
-                <button
+                <button type="button"
                   key={friend.id}
                   onClick={() => handleSelectFriend(friend.profile.id)}
                   className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-[hsl(var(--surface-3))] transition-colors text-left"
@@ -125,7 +125,7 @@ export function NewMessageModal({ onClose, onOpenDM }: NewMessageModalProps) {
               <span className="font-mono bg-muted px-1 rounded">!</span>{' '}
               <span className="font-mono bg-muted px-1 rounded">*</span>{' '}
               pour affiner les résultats.{' '}
-              <button className="text-primary hover:underline">En savoir plus</button>
+              <button type="button" className="text-primary hover:underline">En savoir plus</button>
             </p>
           </div>
         </div>

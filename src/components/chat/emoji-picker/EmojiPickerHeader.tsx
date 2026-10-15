@@ -1,15 +1,27 @@
-import { Search, Smile, Sticker, X } from 'lucide-react';
+import { Search, Smile, Sticker, Clapperboard, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Icon } from '@/components/ui/icon';
 
+export type PickerTab = 'emoji' | 'sticker' | 'gif';
+
 interface Props {
-  tab: 'emoji' | 'sticker';
-  onTabChange: (t: 'emoji' | 'sticker') => void;
+  tab: PickerTab;
+  onTabChange: (t: PickerTab) => void;
   search: string;
   onSearchChange: (v: string) => void;
-  totalCount: number;
-  serverCount: number;
 }
+
+const TAB_ICON: Record<PickerTab, typeof Smile> = {
+  emoji: Smile,
+  sticker: Sticker,
+  gif: Clapperboard,
+};
+
+const TAB_LABEL: Record<PickerTab, string> = {
+  emoji: 'Emojis',
+  sticker: 'Autocollants',
+  gif: 'GIFs',
+};
 
 /**
  * Modern segmented header with pill toggle for Emojis / Stickers
@@ -20,46 +32,39 @@ export function EmojiPickerHeader({
   onTabChange,
   search,
   onSearchChange,
-  totalCount,
-  serverCount,
 }: Props) {
   return (
     <div className="px-3 pt-3 pb-2 space-y-3 border-b border-border/40">
       {/* Segmented pill toggle */}
-      <div className="flex items-center justify-between gap-3">
-        <div
-          role="tablist"
-          aria-label="Sélection emoji ou autocollant"
-          className="relative inline-flex items-center bg-muted/60 rounded-2xl p-1"
-        >
-          {(['emoji', 'sticker'] as const).map((t) => {
-            const active = tab === t;
-            return (
-              <button
-                key={t}
-                role="tab"
-                aria-selected={active}
-                onClick={() => onTabChange(t)}
-                className={cn(
-                  'relative flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-xl transition-all duration-200',
-                  active
-                    ? 'bg-primary text-primary-foreground shadow-[var(--shadow-elevation-1)]'
-                    : 'text-muted-foreground hover:text-foreground',
-                )}
-              >
-                <Icon
-                  icon={t === 'emoji' ? Smile : Sticker}
-                  size="sm"
-                  variant={active ? 'filled' : 'outline'}
-                />
-                {t === 'emoji' ? 'Emojis' : 'Autocollants'}
-              </button>
-            );
-          })}
-        </div>
-        <p className="text-[10px] text-muted-foreground tabular-nums hidden sm:block">
-          {totalCount} emojis{serverCount > 0 ? ` · ${serverCount} du serveur` : ''}
-        </p>
+      <div
+        role="tablist"
+        aria-label="Sélection emoji, autocollant ou GIF"
+        className="relative inline-flex items-center bg-muted/60 rounded-2xl p-1"
+      >
+        {(['emoji', 'sticker', 'gif'] as const).map((t) => {
+          const active = tab === t;
+          return (
+            <button type="button"
+              key={t}
+              role="tab"
+              aria-selected={active}
+              onClick={() => onTabChange(t)}
+              className={cn(
+                'relative flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-xl transition-all duration-200',
+                active
+                  ? 'bg-primary text-primary-foreground shadow-[var(--shadow-elevation-1)]'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              <Icon
+                icon={TAB_ICON[t]}
+                size="sm"
+                variant={active ? 'filled' : 'outline'}
+              />
+              {TAB_LABEL[t]}
+            </button>
+          );
+        })}
       </div>
 
       {/* Search */}

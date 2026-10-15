@@ -22,8 +22,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { MarkdownTextarea } from '@/components/chat/MarkdownTextarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { format } from '@/lib/dateUtils';
+import { fr } from '@/lib/dateUtils';
 import { Loader2, ArrowLeft, Phone, Video, Check, X, UserCircle, AtSign } from 'lucide-react';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { TypingIndicator } from '@/components/typing/TypingIndicator';
@@ -35,7 +35,6 @@ import { ReportModal } from '@/components/chat/ReportModal';
 import { useShiftKey } from '@/hooks/useShiftKey';
 import { copyToClipboard } from '@/lib/clipboard';
 import { useAuth } from '@/contexts/AuthContext';
-import { toast } from 'sonner';
 import { Message } from '@/types/app';
 import { MarkdownText, setMarkdownContext, getMarkdownContext } from '@/lib/markdown';
 import { SmartLinkEmbeds as LinkEmbeds } from '@/components/chat/embeds';
@@ -57,9 +56,10 @@ import { useSwipeBack } from '@/hooks/useSwipeBack';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { useScreenCaptureDetection } from '@/hooks/useScreenCaptureDetection';
 import { Camera, Video as VideoIcon, VideoOff } from 'lucide-react';
-import { useDMPolls, useDeleteDMPoll, useEndDMPoll, DMPoll } from '@/hooks/useDMPolls';
+import { useDMPolls, useDeleteDMPoll, DMPoll } from '@/hooks/useDMPolls';
 import { DMPollDisplay } from '@/components/chat/DMPollDisplay';
 import { BarChart2 } from 'lucide-react';
+import { computePollWinner } from '@/lib/pollWinner';
 
 const statusColors: Record<string, string> = {
   online: 'bg-[hsl(var(--online))]',
@@ -145,7 +145,6 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
   // DM Polls
   const { data: polls = [] } = useDMPolls(conversationId);
   const deletePoll = useDeleteDMPoll();
-  const endPoll = useEndDMPoll();
   const sortedPolls = useMemo(
     () => [...polls].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()),
     [polls],
@@ -154,7 +153,11 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
   const renderPoll = (poll: DMPoll) => {
     const isOwn = poll.author_id === user?.id;
     return (
-      <div key={`poll-${poll.id}`} className="px-4 py-2 group">
+      <div
+        key={`poll-${poll.id}`}
+        className="px-4 py-2 group"
+        ref={(el) => { if (el) messageRefs.current.set(poll.id, el); }}
+      >
         <div className="flex items-start gap-3">
           <Avatar className="w-9 h-9 flex-shrink-0">
             <AvatarImage src={poll.author?.avatar_url || undefined} />
@@ -173,11 +176,13 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                 SONDAGE
               </div>
               {isOwn && (
-                <div className="ml-auto flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => endPoll.mutate({ pollId: poll.id, conversationId })}>
-                    Terminer
-                  </Button>
-                  <Button variant="ghost" size="sm" className="h-6 text-xs text-destructive hover:text-destructive" onClick={() => deletePoll.mutate({ pollId: poll.id, conversationId })}>
+                <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-xs text-destructive hover:text-destructive"
+                    onClick={() => deletePoll.mutate({ pollId: poll.id, conversationId })}
+                  >
                     Supprimer
                   </Button>
                 </div>
@@ -328,7 +333,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
 
   const handleStartEdit = (message: DMMessage) => {
     setEditingMessageId(message.id);
-    setEditingContent(message.content);
+    setEditingContent(getGifOnlyUrl(message) ?? message.content);
   };
 
   const handleSaveEdit = async () => {
@@ -373,6 +378,14 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
     if (editingContent.length > 1980) return 'text-destructive';
     if (editingContent.length > 1900) return 'text-yellow-500';
     return 'text-muted-foreground';
+  };
+
+  // A GIF-only message (no text, single "gif" attachment) has nothing to
+  // edit as text — "Modifier" instead surfaces the source URL to copy/reuse.
+  const getGifOnlyUrl = (msg: { content: string; attachments?: any[] }): string | null => {
+    const atts = msg.attachments ?? [];
+    if (msg.content.trim() || atts.length !== 1) return null;
+    return atts[0]?.type === 'gif' ? atts[0].url as string : null;
   };
 
   const displayName = conversation?.is_group
@@ -566,7 +579,74 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                             <div className="flex-1 h-px bg-border" />
                           </div>
                         )}
-                        {message.system_type && (() => {
+                        {message.system_type === 'poll_closed' && (() => {
+                          const closedPoll = polls.find((p) => p.id === message.system_poll_id);
+                          const winnerResult = closedPoll
+                            ? computePollWinner({ options: closedPoll.options, votes: closedPoll.votes })
+                            : null;
+                          const winnerLabel = winnerResult?.label ?? null;
+                          const hasWinner = winnerResult?.hasWinner ?? false;
+                          const winnerPercentage = winnerResult?.winnerPercentage ?? null;
+                          return (
+                            <UniversalMessageContextMenu
+                              messageId={message.id}
+                              isOwnMessage={isOwnMessage}
+                              canAddReactions={false}
+                              variant="system"
+                              copyLinkLabel="Copier le lien du message"
+                              copyIdLabel="Copier l'identifiant du message"
+                              onAddReaction={() => {}}
+                              onCopyLink={() => handleCopyLink(message.id)}
+                              onCopyId={() => handleCopyId(message.id)}
+                              onDelete={() => handleDeleteMessage(message.id)}
+                            >
+                              <div className="flex flex-col items-center gap-1 py-1.5">
+                                <div className="flex items-center justify-center gap-2 text-xs italic text-muted-foreground">
+                                  <BarChart2 className="w-3.5 h-3.5" />
+                                  <span>
+                                    Le sondage «{' '}
+                                    <span className="font-semibold not-italic text-foreground">
+                                      {closedPoll?.question ?? 'inconnu'}
+                                    </span>
+                                    {' '}» de{' '}
+                                    <span className="font-semibold not-italic text-foreground">
+                                      {closedPoll?.author?.display_name ?? "quelqu'un"}
+                                    </span>
+                                    {' '}est clos.
+                                  </span>
+                                </div>
+                                {closedPoll && (
+                                  <div className="flex items-center gap-3 bg-[hsl(var(--surface-2))] rounded-xl py-2.5 pl-2.5 pr-2.5">
+                                    {hasWinner ? (
+                                      <span className="w-9 h-9 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0">
+                                        <Check className="w-5 h-5 text-white" />
+                                      </span>
+                                    ) : (
+                                      <span className="w-9 h-9 rounded-full bg-[hsl(var(--surface-3))] flex items-center justify-center text-base flex-shrink-0" role="img" aria-hidden>
+                                        💀
+                                      </span>
+                                    )}
+                                    <div className="flex flex-col items-start">
+                                      <span className="text-sm font-medium text-foreground whitespace-nowrap">{winnerLabel}</span>
+                                      {hasWinner && (
+                                        <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                          Réponse gagnante • {winnerPercentage}%
+                                        </span>
+                                      )}
+                                    </div>
+                                    <button type="button"
+                                      onClick={() => handleJumpToMessage(closedPoll.id)}
+                                      className="ml-2 text-sm font-medium text-foreground bg-[hsl(var(--surface-3))] hover:bg-[hsl(var(--surface-3))]/70 transition-colors rounded-lg px-4 py-2 whitespace-nowrap"
+                                    >
+                                      Voir le sondage
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </UniversalMessageContextMenu>
+                          );
+                        })()}
+                        {message.system_type && message.system_type !== 'poll_closed' && (() => {
                           const who = message.author?.display_name || message.author?.username || 'Quelqu\'un';
                           const Icon =
                             message.system_type === 'screenshot'
@@ -581,10 +661,23 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                               ? `${who} a démarré un enregistrement d'écran.`
                               : `${who} a arrêté l'enregistrement d'écran.`;
                           return (
-                            <div className="flex items-center justify-center gap-2 py-1.5 text-xs italic text-muted-foreground">
-                              <Icon className="w-3.5 h-3.5" />
-                              <span>{label}</span>
-                            </div>
+                            <UniversalMessageContextMenu
+                              messageId={message.id}
+                              isOwnMessage={isOwnMessage}
+                              canAddReactions={false}
+                              variant="system"
+                              copyLinkLabel="Copier le lien du message"
+                              copyIdLabel="Copier l'identifiant du message"
+                              onAddReaction={() => {}}
+                              onCopyLink={() => handleCopyLink(message.id)}
+                              onCopyId={() => handleCopyId(message.id)}
+                              onDelete={() => handleDeleteMessage(message.id)}
+                            >
+                              <div className="flex items-center justify-center gap-2 py-1.5 text-xs italic text-muted-foreground">
+                                <Icon className="w-3.5 h-3.5" />
+                                <span>{label}</span>
+                              </div>
+                            </UniversalMessageContextMenu>
                           );
                         })()}
                         {!message.system_type && (<>
@@ -697,7 +790,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                           <div className="flex-1 min-w-0">
                             {showAuthor && (
                               <div className="flex items-center gap-2">
-                                <button
+                                <button type="button"
                                   className="font-semibold text-sm hover:underline text-left"
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -718,12 +811,12 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                               </div>
                             )}
 
-                            {false ? (
+                            {editingMessageId === message.id ? (
                               <div className="mt-1 space-y-2">
                                 <MarkdownTextarea
                                   value={editingContent}
                                   onChange={(v) => setEditingContent(v)}
-                                  className="min-h-[60px] resize-none"
+                                  className="min-h-[36px] resize-none"
                                   autoFocus
                                   onKeyDown={(e) => {
                                     if (e.key === 'Enter' && !e.shiftKey && !isMobile) {
@@ -735,24 +828,13 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                                     }
                                   }}
                                 />
-                                <div className="flex items-center justify-between">
-                                  <span className={cn('text-xs', getCharacterCountColor())}>
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                  <span>Échap pour annuler</span>
+                                  <span>•</span>
+                                  <span>Entrée pour sauvegarder • Maj+Entrée nouvelle ligne</span>
+                                  <span className={cn('ml-auto', getCharacterCountColor())}>
                                     {editingContent.length}/2000
                                   </span>
-                                  <div className="flex items-center gap-2">
-                                    <Button variant="ghost" size="sm" onClick={handleCancelEdit}>
-                                      <X className="w-4 h-4 mr-1" />
-                                      Annuler
-                                    </Button>
-                                    <Button 
-                                      size="sm" 
-                                      onClick={handleSaveEdit}
-                                      disabled={!editingContent.trim() || editingContent.length > 2000}
-                                    >
-                                      <Check className="w-4 h-4 mr-1" />
-                                      Sauvegarder
-                                    </Button>
-                                  </div>
                                 </div>
                               </div>
                             ) : (
@@ -813,7 +895,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
           <TypingIndicator conversationId={conversationId} />
 
           {/* Reply preview (above input) */}
-          {replyingTo && !editingMessageId && (
+          {replyingTo && (
             <ReplyBanner
               authorName={replyingTo.author?.display_name || 'Utilisateur'}
               authorAvatar={replyingTo.author?.avatar_url}
@@ -823,29 +905,12 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
             />
           )}
 
-          {editingMessageId && (
-            <div className="mx-4 mb-2 flex items-center gap-2 bg-[hsl(var(--surface-3))] rounded-xl px-3 py-2 border-l-[3px] border-primary shadow-sm">
-              <button
-                onClick={handleCancelEdit}
-                className="flex items-center justify-center w-6 h-6 rounded-full bg-[hsl(var(--surface-4))] hover:bg-[hsl(var(--surface-5))] text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
-                aria-label="Annuler la modification"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-              <span className="text-sm text-muted-foreground">Édition du message</span>
-            </div>
-          )}
-
           {/* Input */}
-          <div className="px-4 pb-4 pt-2">
+          <div>
           <MessageInput
-            value={editingMessageId ? editingContent : messageInput}
-            onChange={editingMessageId ? setEditingContent : setMessageInput}
+            value={messageInput}
+            onChange={setMessageInput}
             onSend={() => {
-              if (editingMessageId) {
-                handleSaveEdit();
-                return;
-              }
               if (!messageInput.trim() && attachments.length === 0) return;
               sendMessage.mutate({
                 conversationId,
@@ -858,10 +923,18 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
               clearAttachments();
               stopTyping();
             }}
+            onSendExternalAttachment={(attachment) => {
+              sendMessage.mutate({
+                conversationId,
+                content: '',
+                replyToId: replyingTo?.id ?? null,
+                externalAttachment: attachment,
+              });
+              setReplyingTo(null);
+              stopTyping();
+            }}
             placeholder={
-              editingMessageId
-                ? 'Modifier le message…'
-                : replyingTo
+              replyingTo
                 ? `Répondre à ${replyingTo.author?.display_name || 'Utilisateur'}`
                 : `Envoyer un message à ${displayName}`
             }
@@ -870,7 +943,6 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
             isSending={sendMessage.isPending}
             onTypingStart={startTyping}
             onTypingStop={stopTyping}
-            editingMessageId={editingMessageId}
             attachments={attachments}
             onAddFiles={addFiles}
             onRemoveAttachment={removeAttachment}
@@ -911,7 +983,6 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
         message={reportingMessage}
         onSubmit={(reason, details) => {
           console.log('Report submitted:', { reason, details, messageId: reportingMessage?.id });
-          toast.success('Signalement envoyé. Merci !');
           setReportingMessage(null);
         }}
       />

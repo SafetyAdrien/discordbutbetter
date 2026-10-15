@@ -21,7 +21,7 @@ export function UploadingOverlay({
           <h3 className="text-xl font-semibold">{title}</h3>
           <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
           {onClose && (
-            <button
+            <button type="button"
               onClick={onClose}
               className="absolute top-4 right-4 p-1 rounded-md text-muted-foreground hover:text-foreground transition-colors"
               aria-label="Close"

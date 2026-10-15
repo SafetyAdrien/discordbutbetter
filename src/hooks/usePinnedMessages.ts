@@ -24,16 +24,35 @@ export interface PinnedMessage {
   };
 }
 
+// Shared between usePinnedMessages' queryFn and the sidebar hover-prefetch.
+export async function fetchPinnedMessages(channelId: string): Promise<PinnedMessage[]> {
+  const { data, error } = await supabase
+    .from('pinned_messages')
+    .select(`
+      *,
+      message:messages(
+        id, content, created_at,
+        author:profiles!messages_author_id_fkey(id, username, display_name, avatar_url)
+      )
+    `)
+    .eq('channel_id', channelId)
+    .order('pinned_at', { ascending: false });
+
+  if (error) throw error;
+  return data as unknown as PinnedMessage[];
+}
+
 export function usePinnedMessages(channelId: string) {
   const queryClient = useQueryClient();
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   // Realtime subscription for pinned_messages
   useEffect(() => {
     if (!channelId) return;
 
     const channel = supabase
-      .channel(`pinned-messages-rt-${channelId}`)
+      .channel(`pinned-messages-rt-${channelId}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'pinned_messages' },
@@ -56,22 +75,7 @@ export function usePinnedMessages(channelId: string) {
 
   const query = useQuery({
     queryKey: ['pinned-messages', channelId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('pinned_messages')
-        .select(`
-          *,
-          message:messages(
-            id, content, created_at,
-            author:profiles!messages_author_id_fkey(id, username, display_name, avatar_url)
-          )
-        `)
-        .eq('channel_id', channelId)
-        .order('pinned_at', { ascending: false });
-
-      if (error) throw error;
-      return data as unknown as PinnedMessage[];
-    },
+    queryFn: () => fetchPinnedMessages(channelId),
     enabled: !!channelId,
     placeholderData: () => cacheGetSync(`pinned-messages:${channelId}`),
   });
@@ -114,7 +118,7 @@ export function usePinMessage() {
       const previousPinned = queryClient.getQueryData(['pinned-messages', channelId]);
       
       const tempPinned: PinnedMessage = {
-        id: `temp-${Date.now()}`,
+        id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         message_id: messageId,
         channel_id: channelId,
         pinned_by: user.id,
@@ -134,7 +138,6 @@ export function usePinMessage() {
       toast.error('Erreur lors de l\'épinglage du message');
     },
     onSuccess: () => {
-      toast.success('Message épinglé');
     },
     onSettled: (_, __, { channelId }) => {
       queryClient.invalidateQueries({ queryKey: ['pinned-messages', channelId] });
@@ -171,7 +174,6 @@ export function useUnpinMessage() {
       toast.error('Erreur lors du désépinglage du message');
     },
     onSuccess: () => {
-      toast.success('Message désépinglé');
     },
     onSettled: (_, __, { channelId }) => {
       queryClient.invalidateQueries({ queryKey: ['pinned-messages', channelId] });

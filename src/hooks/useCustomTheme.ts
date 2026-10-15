@@ -12,7 +12,7 @@
  *  - localStorage: instant, offline-first
  *  - Supabase `user_ui_preferences.custom_theme`: cross-device sync
  */
-import { useCallback, useEffect, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -289,6 +289,7 @@ export function getCustomTheme(): CustomThemeState {
 /** Mount once at the app root: applies DOM, sets up sync + visibility. */
 export function useMountCustomTheme() {
   const { user } = useAuth();
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
   useEffect(() => {
     applyToDom();
     const onVis = () => {
@@ -343,7 +344,7 @@ export function useMountCustomTheme() {
     })();
 
     const channel = supabase
-      .channel(`user_ui_prefs_ct:${user.id}`)
+      .channel(`user_ui_prefs_ct:${user.id}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'user_ui_preferences', filter: `user_id=eq.${user.id}` },

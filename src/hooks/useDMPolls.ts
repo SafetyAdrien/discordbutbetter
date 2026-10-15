@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 
 export interface DMPoll {
@@ -12,6 +12,7 @@ export interface DMPoll {
   question: string;
   allow_multiple: boolean;
   expires_at: string | null;
+  closed_notified: boolean;
   created_at: string;
   author?: {
     id: string;
@@ -58,6 +59,7 @@ const cacheKey = (conversationId: string) => `polls:dm:${conversationId}`;
 export function useDMPolls(conversationId: string | null) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   const query = useQuery({
     queryKey: keyFor(conversationId),
@@ -112,7 +114,7 @@ export function useDMPolls(conversationId: string | null) {
   useEffect(() => {
     if (!conversationId) return;
     const ch = supabase
-      .channel(`dm-polls-${conversationId}`)
+      .channel(`dm-polls-${conversationId}-${instanceIdRef.current}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'dm_polls' }, async (payload) => {
         if (payload.eventType === 'INSERT') {
           const newPoll = payload.new as any;
@@ -154,7 +156,7 @@ export function useDMPolls(conversationId: string | null) {
   useEffect(() => {
     if (!conversationId) return;
     const ch = supabase
-      .channel(`dm-poll-options-${conversationId}`)
+      .channel(`dm-poll-options-${conversationId}-${instanceIdRef.current}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'dm_poll_options' }, () => {
         queryClient.invalidateQueries({ queryKey: keyFor(conversationId) });
       })
@@ -168,7 +170,7 @@ export function useDMPolls(conversationId: string | null) {
   useEffect(() => {
     if (!conversationId) return;
     const ch = supabase
-      .channel(`dm-poll-votes-${conversationId}`)
+      .channel(`dm-poll-votes-${conversationId}-${instanceIdRef.current}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'dm_poll_votes' }, async (payload) => {
         const newVote = payload.new as any;
         const { data: profile } = await supabase.from('profiles').select('id, display_name, avatar_url').eq('id', newVote.user_id).single();
@@ -243,7 +245,7 @@ export function useCreateDMPoll() {
       await queryClient.cancelQueries({ queryKey });
       const previousPolls = queryClient.getQueryData<DMPoll[]>(queryKey);
 
-      const tempId = `temp-${Date.now()}`;
+      const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       const tempPoll: DMPoll = {
         id: tempId,
         conversation_id: data.conversationId,
@@ -251,6 +253,7 @@ export function useCreateDMPoll() {
         question: data.question,
         allow_multiple: data.allowMultiple,
         expires_at: data.expiresAt?.toISOString() || null,
+        closed_notified: false,
         created_at: new Date().toISOString(),
         author: profile
           ? { id: user.id, display_name: profile.display_name, avatar_url: profile.avatar_url, username: profile.username }
@@ -288,7 +291,6 @@ export function useCreateDMPoll() {
         const merged: DMPoll = { ...(old[tempIdx] as DMPoll), id: poll.id, created_at: poll.created_at, expires_at: poll.expires_at };
         return [...cleaned.filter((p) => p.id !== merged.id), merged];
       });
-      toast.success('Sondage créé');
     },
   });
 }
@@ -383,13 +385,25 @@ export function useRemoveDMVote() {
   });
 }
 
+/**
+ * Closes a DM poll (if not already expired) and inserts the "poll closed"
+ * system message exactly once — see closePollAndNotify in usePolls.ts for
+ * the channel-side equivalent and the idempotence rationale.
+ */
+export async function closeDMPollAndNotify(pollId: string, manual = false) {
+  const { error } = await supabase.rpc('close_dm_poll_and_notify' as any, {
+    _poll_id: pollId,
+    _manual: manual,
+  } as any);
+  if (error) throw error;
+}
+
 export function useEndDMPoll() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ pollId }: { pollId: string; conversationId: string }) => {
-      const { error } = await supabase.from('dm_polls' as any).update({ expires_at: new Date().toISOString() } as any).eq('id', pollId);
-      if (error) throw error;
+      await closeDMPollAndNotify(pollId, true);
     },
     onMutate: async ({ pollId, conversationId }) => {
       const queryKey = keyFor(conversationId);
@@ -407,7 +421,6 @@ export function useEndDMPoll() {
       toast.error('Erreur lors de la clôture du sondage');
     },
     onSuccess: () => {
-      toast.success('Sondage terminé');
     },
     onSettled: (_, __, variables) => {
       queryClient.invalidateQueries({ queryKey: keyFor(variables.conversationId) });
@@ -437,7 +450,6 @@ export function useDeleteDMPoll() {
       toast.error('Erreur lors de la suppression du sondage');
     },
     onSuccess: () => {
-      toast.success('Sondage supprimé');
     },
     onSettled: (_, __, variables) => {
       queryClient.invalidateQueries({ queryKey: keyFor(variables.conversationId) });
@@ -503,7 +515,6 @@ export function useUpdateDMPoll() {
       toast.error('Erreur lors de la modification du sondage');
     },
     onSuccess: () => {
-      toast.success('Sondage modifié');
     },
     onSettled: (_, __, variables) => {
       queryClient.invalidateQueries({ queryKey: keyFor(variables.conversationId) });

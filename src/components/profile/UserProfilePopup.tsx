@@ -266,7 +266,6 @@ export function UserProfilePopup({
       { serverId, userId: user.id },
       {
         onSuccess: () => {
-          toast.success(`${user.displayName} a été expulsé du serveur`);
           onOpenChange(false);
         },
         onError: (error) => {
@@ -283,7 +282,6 @@ export function UserProfilePopup({
       { serverId, userId: user.id },
       {
         onSuccess: () => {
-          toast.success(`${user.displayName} a été banni du serveur`);
           onOpenChange(false);
         },
         onError: (error) => {
@@ -390,7 +388,7 @@ export function UserProfilePopup({
           <div className="absolute top-2 right-2 flex items-center gap-2">
             <Tooltip delayDuration={0}>
               <TooltipTrigger asChild>
-                <button
+                <button type="button"
                   onClick={() => setServerProfileEditOpen(true)}
                   className="p-1.5 text-white hover:scale-110 transition-transform drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]"
                 >
@@ -404,7 +402,7 @@ export function UserProfilePopup({
           <div className="absolute top-2 right-2 flex items-center gap-2">
             <Tooltip delayDuration={0}>
               <TooltipTrigger asChild>
-                <button
+                <button type="button"
                   onClick={handleSendMessage}
                   disabled={isCreatingDM}
                   className="p-1.5 text-white hover:scale-110 transition-transform drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]"
@@ -423,7 +421,7 @@ export function UserProfilePopup({
 
             <Tooltip delayDuration={0}>
               <TooltipTrigger asChild>
-                <button
+                <button type="button"
                   onClick={!isFriend && !isPending ? handleAddFriend : undefined}
                   disabled={isSendingRequest || isFriend}
                   className={cn(
@@ -549,7 +547,7 @@ export function UserProfilePopup({
                   })()}
                 </div>
                 {bioIsLong && (
-                  <button
+                  <button type="button"
                     onClick={() => setFullBioOpen(true)}
                     className="mt-1 text-[11px] text-primary hover:underline"
                   >
@@ -581,7 +579,7 @@ export function UserProfilePopup({
                 Rôles
               </h4>
               {displayRoles.length === 0 && canManageRoles && serverId && memberId && assignableRoles.length > 0 ? (
-                <button
+                <button type="button"
                   onClick={toggleRolePanel}
                   className="inline-flex items-center justify-center w-5 h-5 rounded text-muted-foreground hover:text-foreground transition-colors"
                   aria-label="Ajouter un rôle"
@@ -603,7 +601,7 @@ export function UserProfilePopup({
                         {role.name}
                       </span>
                       {canManageRoles && (
-                        <button
+                        <button type="button"
                           onClick={() => handleRemoveRole(role.id, role.name)}
                           className="ml-0.5 p-0.5 rounded opacity-0 group-hover/role:opacity-100 hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-opacity"
                           aria-label={`Retirer ${role.name}`}
@@ -614,7 +612,7 @@ export function UserProfilePopup({
                     </div>
                   ))}
                   {canManageRoles && serverId && memberId && assignableRoles.length > 0 && (
-                    <button
+                    <button type="button"
                       onClick={toggleRolePanel}
                       className="inline-flex items-center justify-center w-5 h-5 rounded text-muted-foreground hover:text-foreground transition-colors"
                       aria-label="Ajouter un rôle"
@@ -726,7 +724,7 @@ export function UserProfilePopup({
     >
       <div className="p-3 border-b border-border flex items-center justify-between">
         <h4 className="font-semibold text-sm">Gérer les rôles</h4>
-        <button 
+        <button type="button" 
           onClick={() => setShowRolePanel(false)} 
           className="p-1 hover:bg-muted rounded transition-colors"
         >

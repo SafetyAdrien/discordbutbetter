@@ -11,11 +11,12 @@
  *   5. Toute mutation du profil passe par `updateProfile` / `updateStatus`.
  * ============================================================================
  */
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { User, Session, AuthError } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
-import { cacheGetSync, cacheSetAsync, cacheDelete } from '@/lib/cache';
+import { cacheGetSync, cacheSetAsync, cacheDelete, purgeAllCaches } from '@/lib/cache';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
 
@@ -38,6 +39,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   const fetchProfile = useCallback(async (userId: string) => {
     try {
@@ -68,7 +71,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSession(nextSession);
 
     const nextUser = nextSession?.user ?? null;
-    setUser(nextUser);
+    // Keep the same object reference when the user id hasn't changed (e.g. a
+    // TOKEN_REFRESHED event right after SIGNED_IN) so effects keyed on `user`
+    // don't re-run and re-subscribe to already-subscribed realtime channels.
+    setUser((prev) => (prev && nextUser && prev.id === nextUser.id ? prev : nextUser));
 
     if (!nextUser) {
       setProfile(null);
@@ -144,7 +150,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!user) return;
 
     const channel = supabase
-      .channel(`profile:${user.id}`, { config: { private: true } })
+      .channel(`profile:${user.id}-${instanceIdRef.current}`, { config: { private: true } })
       .on(
         'postgres_changes',
         {
@@ -191,14 +197,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { data, error };
   };
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     if (user) {
       cacheDelete(`profile:${user.id}`);
     }
 
+    // Les clés de cache messages/dm-messages/threads/channels ne sont PAS
+    // scopées par utilisateur (cf. HOT_PREFIXES dans lib/cache). Sans purge,
+    // le prochain utilisateur qui se connecte sur ce navigateur verrait
+    // l'historique privé de l'utilisateur précédent via placeholderData.
+    try {
+      await purgeAllCaches();
+    } catch {
+      // la purge est best-effort : ne jamais bloquer la déconnexion
+    }
+    // react-query détient les mêmes données en mémoire : sans reset, le cache
+    // en mémoire survit à la purge disque et ré-alimente placeholderData.
+    try {
+      queryClient.clear();
+    } catch {
+      // best-effort
+    }
+
     await supabase.auth.signOut();
     setProfile(null);
-  };
+  }, [user, queryClient]);
 
   const updateProfile = useCallback(async (data: Partial<Profile>) => {
     if (!user) return;
@@ -234,22 +257,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   }, [user]);
 
+  // Memoized: an inline literal here would invalidate the context for all 151
+  // consumers on every auth state change, re-rendering the entire app.
+  const contextValue = useMemo(
+    () => ({
+      user,
+      session,
+      profile,
+      loading,
+      signIn,
+      signUp,
+      signOut,
+      updateProfile,
+      updateStatus,
+    }),
+    [user, session, profile, loading, signIn, signUp, signOut, updateProfile, updateStatus],
+  );
+
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        session,
-        profile,
-        loading,
-        signIn,
-        signUp,
-        signOut,
-        updateProfile,
-        updateStatus,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+    <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>
   );
 }
 

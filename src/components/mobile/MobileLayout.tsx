@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import { MobileBottomNav, MobileTab } from './MobileBottomNav';
 import { MobileServersView } from './MobileServersView';
 import { MobileChannelListView } from './MobileChannelListView';
@@ -7,24 +7,14 @@ import { MobileChatView } from './MobileChatView';
 import { MobileProfileView } from './MobileProfileView';
 
 import { MobileThreadView } from './MobileThreadView';
-import { VoiceChannelView } from '@/components/channels/VoiceChannelView';
 import { MobileVoiceChannelView } from './MobileVoiceChannelView';
 import { MobileChannelHeader } from './MobileChannelHeader';
 import { MobileVoicePreJoinSheet } from './MobileVoicePreJoinSheet';
 import { VoicePiP } from './VoicePiP';
-import { StageChannel } from '@/components/channels/StageChannel';
-import { MediaChannel } from '@/components/channels/MediaChannel';
-import { ForumChannel } from '@/components/channels/ForumChannel';
-import { TasksChannel } from '@/components/channels/TasksChannel';
-import { CalendarChannel } from '@/components/channels/CalendarChannel';
-import { AnnouncementChannel } from '@/components/channels/AnnouncementChannel';
 import { ExternalLinkWarningModal } from '@/components/modals/ExternalLinkWarningModal';
 import { GlobalSearchModal } from '@/components/modals/GlobalSearchModal';
 import { Search, CalendarDays } from 'lucide-react';
-
-import { DiscoverModal } from '@/components/modals/DiscoverModal';
-import { CreateServerModal } from '@/components/modals/CreateServerModal';
-import { ServerSettingsModal } from '@/components/server-settings/ServerSettingsModal';
+import { Spinner } from '@/components/ui/spinner';
 import { VoiceControls } from '@/components/layout/VoiceControls';
 import { useVoice } from '@/contexts/VoiceContext';
 import { useMessages, useSendMessage } from '@/hooks/useMessages';
@@ -38,7 +28,38 @@ import { useVisualViewport } from '@/hooks/useVisualViewport';
 import type { Server, Message, User } from '@/types/app';
 import { AnimatePresence, motion } from 'framer-motion';
 
-type MobileView = 
+// Lazily loaded: shared with the desktop layout (src/pages/Index.tsx), which
+// declares the same lazy() imports — keeps these out of the initial bundle
+// on both layouts instead of only one.
+const StageChannel = lazy(() =>
+  import('@/components/channels/StageChannel').then((m) => ({ default: m.StageChannel }))
+);
+const MediaChannel = lazy(() =>
+  import('@/components/channels/MediaChannel').then((m) => ({ default: m.MediaChannel }))
+);
+const ForumChannel = lazy(() =>
+  import('@/components/channels/ForumChannel').then((m) => ({ default: m.ForumChannel }))
+);
+const TasksChannel = lazy(() =>
+  import('@/components/channels/TasksChannel').then((m) => ({ default: m.TasksChannel }))
+);
+const CalendarChannel = lazy(() =>
+  import('@/components/channels/CalendarChannel').then((m) => ({ default: m.CalendarChannel }))
+);
+const AnnouncementChannel = lazy(() =>
+  import('@/components/channels/AnnouncementChannel').then((m) => ({ default: m.AnnouncementChannel }))
+);
+const DiscoverModal = lazy(() =>
+  import('@/components/modals/DiscoverModal').then((m) => ({ default: m.DiscoverModal }))
+);
+const CreateServerModal = lazy(() =>
+  import('@/components/modals/CreateServerModal').then((m) => ({ default: m.CreateServerModal }))
+);
+const ServerSettingsModal = lazy(() =>
+  import('@/components/server-settings/ServerSettingsModal').then((m) => ({ default: m.ServerSettingsModal }))
+);
+
+type MobileView =
   | { type: 'tab' }
   | { type: 'channels'; serverId: string }
   | { type: 'chat'; serverId: string; channelId: string; channelType: string; fromTab?: boolean }
@@ -191,9 +212,9 @@ export function MobileLayout({
   const resolvedCategories = channelsData?.categories ?? currentServer?.categories ?? [];
   const resolvedOrphanChannels = channelsData?.orphanChannels ?? currentServer?.orphanChannels ?? [];
 
-  const handleSendMessage = (content: string, attachments?: any[], replyToId?: string | null) => {
+  const handleSendMessage = (content: string, attachments?: any[], replyToId?: string | null, externalAttachment?: { url: string; name: string; type: 'sticker' | 'gif' }) => {
     if (mobileView.type === 'chat') {
-      sendMessage.mutate({ channelId: mobileView.channelId, content, attachments: attachments || [], replyToId: replyToId ?? null });
+      sendMessage.mutate({ channelId: mobileView.channelId, content, attachments: attachments || [], replyToId: replyToId ?? null, externalAttachment });
     }
   };
 
@@ -312,7 +333,8 @@ export function MobileLayout({
     id: m.id,
     content: m.content,
     attachments: m.attachments || [],
-    isSystemMessage: m.author === null,
+    isSystemMessage: m.author === null || m.is_system === true,
+    is_system: m.is_system,
     edited_at: m.edited_at,
     replyToId: m.reply_to_id ?? null,
     repliedMessage: m.repliedMessage
@@ -404,7 +426,7 @@ export function MobileLayout({
       return (
         <div className="flex flex-col h-full">
           <div className="h-12 px-2 flex items-center gap-2 border-b border-border">
-            <button onClick={handleBackToChannels} className="p-1.5 rounded-lg hover:bg-muted">
+            <button type="button" onClick={handleBackToChannels} className="p-1.5 rounded-lg hover:bg-muted">
               <ChevronLeftIcon className="w-5 h-5" />
             </button>
           </div>
@@ -412,7 +434,7 @@ export function MobileLayout({
             {chatFallbackElapsed && (
               <>
                 <p className="text-sm text-muted-foreground">Salon introuvable</p>
-                <button
+                <button type="button"
                   onClick={() => setMobileView({ type: 'tab' })}
                   className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm"
                 >
@@ -470,7 +492,9 @@ export function MobileLayout({
               });
             }}
             renderCustomContent={() => (
-              <AnnouncementChannel {...commonProps} hideHeader />
+              <Suspense fallback={<Spinner />}>
+                <AnnouncementChannel {...commonProps} hideHeader />
+              </Suspense>
             )}
           />
         );
@@ -486,7 +510,7 @@ export function MobileLayout({
         }).length;
 
         const searchButton = (
-          <button
+          <button type="button"
             onClick={() => setSpecialSearchOpen(true)}
             aria-label="Rechercher dans ce salon"
             title="Rechercher"
@@ -497,7 +521,7 @@ export function MobileLayout({
         );
 
         const todayButton = (
-          <button
+          <button type="button"
             onClick={() => setCalendarJumpSignal(n => n + 1)}
             aria-label="Aller à aujourd'hui"
             title="Aujourd'hui"
@@ -512,23 +536,23 @@ export function MobileLayout({
         switch (channelForChat.type) {
           case 'media':
             rightSlot = searchButton;
-            body = <MediaChannel {...commonProps} hideHeader />;
+            body = <Suspense fallback={<Spinner />}><MediaChannel {...commonProps} hideHeader /></Suspense>;
             break;
           case 'forum':
             rightSlot = searchButton;
-            body = <ForumChannel {...commonProps} hideHeader serverId={(channelForChat as any).server_id} />;
+            body = <Suspense fallback={<Spinner />}><ForumChannel {...commonProps} hideHeader serverId={(channelForChat as any).server_id} /></Suspense>;
             break;
           case 'tasks':
             rightSlot = searchButton;
-            body = <TasksChannel {...commonProps} hideHeader />;
+            body = <Suspense fallback={<Spinner />}><TasksChannel {...commonProps} hideHeader /></Suspense>;
             break;
           case 'calendar':
             rightSlot = todayButton;
-            body = <CalendarChannel {...commonProps} hideHeader jumpToTodaySignal={calendarJumpSignal} />;
+            body = <Suspense fallback={<Spinner />}><CalendarChannel {...commonProps} hideHeader jumpToTodaySignal={calendarJumpSignal} /></Suspense>;
             break;
           case 'stage':
             rightSlot = null;
-            body = <StageChannel {...commonProps} serverId={currentServer.id} hideHeader />;
+            body = <Suspense fallback={<Spinner />}><StageChannel {...commonProps} serverId={currentServer.id} hideHeader /></Suspense>;
             break;
         }
 
@@ -825,33 +849,39 @@ export function MobileLayout({
 
       {/* Modals */}
       {showDiscover && (
-        <DiscoverModal
-          servers={discoverableServers}
-          onClose={() => {
-            setShowDiscover(false);
-            setActiveTab('servers');
-          }}
-          onJoinServer={(id) => { onJoinServer(id); setShowDiscover(false); setActiveTab('servers'); }}
-        />
+        <Suspense fallback={<Spinner />}>
+          <DiscoverModal
+            servers={discoverableServers}
+            onClose={() => {
+              setShowDiscover(false);
+              setActiveTab('servers');
+            }}
+            onJoinServer={(id) => { onJoinServer(id); setShowDiscover(false); setActiveTab('servers'); }}
+          />
+        </Suspense>
       )}
       {showCreate && (
-        <CreateServerModal
-          onClose={() => setShowCreate(false)}
-          onCreate={(name, icon, banner, template) => {
-            onCreateServer(name, icon, banner, template);
-            setShowCreate(false);
-          }}
-        />
+        <Suspense fallback={<Spinner />}>
+          <CreateServerModal
+            onClose={() => setShowCreate(false)}
+            onCreate={(name, icon, banner, template) => {
+              onCreateServer(name, icon, banner, template);
+              setShowCreate(false);
+            }}
+          />
+        </Suspense>
       )}
       {settingsServerId && (() => {
         const settingsServer = rawServers.find((s: any) => s.id === settingsServerId);
         return settingsServer ? (
-          <ServerSettingsModal
-            serverId={settingsServerId}
-            serverName={settingsServer.name}
-            onClose={() => { setSettingsServerId(null); setSettingsInitialTab(undefined); }}
-            initialTab={settingsInitialTab as any}
-          />
+          <Suspense fallback={<Spinner />}>
+            <ServerSettingsModal
+              serverId={settingsServerId}
+              serverName={settingsServer.name}
+              onClose={() => { setSettingsServerId(null); setSettingsInitialTab(undefined); }}
+              initialTab={settingsInitialTab as any}
+            />
+          </Suspense>
         ) : null;
       })()}
 
@@ -893,7 +923,7 @@ function FullScreenWrapper({ name, onBack, children }: { name: string; onBack: (
   return (
     <div className="flex flex-col h-full">
       <div className="h-12 px-2 flex items-center gap-2 border-b border-border flex-shrink-0">
-        <button onClick={onBack} className="p-1.5 rounded-lg hover:bg-muted"><ChevronLeftIcon className="w-5 h-5" /></button>
+        <button type="button" onClick={onBack} className="p-1.5 rounded-lg hover:bg-muted"><ChevronLeftIcon className="w-5 h-5" /></button>
         <h2 className="font-semibold text-sm truncate flex-1">{name}</h2>
       </div>
       <div className="flex-1 overflow-hidden">{children}</div>

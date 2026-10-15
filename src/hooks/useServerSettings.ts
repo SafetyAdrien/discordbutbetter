@@ -28,13 +28,14 @@ export function useServerSettings(serverId: string) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   // Realtime subscription for server_settings changes
   useEffect(() => {
     if (!serverId || !user) return;
 
     const channel = supabase
-      .channel(`server-settings-rt-${serverId}`, { config: { private: true } })
+      .channel(`server-settings-rt-${serverId}-${instanceIdRef.current}`, { config: { private: true } })
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'server_settings', filter: `server_id=eq.${serverId}` },
@@ -135,7 +136,7 @@ export function useUpdateServerSettings() {
       queryClient.setQueryData(['server-settings', serverId], (old: ServerSettings | null | undefined) => {
         if (!old) {
           return {
-            id: `temp-${Date.now()}`,
+            id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
             server_id: serverId,
             welcome_message: settings.welcome_message ?? null,
             welcome_channel_id: settings.welcome_channel_id ?? null,
@@ -165,7 +166,6 @@ export function useUpdateServerSettings() {
       toast.error('Erreur lors de la sauvegarde');
     },
     onSuccess: () => {
-      toast.success('Paramètres sauvegardés');
     },
     onSettled: (_, __, { serverId }) => {
       queryClient.invalidateQueries({ queryKey: ['server-settings', serverId] });

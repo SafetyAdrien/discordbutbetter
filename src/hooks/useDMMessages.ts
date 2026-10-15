@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { useAuth } from '@/contexts/AuthContext';
@@ -18,10 +18,16 @@ export interface StoredAttachment {
   id: string;
   url: string;
   name: string;
-  type: 'image' | 'video' | 'file';
+  type: 'image' | 'video' | 'file' | 'sticker' | 'gif';
   size: number;
   description?: string;
   isSpoiler?: boolean;
+}
+
+export interface ExternalAttachment {
+  url: string;
+  name: string;
+  type: 'sticker' | 'gif';
 }
 
 export interface RepliedDMSnapshot {
@@ -40,7 +46,8 @@ export interface RepliedDMSnapshot {
 export type DMSystemType =
   | 'screenshot'
   | 'screen_recording_start'
-  | 'screen_recording_stop';
+  | 'screen_recording_stop'
+  | 'poll_closed';
 
 export interface DMMessage {
   id: string;
@@ -52,6 +59,7 @@ export interface DMMessage {
   reply_to_id?: string | null;
   repliedMessage?: RepliedDMSnapshot | null;
   system_type?: DMSystemType | null;
+  system_poll_id?: string | null;
   author: {
     id: string;
     username: string;
@@ -72,6 +80,7 @@ export function useDMMessages(conversationId: string | null) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const userId = user?.id;
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   const queryKey = dmKey(userId, conversationId);
 
@@ -92,6 +101,7 @@ export function useDMMessages(conversationId: string | null) {
           conversation_id,
           reply_to_id,
           system_type,
+          system_poll_id,
           author:profiles!dm_messages_author_id_fkey (
             id,
             username,
@@ -186,7 +196,7 @@ export function useDMMessages(conversationId: string | null) {
     if (!conversationId || !user) return;
 
     const channel = supabase
-      .channel(`dm-messages:${conversationId}`, { config: { private: true } })
+      .channel(`dm-messages:${conversationId}-${instanceIdRef.current}`, { config: { private: true } })
       .on(
         'postgres_changes',
         {
@@ -350,14 +360,17 @@ export function useDMMessages(conversationId: string | null) {
       const { data, error } = await supabase
         .from('dm_messages')
         .select(`
-          id, content, created_at, edited_at, attachments, conversation_id, reply_to_id, system_type,
+          id, content, created_at, edited_at, attachments, conversation_id, reply_to_id, system_type, system_poll_id,
           author:profiles!dm_messages_author_id_fkey (
             id, username, display_name, avatar_url
           )
         `)
         .eq('conversation_id', conversationId)
-        .lt('created_at', oldest.created_at)
+        // Composite keyset cursor — see useMessages.ts for why created_at
+        // alone is not sufficient (ties cause skipped/duplicated pages).
+        .or(`created_at.lt.${oldest.created_at},and(created_at.eq.${oldest.created_at},id.lt.${oldest.id})`)
         .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
         .limit(50);
       if (error) throw error;
 
@@ -441,16 +454,17 @@ async function uploadDMAttachments(
 
     if (error) {
       console.error('Upload error:', error);
-      continue;
+      throw new Error(`Échec de l'envoi de « ${attachment.name || attachment.file.name} »`);
     }
 
-    // Bucket is private; use a long-lived signed URL (1 year)
+    // Bucket is private; signed URL lifetime is kept short enough that a ban
+    // or permission change actually revokes access.
     const { data: urlData, error: signErr } = await supabase.storage
       .from('message-attachments')
-      .createSignedUrl(data.path, 60 * 60 * 24 * 365);
+      .createSignedUrl(data.path, 60 * 60 * 24 * 7);
     if (signErr || !urlData) {
       console.error('Sign URL error:', signErr);
-      continue;
+      throw new Error(`Échec de la génération du lien pour « ${attachment.name || attachment.file.name} »`);
     }
 
     let type: 'image' | 'video' | 'file' = 'file';
@@ -481,22 +495,36 @@ export function useSendDMMessage() {
       content,
       attachments = [],
       replyToId,
+      externalAttachment,
     }: {
       conversationId: string;
       content: string;
       attachments?: PendingAttachment[];
       replyToId?: string | null;
+      externalAttachment?: ExternalAttachment;
     }) => {
       if (!user) throw new Error('Not authenticated');
 
       const validated = messageSchema.parse({ content });
-      if (!validated.content.trim() && attachments.length === 0) {
+      if (!validated.content.trim() && attachments.length === 0 && !externalAttachment) {
         throw new Error('Message must have content or attachments');
       }
 
       let uploadedAttachments: StoredAttachment[] = [];
       if (attachments.length > 0) {
         uploadedAttachments = await uploadDMAttachments(user.id, attachments);
+      }
+      if (externalAttachment) {
+        uploadedAttachments = [
+          ...uploadedAttachments,
+          {
+            id: crypto.randomUUID(),
+            url: externalAttachment.url,
+            name: externalAttachment.name,
+            type: externalAttachment.type,
+            size: 0,
+          },
+        ];
       }
 
       const { data, error } = await supabase
@@ -555,7 +583,7 @@ export function useSendDMMessage() {
         repliedMessage,
       } as DMMessage;
     },
-    onMutate: async ({ conversationId, content, attachments = [], replyToId }) => {
+    onMutate: async ({ conversationId, content, attachments = [], replyToId, externalAttachment }) => {
       if (!user) return { previousMessages: undefined, optimisticMessage: undefined };
       const key = dmKey(user.id, conversationId);
       await queryClient.cancelQueries({ queryKey: key });
@@ -572,6 +600,15 @@ export function useSendDMMessage() {
         description: a.description || undefined,
         isSpoiler: a.isSpoiler,
       }));
+      if (externalAttachment) {
+        optimisticAttachments.push({
+          id: `temp-ext-${Date.now()}`,
+          url: externalAttachment.url,
+          name: externalAttachment.name,
+          type: externalAttachment.type,
+          size: 0,
+        });
+      }
 
       // Resolve replied snapshot optimistically from current cache
       let optimisticReplied: RepliedDMSnapshot | null = null;
@@ -593,7 +630,7 @@ export function useSendDMMessage() {
       }
 
       const optimisticMessage: DMMessage = {
-        id: `temp-${Date.now()}`,
+        id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         content,
         created_at: new Date().toISOString(),
         edited_at: null,
@@ -678,7 +715,6 @@ export function useEditDMMessage() {
       return { previousMessages };
     },
     onSuccess: () => {
-      toast.success('Message modifié');
     },
     onError: (_error, { conversationId }, context) => {
       if (user && context?.previousMessages) {
@@ -725,7 +761,6 @@ export function useDeleteDMMessage() {
       return { previousMessages };
     },
     onSuccess: () => {
-      toast.success('Message supprimé');
     },
     onError: (_error, { conversationId }, context) => {
       if (user && context?.previousMessages) {

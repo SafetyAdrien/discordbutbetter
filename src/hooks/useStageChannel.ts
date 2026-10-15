@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import type { StageSession, StageParticipant, StageHandRequest, StageRole } from '@/types/stage';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 // Fetch active session for a stage channel
 export function useStageSession(channelId: string | null) {
@@ -31,7 +31,8 @@ export function useStageSession(channelId: string | null) {
 // Fetch participants for a session
 export function useStageParticipants(sessionId: string | null) {
   const queryClient = useQueryClient();
-  
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
+
   const query = useQuery({
     queryKey: ['stage-participants', sessionId],
     queryFn: async () => {
@@ -57,7 +58,7 @@ export function useStageParticipants(sessionId: string | null) {
     if (!sessionId) return;
 
     const channel = supabase
-      .channel(`stage-participants-${sessionId}`)
+      .channel(`stage-participants-${sessionId}-${instanceIdRef.current}`)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
@@ -79,7 +80,8 @@ export function useStageParticipants(sessionId: string | null) {
 // Fetch hand requests for a session
 export function useStageHandRequests(sessionId: string | null) {
   const queryClient = useQueryClient();
-  
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
+
   const query = useQuery({
     queryKey: ['stage-hand-requests', sessionId],
     queryFn: async () => {
@@ -106,7 +108,7 @@ export function useStageHandRequests(sessionId: string | null) {
     if (!sessionId) return;
 
     const channel = supabase
-      .channel(`stage-hand-requests-${sessionId}`)
+      .channel(`stage-hand-requests-${sessionId}-${instanceIdRef.current}`)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
@@ -164,7 +166,7 @@ export function useStartStageSession() {
       const previousSession = queryClient.getQueryData(['stage-session', channelId]);
       
       const tempSession: StageSession = {
-        id: `temp-${Date.now()}`,
+        id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         channel_id: channelId,
         title: title || null,
         description: null,
@@ -186,7 +188,6 @@ export function useStartStageSession() {
       toast.error('Impossible de créer la session');
     },
     onSuccess: () => {
-      toast.success('Session créée');
     },
     onSettled: (_, __, { channelId }) => {
       queryClient.invalidateQueries({ queryKey: ['stage-session', channelId] });
@@ -228,7 +229,6 @@ export function useGoLive() {
       }
     },
     onSuccess: () => {
-      toast.success('Session en direct !');
     },
     onSettled: (_, __, { channelId }) => {
       queryClient.invalidateQueries({ queryKey: ['stage-session', channelId] });
@@ -264,7 +264,6 @@ export function useEndStageSession() {
       }
     },
     onSuccess: () => {
-      toast.success('Session terminée');
     },
     onSettled: (_, __, { channelId }) => {
       queryClient.invalidateQueries({ queryKey: ['stage-session', channelId] });
@@ -298,7 +297,7 @@ export function useJoinStage() {
       const previousParticipants = queryClient.getQueryData<StageParticipant[]>(['stage-participants', sessionId]);
       
       const tempParticipant: StageParticipant = {
-        id: `temp-${Date.now()}`,
+        id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         session_id: sessionId,
         user_id: user.id,
         role: 'audience',
@@ -398,7 +397,7 @@ export function useRaiseHand() {
       const previousRequests = queryClient.getQueryData<StageHandRequest[]>(['stage-hand-requests', sessionId]);
       
       const tempRequest: StageHandRequest = {
-        id: `temp-${Date.now()}`,
+        id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         session_id: sessionId,
         user_id: user.id,
         status: 'pending',
@@ -425,7 +424,6 @@ export function useRaiseHand() {
       }
     },
     onSuccess: () => {
-      toast.success('Main levée', { description: 'En attente d\'approbation' });
     },
     onSettled: (sessionId) => {
       if (sessionId) {
@@ -580,7 +578,6 @@ export function useChangeParticipantRole() {
       }
     },
     onSuccess: () => {
-      toast.success('Rôle modifié');
     },
     onSettled: (_, __, { sessionId }) => {
       queryClient.invalidateQueries({ queryKey: ['stage-participants', sessionId] });

@@ -111,7 +111,6 @@ export function ServerProfileSettings({ serverId }: ServerProfileSettingsProps) 
       
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ['servers'] });
-      toast.success('Icône supprimée');
     } catch (error) {
       toast.error('Erreur lors de la suppression');
     }
@@ -126,7 +125,6 @@ export function ServerProfileSettings({ serverId }: ServerProfileSettingsProps) 
       
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ['servers'] });
-      toast.success('Bannière supprimée');
     } catch (error) {
       toast.error('Erreur lors de la suppression');
     }
@@ -177,7 +175,7 @@ export function ServerProfileSettings({ serverId }: ServerProfileSettingsProps) 
               </div>
             </label>
             {server.banner_url && (
-                <button
+                <button type="button"
                 onClick={handleRemoveBanner}
                 className="absolute top-2 right-2 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center hover:opacity-90 transition-opacity z-10"
                   aria-label="Supprimer la bannière du serveur"
@@ -217,7 +215,7 @@ export function ServerProfileSettings({ serverId }: ServerProfileSettingsProps) 
                 </div>
               </label>
               {server.icon_url && (
-                <button
+                <button type="button"
                   onClick={handleRemoveIcon}
                   className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center hover:opacity-90 transition-opacity z-10"
                   aria-label="Supprimer l'icône du serveur"

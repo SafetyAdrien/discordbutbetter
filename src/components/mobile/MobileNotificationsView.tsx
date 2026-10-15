@@ -189,7 +189,7 @@ export function MobileNotificationsView({
           ) : (
             <>
               {onBack ? (
-                <button
+                <button type="button"
                   onClick={() => {
                     haptics.light();
                     onBack();
@@ -215,7 +215,7 @@ export function MobileNotificationsView({
             </>
           )}
 
-          <button
+          <button type="button"
             onClick={() => {
               haptics.light();
               setFilterSheetOpen(true);
@@ -249,7 +249,7 @@ export function MobileNotificationsView({
       {filterChips.length > 0 && (
         <div className="flex gap-2 overflow-x-auto px-4 py-2 border-b border-border/50 scrollbar-thin">
           {filterChips.map((c) => (
-            <button
+            <button type="button"
               key={c.key}
               onClick={() => removeChip(c)}
               className="flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-full bg-primary/15 text-primary text-xs font-medium whitespace-nowrap active:bg-primary/25 transition-colors"
@@ -330,7 +330,7 @@ export function MobileNotificationsView({
 
       {/* FAB */}
       {unreadCount > 0 && (
-        <button
+        <button type="button"
           onClick={handleMarkAllRead}
           className={cn(
             'fixed right-4 h-12 px-5 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center gap-2 active:bg-primary/90 transition-colors z-10 text-sm font-medium',

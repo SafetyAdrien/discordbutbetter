@@ -16,13 +16,18 @@ export function useMessageReactions(messageIds: string[]) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
+
+  // Stable dependency for the subscription: re-subscribing on a new array
+  // identity would thrash, but we must re-run when the actual id set changes.
+  const idsKey = messageIds.join(',');
 
   // Realtime subscription for reactions on these messages
   useEffect(() => {
     if (messageIds.length === 0) return;
 
     const channel = supabase
-      .channel(`reactions-rt-${messageIds[0]}`)
+      .channel(`reactions-rt-${messageIds[0]}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'reactions' },
@@ -46,7 +51,7 @@ export function useMessageReactions(messageIds: string[]) {
       clearTimeout(debounceRef.current);
       supabase.removeChannel(channel);
     };
-  }, [messageIds.join(','), user?.id, queryClient]);
+  }, [idsKey, user?.id, queryClient]);
 
   return useQuery({
     queryKey: ['reactions', messageIds],
@@ -102,7 +107,7 @@ export function useAddReaction() {
       queryClient.setQueriesData({ queryKey: ['reactions'] }, (old: Record<string, Reaction[]> | undefined) => {
         if (!old) return old;
         const newReaction: Reaction = {
-          id: `temp-${Date.now()}`,
+          id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           message_id: messageId,
           user_id: user.id,
           emoji,
@@ -252,7 +257,6 @@ export function useClearMessageReactions() {
       toast.error('Erreur lors de la suppression des réactions');
     },
     onSuccess: () => {
-      toast.success('Réactions supprimées');
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['reactions'] });

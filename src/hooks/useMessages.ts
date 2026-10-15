@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { timeAsync } from '@/lib/perf';
@@ -20,10 +20,16 @@ export interface StoredAttachment {
   id: string;
   url: string;
   name: string;
-  type: 'image' | 'video' | 'file';
+  type: 'image' | 'video' | 'file' | 'sticker' | 'gif';
   size: number;
   description?: string;
   isSpoiler?: boolean;
+}
+
+export interface ExternalAttachment {
+  url: string;
+  name: string;
+  type: 'sticker' | 'gif';
 }
 
 export interface RepliedMessageSnapshot {
@@ -66,113 +72,117 @@ export interface MessageWithAuthor {
   isPending?: boolean;
 }
 
-export function useMessages(channelId: string | null) {
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
-  
+// Shared between useMessages' queryFn and the sidebar hover-prefetch so both
+// populate the exact same ['messages', channelId] cache entry identically.
+export function fetchChannelMessages(channelId: string): Promise<MessageWithAuthor[]> {
+  return timeAsync(`query:messages(${channelId})`, async (): Promise<MessageWithAuthor[]> => {
+    const { data, error } = await supabase
+      .from('messages')
+      .select(`
+        id,
+        content,
+        created_at,
+        edited_at,
+        attachments,
+        channel_id,
+        reply_to_id,
+        source_server_id,
+        source_server_name,
+        source_server_icon,
+        source_channel_name,
+        is_published_message,
+        publish_dismissed,
+        is_system,
+        author:profiles!messages_author_id_fkey (
+          id,
+          username,
+          display_name,
+          avatar_url,
+          status,
+          custom_status
+        )
+      `)
+      .eq('channel_id', channelId)
+      .order('created_at', { ascending: false })
+      .limit(50);
 
-  const query = useQuery({
-    queryKey: ['messages', channelId],
-    placeholderData: () => (channelId ? cacheGetSync<MessageWithAuthor[]>(`messages:${channelId}`) : undefined),
-    queryFn: () => timeAsync(`query:messages(${channelId ?? 'none'})`, async (): Promise<MessageWithAuthor[]> => {
-      if (!channelId) return [];
+    if (error) throw error;
 
-      const { data, error } = await supabase
+    // Fetched newest-first for fast initial paint; reverse to chronological order for the UI.
+    const baseMessages: MessageWithAuthor[] = (data as any[])
+      .map((msg) => ({
+        ...msg,
+        attachments: Array.isArray(msg.attachments) ? msg.attachments : [],
+      }))
+      .reverse() as MessageWithAuthor[];
+
+    // Resolve replied messages in a single batched query
+    const replyIds = Array.from(
+      new Set(baseMessages.map((m) => m.reply_to_id).filter(Boolean) as string[])
+    );
+
+    let replyMap = new Map<string, RepliedMessageSnapshot>();
+    if (replyIds.length > 0) {
+      const { data: replyData } = await supabase
         .from('messages')
         .select(`
           id,
           content,
-          created_at,
-          edited_at,
           attachments,
-          channel_id,
-          reply_to_id,
-          source_server_id,
-          source_server_name,
-          source_server_icon,
-          source_channel_name,
-          is_published_message,
-          publish_dismissed,
-          is_system,
           author:profiles!messages_author_id_fkey (
             id,
             username,
             display_name,
-            avatar_url,
-            status,
-            custom_status
+            avatar_url
           )
         `)
-        .eq('channel_id', channelId)
-        .order('created_at', { ascending: false })
-        .limit(50);
+        .in('id', replyIds);
 
-      if (error) throw error;
-
-      // Fetched newest-first for fast initial paint; reverse to chronological order for the UI.
-      const baseMessages: MessageWithAuthor[] = (data as any[])
-        .map((msg) => ({
-          ...msg,
-          attachments: Array.isArray(msg.attachments) ? msg.attachments : [],
-        }))
-        .reverse() as MessageWithAuthor[];
-
-      // Resolve replied messages in a single batched query
-      const replyIds = Array.from(
-        new Set(baseMessages.map((m) => m.reply_to_id).filter(Boolean) as string[])
-      );
-
-      let replyMap = new Map<string, RepliedMessageSnapshot>();
-      if (replyIds.length > 0) {
-        const { data: replyData } = await supabase
-          .from('messages')
-          .select(`
-            id,
-            content,
-            attachments,
-            author:profiles!messages_author_id_fkey (
-              id,
-              username,
-              display_name,
-              avatar_url
-            )
-          `)
-          .in('id', replyIds);
-
-        if (replyData) {
-          for (const r of replyData as any[]) {
-            replyMap.set(r.id, {
-              id: r.id,
-              content: r.content || '',
-              attachments: Array.isArray(r.attachments) ? r.attachments : [],
-              author: r.author
-                ? {
-                    id: r.author.id,
-                    username: r.author.username,
-                    display_name: r.author.display_name,
-                    avatar_url: r.author.avatar_url,
-                  }
-                : null,
-            });
-          }
+      if (replyData) {
+        for (const r of replyData as any[]) {
+          replyMap.set(r.id, {
+            id: r.id,
+            content: r.content || '',
+            attachments: Array.isArray(r.attachments) ? r.attachments : [],
+            author: r.author
+              ? {
+                  id: r.author.id,
+                  username: r.author.username,
+                  display_name: r.author.display_name,
+                  avatar_url: r.author.avatar_url,
+                }
+              : null,
+          });
         }
       }
+    }
 
-      return baseMessages.map((m) => {
-        if (!m.reply_to_id) return m;
-        const snap = replyMap.get(m.reply_to_id);
-        return {
-          ...m,
-          repliedMessage: snap ?? {
-            id: m.reply_to_id,
-            content: '',
-            attachments: [],
-            deleted: true,
-            author: null,
-          },
-        };
-      });
-    }),
+    return baseMessages.map((m) => {
+      if (!m.reply_to_id) return m;
+      const snap = replyMap.get(m.reply_to_id);
+      return {
+        ...m,
+        repliedMessage: snap ?? {
+          id: m.reply_to_id,
+          content: '',
+          attachments: [],
+          deleted: true,
+          author: null,
+        },
+      };
+    });
+  });
+}
+
+export function useMessages(channelId: string | null) {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
+
+  const query = useQuery({
+    queryKey: ['messages', channelId],
+    placeholderData: () => (channelId ? cacheGetSync<MessageWithAuthor[]>(`messages:${channelId}`) : undefined),
+    queryFn: () => (channelId ? fetchChannelMessages(channelId) : Promise.resolve([])),
     enabled: !!channelId && !!user,
     staleTime: 30_000,
     refetchOnMount: (q) => (q.state.data ? false : 'always'),
@@ -191,7 +201,7 @@ export function useMessages(channelId: string | null) {
     if (!channelId || !user) return;
 
     const channel = supabase
-      .channel(`messages:${channelId}`)
+      .channel(`messages:${channelId}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         {
@@ -369,8 +379,12 @@ export function useMessages(channelId: string | null) {
           )
         `)
         .eq('channel_id', channelId)
-        .lt('created_at', oldest.created_at)
+        // Composite keyset cursor on (created_at, id). Ordering by created_at
+        // alone is not a total order: rows sharing a timestamp can be skipped
+        // or re-fetched forever, because `< created_at` never moves past them.
+        .or(`created_at.lt.${oldest.created_at},and(created_at.eq.${oldest.created_at},id.lt.${oldest.id})`)
         .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
         .limit(50);
       if (error) throw error;
 
@@ -435,54 +449,99 @@ export function useMessages(channelId: string | null) {
   return Object.assign(query, { loadOlder, hasMoreOlder, isLoadingOlder });
 }
 
-// Helper function to upload attachments
-async function uploadAttachments(
+// Upload one attachment and return its stored descriptor.
+async function uploadOne(
   userId: string,
-  pendingAttachments: PendingAttachment[]
-): Promise<StoredAttachment[]> {
-  const uploadedAttachments: StoredAttachment[] = [];
+  attachment: PendingAttachment,
+): Promise<StoredAttachment> {
+  const fileExt = attachment.file.name.split('.').pop();
+  const fileName = `${userId}/${crypto.randomUUID()}.${fileExt}`;
 
-  for (const attachment of pendingAttachments) {
-    const fileExt = attachment.file.name.split('.').pop();
-    const fileName = `${userId}/${crypto.randomUUID()}.${fileExt}`;
-    
-    const { data, error } = await supabase.storage
-      .from('message-attachments')
-      .upload(fileName, attachment.file, {
-        cacheControl: '3600',
-        upsert: false,
-      });
-
-    if (error) {
-      console.error('Upload error:', error);
-      continue;
-    }
-
-    const { data: urlData, error: signErr } = await supabase.storage
-      .from('message-attachments')
-      .createSignedUrl(data.path, 60 * 60 * 24 * 365);
-    if (signErr || !urlData) {
-      console.error('Sign URL error:', signErr);
-      continue;
-    }
-
-    // Determine type based on MIME
-    let type: 'image' | 'video' | 'file' = 'file';
-    if (attachment.file.type.startsWith('image/')) type = 'image';
-    else if (attachment.file.type.startsWith('video/')) type = 'video';
-
-    uploadedAttachments.push({
-      id: attachment.id,
-      url: urlData.signedUrl,
-      name: attachment.name || attachment.file.name,
-      type,
-      size: attachment.file.size,
-      description: attachment.description || undefined,
-      isSpoiler: attachment.isSpoiler,
+  const { data, error } = await supabase.storage
+    .from('message-attachments')
+    .upload(fileName, attachment.file, {
+      cacheControl: '3600',
+      upsert: false,
     });
+
+  if (error) {
+    // Previously this `continue`d, so the message was sent silently without
+    // the attachment and the user was never told. Fail loudly instead.
+    console.error('Upload error:', error);
+    throw new Error(`Échec de l'envoi de « ${attachment.name || attachment.file.name} »`);
   }
 
-  return uploadedAttachments;
+  const { data: urlData, error: signErr } = await supabase.storage
+    .from('message-attachments')
+    // Signed URLs were minted with a 1-year TTL and stored inside the message
+    // row, so a ban or a channel-permission change could not revoke access.
+    // 7 days keeps the flow working while staying revocable.
+    .createSignedUrl(data.path, 60 * 60 * 24 * 7);
+  if (signErr || !urlData) {
+    console.error('Sign URL error:', signErr);
+    throw new Error(`Échec de la génération du lien pour « ${attachment.name || attachment.file.name} »`);
+  }
+
+  // Determine type based on MIME
+  let type: 'image' | 'video' | 'file' = 'file';
+  if (attachment.file.type.startsWith('image/')) type = 'image';
+  else if (attachment.file.type.startsWith('video/')) type = 'video';
+
+  return {
+    id: attachment.id,
+    url: urlData.signedUrl,
+    name: attachment.name || attachment.file.name,
+    type,
+    size: attachment.file.size,
+    description: attachment.description || undefined,
+    isSpoiler: attachment.isSpoiler,
+  };
+}
+
+/** Cap on concurrent uploads, to avoid saturating a mobile connection. */
+const MAX_PARALLEL_UPLOADS = 3;
+
+/**
+ * Upload every attachment, with bounded concurrency.
+ *
+ * This used to `await` each file in a for-loop, so the total time was the SUM
+ * of every upload plus every signed-URL call: sending 5 photos took 5x as long
+ * as sending one. Uploads are now issued in parallel (bounded to 3 so we don't
+ * saturate the connection), turning that sum into a small fraction.
+ *
+ * Original ordering is preserved, and the first failure rejects the whole batch
+ * so the user is told rather than silently losing an attachment.
+ */
+async function uploadAttachments(
+  userId: string,
+  pendingAttachments: PendingAttachment[],
+): Promise<StoredAttachment[]> {
+  if (pendingAttachments.length === 0) return [];
+  if (pendingAttachments.length === 1) {
+    return [await uploadOne(userId, pendingAttachments[0])];
+  }
+
+  const results = new Array<StoredAttachment>(pendingAttachments.length);
+  let nextIndex = 0;
+
+  const worker = async () => {
+    while (nextIndex < pendingAttachments.length) {
+      const index = nextIndex++;
+      // `uploadOne` writes only into its own slot, so ordering is stable.
+      results[index] = await uploadOne(userId, pendingAttachments[index]);
+    }
+  };
+
+  const workers = Array.from(
+    { length: Math.min(MAX_PARALLEL_UPLOADS, pendingAttachments.length) },
+    () => worker(),
+  );
+
+  // Promise.all rejects on the first failure; the remaining workers keep
+  // running but their results are discarded, which is what we want.
+  await Promise.all(workers);
+
+  return results;
 }
 
 export function useSendMessage() {
@@ -495,17 +554,19 @@ export function useSendMessage() {
       content,
       attachments = [],
       replyToId,
+      externalAttachment,
     }: {
       channelId: string;
       content: string;
       attachments?: PendingAttachment[];
       replyToId?: string | null;
+      externalAttachment?: ExternalAttachment;
     }) => {
       if (!user) throw new Error('Not authenticated');
 
       // Validate - must have content or attachments
       const validated = messageSchema.parse({ content });
-      if (!validated.content.trim() && attachments.length === 0) {
+      if (!validated.content.trim() && attachments.length === 0 && !externalAttachment) {
         throw new Error('Message must have content or attachments');
       }
 
@@ -513,6 +574,18 @@ export function useSendMessage() {
       let uploadedAttachments: StoredAttachment[] = [];
       if (attachments.length > 0) {
         uploadedAttachments = await uploadAttachments(user.id, attachments);
+      }
+      if (externalAttachment) {
+        uploadedAttachments = [
+          ...uploadedAttachments,
+          {
+            id: crypto.randomUUID(),
+            url: externalAttachment.url,
+            name: externalAttachment.name,
+            type: externalAttachment.type,
+            size: 0,
+          },
+        ];
       }
 
       const insertPayload: any = {
@@ -592,15 +665,19 @@ export function useSendMessage() {
         repliedMessage,
       } as MessageWithAuthor;
     },
-    onMutate: async ({ channelId, content, attachments = [], replyToId }) => {
+    onMutate: async ({ channelId, content, attachments = [], replyToId, externalAttachment }) => {
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['messages', channelId] });
 
-      // Snapshot previous value
+      // Snapshot previous value.
+      // Defaults to [] rather than undefined: `getQueryData` returns undefined
+      // on a cold cache, and the old `if (context?.previousMessages)` guard
+      // then skipped the rollback entirely, leaving the optimistic message
+      // stuck in the list forever.
       const previousMessages = queryClient.getQueryData<MessageWithAuthor[]>([
         'messages',
         channelId,
-      ]);
+      ]) ?? [];
 
       // Create optimistic attachments
       const optimisticAttachments: StoredAttachment[] = attachments.map(a => ({
@@ -613,6 +690,15 @@ export function useSendMessage() {
         description: a.description || undefined,
         isSpoiler: a.isSpoiler,
       }));
+      if (externalAttachment) {
+        optimisticAttachments.push({
+          id: `temp-ext-${Date.now()}`,
+          url: externalAttachment.url,
+          name: externalAttachment.name,
+          type: externalAttachment.type,
+          size: 0,
+        });
+      }
 
       // Optimistic replied snapshot from cache
       let optimisticReplied: RepliedMessageSnapshot | null = null;
@@ -637,7 +723,7 @@ export function useSendMessage() {
 
       // Optimistically add the message
       const optimisticMessage: MessageWithAuthor = {
-        id: `temp-${Date.now()}`,
+        id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         content,
         created_at: new Date().toISOString(),
         edited_at: null,
@@ -745,7 +831,6 @@ export function useEditMessage() {
       console.error('Edit message error:', error);
     },
     onSuccess: () => {
-      toast.success('Message modifié');
     },
   });
 }
@@ -795,7 +880,6 @@ export function useDeleteMessage() {
       console.error('Delete message error:', error);
     },
     onSuccess: () => {
-      toast.success('Message supprimé');
     },
   });
 }

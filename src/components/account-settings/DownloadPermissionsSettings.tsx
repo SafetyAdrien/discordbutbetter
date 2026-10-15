@@ -102,7 +102,7 @@ export function DownloadPermissionsSettings() {
                     @{row.profile?.username}
                   </p>
                 </div>
-                <button
+                <button type="button"
                   onClick={() => removeMutation.mutate(row.id)}
                   disabled={removeMutation.isPending}
                   className="p-2 rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50"

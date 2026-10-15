@@ -95,7 +95,7 @@ export function ConnectionsSettings() {
                     <div className="text-[11px] text-muted-foreground/80 mt-0.5 truncate">{statBits.join(' · ')}</div>
                   )}
                 </div>
-                <button
+                <button type="button"
                   onClick={() => handleRemove(i)}
                   className="w-9 h-9 rounded-full flex items-center justify-center active:bg-destructive/10 text-destructive shrink-0"
                   aria-label="Supprimer"
@@ -109,7 +109,7 @@ export function ConnectionsSettings() {
       )}
 
       {!adding ? (
-        <button
+        <button type="button"
           onClick={() => {
             haptics.light();
             setAdding(true);
@@ -129,7 +129,7 @@ export function ConnectionsSettings() {
               {CONNECTION_PROVIDERS.map((provider) => {
                 const Icon = provider.icon;
                 return (
-                  <button
+                  <button type="button"
                     key={provider.id}
                     onClick={() => {
                       haptics.light();

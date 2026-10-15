@@ -10,11 +10,8 @@ import { useMediaPostReactions, useToggleMediaReaction } from '@/hooks/useMediaR
 import { useMediaComments } from '@/hooks/useMediaComments';
 import { MarkdownText } from '@/lib/markdown';
 import type { MediaPost } from '@/hooks/useMediaPosts';
-import { MediaDuelView } from './MediaDuelView';
-import { MediaDuelStatsBack } from './MediaDuelStatsBack';
 import { MediaPostActionsMenu } from './MediaPostActionsMenu';
 import { EditMediaPostModal } from './EditMediaPostModal';
-import { MediaPostStatsModal } from './MediaPostStatsModal';
 import { useHasChannelPermission } from '@/hooks/useUserChannelPermissions';
 
 interface Props {
@@ -78,8 +75,6 @@ export function MediaPostCard({ post, channelId, serverId = null, onOpenDetail, 
   const [saved, setSaved] = useState(() => readSaved().has(post.id));
   const [heartBurst, setHeartBurst] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [statsOpen, setStatsOpen] = useState(false);
-  const [flipped, setFlipped] = useState(false);
 
   const postIds = useMemo(() => [post.id], [post.id]);
   const { data: reactionsData = {} } = useMediaPostReactions(postIds);
@@ -157,18 +152,6 @@ export function MediaPostCard({ post, channelId, serverId = null, onOpenDetail, 
           </p>
           <p className="text-xs text-muted-foreground">{relTime(post.created_at)}</p>
         </div>
-        {post.is_duel && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => setFlipped(true)}
-            aria-label="Voir les stats du duel"
-            title="Statistiques du duel"
-          >
-            <BarChart3 className="w-4 h-4" />
-          </Button>
-        )}
         <MediaPostActionsMenu
           post={post}
           channelId={channelId}
@@ -177,15 +160,12 @@ export function MediaPostCard({ post, channelId, serverId = null, onOpenDetail, 
           canDelete={isAuthor || canManageMedia}
           onEdit={() => setEditOpen(true)}
           onReply={() => onReply?.(post)}
-          onShowStats={() => setStatsOpen(true)}
           onDeleted={onDeleted}
         />
       </header>
 
-      {/* Media (or Duel inline) */}
-      {post.is_duel ? (
-        <MediaDuelView post={post} />
-      ) : (
+      {/* Media */}
+      (
       <div
         className="relative bg-black select-none"
         style={{ aspectRatio: '4 / 5', maxHeight: '80vh' }}
@@ -194,7 +174,7 @@ export function MediaPostCard({ post, channelId, serverId = null, onOpenDetail, 
         onTouchEnd={onTouchEnd}
       >
         {!revealed && post.is_spoiler ? (
-          <button
+          <button type="button"
             onClick={(e) => { e.stopPropagation(); setRevealed(true); }}
             className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/80 backdrop-blur-xl text-foreground"
           >
@@ -213,7 +193,7 @@ export function MediaPostCard({ post, channelId, serverId = null, onOpenDetail, 
               loop
               playsInline
             />
-            <button
+            <button type="button"
               onClick={(e) => { e.stopPropagation(); setMuted((m) => !m); }}
               className="absolute bottom-3 right-3 w-9 h-9 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center"
               aria-label={muted ? 'Activer le son' : 'Couper le son'}
@@ -238,14 +218,14 @@ export function MediaPostCard({ post, channelId, serverId = null, onOpenDetail, 
 
         {items.length > 1 && revealed && (
           <>
-            <button
+            <button type="button"
               onClick={(e) => { e.stopPropagation(); setIdx((i) => (i - 1 + items.length) % items.length); }}
               className="hidden sm:flex absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/50 hover:bg-black/70 text-white items-center justify-center"
               aria-label="Précédent"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
-            <button
+            <button type="button"
               onClick={(e) => { e.stopPropagation(); setIdx((i) => (i + 1) % items.length); }}
               className="hidden sm:flex absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/50 hover:bg-black/70 text-white items-center justify-center"
               aria-label="Suivant"
@@ -266,11 +246,10 @@ export function MediaPostCard({ post, channelId, serverId = null, onOpenDetail, 
           </>
         )}
       </div>
-      )}
 
       {/* Actions pills */}
       <div className="flex items-center gap-2 px-3 py-2">
-        <button
+        <button type="button"
           onClick={() => toggleReaction.mutate({ postId: post.id, emoji: '❤️', currentReactions: reactions })}
           className={cn(
             'inline-flex items-center gap-1.5 pl-2 pr-3 py-1.5 rounded-full bg-muted hover:bg-muted/70 transition-colors',
@@ -285,7 +264,7 @@ export function MediaPostCard({ post, channelId, serverId = null, onOpenDetail, 
             {reactionCount}
           </span>
         </button>
-        <button
+        <button type="button"
           onClick={() => onOpenDetail(post)}
           className="inline-flex items-center gap-1.5 pl-2 pr-3 py-1.5 rounded-full bg-muted hover:bg-muted/70 transition-colors"
           aria-label="Commenter"
@@ -294,7 +273,7 @@ export function MediaPostCard({ post, channelId, serverId = null, onOpenDetail, 
           <span className="text-sm font-semibold tabular-nums">{comments.length}</span>
         </button>
         <div className="flex-1" />
-        <button
+        <button type="button"
           onClick={() => setSaved(toggleSaved(post.id))}
           className="p-2 hover:bg-muted rounded-full transition-colors"
           aria-label={saved ? 'Retirer des sauvegardés' : 'Sauvegarder'}
@@ -313,7 +292,7 @@ export function MediaPostCard({ post, channelId, serverId = null, onOpenDetail, 
                 <MarkdownText variant="chat" content={post.description} />
               </span>
               {descShort && (
-                <button onClick={() => setDescExpanded(true)} className="text-muted-foreground hover:underline ml-1">
+                <button type="button" onClick={() => setDescExpanded(true)} className="text-muted-foreground hover:underline ml-1">
                   voir plus
                 </button>
               )}
@@ -332,26 +311,19 @@ export function MediaPostCard({ post, channelId, serverId = null, onOpenDetail, 
             </div>
           ))}
           {comments.length > previewComments.length && (
-            <button onClick={() => onOpenDetail(post)} className="text-xs text-muted-foreground hover:underline">
+            <button type="button" onClick={() => onOpenDetail(post)} className="text-xs text-muted-foreground hover:underline">
               Voir les {comments.length} commentaires
             </button>
           )}
         </div>
       )}
 
-      <button
+      <button type="button"
         onClick={() => onOpenDetail(post)}
         className="mt-auto w-full text-left px-4 py-3 text-sm text-muted-foreground border-t border-border/40 hover:bg-muted/30 transition-colors"
       >
         Ajouter un commentaire…
       </button>
-    </div>
-  );
-
-  // ---- Back face (duel stats) ----
-  const BackFace = (
-    <div className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)] bg-[hsl(var(--surface-2))] rounded-2xl border border-border/40 shadow-[var(--shadow-elevation-1)] overflow-hidden">
-      <MediaDuelStatsBack post={post} onBack={() => setFlipped(false)} />
     </div>
   );
 
@@ -365,17 +337,14 @@ export function MediaPostCard({ post, channelId, serverId = null, onOpenDetail, 
         <div
           className="relative w-full [transform-style:preserve-3d]"
           style={{
-            transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
             transition: 'transform 600ms cubic-bezier(0.4, 0, 0.2, 1)',
           }}
         >
           {FrontFace}
-          {BackFace}
         </div>
       </div>
 
       {editOpen && <EditMediaPostModal post={post} channelId={channelId} onClose={() => setEditOpen(false)} />}
-      {statsOpen && <MediaPostStatsModal post={post} onClose={() => setStatsOpen(false)} />}
     </>
   );
 }

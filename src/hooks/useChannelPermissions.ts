@@ -79,7 +79,7 @@ export function useSetPermissionOverride() {
       );
       
       const newOverride: ChannelPermissionOverride = {
-        id: `temp-${Date.now()}`,
+        id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         channel_id: channelId,
         role_id: roleId,
         permission,

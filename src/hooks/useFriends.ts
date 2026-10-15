@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { useAuth } from '@/contexts/AuthContext';
@@ -25,6 +25,7 @@ export interface FriendWithProfile {
 export function useFriends() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   const query = useQuery({
     queryKey: ['friends', user?.id],
@@ -82,7 +83,7 @@ export function useFriends() {
     if (!user) return;
 
     const channel = supabase
-      .channel(`friendships:${user.id}`, { config: { private: true } })
+      .channel(`friendships:${user.id}-${instanceIdRef.current}`, { config: { private: true } })
       .on(
         'postgres_changes',
         {
@@ -176,7 +177,6 @@ export function useSendFriendRequest() {
       toast.error(error.message);
     },
     onSuccess: () => {
-      toast.success('Demande d\'ami envoyée !');
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['friends'] });
@@ -222,7 +222,6 @@ export function useAcceptFriendRequest() {
       toast.error('Erreur lors de l\'acceptation');
     },
     onSuccess: () => {
-      toast.success('Demande d\'ami acceptée !');
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['friends'] });
@@ -264,7 +263,6 @@ export function useDeclineFriendRequest() {
       toast.error('Erreur lors du refus');
     },
     onSuccess: () => {
-      toast.success('Demande refusée');
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['friends'] });
@@ -306,7 +304,6 @@ export function useRemoveFriend() {
       toast.error('Erreur lors de la suppression');
     },
     onSuccess: () => {
-      toast.success('Ami supprimé');
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['friends'] });

@@ -28,8 +28,11 @@ export function VoiceStatusBadge({ channelName, serverName, onDisconnect, connec
   return (
     <div
       className={cn(
-        "mx-2 px-2 py-1 bg-[hsl(var(--surface-2))] border border-border/40",
-        connectedToProfile ? "rounded-t-2xl rounded-b-none border-b-0" : "rounded-2xl"
+        // Stacked on the user panel and painted with the same `--input` token,
+        // so when you join a voice channel the bottom-left corner becomes one
+        // continuous lighter block instead of three different shades of grey.
+        "w-full px-2 py-1.5 bg-[hsl(var(--input))] border-t border-white/[0.06]",
+        connectedToProfile ? "border-b-0" : "rounded-2xl mx-2 mb-1 border"
       )}
       style={{ boxShadow: connectedToProfile ? undefined : 'var(--shadow-elevation-2)' }}
     >
@@ -49,7 +52,7 @@ export function VoiceStatusBadge({ channelName, serverName, onDisconnect, connec
           {/* Krisp / Noise suppression */}
           <Tooltip>
             <TooltipTrigger asChild>
-              <button
+              <button type="button"
                 onClick={() => setNoiseSuppression(krispActive ? 'off' : 'high')}
                 className={cn(
                   'w-6 h-6 rounded-full flex items-center justify-center transition-colors hover:bg-muted shrink-0',
@@ -86,7 +89,7 @@ export function VoiceStatusBadge({ channelName, serverName, onDisconnect, connec
           {/* Vidéo */}
           <Tooltip>
             <TooltipTrigger asChild>
-              <button
+              <button type="button"
                 onClick={() => toggleCamera()}
                 className={cn(
                   'w-full h-7 rounded-lg bg-[hsl(var(--surface-1))]/60 flex items-center justify-center transition-colors hover:bg-muted',
@@ -102,7 +105,7 @@ export function VoiceStatusBadge({ channelName, serverName, onDisconnect, connec
           {/* Partage d'écran */}
           <Tooltip>
             <TooltipTrigger asChild>
-              <button
+              <button type="button"
                 onClick={() => toggleScreenShare()}
                 className={cn(
                   'w-full h-7 rounded-lg bg-[hsl(var(--surface-1))]/60 flex items-center justify-center transition-colors hover:bg-muted',
@@ -118,7 +121,7 @@ export function VoiceStatusBadge({ channelName, serverName, onDisconnect, connec
           {/* Soundboard (désactivé) */}
           <Tooltip>
             <TooltipTrigger asChild>
-              <button
+              <button type="button"
                 disabled
                 className="w-full h-7 rounded-lg bg-[hsl(var(--surface-1))]/60 flex items-center justify-center opacity-40 cursor-not-allowed"
               >

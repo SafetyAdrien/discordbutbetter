@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { useAuth } from '@/contexts/AuthContext';
@@ -17,6 +17,7 @@ export interface ForumComment {
 
 export function useForumComments(postId: string | null) {
   const queryClient = useQueryClient();
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   const query = useQuery<ForumComment[]>({
     queryKey: ['forum-comments', postId],
@@ -35,7 +36,7 @@ export function useForumComments(postId: string | null) {
   useEffect(() => {
     if (!postId) return;
     const ch = supabase
-      .channel(`forum-comments:${postId}`)
+      .channel(`forum-comments:${postId}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'forum_post_comments', filter: `post_id=eq.${postId}` },
@@ -73,7 +74,7 @@ export function useCreateForumComment(postId: string) {
       await queryClient.cancelQueries({ queryKey: ['forum-comments', postId] });
       const previous = queryClient.getQueryData<ForumComment[]>(['forum-comments', postId]);
       const optimistic: ForumComment = {
-        id: `temp-${Date.now()}`,
+        id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         post_id: postId,
         author_id: user.id,
         content: content.trim(),

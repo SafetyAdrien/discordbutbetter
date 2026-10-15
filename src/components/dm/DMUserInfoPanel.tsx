@@ -7,9 +7,9 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { ChevronRight } from 'lucide-react';
 import { useMutualServers } from '@/hooks/useMutualServers';
 import { useUserNote } from '@/hooks/useUserNotes';
-import { format } from 'date-fns';
+import { format } from '@/lib/dateUtils';
 import { parseMarkdown, setMarkdownContext, getMarkdownContext } from '@/lib/markdown';
-import { fr } from 'date-fns/locale';
+import { fr } from '@/lib/dateUtils';
 import { StatusIndicator } from '@/components/ui/StatusIndicator';
 
 const NoteAddIcon = ({ className }: { className?: string }) => (
@@ -87,7 +87,7 @@ export function DMUserInfoPanel({
             <h3 className="text-lg font-semibold">{participant.display_name}</h3>
             <Tooltip>
               <TooltipTrigger asChild>
-                <button
+                <button type="button"
                   onClick={onOpenNotes}
                   className={cn(
                     "p-1 rounded hover:bg-muted/50",
@@ -142,7 +142,7 @@ export function DMUserInfoPanel({
             <div className="px-4 py-3">
               <Collapsible open={serversOpen} onOpenChange={setServersOpen}>
                 <CollapsibleTrigger asChild>
-                  <button className="w-full flex items-center justify-between py-2 px-3 rounded-xl bg-[hsl(var(--surface-2))] hover:bg-[hsl(var(--surface-3))] transition-colors">
+                  <button type="button" className="w-full flex items-center justify-between py-2 px-3 rounded-xl bg-[hsl(var(--surface-2))] hover:bg-[hsl(var(--surface-3))] transition-colors">
                     <span className="text-xs font-semibold text-muted-foreground uppercase">
                       Serveurs en commun — {mutualServers.length}
                     </span>
@@ -170,7 +170,7 @@ export function DMUserInfoPanel({
 
       {/* View Full Profile Link - Fixed at bottom */}
       <div className="border-t border-border px-4 py-3 shrink-0 flex items-center justify-center">
-        <button onClick={onViewFullProfile} className="text-sm cursor-pointer text-muted-foreground hover:text-foreground transition-colors">
+        <button type="button" onClick={onViewFullProfile} className="text-sm cursor-pointer text-muted-foreground hover:text-foreground transition-colors">
           Voir le profil complet
         </button>
       </div>

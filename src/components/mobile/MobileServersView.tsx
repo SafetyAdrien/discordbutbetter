@@ -10,9 +10,11 @@ import { useChannels } from '@/hooks/useChannels';
 
 import { MobileChannelListView } from './MobileChannelListView';
 import { MobileHomeView } from './MobileHomeView';
+import { MobileServerActionSheet } from './MobileServerActionSheet';
 import { Separator } from '@/components/ui/separator';
 import type { Server } from '@/types/app';
 import { MentionBadge } from '@/components/ui/MentionBadge';
+import { useLongPress } from '@/hooks/useLongPress';
 
 import {
   DndContext,
@@ -59,6 +61,7 @@ function SortableMobileServerIcon({
   dragActive,
   dropIndicator,
   onTap,
+  onLongPress,
 }: {
   server: Server;
   isActive: boolean;
@@ -69,6 +72,7 @@ function SortableMobileServerIcon({
   dragActive: boolean;
   dropIndicator: 'before' | 'after' | null;
   onTap: () => void;
+  onLongPress: () => void;
 }) {
   const {
     setNodeRef,
@@ -77,6 +81,13 @@ function SortableMobileServerIcon({
     attributes,
     listeners,
   } = useSortable({ id: server.id });
+
+  const longPress = useLongPress({ onLongPress });
+
+  // A real drag starting mid-press means the finger moved — cancel the pending long-press.
+  useEffect(() => {
+    if (isDragging) longPress.onTouchMove();
+  }, [isDragging]);
 
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -105,10 +116,26 @@ function SortableMobileServerIcon({
         )}
         style={{ transition: 'height 300ms' }}
       />
-      <button
+      <button type="button"
         {...attributes}
         {...listeners}
         onClick={onTap}
+        onTouchStart={(e) => {
+          listeners?.onTouchStart?.(e);
+          longPress.onTouchStart(e);
+        }}
+        onTouchMove={(e) => {
+          listeners?.onTouchMove?.(e);
+          longPress.onTouchMove(e);
+        }}
+        onTouchEnd={(e) => {
+          listeners?.onTouchEnd?.(e);
+          longPress.onTouchEnd();
+        }}
+        onTouchCancel={(e) => {
+          listeners?.onTouchCancel?.(e);
+          longPress.onTouchCancel();
+        }}
         className={cn(
           'relative flex items-center justify-center py-0.5 group',
           isDragging && 'opacity-30'
@@ -185,6 +212,7 @@ export function MobileServersView({
   const { totalMentionCount: totalDMMentions } = useDMMentionCounts();
   const [showDMs, setShowDMs] = useState(false);
   const [selectedServerId, setSelectedServerId] = useState<string | null>(activeServerId);
+  const [actionSheetServer, setActionSheetServer] = useState<Server | null>(null);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   const [dropPosition, setDropPosition] = useState<'before' | 'after'>('after');
@@ -351,7 +379,7 @@ export function MobileServersView({
             )}
             style={{ transition: 'height 300ms' }}
           />
-          <button
+          <button type="button"
             onClick={handleDMClick}
             className={cn(
               ICON_SIZE, 'relative flex items-center justify-center rounded-2xl transition-all',
@@ -404,6 +432,7 @@ export function MobileServersView({
                   dragActive={!!activeDragId}
                   dropIndicator={isOver ? dropPosition : null}
                   onTap={() => handleServerTap(server.id)}
+                  onLongPress={() => setActionSheetServer(server)}
                 />
               );
             })}
@@ -416,7 +445,7 @@ export function MobileServersView({
 
         {servers.length > 0 && <Separator className="w-8 my-1" />}
 
-        <button
+        <button type="button"
           onClick={onCreateClick}
           className={cn(ICON_SIZE, 'flex items-center justify-center rounded-2xl bg-surface-3 hover:bg-primary/20 hover:text-primary transition-colors text-muted-foreground')}
         >
@@ -449,7 +478,7 @@ export function MobileServersView({
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-center px-4">
             <p className="text-muted-foreground text-sm mb-4">Sélectionnez un serveur</p>
-            <button
+            <button type="button"
               onClick={onCreateClick}
               className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm"
             >
@@ -458,6 +487,17 @@ export function MobileServersView({
           </div>
         )}
       </div>
+
+      <MobileServerActionSheet
+        server={actionSheetServer}
+        open={!!actionSheetServer}
+        onOpenChange={(open) => !open && setActionSheetServer(null)}
+        onOpenSettings={() => {
+          if (!actionSheetServer) return;
+          handleServerTap(actionSheetServer.id);
+          onOpenSettings?.();
+        }}
+      />
     </div>
   );
 }

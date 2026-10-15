@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 export interface ServerNotification {
   id: string;
@@ -29,6 +29,7 @@ export interface ServerNotification {
 export function useNotifications() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   const query = useQuery({
     queryKey: ['notifications'],
@@ -70,7 +71,7 @@ export function useNotifications() {
     if (!user) return;
 
     const channel = supabase
-      .channel('notifications')
+      .channel(`notifications-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         {
@@ -163,7 +164,6 @@ export function useMarkAllNotificationsAsRead() {
       toast.error('Erreur lors du marquage');
     },
     onSuccess: () => {
-      toast.success('Toutes les notifications marquées comme lues');
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
@@ -217,7 +217,6 @@ export function useRespondToDeletionRequest() {
       return data;
     },
     onSuccess: (_, { accept }) => {
-      toast.success(accept ? 'Demande acceptée - Serveur supprimé' : 'Demande refusée');
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
       queryClient.invalidateQueries({ queryKey: ['servers'] });
     },

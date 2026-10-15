@@ -63,6 +63,8 @@ export function useDMMentionCounts() {
         .in('conversation_id', convIds)
         .gt('created_at', oldest)
         .neq('author_id', user.id)
+        // Deterministic order — see useChannelUnreadCounts for the rationale.
+        .order('created_at', { ascending: false })
         .limit(2000);
 
       const result: Record<string, number> = {};

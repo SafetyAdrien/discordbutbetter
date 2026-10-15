@@ -7,44 +7,47 @@ export function useUpdateCategory() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ categoryId, serverId, name }: { categoryId: string; serverId: string; name: string }) => {
+    mutationFn: async ({ categoryId, serverId, name, icon }: { categoryId: string; serverId: string; name: string; icon?: string | null }) => {
+      const updates: { name: string; icon?: string | null } = { name };
+      if (icon !== undefined) updates.icon = icon;
+
       const { error } = await supabase
         .from('categories')
-        .update({ name })
+        .update(updates)
         .eq('id', categoryId);
 
       if (error) throw error;
-      return { categoryId, serverId, name };
+      return { categoryId, serverId, name, icon };
     },
-    onMutate: async ({ categoryId, serverId, name }) => {
+    onMutate: async ({ categoryId, serverId, name, icon }) => {
       mutationLockRef.current = true;
       await queryClient.cancelQueries({ queryKey: ['servers'] });
       await queryClient.cancelQueries({ queryKey: ['channels', serverId] });
-      
+
       const previousServers = queryClient.getQueryData(['servers']);
       const previousChannels = queryClient.getQueryData<{ categories: CategoryWithChannels[]; orphanChannels: OrphanChannel[] }>(['channels', serverId]);
-      
+
       // Update servers cache
       queryClient.setQueryData(['servers'], (old: any) => {
         if (!old) return old;
         return old.map((server: any) => ({
           ...server,
           categories: server.categories?.map((cat: any) =>
-            cat.id === categoryId ? { ...cat, name } : cat
+            cat.id === categoryId ? { ...cat, name, ...(icon !== undefined ? { icon } : {}) } : cat
           ),
         }));
       });
-      
+
       // Update channels cache
       if (previousChannels) {
         queryClient.setQueryData(['channels', serverId], {
           ...previousChannels,
           categories: previousChannels.categories.map(cat =>
-            cat.id === categoryId ? { ...cat, name } : cat
+            cat.id === categoryId ? { ...cat, name, ...(icon !== undefined ? { icon } : {}) } : cat
           )
         });
       }
-      
+
       return { previousServers, previousChannels, serverId };
     },
     onError: (_err, { serverId }, context) => {
@@ -62,7 +65,6 @@ export function useUpdateCategory() {
       queryClient.invalidateQueries({ queryKey: ['channels', serverId] });
     },
     onSuccess: () => {
-      toast.success('Catégorie mise à jour');
     },
   });
 }

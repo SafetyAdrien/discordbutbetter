@@ -119,7 +119,6 @@ export function ShareCustomThemeDialog({ open, onOpenChange, theme }: ShareCusto
       toast.error("Échec de l'envoi", { description: error.message });
       return;
     }
-    toast.success(`Thème partagé dans ${rows.length} salon(s)`);
     setSelected(new Set());
     setNote('');
     onOpenChange(false);

@@ -12,7 +12,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { haptics } from '@/lib/haptics';
-import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -50,7 +49,6 @@ export function MobileConnectionsManager({ onBack }: Props) {
     haptics.medium();
     const next = current.filter((_, i) => i !== idx);
     save(next);
-    toast.success('Connexion supprimée');
   };
 
   return (
@@ -78,7 +76,7 @@ export function MobileConnectionsManager({ onBack }: Props) {
                     <div className="text-sm font-medium truncate">{formatConnectionDisplay(c)}</div>
                     <div className="text-[11px] text-muted-foreground">{p.label}</div>
                   </div>
-                  <button
+                  <button type="button"
                     onClick={() => handleRemove(i)}
                     className="w-9 h-9 rounded-full flex items-center justify-center active:bg-destructive/10 text-destructive"
                     aria-label="Supprimer"
@@ -93,7 +91,7 @@ export function MobileConnectionsManager({ onBack }: Props) {
 
         {/* Add new */}
         {!adding ? (
-          <button
+          <button type="button"
             onClick={() => {
               haptics.light();
               setAdding(true);
@@ -114,7 +112,7 @@ export function MobileConnectionsManager({ onBack }: Props) {
                 {CONNECTION_PROVIDERS.map(p => {
                   const Icon = p.icon;
                   return (
-                    <button
+                    <button type="button"
                       key={p.id}
                       onClick={() => {
                         haptics.light();

@@ -17,7 +17,6 @@ import { MessageCircle, MessageSquarePlus, Search, Star, UsersRound, X } from 'l
 import { cn } from '@/lib/utils';
 import { MentionBadge } from '@/components/ui/MentionBadge';
 import { haptics } from '@/lib/haptics';
-import { toast } from 'sonner';
 
 type FilterId = 'all' | 'unread' | 'groups' | 'favorites';
 
@@ -166,20 +165,10 @@ export function MobileDMHomeView({
 
   const handleArchive = (item: MobileDMListItemData) => {
     archived.add(item.conversationId);
-    toast.success('Conversation archivée', {
-      description: 'Elle est masquée localement.',
-      action: {
-        label: 'Annuler',
-        onClick: () => archived.remove(item.conversationId),
-      },
-    });
   };
 
   const handleToggleMute = (item: MobileDMListItemData) => {
     muted.toggle(item.conversationId);
-    toast.success(
-      item.isMuted ? 'Notifications réactivées' : 'Notifications coupées',
-    );
   };
 
   const handleMarkRead = (item: MobileDMListItemData) => {
@@ -256,7 +245,7 @@ export function MobileDMHomeView({
         {filters.map(({ id, label, icon: Icon, badge }) => {
           const active = filter === id;
           return (
-            <button
+            <button type="button"
               key={id}
               role="tab"
               aria-selected={active}
@@ -398,11 +387,9 @@ export function MobileDMHomeView({
         onMessage={() => actionItem && onConversationSelect(actionItem.conversationId)}
         onVoiceCall={() => {
           if (actionItem) onConversationSelect(actionItem.conversationId);
-          toast.message('Lance l\'appel depuis la conversation');
         }}
         onVideoCall={() => {
           if (actionItem) onConversationSelect(actionItem.conversationId);
-          toast.message('Lance l\'appel vidéo depuis la conversation');
         }}
         onToggleFavorite={() => {
           if (!actionItem) return;

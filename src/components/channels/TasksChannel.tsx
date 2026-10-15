@@ -72,7 +72,7 @@ export function TasksChannel({ channel, onToggleMembers, showMembers, hideHeader
         <div className="flex items-center gap-1 sm:gap-2 ml-auto flex-shrink-0">
           <div className="flex rounded-md border border-border overflow-hidden">
             {(['all', 'pending', 'completed'] as const).map((f) => (
-              <button
+              <button type="button"
                 key={f}
                 onClick={() => setFilter(f)}
                 className={cn(
@@ -151,7 +151,7 @@ export function TasksChannel({ channel, onToggleMembers, showMembers, hideHeader
                 )}
               >
                 <div className="flex items-start gap-3">
-                  <button
+                  <button type="button"
                     className={cn(
                       'mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors',
                       task.completed
@@ -200,7 +200,7 @@ export function TasksChannel({ channel, onToggleMembers, showMembers, hideHeader
 
       {/* Mobile FAB */}
       {canCreateTasks && (
-        <button
+        <button type="button"
           className="sm:hidden fixed bottom-[calc(72px+env(safe-area-inset-bottom,0px))] right-4 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:bg-primary/90 transition-colors z-10"
           aria-label="Nouvelle tâche"
         >

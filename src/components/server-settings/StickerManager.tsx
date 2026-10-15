@@ -99,7 +99,6 @@ export function StickerManager({ serverId }: StickerManagerProps) {
         file: fileForUpload,
         silent: true,
       });
-      toast.success(`${result.name} ajouté`);
     } catch (e: unknown) {
       toast.error(getErrorMessage(e) || "Erreur lors de l'ajout");
     }
@@ -174,7 +173,7 @@ export function StickerManager({ serverId }: StickerManagerProps) {
                     by {up.username || up.display_name}
                   </p>
                 )}
-                <button
+                <button type="button"
                   onClick={() => deleteSticker.mutate({ stickerId: sticker.id, serverId })}
                   className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1.5 rounded-full bg-background/80 hover:text-destructive transition-all"
                   aria-label="Delete sticker"

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserAvatarImage } from '@/components/ui/user-avatar-image';
 import {
@@ -14,7 +14,7 @@ import {
   BadgeCheck,
 } from 'lucide-react';
 import { MentionBadge } from '@/components/ui/MentionBadge';
-import { AccountSettingsModal } from '@/components/account-settings/AccountSettingsModal';
+import { Spinner } from '@/components/ui/spinner';
 import { MobileStatusSheet } from './profile/MobileStatusSheet';
 import { MobileEditProfileView } from './profile/MobileEditProfileView';
 import { MobileQRCodeView } from './profile/MobileQRCodeView';
@@ -30,7 +30,6 @@ import { cn } from '@/lib/utils';
 import { CustomStatusBubble } from '@/components/profile/CustomStatusBubble';
 import { InlineBadgeStrip } from '@/components/badges/InlineBadgeStrip';
 import { haptics } from '@/lib/haptics';
-import { toast } from 'sonner';
 import { uuidToSnowflake } from '@/lib/snowflake';
 import { MarkdownText } from '@/lib/markdown';
 import { useFriends } from '@/hooks/useFriends';
@@ -45,6 +44,10 @@ import {
   STAT_ENABLED_PROVIDERS,
   type ProfileConnection,
 } from '@/lib/connections';
+
+const AccountSettingsModal = lazy(() =>
+  import('@/components/account-settings/AccountSettingsModal').then((m) => ({ default: m.AccountSettingsModal }))
+);
 
 type Subpage =
   | null
@@ -106,7 +109,6 @@ export function MobileProfileView({
     haptics.light();
     await navigator.clipboard.writeText(profile.display_name);
     setCopied(true);
-    toast.success("Nom d'affichage copié");
     setTimeout(() => setCopied(false), 1500);
   };
 
@@ -115,7 +117,6 @@ export function MobileProfileView({
     haptics.light();
     await navigator.clipboard.writeText(profile.username);
     setCopiedUsername(true);
-    toast.success("Nom d'utilisateur copié");
     setTimeout(() => setCopiedUsername(false), 1500);
   };
 
@@ -157,7 +158,7 @@ export function MobileProfileView({
             />
           )}
 
-          <button
+          <button type="button"
             onClick={handleClose}
             className="absolute top-3 left-3 flex h-8 w-8 min-w-[2rem] max-w-[2rem] min-h-[2rem] max-h-[2rem] aspect-square shrink-0 items-center justify-center rounded-full bg-background/75 p-0 leading-none backdrop-blur-md active:bg-background/90 transition-colors overflow-hidden"
             aria-label="Fermer"
@@ -166,7 +167,7 @@ export function MobileProfileView({
           </button>
 
           <div className="absolute top-3 right-3 flex items-center gap-1.5">
-            <button
+            <button type="button"
               onClick={() => {
                 haptics.light();
                 setSubpage('edit-profile');
@@ -176,7 +177,7 @@ export function MobileProfileView({
             >
               <Pencil className="w-4 h-4 text-foreground" />
             </button>
-            <button
+            <button type="button"
               onClick={() => {
                 haptics.light();
                 setSubpage('notifications');
@@ -198,7 +199,7 @@ export function MobileProfileView({
                 />
               ) : null}
             </button>
-            <button
+            <button type="button"
               onClick={handleOpenSettings}
               className="flex h-8 w-8 min-w-[2rem] max-w-[2rem] min-h-[2rem] max-h-[2rem] aspect-square shrink-0 items-center justify-center rounded-full bg-background/75 p-0 leading-none backdrop-blur-md active:bg-background/90 transition-colors overflow-hidden"
               aria-label="Paramètres"
@@ -209,7 +210,7 @@ export function MobileProfileView({
 
           {/* Avatar + Custom status bubble (Desktop-style compact) */}
           <div className="px-4 -mt-12 relative z-10">
-            <button
+            <button type="button"
               onClick={() => {
                 haptics.light();
                 setShowStatusSheet(true);
@@ -269,7 +270,7 @@ export function MobileProfileView({
               )}
             </div>
             <div className="flex flex-col items-end shrink-0 gap-1">
-              <button
+              <button type="button"
                 onClick={handleCopyDisplayName}
                 className="w-7 h-7 rounded-full active:bg-muted/60 transition-colors flex items-center justify-center"
                 aria-label="Copier le nom d'affichage"
@@ -280,7 +281,7 @@ export function MobileProfileView({
                   <Copy className="w-3.5 h-3.5 text-muted-foreground/60" />
                 )}
               </button>
-              <button
+              <button type="button"
                 onClick={handleCopyUsername}
                 className="w-5 h-5 rounded-full active:bg-muted-muted/60 transition-colors flex items-center justify-center -mt-3"
                 aria-label="Copier le nom d'utilisateur"
@@ -296,7 +297,7 @@ export function MobileProfileView({
 
           {/* Stats */}
           <div className="mt-4 grid grid-cols-2 gap-2">
-            <button
+            <button type="button"
               onClick={() => {
                 haptics.light();
                 setSubpage('friends');
@@ -308,7 +309,7 @@ export function MobileProfileView({
                 {acceptedFriends > 1 ? 'Amis' : 'Ami'}
               </div>
             </button>
-            <button
+            <button type="button"
               onClick={() => {
                 haptics.light();
                 setSubpage('servers');
@@ -386,7 +387,11 @@ export function MobileProfileView({
         <div className="h-6" />
       </div>
 
-      {showSettings && <AccountSettingsModal onClose={() => setShowSettings(false)} initialTab={null} />}
+      {showSettings && (
+        <Suspense fallback={<Spinner />}>
+          <AccountSettingsModal onClose={() => setShowSettings(false)} initialTab={null} />
+        </Suspense>
+      )}
 
       <MobileStatusSheet open={showStatusSheet} onOpenChange={setShowStatusSheet} />
       <CustomStatusModal open={showCustomStatus} onOpenChange={setShowCustomStatus} />

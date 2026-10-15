@@ -90,7 +90,6 @@ export function RoleEditor({ role, serverId }: RoleEditorProps) {
 
       setIconUrl(publicUrl + '?t=' + Date.now());
       setEmojiInput('');
-      toast.success('Icône uploadée !');
     } catch (error) {
       console.error('Upload error:', error);
       toast.error('Erreur lors de l\'upload');

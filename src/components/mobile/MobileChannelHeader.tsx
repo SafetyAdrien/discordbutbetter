@@ -103,7 +103,7 @@ export function MobileChannelHeader({
       className="min-h-16 py-2 px-1.5 flex items-center gap-1 bg-[hsl(var(--surface-1))] flex-shrink-0 rounded-b-2xl"
       style={{ boxShadow: 'var(--shadow-elevation-1)' }}
     >
-      <button
+      <button type="button"
         onClick={onBack}
         aria-label="Retour"
         title="Retour"

@@ -20,6 +20,14 @@ export interface MediaPostItem {
 export interface MediaPost {
   id: string;
   channel_id: string;
+  /** IDs from public.forum_tags (Fluxer: max 5). */
+  applied_tags?: string[] | null;
+  // Forum parity: a media post is a forum post (Fluxer GUILD_MEDIA).
+  is_pinned: boolean;
+  is_locked: boolean;
+  archived: boolean;
+  comment_count: number;
+  last_activity_at: string;
   author_id: string;
   title: string;
   description: string;
@@ -31,8 +39,6 @@ export interface MediaPost {
   alt_text: string;
   is_spoiler: boolean;
   created_at: string;
-  is_duel?: boolean;
-  duel_expires_at?: string | null;
   items: MediaPostItem[];
   // Optimistic-only fields
   _isPending?: boolean;
@@ -42,6 +48,7 @@ export function useMediaPosts(channelId: string) {
   const queryClient = useQueryClient();
   const channelIdRef = useRef(channelId);
   channelIdRef.current = channelId;
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   const query = useQuery<MediaPost[]>({
     queryKey: ['media-posts', channelId],
@@ -109,7 +116,7 @@ export function useMediaPosts(channelId: string) {
     };
 
     const postsChannel = supabase
-      .channel(`media-posts-${channelId}`)
+      .channel(`media-posts-${channelId}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'media_posts' },
@@ -130,7 +137,7 @@ export function useMediaPosts(channelId: string) {
       .subscribe();
 
     const itemsChannel = supabase
-      .channel(`media-post-items-${channelId}`)
+      .channel(`media-post-items-${channelId}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'media_post_items' },
@@ -163,8 +170,8 @@ interface CreateMediaPostInput {
   title: string;
   description: string;
   isSpoiler: boolean;
-  isDuel?: boolean;
-  duelDurationHours?: number;
+  /** IDs from public.forum_tags (Fluxer: max 5). */
+  appliedTags?: string[];
 }
 
 export function useCreateMediaPost(channelId: string) {
@@ -189,7 +196,7 @@ export function useCreateMediaPost(channelId: string) {
           if (uploadError) throw uploadError;
           const { data: urlData, error: signErr } = await supabase.storage
             .from('message-attachments')
-            .createSignedUrl(filePath, 60 * 60 * 24 * 365);
+            .createSignedUrl(filePath, 60 * 60 * 24 * 7);
           if (signErr || !urlData) throw signErr ?? new Error('Sign URL failed');
           return {
             file,
@@ -202,10 +209,6 @@ export function useCreateMediaPost(channelId: string) {
       const first = uploaded[0];
 
       // 2. Insert media_posts (use first file as legacy fields for backward compat)
-      const isDuel = !!input.isDuel && uploaded.length === 2;
-      const duelExpiresAt = isDuel && input.duelDurationHours
-        ? new Date(Date.now() + input.duelDurationHours * 60 * 60 * 1000).toISOString()
-        : null;
       const postRow = {
         channel_id: channelId,
         author_id: userId,
@@ -217,8 +220,8 @@ export function useCreateMediaPost(channelId: string) {
         file_size: first.file.size,
         alt_text: input.altTexts?.[0] ?? '',
         is_spoiler: input.isSpoiler,
-        is_duel: isDuel,
-        duel_expires_at: duelExpiresAt,
+        // Forum preset: tags applied to this media post.
+        applied_tags: input.appliedTags ?? [],
       };
 
       const { data: post, error } = await (supabase
@@ -289,11 +292,13 @@ export function useCreateMediaPost(channelId: string) {
         file_size: items[0].file_size,
         alt_text: items[0].alt_text ?? '',
         is_spoiler: input.isSpoiler,
-        is_duel: !!input.isDuel && input.files.length === 2,
-        duel_expires_at: input.isDuel && input.duelDurationHours
-          ? new Date(Date.now() + input.duelDurationHours * 60 * 60 * 1000).toISOString()
-          : null,
+        is_pinned: false,
+        is_locked: false,
+        archived: false,
+        comment_count: 0,
         created_at: new Date().toISOString(),
+        last_activity_at: new Date().toISOString(),
+        applied_tags: input.appliedTags ?? [],
         items,
         _isPending: true,
       };

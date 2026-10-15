@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
  */
 export function useBirthdayGrantYears(userId?: string | null) {
   const qc = useQueryClient();
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   const query = useQuery({
     queryKey: ['birthday-grants', userId],
@@ -29,7 +30,7 @@ export function useBirthdayGrantYears(userId?: string | null) {
 
   useEffect(() => {
     const channel = supabase
-      .channel('user-badge-grants-rt')
+      .channel(`user-badge-grants-rt-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'user_badge_grants' },

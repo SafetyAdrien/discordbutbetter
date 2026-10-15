@@ -40,7 +40,7 @@ export function NewDMSheet({ onClose, onOpenDM }: NewDMSheetProps) {
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <h2 className="font-semibold text-base">Nouveau message</h2>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
+          <button type="button" onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
             <X className="w-5 h-5 text-muted-foreground" />
           </button>
         </div>
@@ -68,7 +68,7 @@ export function NewDMSheet({ onClose, onOpenDM }: NewDMSheetProps) {
           ) : (
             <div className="space-y-0.5">
               {filteredFriends.map(friend => (
-                <button
+                <button type="button"
                   key={friend.id}
                   onClick={() => handleSelectFriend(friend.profile.id)}
                   className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[hsl(var(--surface-3))] transition-colors text-left group"

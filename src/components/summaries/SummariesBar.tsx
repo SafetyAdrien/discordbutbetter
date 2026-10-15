@@ -51,7 +51,7 @@ export function SummariesBar({
         )}
       >
         {/* Left Section */}
-        <button
+        <button type="button"
           onClick={onToggleDropdown}
           className={cn(
             "flex items-center gap-2 hover:opacity-80 transition-opacity",

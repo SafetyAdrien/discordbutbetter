@@ -93,7 +93,6 @@ export function useVoiceUserSettings() {
       if (error) throw error;
     },
     onSuccess: (_, { muted }) => {
-      toast.success(muted ? 'Utilisateur muté par le serveur' : 'Mute serveur retiré');
       queryClient.invalidateQueries({ queryKey: ['voice-participants'] });
     },
     onError: () => {
@@ -120,7 +119,6 @@ export function useVoiceUserSettings() {
       if (error) throw error;
     },
     onSuccess: (_, { deafened }) => {
-      toast.success(deafened ? 'Utilisateur rendu sourd par le serveur' : 'Sourdine serveur retirée');
       queryClient.invalidateQueries({ queryKey: ['voice-participants'] });
     },
     onError: () => {

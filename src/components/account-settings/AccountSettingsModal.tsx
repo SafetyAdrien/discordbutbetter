@@ -26,7 +26,6 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { AccountSettings } from './AccountSettings';
@@ -126,7 +125,6 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
 
   const handleDeleteAccount = () => {
     if (deleteConfirmation === 'SUPPRIMER') {
-      toast.info('Fonctionnalité de suppression de compte non implémentée');
       setDeleteDialogOpen(false);
       setDeleteConfirmation('');
     }
@@ -178,7 +176,7 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
               const descriptor = IMPLEMENTED_TAB_DESCRIPTORS.find((t) => t.type === result.tab.type);
               const Icon = descriptor?.icon ?? Settings;
               return (
-                <button
+                <button type="button"
                   key={result.tab.type}
                   onClick={() => onSelect(result.tab.type as SettingsTab)}
                   className="w-full text-left px-3 py-1.5 rounded-[10px] hover:bg-muted transition-colors"
@@ -210,7 +208,7 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
                   const isActiveTab = activeTab === tab.type;
                   return (
                     <div key={tab.type}>
-                      <button
+                      <button type="button"
                         onClick={() => onSelect(tab.type)}
                         className={cn(
                           'w-full flex items-center gap-3 px-3 rounded-[10px] text-sm font-medium transition-all duration-300',
@@ -233,7 +231,7 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
                       {isActiveTab && !isMobile && activeSections.length > 0 && (
                         <div className="ml-[19px] pl-4 border-l border-border/40 mt-1 mb-1 space-y-0.5">
                           {activeSections.map((section) => (
-                            <button
+                            <button type="button"
                               key={section.id}
                               onClick={() => scrollToSettingsSection(contentRef.current, section.id)}
                               className={cn(
@@ -260,7 +258,7 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
               <h3 className={cn("text-xs font-semibold text-muted-foreground tracking-wider", caseClass('userSettings', casePrefs) === 'normal-case' ? 'uppercase' : caseClass('userSettings', casePrefs))}>Aide</h3>
             </div>
             <nav className="px-2 space-y-0.5">
-              <button
+              <button type="button"
                 onClick={() => onSelect('help-markdown')}
                 className={cn(
                   'w-full flex items-center gap-3 px-3 rounded-[10px] text-sm font-medium transition-all duration-300',
@@ -287,7 +285,7 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
 
       <div className="px-2 mt-6">
         <div className="h-px bg-border/50 mb-2 mx-2 rounded-full" />
-        <button onClick={handleSignOut} className="w-full flex items-center gap-3 px-3 py-1.5 rounded-[10px] text-sm font-medium text-destructive hover:bg-destructive/8 transition-all duration-200">
+        <button type="button" onClick={handleSignOut} className="w-full flex items-center gap-3 px-3 py-1.5 rounded-[10px] text-sm font-medium text-destructive hover:bg-destructive/8 transition-all duration-200">
           <div className="w-8 h-8 rounded-[10px] flex items-center justify-center bg-destructive/10">
             <LogOut className="w-4 h-4" />
           </div>
@@ -295,7 +293,7 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
         </button>
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
           <AlertDialogTrigger asChild>
-            <button className="w-full flex items-center gap-3 px-3 py-1.5 rounded-[10px] text-sm font-medium text-destructive/60 hover:bg-destructive/5 transition-all duration-200">
+            <button type="button" className="w-full flex items-center gap-3 px-3 py-1.5 rounded-[10px] text-sm font-medium text-destructive/60 hover:bg-destructive/5 transition-all duration-200">
               <div className="w-8 h-8 rounded-[10px] flex items-center justify-center bg-destructive/5">
                 <Trash2 className="w-4 h-4" />
               </div>
@@ -334,7 +332,7 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
         <SettingsDivider />
         <SettingsRow icon={<Pencil className="w-4 h-4 text-muted-foreground" />} label="Modifier le profil" onClick={() => selectTab('my_profile')} />
         <SettingsDivider />
-        <SettingsRow icon={<QrCode className="w-4 h-4 text-muted-foreground" />} label="Mon code QR" onClick={() => toast.info('Bientôt disponible')} />
+        <SettingsRow icon={<QrCode className="w-4 h-4 text-muted-foreground" />} label="Mon code QR" />
         <SettingsDivider />
         <SettingsRow icon={<Link2 className="w-4 h-4 text-muted-foreground" />} label="Connexions" onClick={() => selectTab('linked_accounts')} />
         <SettingsDivider />
@@ -342,7 +340,7 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
         <SettingsDivider />
         <SettingsRow icon={<AppWindow className="w-4 h-4 text-muted-foreground" />} label="Applications autorisées" onClick={() => selectTab('authorized_apps')} />
         <SettingsDivider />
-        <SettingsRow icon={<Sparkles className="w-4 h-4 text-muted-foreground" />} label="Boost & avantages" onClick={() => toast.info('Bientôt disponible')} />
+        <SettingsRow icon={<Sparkles className="w-4 h-4 text-muted-foreground" />} label="Boost & avantages" />
       </SettingsSection>
 
       <SettingsSection title="Préférences">
@@ -360,13 +358,13 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
       </SettingsSection>
 
       <SettingsSection title="Support">
-        <SettingsRow icon={<HelpCircle className="w-4 h-4 text-muted-foreground" />} label="Aide & FAQ" onClick={() => toast.info('Bientôt disponible')} />
+        <SettingsRow icon={<HelpCircle className="w-4 h-4 text-muted-foreground" />} label="Aide & FAQ" />
         <SettingsDivider />
         <SettingsRow icon={<Settings className="w-4 h-4 text-muted-foreground" />} label="Paramètres avancés" onClick={() => selectTab('account_security')} />
       </SettingsSection>
 
       <section className="mx-4 mt-6 rounded-[10px] bg-card border border-border/50 overflow-hidden">
-        <button
+        <button type="button"
           onClick={handleSignOut}
           className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-destructive active:bg-destructive/10 transition-colors"
         >
@@ -389,7 +387,7 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
         {activeTab === null ? (
           <>
             <div className="h-12 px-3 flex items-center gap-2 border-b border-border flex-shrink-0">
-              <button onClick={onClose} className="w-9 h-9 rounded-[10px] flex items-center justify-center active:bg-muted/60" aria-label="Fermer">
+              <button type="button" onClick={onClose} className="w-9 h-9 rounded-[10px] flex items-center justify-center active:bg-muted/60" aria-label="Fermer">
                 <X className="w-5 h-5" />
               </button>
               <h2 className="font-semibold text-base flex-1">Paramètres</h2>
@@ -401,13 +399,13 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
         ) : (
           <>
             <div className="h-14 px-3 flex items-center gap-2 bg-[hsl(var(--surface-1))] flex-shrink-0 rounded-b-2xl" style={{ boxShadow: 'var(--shadow-elevation-1)' }}>
-              <button onClick={() => setActiveTab(null)} className="p-1.5 rounded-[10px] hover:bg-muted">
+              <button type="button" onClick={() => setActiveTab(null)} className="p-1.5 rounded-[10px] hover:bg-muted">
                 <ChevronLeft className="w-5 h-5" />
               </button>
               <h1 className="font-semibold text-sm flex-1 truncate">
                 {findTabDescriptor(activeTab)?.label}
               </h1>
-              <button onClick={onClose} className="p-1.5 rounded-[10px] hover:bg-muted">
+              <button type="button" onClick={onClose} className="p-1.5 rounded-[10px] hover:bg-muted">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -448,7 +446,7 @@ export function AccountSettingsModal({ onClose, initialTab }: AccountSettingsMod
             <h1 className={cn('font-semibold truncate', isTablet ? 'text-base' : 'text-lg')}>
               {activeTab ? findTabDescriptor(activeTab)?.label : ''}
             </h1>
-            <button onClick={onClose} className="p-1.5 rounded-[10px] hover:bg-muted transition-all duration-200 shrink-0">
+            <button type="button" onClick={onClose} className="p-1.5 rounded-[10px] hover:bg-muted transition-all duration-200 shrink-0">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -496,11 +494,20 @@ function SettingsDivider() {
   return <div className="h-px bg-border/40 mx-4" />;
 }
 
-function SettingsRow({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
+function SettingsRow({ icon, label, onClick }: {
+  icon: React.ReactNode;
+  label: string;
+  /** Optional: rows for not-yet-implemented features render inert. */
+  onClick?: () => void;
+}) {
   return (
-    <button
+    <button type="button"
       onClick={onClick}
-      className="w-full flex items-center gap-3 px-4 py-2.5 active:bg-muted/40 transition-colors"
+      disabled={!onClick}
+      className={cn(
+        'w-full flex items-center gap-3 px-4 py-2.5 transition-colors',
+        onClick ? 'active:bg-muted/40 cursor-pointer' : 'opacity-50 cursor-not-allowed',
+      )}
     >
       <div className="w-9 h-9 rounded-[10px] flex items-center justify-center bg-muted/40">{icon}</div>
       <div className="flex-1 text-left text-sm font-medium">{label}</div>

@@ -113,7 +113,7 @@ export function MobileStatusSheet({ open, onOpenChange }: Props) {
           {/* Header */}
           <div className="px-4 pb-3 flex items-center justify-between shrink-0">
             <h2 className="font-semibold text-base">Définir mon statut</h2>
-            <button
+            <button type="button"
               onClick={() => onOpenChange(false)}
               className="w-8 h-8 rounded-full flex items-center justify-center active:bg-muted/60"
             >
@@ -144,7 +144,7 @@ export function MobileStatusSheet({ open, onOpenChange }: Props) {
               <div className="flex items-center gap-2 bg-muted/40 rounded-xl px-1 py-1">
                 <Popover open={emojiOpen} onOpenChange={setEmojiOpen}>
                   <PopoverTrigger asChild>
-                    <button
+                    <button type="button"
                       className="w-9 h-9 rounded-lg flex items-center justify-center active:bg-muted shrink-0"
                       aria-label="Choisir un émoji"
                     >
@@ -179,7 +179,7 @@ export function MobileStatusSheet({ open, onOpenChange }: Props) {
                   className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 h-9 px-2"
                 />
                 {hasCustomStatus && (
-                  <button
+                  <button type="button"
                     onClick={() => {
                       setStatusEmoji('');
                       setStatusText('');
@@ -194,7 +194,7 @@ export function MobileStatusSheet({ open, onOpenChange }: Props) {
               {/* Duration */}
               <Popover>
                 <PopoverTrigger asChild>
-                  <button className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-muted/40 active:bg-muted/60 text-sm">
+                  <button type="button" className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-muted/40 active:bg-muted/60 text-sm">
                     <span className="text-muted-foreground">Effacer après</span>
                     <span className="flex items-center gap-1 font-medium">
                       {DURATION_OPTIONS.find((o) => o.value === duration)?.label}
@@ -204,7 +204,7 @@ export function MobileStatusSheet({ open, onOpenChange }: Props) {
                 </PopoverTrigger>
                 <PopoverContent className="w-56 p-1" align="end">
                   {DURATION_OPTIONS.map((opt) => (
-                    <button
+                    <button type="button"
                       key={opt.value}
                       onClick={() => setDuration(opt.value)}
                       className={cn(
@@ -248,7 +248,7 @@ export function MobileStatusSheet({ open, onOpenChange }: Props) {
                 return (
                   <div key={opt.value}>
                     {idx > 0 && <div className="h-px bg-border/40 mx-4" />}
-                    <button
+                    <button type="button"
                       onClick={() => handleSetStatus(opt.value)}
                       disabled={isPending}
                       className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-muted/40 transition-colors disabled:opacity-50"
@@ -293,7 +293,7 @@ function EmojiPicker({
     <div className="flex flex-col">
       {/* Tabs */}
       <div className="flex gap-1 p-2 border-b border-border/50">
-        <button
+        <button type="button"
           onClick={() => onTabChange('basic')}
           className={cn(
             'flex-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
@@ -302,7 +302,7 @@ function EmojiPicker({
         >
           Basiques
         </button>
-        <button
+        <button type="button"
           onClick={() => onTabChange('servers')}
           className={cn(
             'flex-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
@@ -318,7 +318,7 @@ function EmojiPicker({
         {tab === 'basic' ? (
           <div className="grid grid-cols-8 gap-1">
             {BASIC_EMOJIS.map((e) => (
-              <button
+              <button type="button"
                 key={e}
                 onClick={() => onSelect(e)}
                 className="text-xl p-1.5 rounded-lg hover:bg-muted active:bg-muted/60 transition-colors"
@@ -370,7 +370,7 @@ function ServerEmojiSection({ serverId, onSelect }: { serverId: string; onSelect
       </p>
       <div className="grid grid-cols-8 gap-1">
         {emojis.slice(0, 24).map((emoji) => (
-          <button
+          <button type="button"
             key={emoji.id}
             onClick={() => onSelect(`:${emoji.name}:`)}
             className="aspect-square p-1 rounded-lg hover:bg-muted active:bg-muted/60 transition-colors"

@@ -43,7 +43,7 @@ export function SummariesDropdown({
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-border/30">
             <div className="flex items-center gap-2">
-              <button 
+              <button type="button" 
                 onClick={() => setShowLikedPanel(false)}
                 className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
               >
@@ -60,7 +60,7 @@ export function SummariesDropdown({
                 </Badge>
               )}
             </div>
-            <button 
+            <button type="button" 
               onClick={onClose}
               className="text-muted-foreground hover:text-foreground transition-colors p-1"
             >
@@ -73,7 +73,7 @@ export function SummariesDropdown({
             <ScrollArea className="max-h-96">
               <div className="py-2">
                 {likedSummaries.map((topic) => (
-                  <button
+                  <button type="button"
                     key={topic.id}
                     onClick={() => onSelectTopic(topic)}
                     className="w-full px-4 py-3 hover:bg-muted transition-colors text-left group"
@@ -95,7 +95,7 @@ export function SummariesDropdown({
                         </p>
                       </div>
                       <div className="flex flex-col gap-1 ml-3 flex-shrink-0">
-                        <button 
+                        <button type="button" 
                           onClick={(e) => {
                             e.stopPropagation();
                             onToggleLike?.(topic.id);
@@ -141,7 +141,7 @@ export function SummariesDropdown({
             </Badge>
           </div>
           <div className="flex items-center gap-1">
-            <button 
+            <button type="button" 
               onClick={() => setShowLikedPanel(true)}
               className={`p-1.5 rounded transition-colors relative ${
                 likedCount > 0 
@@ -157,7 +157,7 @@ export function SummariesDropdown({
                 </span>
               )}
             </button>
-            <button 
+            <button type="button" 
               onClick={onClose}
               className="text-muted-foreground hover:text-foreground transition-colors p-1"
             >
@@ -175,7 +175,7 @@ export function SummariesDropdown({
           <ScrollArea className="max-h-96">
             <div className="py-2">
               {summaries.map((topic) => (
-                <button
+                <button type="button"
                   key={topic.id}
                   onClick={() => onSelectTopic(topic)}
                   className="w-full px-4 py-3 hover:bg-muted transition-colors text-left group"
@@ -218,7 +218,7 @@ export function SummariesDropdown({
 
                     {/* Right: Like button */}
                     <div className="flex flex-col gap-1 ml-3 flex-shrink-0">
-                      <button 
+                      <button type="button" 
                         onClick={(e) => {
                           e.stopPropagation();
                           onToggleLike?.(topic.id);

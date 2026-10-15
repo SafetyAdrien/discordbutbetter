@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { Sheet, SheetContent, SheetClose } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -7,12 +7,16 @@ import { X, ChevronRight, Settings, Headphones, Video, UserPlus, Lock } from 'lu
 import { MemberList } from '@/components/layout/MemberList';
 import { ChannelSettingsModal } from '@/components/channel-settings/ChannelSettingsModal';
 import { CreateInviteModal } from '@/components/modals/CreateInviteModal';
-import { AccountSettingsModal } from '@/components/account-settings/AccountSettingsModal';
+import { Spinner } from '@/components/ui/spinner';
 import { copyToClipboard } from '@/lib/clipboard';
 import { uuidToSnowflake } from '@/lib/snowflake';
 import { toast } from 'sonner';
 import type { User } from '@/types/app';
 import type { MemberWithProfile } from '@/hooks/useMembers';
+
+const AccountSettingsModal = lazy(() =>
+  import('@/components/account-settings/AccountSettingsModal').then((m) => ({ default: m.AccountSettingsModal }))
+);
 
 interface Props {
   open: boolean;
@@ -51,7 +55,6 @@ export function VoiceChannelDetailsSheet({
     try {
       const snowflake = uuidToSnowflake(channel.id);
       await copyToClipboard(snowflake);
-      toast.success('ID copié');
     } catch {
       toast.error('Impossible de copier');
     }
@@ -209,7 +212,9 @@ export function VoiceChannelDetailsSheet({
         />
       )}
       {voiceSettingsOpen && (
-        <AccountSettingsModal onClose={() => setVoiceSettingsOpen(false)} />
+        <Suspense fallback={<Spinner />}>
+          <AccountSettingsModal onClose={() => setVoiceSettingsOpen(false)} />
+        </Suspense>
       )}
     </>
   );

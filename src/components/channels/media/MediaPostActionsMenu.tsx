@@ -38,7 +38,7 @@ interface Props {
   canDelete: boolean;
   onEdit: () => void;
   onReply: () => void;
-  onShowStats: () => void;
+  onShowStats?: () => void;
   onDeleted?: (postId: string) => void;
 }
 
@@ -58,7 +58,6 @@ export function MediaPostActionsMenu({
 
   const handleMarkRead = () => {
     markPostRead(post.id);
-    toast.success('Marqué comme lu');
   };
 
   const handleCopyId = () => {
@@ -77,7 +76,6 @@ export function MediaPostActionsMenu({
     if (!confirm('Supprimer ce post ?')) return;
     const { error } = await (supabase.from('media_posts') as any).delete().eq('id', post.id);
     if (error) { toast.error('Erreur lors de la suppression'); return; }
-    toast.success('Post supprimé');
     onDeleted?.(post.id);
   };
 
@@ -88,7 +86,7 @@ export function MediaPostActionsMenu({
       { id: 'copy-id', label: "Copier l'identifiant", icon: ClipboardCopy, onSelect: handleCopyId },
       { id: 'copy-link', label: 'Copier le lien', icon: LinkIcon, onSelect: handleCopyLink },
       { id: 'reply', label: 'Répondre', icon: Reply, onSelect: onReply },
-      { id: 'stats', label: 'Voir les stats', icon: BarChart3, onSelect: onShowStats },
+      ...(onShowStats ? [{ id: 'stats', label: 'Voir les stats', icon: BarChart3, onSelect: onShowStats } as const] : []),
       ...(canDelete ? [{ id: 'delete', label: 'Supprimer le post', icon: Trash2, onSelect: handleDelete, destructive: true }] : []),
     ];
     return (
@@ -126,9 +124,11 @@ export function MediaPostActionsMenu({
         <DropdownMenuItem onClick={onReply}>
           <Reply className="w-4 h-4 mr-2" /> Répondre
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={onShowStats}>
-          <BarChart3 className="w-4 h-4 mr-2" /> Voir les stats
-        </DropdownMenuItem>
+        {onShowStats && (
+          <DropdownMenuItem onClick={onShowStats}>
+            <BarChart3 className="w-4 h-4 mr-2" /> Voir les stats
+          </DropdownMenuItem>
+        )}
         {canDelete && (
           <>
             <DropdownMenuSeparator />

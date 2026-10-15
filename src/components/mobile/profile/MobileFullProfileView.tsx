@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { motion } from 'framer-motion';
 import { Settings, X, ExternalLink, Plus } from 'lucide-react';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { format } from '@/lib/dateUtils';
+import { fr } from '@/lib/dateUtils';
 import { UserAvatarImage } from '@/components/ui/user-avatar-image';
 import { useAuth } from '@/contexts/AuthContext';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
@@ -16,8 +16,12 @@ import {
   type ProfileConnection,
 } from '@/lib/connections';
 import { MobileConnectionsManager } from './MobileConnectionsManager';
-import { AccountSettingsModal } from '@/components/account-settings/AccountSettingsModal';
 import { StatusIndicator } from '@/components/ui/StatusIndicator';
+import { Spinner } from '@/components/ui/spinner';
+
+const AccountSettingsModal = lazy(() =>
+  import('@/components/account-settings/AccountSettingsModal').then((m) => ({ default: m.AccountSettingsModal }))
+);
 
 interface Props {
   onBack: () => void;
@@ -82,7 +86,7 @@ export function MobileFullProfileView({ onBack }: Props) {
             )}
 
             {/* Close button */}
-            <button
+            <button type="button"
               onClick={() => {
                 haptics.light();
                 onBack();
@@ -94,7 +98,7 @@ export function MobileFullProfileView({ onBack }: Props) {
             </button>
 
             {/* Settings (gear) button */}
-            <button
+            <button type="button"
               onClick={() => {
                 haptics.light();
                 setShowSettings(true);
@@ -192,7 +196,7 @@ export function MobileFullProfileView({ onBack }: Props) {
                 );
               })
             )}
-            <button
+            <button type="button"
               onClick={() => {
                 haptics.light();
                 setManageConnections(true);
@@ -211,7 +215,9 @@ export function MobileFullProfileView({ onBack }: Props) {
         </div>
 
         {showSettings && (
-          <AccountSettingsModal onClose={() => setShowSettings(false)} initialTab={null} />
+          <Suspense fallback={<Spinner />}>
+            <AccountSettingsModal onClose={() => setShowSettings(false)} initialTab={null} />
+          </Suspense>
         )}
 
         {manageConnections && (

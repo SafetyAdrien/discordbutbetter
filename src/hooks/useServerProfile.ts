@@ -85,7 +85,6 @@ export function useUpdateServerProfile() {
     onSuccess: (_, { serverId }) => {
       queryClient.invalidateQueries({ queryKey: ['server-profile', user?.id, serverId] });
       queryClient.invalidateQueries({ queryKey: ['members', serverId] });
-      toast.success('Profil serveur mis à jour');
     },
     onError: () => {
       toast.error('Erreur lors de la mise à jour du profil serveur');
@@ -110,7 +109,6 @@ export function useDeleteServerProfile() {
     onSuccess: (_, serverId) => {
       queryClient.invalidateQueries({ queryKey: ['server-profile', user?.id, serverId] });
       queryClient.invalidateQueries({ queryKey: ['members', serverId] });
-      toast.success('Profil serveur réinitialisé');
     },
   });
 }

@@ -13,7 +13,7 @@ export function KeyboardShortcutsModal({ onClose }: KeyboardShortcutsModalProps)
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border">
           <h2 className="text-lg font-semibold">Raccourcis clavier</h2>
-          <button
+          <button type="button"
             onClick={onClose}
             className="p-1 hover:bg-muted rounded-md transition-colors"
           >

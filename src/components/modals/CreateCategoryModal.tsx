@@ -9,6 +9,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Smile } from 'lucide-react';
+import { EmojiStickerPicker } from '@/components/chat/EmojiStickerPicker';
 import { useCreateCategory } from '@/hooks/useChannels';
 
 interface CreateCategoryModalProps {
@@ -18,6 +20,7 @@ interface CreateCategoryModalProps {
 
 export function CreateCategoryModal({ serverId, onClose }: CreateCategoryModalProps) {
   const [name, setName] = useState('');
+  const [icon, setIcon] = useState<string | null>(null);
   const createCategory = useCreateCategory();
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -25,7 +28,7 @@ export function CreateCategoryModal({ serverId, onClose }: CreateCategoryModalPr
     if (!name.trim()) return;
 
     createCategory.mutate(
-      { serverId, name: name.trim() },
+      { serverId, name: name.trim(), icon },
       { onSuccess: onClose }
     );
   };
@@ -45,13 +48,28 @@ export function CreateCategoryModal({ serverId, onClose }: CreateCategoryModalPr
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="name">Nom de la catégorie</Label>
-            <Input
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Nouvelle catégorie"
-              autoFocus
-            />
+            <div className="relative">
+              <EmojiStickerPicker
+                serverId={serverId}
+                onEmojiSelect={setIcon}
+                trigger={
+                  <button
+                    type="button"
+                    className="absolute left-2 top-1/2 -translate-y-1/2 flex items-center justify-center w-6 h-6 rounded hover:bg-[hsl(var(--surface-hover))] transition-colors text-base"
+                  >
+                    {icon || <Smile className="w-4 h-4 text-muted-foreground" />}
+                  </button>
+                }
+              />
+              <Input
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Nouvelle catégorie"
+                className="pl-10"
+                autoFocus
+              />
+            </div>
           </div>
 
           <DialogFooter>

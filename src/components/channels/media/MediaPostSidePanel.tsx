@@ -1,14 +1,16 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { ChevronLeft, ChevronRight, X, EyeOff, Brush, Heart, MessageCircle, BarChart3 } from 'lucide-react';
+import {
+  ChevronLeft, ChevronRight, X, EyeOff, Brush, Heart, MessageCircle,
+  Pin, Lock, Archive, ArchiveRestore,
+} from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { MediaComments } from './MediaComments';
-import { MediaDuelView } from './MediaDuelView';
+import { useUpdateMediaPost } from '@/hooks/useMediaModeration';
 import { CanvasLiveOverlay } from './CanvasLiveOverlay';
 import { MediaPostActionsMenu } from './MediaPostActionsMenu';
 import { EditMediaPostModal } from './EditMediaPostModal';
-import { MediaPostStatsModal } from './MediaPostStatsModal';
 import { useHasChannelPermission } from '@/hooks/useUserChannelPermissions';
 import { InfiniteZoomImage } from '@/components/channels/shared/InfiniteZoomImage';
 import { useAuth } from '@/contexts/AuthContext';
@@ -97,7 +99,6 @@ export function MediaPostSidePanel({ post, channelId, serverId = null, onClose, 
   }, [items.length, onClose]);
 
   const [editOpen, setEditOpen] = useState(false);
-  const [statsOpen, setStatsOpen] = useState(false);
 
   const postReactions = reactionsData[post.id] || [];
   const heartList = postReactions.filter((r) => r.emoji === '❤️');
@@ -109,6 +110,9 @@ export function MediaPostSidePanel({ post, channelId, serverId = null, onClose, 
 
   const isAuthor = user?.id === post.author_id;
   const canManageMedia = useHasChannelPermission(channelId, 'manage_media').data;
+  // Forum parity: moderators pin / lock / archive media posts like forum posts.
+  const updatePost = useUpdateMediaPost(channelId);
+  const canModerate = useHasChannelPermission(channelId, 'manage_forum_posts').data;
 
 
 
@@ -126,6 +130,38 @@ export function MediaPostSidePanel({ post, channelId, serverId = null, onClose, 
             {author?.display_name ?? 'Utilisateur'} · {new Date(post.created_at).toLocaleDateString('fr-FR')}
           </p>
         </div>
+        {canModerate && (
+          <>
+            <Button
+              variant="ghost" size="icon" className={cn('h-8 w-8', post.is_pinned && 'text-primary')}
+              onClick={() => updatePost.mutate({ postId: post.id, is_pinned: !post.is_pinned })}
+              aria-label={post.is_pinned ? 'Désépingler' : 'Épingler'}
+              title={post.is_pinned ? 'Désépingler' : 'Épingler'}
+            >
+              <Pin className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="ghost" size="icon" className={cn('h-8 w-8', post.is_locked && 'text-primary')}
+              onClick={() => updatePost.mutate({ postId: post.id, is_locked: !post.is_locked })}
+              aria-label={post.is_locked ? 'Déverrouiller' : 'Verrouiller'}
+              title={post.is_locked ? 'Déverrouiller' : 'Verrouiller'}
+            >
+              <Lock className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="ghost" size="icon" className={cn('h-8 w-8', post.archived && 'text-primary')}
+              onClick={() => {
+                const next = !post.archived;
+                updatePost.mutate({ postId: post.id, archived: next });
+                if (next) onClose();
+              }}
+              aria-label={post.archived ? 'Désarchiver' : 'Archiver'}
+              title={post.archived ? 'Désarchiver' : 'Archiver'}
+            >
+              {post.archived ? <ArchiveRestore className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
+            </Button>
+          </>
+        )}
         <MediaPostActionsMenu
           post={post}
           channelId={channelId}
@@ -133,7 +169,6 @@ export function MediaPostSidePanel({ post, channelId, serverId = null, onClose, 
           isAuthor={isAuthor}
           canDelete={isAuthor || canManageMedia}
           onEdit={() => setEditOpen(true)}
-          onShowStats={() => setStatsOpen(true)}
           onReply={() => onReply?.(post)}
           onDeleted={() => onClose()}
         />
@@ -144,15 +179,11 @@ export function MediaPostSidePanel({ post, channelId, serverId = null, onClose, 
         </Button>
       </div>
 
-      {/* Media area (top) — duel mode replaces single-media display */}
-      {post.is_duel ? (
-        <div className="bg-black overflow-hidden flex-shrink-0">
-          <MediaDuelView post={post} />
-        </div>
-      ) : (
+      {/* Media area (top) */}
+      {(
         <div ref={mediaBoxRef} className="relative bg-black flex items-center justify-center" style={{ height: '55%' }}>
           {!revealed && post.is_spoiler ? (
-            <button onClick={() => setRevealed(true)} className="flex flex-col items-center gap-3 text-white">
+            <button type="button" onClick={() => setRevealed(true)} className="flex flex-col items-center gap-3 text-white">
               <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center">
                 <EyeOff className="w-8 h-8" />
               </div>
@@ -177,7 +208,7 @@ export function MediaPostSidePanel({ post, channelId, serverId = null, onClose, 
           )}
 
           {revealed && isImage && !drawing && (
-            <button
+            <button type="button"
               onClick={() => setDrawing(true)}
               className="absolute top-2 right-2 z-20 w-9 h-9 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center"
               title="Annoter en direct"
@@ -188,13 +219,13 @@ export function MediaPostSidePanel({ post, channelId, serverId = null, onClose, 
 
           {items.length > 1 && revealed && (
             <>
-              <button
+              <button type="button"
                 onClick={() => setActiveIndex((i) => (i - 1 + items.length) % items.length)}
                 className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center z-10"
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
-              <button
+              <button type="button"
                 onClick={() => setActiveIndex((i) => (i + 1) % items.length)}
                 className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center z-10"
               >
@@ -212,7 +243,7 @@ export function MediaPostSidePanel({ post, channelId, serverId = null, onClose, 
       {items.length > 1 && (
         <div className="px-3 py-2 flex gap-1.5 overflow-x-auto border-b border-border flex-shrink-0">
           {items.map((it, idx) => (
-            <button
+            <button type="button"
               key={it.id}
               onClick={() => setActiveIndex(idx)}
               className={cn(
@@ -234,7 +265,7 @@ export function MediaPostSidePanel({ post, channelId, serverId = null, onClose, 
           <p className="text-sm text-muted-foreground whitespace-pre-wrap mb-2">{post.description}</p>
         )}
         <div className="flex items-center gap-2">
-          <button
+          <button type="button"
             onClick={() => handleToggleReaction('❤️')}
             className={cn(
               'h-8 px-3 rounded-full flex items-center gap-1.5 text-sm transition-colors',
@@ -248,15 +279,6 @@ export function MediaPostSidePanel({ post, channelId, serverId = null, onClose, 
             <MessageCircle className="w-4 h-4" />
             <span className="font-medium tabular-nums">{commentCount}</span>
           </div>
-          {post.is_duel && (
-            <button
-              onClick={() => setStatsOpen(true)}
-              className="h-8 px-3 rounded-full bg-muted hover:bg-muted/80 flex items-center gap-1.5 text-sm text-foreground"
-              title="Voir les stats du duel"
-            >
-              <BarChart3 className="w-4 h-4" />
-            </button>
-          )}
         </div>
       </div>
 
@@ -269,7 +291,6 @@ export function MediaPostSidePanel({ post, channelId, serverId = null, onClose, 
       </ScrollArea>
 
       {editOpen && <EditMediaPostModal post={post} channelId={channelId} onClose={() => setEditOpen(false)} />}
-      {statsOpen && <MediaPostStatsModal post={post} onClose={() => setStatsOpen(false)} />}
     </div>
   );
 }

@@ -8,8 +8,8 @@ import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Copy, Trash2, Link, Plus, Loader2, Clock, Users } from 'lucide-react';
 import { copyToClipboard } from '@/lib/clipboard';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { format } from '@/lib/dateUtils';
+import { fr } from '@/lib/dateUtils';
 
 interface InviteManagerProps {
   serverId: string;

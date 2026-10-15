@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Smartphone, Monitor, LogOut, MapPin, Clock, ShieldCheck } from 'lucide-react';
-import { toast } from 'sonner';
 
 export function SessionsSettings() {
   const [isLoading, setIsLoading] = useState(false);
@@ -11,7 +10,6 @@ export function SessionsSettings() {
     setIsLoading(true);
     // Simulated action
     setTimeout(() => {
-      toast.info('Déconnexion de tous les appareils sera disponible prochainement');
       setIsLoading(false);
     }, 1000);
   };

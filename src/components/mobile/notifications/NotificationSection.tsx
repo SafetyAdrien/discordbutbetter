@@ -16,7 +16,7 @@ export function NotificationSection({ label, count, defaultOpen = true, children
 
   return (
     <section>
-      <button
+      <button type="button"
         onClick={() => {
           haptics.light();
           setOpen((v) => !v);

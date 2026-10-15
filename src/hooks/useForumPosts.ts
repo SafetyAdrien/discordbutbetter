@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { useAuth } from '@/contexts/AuthContext';
@@ -8,6 +8,9 @@ import { toast } from 'sonner';
 export interface ForumPost {
   id: string;
   channel_id: string;
+  /** Ids from public.forum_tags (Fluxer: max 5). Null for legacy rows. */
+  applied_tags?: string[] | null;
+  archived?: boolean;
   server_id: string;
   author_id: string;
   title: string;
@@ -25,6 +28,7 @@ export interface ForumPost {
 
 export function useForumPosts(channelId: string) {
   const queryClient = useQueryClient();
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   const query = useQuery<ForumPost[]>({
     queryKey: ['forum-posts', channelId],
@@ -44,7 +48,7 @@ export function useForumPosts(channelId: string) {
   useEffect(() => {
     if (!channelId) return;
     const ch = supabase
-      .channel(`forum-posts:${channelId}`)
+      .channel(`forum-posts:${channelId}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'forum_posts', filter: `channel_id=eq.${channelId}` },
@@ -69,7 +73,7 @@ export function useCreateForumPost(channelId: string, serverId: string) {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async (input: { title: string; content: string; tags: string[] }) => {
+    mutationFn: async (input: { title: string; content: string; tags: string[]; appliedTags?: string[] }) => {
       if (!user) throw new Error('Not authenticated');
       const { data, error } = await (supabase.from('forum_posts' as any) as any)
         .insert({
@@ -79,6 +83,8 @@ export function useCreateForumPost(channelId: string, serverId: string) {
           title: input.title.trim(),
           content: input.content.trim() || null,
           tags: input.tags,
+          // Ids of public.forum_tags entities (Fluxer: max 5 per post).
+          applied_tags: input.appliedTags ?? [],
         })
         .select('*')
         .single();
@@ -99,6 +105,8 @@ export function useCreateForumPost(channelId: string, serverId: string) {
         title: input.title.trim(),
         content: input.content.trim() || null,
         tags: input.tags,
+        applied_tags: input.appliedTags ?? [],
+        archived: false,
         is_pinned: false,
         is_locked: false,
         comment_count: 0,
@@ -138,6 +146,61 @@ export function useDeleteForumPost(channelId: string) {
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['forum-posts', channelId] }),
     onError: (e: any) => toast.error(e?.message ?? 'Suppression impossible'),
+  });
+}
+
+/**
+ * Moderator actions on a post: pin, lock, archive.
+ *
+ * The `is_pinned` / `is_locked` columns and their RLS policies already existed,
+ * but nothing ever wrote them — the badges were read-only. Optimistic so the row
+ * responds immediately; RLS still has the final say on the write.
+ */
+export function useUpdateForumPost(channelId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      postId,
+      ...patch
+    }: {
+      postId: string;
+      is_pinned?: boolean;
+      is_locked?: boolean;
+      archived?: boolean;
+    }) => {
+      const { error } = await (supabase.from('forum_posts' as any) as any)
+        .update(patch)
+        .eq('id', postId);
+      if (error) throw error;
+      return patch;
+    },
+    onMutate: async (variables) => {
+      await queryClient.cancelQueries({ queryKey: ['forum-posts', channelId] });
+      const previous = queryClient.getQueryData<ForumPost[]>(['forum-posts', channelId]);
+      queryClient.setQueryData<ForumPost[]>(['forum-posts', channelId], (old) =>
+        (old ?? []).map((p) =>
+          p.id === variables.postId
+            ? {
+                ...p,
+                ...(variables.is_pinned !== undefined ? { is_pinned: variables.is_pinned } : {}),
+                ...(variables.is_locked !== undefined ? { is_locked: variables.is_locked } : {}),
+                ...(variables.archived !== undefined ? { archived: variables.archived } : {}),
+              }
+            : p,
+        ),
+      );
+      return { previous };
+    },
+    onError: (error: any, _variables, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['forum-posts', channelId], context.previous);
+      }
+      toast.error(error?.message ?? 'Action impossible');
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['forum-posts', channelId] });
+    },
   });
 }
 

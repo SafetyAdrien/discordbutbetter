@@ -121,7 +121,7 @@ export function VoicePiP({ onExpand }: VoicePiPProps) {
             </div>
           )}
         </div>
-        <button
+        <button type="button"
           onClick={(e) => {
             e.stopPropagation();
             onExpand?.();
@@ -136,7 +136,7 @@ export function VoicePiP({ onExpand }: VoicePiPProps) {
 
       {/* Controls */}
       <div className="px-2 pb-2 flex items-center justify-between gap-1">
-        <button
+        <button type="button"
           onClick={() => {
             haptics.light();
             toggleMute();
@@ -152,7 +152,7 @@ export function VoicePiP({ onExpand }: VoicePiPProps) {
         >
           {voiceState.isMuted ? <DiscordMicOff className="w-4 h-4" /> : <DiscordMic className="w-4 h-4" />}
         </button>
-        <button
+        <button type="button"
           onClick={() => {
             haptics.light();
             toggleDeafen();
@@ -168,7 +168,7 @@ export function VoicePiP({ onExpand }: VoicePiPProps) {
         >
           {voiceState.isDeafened ? <DiscordHeadphonesOff className="w-4 h-4" /> : <DiscordHeadphones className="w-4 h-4" />}
         </button>
-        <button
+        <button type="button"
           onClick={() => {
             haptics.medium();
             leaveChannel();

@@ -135,7 +135,6 @@ export function useVoiceState() {
         serverName,
       }));
       queryClient.invalidateQueries({ queryKey: ['voice-state'] });
-      toast.success(`Connecté à ${channelName}`);
     },
     onError: (_err, { channelId }) => {
       // Rollback optimistic update
@@ -161,7 +160,6 @@ export function useVoiceState() {
       setVoiceState(initialVoiceState);
       queryClient.invalidateQueries({ queryKey: ['voice-state'] });
       queryClient.invalidateQueries({ queryKey: ['voice-participants'] });
-      toast.success(`Déconnecté de ${prevChannelName}`);
     },
   });
 

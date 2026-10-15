@@ -28,8 +28,8 @@ import {
 import { cn } from '@/lib/utils';
 import { useGlobalSearch, SearchFilters as SearchFiltersType } from '@/hooks/useGlobalSearch';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { format } from '@/lib/dateUtils';
+import { fr } from '@/lib/dateUtils';
 import { MarkdownText, MarkdownProvider, MarkdownContext } from '@/lib/markdown';
 
 interface GlobalSearchModalProps {
@@ -79,7 +79,7 @@ function AutocompleteSuggestions({
     return (
       <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg overflow-hidden">
         {filteredMembers.map(member => (
-          <button
+          <button type="button"
             key={member.id}
             onClick={() => onSelect(member.username)}
             className="flex items-center gap-2 w-full px-3 py-2 hover:bg-muted transition-colors text-left"
@@ -108,7 +108,7 @@ function AutocompleteSuggestions({
     return (
       <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg overflow-hidden">
         {filteredChannels.map(channel => (
-          <button
+          <button type="button"
             key={channel.id}
             onClick={() => onSelect(channel.name)}
             className="flex items-center gap-2 w-full px-3 py-2 hover:bg-muted transition-colors text-left"
@@ -157,14 +157,14 @@ function AutocompleteSuggestions({
   if (type === 'boolean') {
     return (
       <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg overflow-hidden">
-        <button
+        <button type="button"
           onClick={() => onSelect('true')}
           className="flex items-center gap-2 w-full px-3 py-2 hover:bg-muted transition-colors text-left"
         >
           <Pin className="w-4 h-4 text-primary" />
           <span className="text-sm">Oui</span>
         </button>
-        <button
+        <button type="button"
           onClick={() => onSelect('false')}
           className="flex items-center gap-2 w-full px-3 py-2 hover:bg-muted transition-colors text-left"
         >
@@ -178,21 +178,21 @@ function AutocompleteSuggestions({
   if (type === 'authorType') {
     return (
       <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg overflow-hidden">
-        <button
+        <button type="button"
           onClick={() => onSelect('user')}
           className="flex items-center gap-2 w-full px-3 py-2 hover:bg-muted transition-colors text-left"
         >
           <User className="w-4 h-4 text-muted-foreground" />
           <span className="text-sm">Utilisateur</span>
         </button>
-        <button
+        <button type="button"
           onClick={() => onSelect('bot')}
           className="flex items-center gap-2 w-full px-3 py-2 hover:bg-muted transition-colors text-left"
         >
           <UserCircle className="w-4 h-4 text-muted-foreground" />
           <span className="text-sm">Bot</span>
         </button>
-        <button
+        <button type="button"
           onClick={() => onSelect('webhook')}
           className="flex items-center gap-2 w-full px-3 py-2 hover:bg-muted transition-colors text-left"
         >
@@ -236,7 +236,7 @@ function FilterTags({
         >
           <span className="font-medium">{tag.label}</span>
           <span>{tag.value}</span>
-          <button
+          <button type="button"
             onClick={() => onRemove(tag.key)}
             className="hover:bg-primary/20 rounded p-0.5"
           >
@@ -443,7 +443,7 @@ export function GlobalSearchModal({
                   {searchPrefixes.map(prefixConfig => {
                     const Icon = prefixConfig.icon;
                     return (
-                      <button
+                      <button type="button"
                         key={prefixConfig.prefix}
                         onClick={() => handlePrefixSelect(prefixConfig.prefix)}
                         className={cn(

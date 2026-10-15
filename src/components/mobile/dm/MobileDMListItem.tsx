@@ -5,8 +5,8 @@ import { cn } from '@/lib/utils';
 import { haptics } from '@/lib/haptics';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useLongPress } from '@/hooks/useLongPress';
-import { format, isToday, isYesterday, isThisWeek } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { format, isToday, isYesterday, isThisWeek } from '@/lib/dateUtils';
+import { fr } from '@/lib/dateUtils';
 import { StatusIndicator } from '@/components/ui/StatusIndicator';
 
 const statusColors: Record<string, string> = {

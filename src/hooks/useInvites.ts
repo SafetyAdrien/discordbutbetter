@@ -31,12 +31,13 @@ export function useServerInvites(serverId: string | null) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   useEffect(() => {
     if (!serverId) return;
 
     const channel = supabase
-      .channel(`invites-rt-${serverId}`, { config: { private: true } })
+      .channel(`invites-rt-${serverId}-${instanceIdRef.current}`, { config: { private: true } })
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'invites', filter: `server_id=eq.${serverId}` },
@@ -132,7 +133,7 @@ export function useCreateInvite() {
       const previousInvites = queryClient.getQueryData(['invites', serverId]);
       
       const tempInvite: Invite = {
-        id: `temp-${Date.now()}`,
+        id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         server_id: serverId,
         code: 'loading...',
         created_by: user.id,
@@ -160,7 +161,6 @@ export function useCreateInvite() {
       toast.error('Erreur lors de la création de l\'invitation');
     },
     onSuccess: () => {
-      toast.success('Invitation créée !');
     },
     onSettled: (_, __, { serverId }) => {
       queryClient.invalidateQueries({ queryKey: ['invites', serverId] });
@@ -198,7 +198,6 @@ export function useDeleteInvite() {
       toast.error('Erreur lors de la suppression');
     },
     onSuccess: () => {
-      toast.success('Invitation supprimée');
     },
     onSettled: (_, __, { serverId }) => {
       queryClient.invalidateQueries({ queryKey: ['invites', serverId] });
@@ -237,7 +236,6 @@ export function useJoinByInvite() {
       }
     },
     onSuccess: () => {
-      toast.success('Vous avez rejoint le serveur !');
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['servers'] });

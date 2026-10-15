@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -18,11 +18,12 @@ export interface Annotation {
 export function useMediaAnnotations(itemId: string | null) {
   const queryClient = useQueryClient();
   const key = ['media-annotations', itemId];
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   useEffect(() => {
     if (!itemId) return;
     const channel = supabase
-      .channel(`media-annot-${itemId}`)
+      .channel(`media-annot-${itemId}-${instanceIdRef.current}`)
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'media_post_annotations', filter: `item_id=eq.${itemId}` },
         () => { queryClient.invalidateQueries({ queryKey: key }); }

@@ -5,11 +5,14 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Volume2, VolumeX, RotateCcw, UserCircle } from 'lucide-react';
 import { DiscordMicOff as MicOff } from '@/components/icons/DiscordMicOff';
 import { DiscordHeadphonesOff as HeadphoneOff } from '@/components/icons/DiscordHeadphonesOff';
 import { useVoiceUserSettings } from '@/hooks/useVoiceUserSettings';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
+import { useLongPress } from '@/hooks/useLongPress';
 import { Slider } from '@/components/ui/slider';
 import { useState, useEffect } from 'react';
 
@@ -41,15 +44,21 @@ export function VoiceParticipantContextMenu({
   isLocal,
 }: VoiceParticipantContextMenuProps) {
   const { user } = useAuth();
+  const { isMobile } = useBreakpoint();
   const { getUserVolume, setUserVolume } = useVoiceUserSettings();
   const isOwnUser = isLocal ?? (user?.id === participantUserId);
   const currentVolume = getUserVolume(participantUserId);
   const [localVolume, setLocalVolume] = useState(currentVolume);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   // Keep local in sync if external volume changes between menu openings
   useEffect(() => {
     setLocalVolume(currentVolume);
   }, [currentVolume]);
+
+  const longPressHandlers = useLongPress({
+    onLongPress: () => setSheetOpen(true),
+  });
 
   const handleMuteUser = () => {
     setUserVolume.mutate({ targetUserId: participantUserId, volume: 0 });
@@ -75,6 +84,95 @@ export function VoiceParticipantContextMenu({
   const stopMenuClose = (e: React.SyntheticEvent) => {
     e.stopPropagation();
   };
+
+  const renderActions = (onAction?: () => void) => (
+    <>
+      {!isOwnUser && (
+        <>
+          {/* Volume Slider — non-Item wrapper to prevent menu auto-close on drag */}
+          <div
+            className="px-3 py-2 space-y-2"
+            onPointerDown={stopMenuClose}
+            onMouseDown={stopMenuClose}
+            onClick={stopMenuClose}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-foreground">Volume utilisateur</span>
+              <span className="text-xs text-muted-foreground">{localVolume}%</span>
+            </div>
+            <Slider
+              value={[localVolume]}
+              max={200}
+              step={5}
+              onValueChange={handleVolumeChange}
+              onValueCommit={handleVolumeCommit}
+              className="w-full"
+            />
+            {localVolume > 100 && (
+              <p className="text-[10px] text-warning">Volume amplifié au-delà de 100%</p>
+            )}
+          </div>
+          <div className="h-px bg-border my-1" />
+          <button type="button" onClick={() => { handleMuteUser(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
+            <VolumeX className="w-4 h-4 text-muted-foreground" />
+            {currentVolume === 0 ? 'Déjà muté' : 'Muter cet utilisateur'}
+          </button>
+          <button type="button" onClick={() => { handleResetVolume(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
+            <RotateCcw className="w-4 h-4 text-muted-foreground" />
+            Réinitialiser le volume
+          </button>
+
+          {/* Server-side moderation */}
+          {canModerate && (onServerMute || onServerDeafen) && (
+            <>
+              <div className="h-px bg-border my-1" />
+              {onServerMute && (
+                <button type="button" onClick={() => { onServerMute(!serverMuted); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
+                  <MicOff className="w-4 h-4 text-muted-foreground" />
+                  {serverMuted ? 'Réactiver le micro (serveur)' : 'Couper le micro (serveur)'}
+                </button>
+              )}
+              {onServerDeafen && (
+                <button type="button" onClick={() => { onServerDeafen(!serverDeafened); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
+                  <HeadphoneOff className="w-4 h-4 text-muted-foreground" />
+                  {serverDeafened ? 'Réactiver le son (serveur)' : 'Rendre sourd (serveur)'}
+                </button>
+              )}
+            </>
+          )}
+          <div className="h-px bg-border my-1" />
+        </>
+      )}
+      <button type="button" onClick={() => { onViewProfile(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
+        <UserCircle className="w-4 h-4 text-muted-foreground" />
+        Voir le profil
+      </button>
+    </>
+  );
+
+  if (isMobile) {
+    return (
+      <>
+        <div {...longPressHandlers} style={{ touchAction: 'manipulation' }}>
+          {children}
+        </div>
+        <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+          <SheetContent
+            side="bottom"
+            className="p-0 rounded-t-2xl border-t border-border bg-popover max-h-[85vh] overflow-y-auto"
+          >
+            <div className="mx-auto mt-2 mb-1 h-1 w-10 rounded-full bg-muted-foreground/30" />
+            <div className="px-4 py-2 border-b border-border/40">
+              <div className="text-sm font-semibold text-foreground">{participantName}</div>
+            </div>
+            <div className="p-2">
+              {renderActions(() => setSheetOpen(false))}
+            </div>
+          </SheetContent>
+        </Sheet>
+      </>
+    );
+  }
 
   return (
     <ContextMenu>

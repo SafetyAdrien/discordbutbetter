@@ -21,7 +21,7 @@ export function StatusIndicator({ status, className, bgClassName = 'bg-card' }: 
     >
       <svg viewBox="0 0 80 80" width="100%" height="100%" className="block">
         {safe === 'online' && (
-          <circle cx="40" cy="40" r="40" fill="#23A559" />
+          <circle cx="40" cy="40" r="40" fill="#23A55A" />
         )}
         {safe === 'idle' && (
           <>

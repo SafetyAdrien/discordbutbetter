@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils';
 import { FileIcon, Download, ExternalLink, Play, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { useImageGuardProps, useCanDownload } from '@/hooks/useDownloadPermissions';
+import { SvgAttachment } from './SvgAttachment';
 import { 
   Carousel, 
   CarouselContent, 
@@ -16,7 +17,7 @@ export interface StoredAttachment {
   id: string;
   url: string;
   name: string;
-  type: 'image' | 'video' | 'file';
+  type: 'image' | 'video' | 'file' | 'sticker' | 'gif';
   size: number;
   description?: string;
   isSpoiler?: boolean;
@@ -60,6 +61,8 @@ function ImageAttachment({
       <img
         src={attachment.url}
         alt={attachment.description || attachment.name}
+        loading="lazy"
+        decoding="async"
         draggable={guard.draggable as any}
         onContextMenu={guard.onContextMenu}
         className={cn(
@@ -99,7 +102,39 @@ function ImageAttachment({
   );
 }
 
-function ImageCarousel({ 
+function StickerOrGifAttachment({
+  attachment,
+  onOpenLightbox,
+}: {
+  attachment: StoredAttachment;
+  onOpenLightbox: () => void;
+}) {
+  const [loaded, setLoaded] = useState(false);
+  const isSticker = attachment.type === 'sticker';
+
+  return (
+    <div className={cn('relative', isSticker ? 'w-40 h-40' : 'max-w-[280px]')}>
+      <img
+        src={attachment.url}
+        alt={attachment.name}
+        loading="lazy"
+        decoding="async"
+        onClick={onOpenLightbox}
+        className={cn(
+          'rounded-lg cursor-pointer transition-opacity duration-150',
+          isSticker ? 'w-40 h-40 object-contain' : 'max-h-72 max-w-full object-contain',
+          !loaded && 'opacity-0'
+        )}
+        onLoad={() => setLoaded(true)}
+      />
+      {!loaded && (
+        <div className={cn('absolute inset-0 bg-muted rounded-lg animate-pulse', isSticker ? 'w-40 h-40' : '')} />
+      )}
+    </div>
+  );
+}
+
+function ImageCarousel({
   images, 
   onOpenLightbox,
   authorId,
@@ -194,7 +229,7 @@ function ImageCarousel({
       {/* Pagination dots */}
       <div className="flex justify-center gap-1.5 mt-2">
         {images.map((_, index) => (
-          <button
+          <button type="button"
             key={index}
             onClick={() => api?.scrollTo(index)}
             className={cn(
@@ -235,6 +270,7 @@ function VideoAttachment({ attachment, authorId }: { attachment: StoredAttachmen
       <video
         src={attachment.url}
         controls
+        preload="metadata"
         controlsList={guard.draggable === false ? 'nodownload' : undefined}
         className="rounded-lg max-h-80"
         onContextMenu={guard.onContextMenu}
@@ -296,9 +332,16 @@ export function MessageAttachments({ attachments, authorId }: MessageAttachments
   const showExternalLink = lightboxCanDownload && !lightboxLoading;
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
-  const images = attachments?.filter(a => a.type === 'image') ?? [];
+  const allImages = attachments?.filter(a => a.type === 'image') ?? [];
+  // SVG is stored as an image but must NOT be rendered through <img src>: it is
+  // an active document format. It gets its own sanitized, sandboxed renderer.
+  const isSvgAttachment = (a: StoredAttachment) =>
+    a.type === 'image' && /\.svg$/i.test(a.name);
+  const images = allImages.filter(a => !isSvgAttachment(a));
+  const svgAttachments = allImages.filter(isSvgAttachment);
   const videos = attachments?.filter(a => a.type === 'video') ?? [];
   const files = attachments?.filter(a => a.type === 'file') ?? [];
+  const stickersAndGifs = attachments?.filter(a => a.type === 'sticker' || a.type === 'gif') ?? [];
 
   const currentLightboxImage = lightboxIndex !== null ? images[lightboxIndex] : null;
 
@@ -330,10 +373,34 @@ export function MessageAttachments({ attachments, authorId }: MessageAttachments
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [lightboxIndex, images.length]);
 
+  // Preload the adjacent images so prev/next navigation feels instant.
+  useEffect(() => {
+    if (lightboxIndex === null) return;
+    [lightboxIndex - 1, lightboxIndex + 1].forEach((i) => {
+      if (i >= 0 && i < images.length) {
+        const img = new Image();
+        img.src = images[i].url;
+      }
+    });
+  }, [lightboxIndex, images]);
+
   if (!attachments || attachments.length === 0) return null;
 
   return (
     <div className="mt-2 space-y-2">
+      {/* Stickers & GIFs — rendered directly, no file chrome */}
+      {stickersAndGifs.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {stickersAndGifs.map((item) => (
+            <StickerOrGifAttachment
+              key={item.id}
+              attachment={item}
+              onOpenLightbox={() => window.open(item.url, '_blank', 'noopener,noreferrer')}
+            />
+          ))}
+        </div>
+      )}
+
       {/* Single image - no carousel */}
       {images.length === 1 && (
         <div className="max-w-md">
@@ -363,6 +430,23 @@ export function MessageAttachments({ attachments, authorId }: MessageAttachments
         </div>
       )}
 
+      {/* SVG attachments (sanitized + sandboxed) */}
+      {svgAttachments.length > 0 && (
+        <div className="space-y-2">
+          {svgAttachments.map(svg => (
+            <SvgAttachment
+              key={svg.id}
+              url={svg.url}
+              name={svg.name}
+              description={svg.description}
+              isSpoiler={svg.isSpoiler}
+              size={svg.size}
+              authorId={authorId}
+            />
+          ))}
+        </div>
+      )}
+
       {/* Files */}
       {files.length > 0 && (
         <div className="space-y-1">
@@ -376,7 +460,7 @@ export function MessageAttachments({ attachments, authorId }: MessageAttachments
       <Dialog open={lightboxIndex !== null} onOpenChange={() => setLightboxIndex(null)}>
         <DialogContent className="max-w-[90vw] max-h-[90vh] p-0 bg-transparent border-none">
           {/* Close button */}
-          <button
+          <button type="button"
             onClick={() => setLightboxIndex(null)}
             className="absolute top-4 right-4 p-2 bg-background/80 rounded-full z-50 hover:bg-background transition-colors"
           >
@@ -385,7 +469,7 @@ export function MessageAttachments({ attachments, authorId }: MessageAttachments
 
           {/* Previous button */}
           {images.length > 1 && lightboxIndex !== null && lightboxIndex > 0 && (
-            <button
+            <button type="button"
               onClick={goToPrevious}
               className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-background/80 rounded-full z-50 hover:bg-background transition-colors"
             >
@@ -395,7 +479,7 @@ export function MessageAttachments({ attachments, authorId }: MessageAttachments
 
           {/* Next button */}
           {images.length > 1 && lightboxIndex !== null && lightboxIndex < images.length - 1 && (
-            <button
+            <button type="button"
               onClick={goToNext}
               className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-background/80 rounded-full z-50 hover:bg-background transition-colors"
             >
@@ -408,6 +492,7 @@ export function MessageAttachments({ attachments, authorId }: MessageAttachments
             <img
               src={currentLightboxImage.url}
               alt={currentLightboxImage.description || currentLightboxImage.name}
+              decoding="async"
               draggable={lightboxGuard.draggable as any}
               onContextMenu={lightboxGuard.onContextMenu}
               className="max-w-full max-h-[85vh] object-contain rounded-lg mx-auto"

@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { useAuth } from '@/contexts/AuthContext';
@@ -7,13 +7,14 @@ import { useAuth } from '@/contexts/AuthContext';
 export function useEngagementStats(serverId: string) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   // Realtime subscription for messages INSERT
   useEffect(() => {
     if (!serverId) return;
 
     const channel = supabase
-      .channel(`engagement-stats-${serverId}`)
+      .channel(`engagement-stats-${serverId}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages' },

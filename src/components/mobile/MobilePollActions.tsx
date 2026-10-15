@@ -45,7 +45,7 @@ export function MobilePollActions({
         {onAddReaction && (
           <div className="flex items-center justify-center gap-2 px-4 pt-3 pb-2">
             {QUICK_REACTIONS.map((emoji) => (
-              <button
+              <button type="button"
                 key={emoji}
                 onClick={() => handleAction(() => onAddReaction(emoji))}
                 className="w-11 h-11 flex items-center justify-center text-2xl rounded-full hover:bg-muted active:scale-90 transition-all"
@@ -98,7 +98,7 @@ function ActionButton({
   destructive?: boolean;
 }) {
   return (
-    <button
+    <button type="button"
       onClick={onClick}
       className={cn(
         'w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors',

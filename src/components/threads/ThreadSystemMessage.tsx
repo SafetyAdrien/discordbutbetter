@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
 import { Thread } from '@/types/thread';
 import { ChevronRight, Pencil, Trash2 } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { formatDistanceToNow } from '@/lib/dateUtils';
+import { fr } from '@/lib/dateUtils';
 import StreamlineThreads from '@/components/icons/StreamlineThreads';
 import { ContextMenuItem } from '@/components/ui/context-menu';
 import { UniversalMessageContextMenu } from '@/components/chat/UniversalMessageContextMenu';
 import { copyToClipboard } from '@/lib/clipboard';
 import { uuidToSnowflake } from '@/lib/snowflake';
-import { toast } from 'sonner';
 
 import {
   Dialog,
@@ -71,7 +70,7 @@ export function ThreadSystemMessage({
   };
 
   const embedContent = (
-    <button
+    <button type="button"
       onClick={onClick}
       className="group/thread flex items-start gap-2 w-fit max-w-full text-left py-1.5 px-2 -mx-2 rounded-lg transition-colors bg-[hsl(var(--surface-3)/0.4)] hover:bg-[hsl(var(--surface-3)/0.7)]"
     >
@@ -109,11 +108,9 @@ export function ThreadSystemMessage({
 
   const handleCopyId = () => {
     copyToClipboard(uuidToSnowflake(thread.id));
-    toast.success('ID copié');
   };
   const handleCopyLink = () => {
     copyToClipboard(`${window.location.origin}/thread/${thread.id}`);
-    toast.success('Lien copié');
   };
 
   return (

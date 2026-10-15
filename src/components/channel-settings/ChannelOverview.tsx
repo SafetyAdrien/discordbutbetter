@@ -290,7 +290,7 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
               )}
             </div>
             {iconUrl && canHaveCustomIcon && (
-              <button
+              <button type="button"
                 onClick={handleRemoveIcon}
                 className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-destructive/10 transition-colors"
                 title="Retirer l'icône"

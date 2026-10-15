@@ -22,12 +22,13 @@ export function useChannelDetails(channelId: string | null) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   useEffect(() => {
     if (!channelId) return;
 
     const channel = supabase
-      .channel(`channel-details-rt-${channelId}`)
+      .channel(`channel-details-rt-${channelId}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'channels', filter: `id=eq.${channelId}` },
@@ -165,7 +166,6 @@ export function useUpdateChannel() {
       // causing a refetch flicker on the originating tab.
     },
     onSuccess: () => {
-      toast.success('Salon mis à jour');
     },
   });
 }

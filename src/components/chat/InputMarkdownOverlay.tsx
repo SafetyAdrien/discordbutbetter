@@ -90,7 +90,10 @@ const lineStyles: Record<OverlayLine['type'], string> = {
 
 // All types use identical metrics - no exceptions
 export const OVERLAY_FONT_SIZE = '0.875rem';
-export const OVERLAY_LINE_HEIGHT = '1.25rem';
+// 24px, Discord's composer line-height (.base_b88801). Every consumer scales
+// from this constant (MarkdownLiveTextarea computes `rows * lineHeight`), so
+// the bio editors follow automatically instead of drifting.
+export const OVERLAY_LINE_HEIGHT = '1.5rem';
 export const INPUT_FONT_FAMILY = '"gg sans", "Noto Sans", Helvetica, sans-serif';
 
 export function hasInlineMarkdown(content: string): boolean {

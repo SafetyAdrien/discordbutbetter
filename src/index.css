@@ -211,79 +211,90 @@
      DARK THEME — Material You dark surfaces
      =================================================== */
   .dark {
-    --background: 225 18% 11%;
-    --foreground: 220 10% 93%;
-
-    --card: 225 20% 15%;
-    --card-foreground: 220 10% 93%;
-
-    --popover: 225 18% 17%;
-    --popover-foreground: 220 10% 93%;
-
-    --toolbar: 225 16% 20%;
-
-    --primary: 225 85% 58%;
+    --background: 222.86 6.67% 20.59%;
+    --foreground: 210 9.09% 87.06%;
+    --card: 220 6.52% 18.04%;
+    --card-foreground: 210 9.09% 87.06%;
+    --popover: 220 8.11% 7.25%;
+    --popover-foreground: 210 9.09% 87.06%;
+    --toolbar: 220 6.52% 18.04%;
+    --primary: 234.94 85.56% 64.71%;
     --primary-foreground: 0 0% 100%;
-
-    --secondary: 270 55% 58%;
-    --secondary-foreground: 220 10% 93%;
-
-    --muted: 225 14% 20%;
-    --muted-foreground: 220 10% 60%;
-
-    --accent: 186 70% 42%;
-    --accent-foreground: 220 10% 93%;
-
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 220 10% 93%;
+    --secondary: 228 6.02% 32.55%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 220 6.52% 18.04%;
+    --muted-foreground: 213.75 8.08% 61.18%;
+    --accent: 234.94 85.56% 64.71%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 358.66 87.32% 59.80%;
+    --destructive-foreground: 0 0% 100%;
 
     --alert-note: 212 92% 62%;
     --alert-tip: 142 62% 48%;
     --alert-important: 268 75% 68%;
     --alert-warning: 38 92% 52%;
     --alert-caution: 0 78% 60%;
-
-    --border: 225 14% 22%;
-    --input: 225 20% 18%;
-    --ring: 225 85% 58%;
-
-    --surface-server-list: 225 22% 6%;
-    --surface-1: 225 20% 9%;
-    --surface-2: 225 18% 14%;
-    --surface-3: 225 16% 20%;
-    --surface-elevated: 225 18% 17%;
-    --surface-header: 225 22% 6%;
-    --surface-hover: 225 14% 24%;
+    --border: 225 5.97% 26.27%;
+    --input: 218.18 7.91% 27.25%;
+    --ring: 234.94 85.56% 64.71%;
+    --surface-server-list: 225 6.25% 12.55%;
+    --surface-1: 220 6.52% 18.04%;
+    --surface-2: 222.86 6.67% 20.59%;
+    --surface-3: 220 6.52% 18.04%;
+    --surface-elevated: 220 8.11% 7.25%;
+    --surface-header: 222.86 6.67% 20.59%;
+    --surface-hover: 225 5.97% 26.27%;
 
     --shadow-elevation-1: 0 1px 3px 0 hsl(0 0% 0% / 0.15), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
     --shadow-elevation-2: 0 4px 12px -2px hsl(0 0% 0% / 0.2), 0 2px 6px -2px hsl(0 0% 0% / 0.1);
     --shadow-elevation-3: 0 12px 32px -4px hsl(0 0% 0% / 0.3), 0 4px 12px -4px hsl(0 0% 0% / 0.15);
-
-    --online: 142 76% 46%;
-    --idle: 38 92% 50%;
-    --dnd: 0 72% 51%;
-    --offline: 220 12% 42%;
-    --voice-active: 142 76% 46%;
-    --poll-background: 228 20% 15%;
-
-    --gradient-primary: linear-gradient(135deg, hsl(186 100% 50%), hsl(270 55% 58%));
-    --gradient-glow: linear-gradient(135deg, hsl(186 100% 50% / 0.3), hsl(270 55% 58% / 0.3));
-    --gradient-surface: linear-gradient(180deg, hsl(220 16% 14%), hsl(220 18% 10%));
+    --online: 145.38 65% 39.22%;
+    --idle: 40.42 86.36% 56.86%;
+    --dnd: 358.66 87.32% 59.80%;
+    --offline: 222.86 5.83% 52.94%;
+    --voice-active: 145.38 65% 39.22%;
+    --poll-background: 225 5.97% 26.27%;
+    --gradient-primary: linear-gradient(135deg, hsl(235 86% 65%), hsl(258 68% 58%));
+    --gradient-glow: linear-gradient(135deg, hsl(235 86% 65% / 0.3), hsl(258 68% 58% / 0.3));
+    --gradient-surface: linear-gradient(180deg, hsl(223 7% 21%), hsl(225 6% 13%));
 
     --shadow-glow: 0 0 20px hsl(186 100% 50% / 0.3);
     --shadow-glow-lg: 0 0 40px hsl(186 100% 50% / 0.4);
     --shadow-card: 0 4px 20px hsl(0 0% 0% / 0.3);
-
-    --sidebar-background: 225 22% 6%;
-    --sidebar-foreground: 220 10% 93%;
-    --sidebar-primary: 225 85% 58%;
+    --sidebar-background: 225 6.25% 12.55%;
+    --sidebar-foreground: 220 13.04% 95.49%;
+    --sidebar-primary: 234.94 85.56% 64.71%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 225 16% 20%;
-    --sidebar-accent-foreground: 220 10% 93%;
-    --sidebar-border: 225 14% 16%;
-    --sidebar-ring: 225 85% 58%;
+    --sidebar-accent: 220 6.52% 18.04%;
+    --sidebar-accent-foreground: 210 9.09% 87.06%;
+    --sidebar-border: 225 5.97% 26.27%;
+    --sidebar-ring: 234.94 85.56% 64.71%;
+    --user-panel: 218.18 7.91% 27.25%;
 
-    --user-panel: 225 22% 6%;
+    /* --- tokens open-design design-system-discord --- */
+    --primary-hover: 235 51% 52%;   /* --accent-hover #4752c4 */
+    --border-subtle: 225 6% 26%;   /* --border-subtle #3f4147 */
+    --divider: 0 0% 100%;          /* --border rgba(255,255,255,.06) */
+    --mention-text: 235 86% 89%;   /* #c9cdfb */
+    --text-link: 200 100% 49%;     /* --text-link #00a8fc */
+    --streaming: 262 47% 40%;      /* --status-streaming #593695 */
+    --motion-fast: 80ms;
+    --motion-base: 200ms;
+    --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+    --radius-input: 4px;
+    --radius-card: 8px;
+    --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
+
+
+    --primary-hover: 234.72 51.44% 52.35%;  /* #4752c4 */
+    --text-link: 200 100% 49.41%;           /* #00a8fc */
+    --streaming: 262.11 46.8% 39.8%;        /* #593695 */
+    --mention-text: 235.2 86.21% 88.63%;    /* #c9cdfb */
+    --divider: 0 0% 100%;                   /* rgba(255,255,255,.06) */
+    --motion-fast: 80ms;  --motion-base: 200ms;
+    --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+    --radius-input: 4px;  --radius-card: 8px;  --radius-pill: 9999px;
+
   }
 
   /* ===================================================
@@ -1013,6 +1024,42 @@
 
   button, a, input, select, textarea {
     touch-action: manipulation;
+  }
+}
+
+/*
+ * Touch drag & drop.
+ *
+ * Rows that expose a drag handle must opt out of the browser's pan gesture,
+ * otherwise the first scroll attempt fires `touchcancel` and aborts the drag
+ * mid-gesture. `.dnd-touch-handle` is applied to the handle itself; the
+ * `.dnd-item-dragging` class is set on the dragged row while it is held.
+ */
+.dnd-touch-handle {
+  touch-action: none !important;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  cursor: grab;
+}
+
+.dnd-touch-handle:active {
+  cursor: grabbing;
+}
+
+/* Suppress text selection and native callouts anywhere a drag is active. */
+.dnd-touch-active,
+.dnd-touch-active * {
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  -webkit-touch-callout: none !important;
+}
+
+/* Respect reduced-motion for the reorder transitions. */
+@media (prefers-reduced-motion: reduce) {
+  .dnd-item,
+  .dnd-drop-indicator-line {
+    transition: none !important;
   }
 }
 

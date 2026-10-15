@@ -62,7 +62,6 @@ export const useFollowThread = () => {
       toast.error('Erreur lors du suivi du thread');
     },
     onSuccess: () => {
-      toast.success('Thread suivi');
     },
     onSettled: (_, __, threadId) => {
       if (user) {
@@ -108,7 +107,6 @@ export const useUnfollowThread = () => {
       toast.error('Erreur lors de l\'arrêt du suivi');
     },
     onSuccess: () => {
-      toast.success('Thread non suivi');
     },
     onSettled: (_, __, threadId) => {
       if (user) {

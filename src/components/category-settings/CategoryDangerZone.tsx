@@ -34,7 +34,6 @@ export function CategoryDangerZone({
     if (deleteCategory.isPending) return;
     try {
       await deleteCategory.mutateAsync({ categoryId, serverId });
-      toast.success('Catégorie supprimée');
       onDeleted();
     } catch {
       toast.error('Erreur lors de la suppression');

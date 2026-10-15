@@ -28,8 +28,8 @@ import {
 import { useUnifiedNotifications, type UnifiedNotification } from '@/hooks/useUnifiedNotifications';
 import { useUnreadCounts } from '@/hooks/useUnreadCounts';
 import { useMarkChannelAsRead } from '@/hooks/useMarkChannelAsRead';
-import { formatDistanceToNow } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { formatDistanceToNow } from '@/lib/dateUtils';
+import { fr } from '@/lib/dateUtils';
 
 export function InboxPanel() {
   const { items, isLoading } = useUnifiedNotifications();

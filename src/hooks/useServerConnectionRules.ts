@@ -51,7 +51,6 @@ export function useUpsertConnectionRule(serverId: string) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: key(serverId) });
-      toast.success('Règle enregistrée');
     },
     onError: (e: any) => toast.error(e?.message ?? 'Erreur'),
   });
@@ -66,7 +65,6 @@ export function useDeleteConnectionRule(serverId: string) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: key(serverId) });
-      toast.success('Règle supprimée');
     },
     onError: (e: any) => toast.error(e?.message ?? 'Erreur'),
   });

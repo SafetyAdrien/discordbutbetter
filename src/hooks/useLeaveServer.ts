@@ -24,7 +24,6 @@ export function useLeaveServer() {
       // Invalidate all related queries
       queryClient.invalidateQueries({ queryKey: ['servers'] });
       queryClient.invalidateQueries({ queryKey: ['members', serverId] });
-      toast.success('Vous avez quitté le serveur');
     },
     onError: (error) => {
       toast.error('Erreur: ' + (error as Error).message);

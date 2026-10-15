@@ -241,7 +241,7 @@ export function PrivacySettings() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <button
+          <button type="button"
             onClick={() => setView('downloads')}
             className="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl border border-border/60 bg-card hover:bg-accent transition-colors"
           >

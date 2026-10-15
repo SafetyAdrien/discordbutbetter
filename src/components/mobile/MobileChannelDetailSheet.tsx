@@ -135,7 +135,7 @@ function DetailRow({
   onClick: () => void;
 }) {
   return (
-    <button
+    <button type="button"
       onClick={onClick}
       className="w-full flex items-center gap-3 px-3 py-3 rounded-xl active:bg-muted/60 transition-colors min-h-[48px] text-left"
     >
@@ -160,7 +160,7 @@ function NotifRow({
   onClick: () => void;
 }) {
   return (
-    <button
+    <button type="button"
       onClick={onClick}
       className={cn(
         'w-full flex items-center gap-3 px-3 py-3 rounded-xl active:bg-muted/60 transition-colors min-h-[48px] text-left',

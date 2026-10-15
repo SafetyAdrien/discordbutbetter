@@ -37,6 +37,7 @@ const PERMISSION_KEYS = [
 export function usePermissionsRealtime(serverId: string | null) {
   const queryClient = useQueryClient();
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   const pendingPostLockRef = useRef(false);
   const pendingSourceRef = useRef('');
@@ -98,7 +99,7 @@ export function usePermissionsRealtime(serverId: string | null) {
   useEffect(() => {
     if (!serverId) return;
     const channel = supabase
-      .channel(`perms-role-permissions:${serverId}`)
+      .channel(`perms-role-permissions:${serverId}-${instanceIdRef.current}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'role_permissions' },
         () => debouncedRefetch('role_permissions'))
       .subscribe();
@@ -109,7 +110,7 @@ export function usePermissionsRealtime(serverId: string | null) {
   useEffect(() => {
     if (!serverId) return;
     const channel = supabase
-      .channel(`perms-channel-overrides:${serverId}`)
+      .channel(`perms-channel-overrides:${serverId}-${instanceIdRef.current}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'channel_permission_overrides' },
         () => debouncedRefetch('channel_permission_overrides'))
       .subscribe();
@@ -120,7 +121,7 @@ export function usePermissionsRealtime(serverId: string | null) {
   useEffect(() => {
     if (!serverId) return;
     const channel = supabase
-      .channel(`perms-category-overrides:${serverId}`)
+      .channel(`perms-category-overrides:${serverId}-${instanceIdRef.current}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'category_permission_overrides' },
         () => debouncedRefetch('category_permission_overrides'))
       .subscribe();
@@ -131,7 +132,7 @@ export function usePermissionsRealtime(serverId: string | null) {
   useEffect(() => {
     if (!serverId) return;
     const channel = supabase
-      .channel(`perms-roles:${serverId}`)
+      .channel(`perms-roles:${serverId}-${instanceIdRef.current}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'roles' },
         (payload) => {
           const roleServerId = (payload.new as any)?.server_id || (payload.old as any)?.server_id;
@@ -147,7 +148,7 @@ export function usePermissionsRealtime(serverId: string | null) {
   useEffect(() => {
     if (!serverId) return;
     const channel = supabase
-      .channel(`perms-member-roles:${serverId}`)
+      .channel(`perms-member-roles:${serverId}-${instanceIdRef.current}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'member_roles' },
         () => debouncedRefetch('member_roles'))
       .subscribe();

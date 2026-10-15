@@ -128,7 +128,7 @@ export function useCreateRole() {
       const previousRoles = queryClient.getQueryData(['roles', serverId]);
       
       const tempRole: RoleWithPermissions = {
-        id: `temp-${Date.now()}`,
+        id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         name,
         color: color || '#99AAB5',
         icon_url: null,
@@ -153,7 +153,6 @@ export function useCreateRole() {
       toast.error('Erreur lors de la création du rôle');
     },
     onSuccess: () => {
-      toast.success('Rôle créé !');
     },
     onSettled: (_, __, { serverId }) => {
       queryClient.invalidateQueries({ queryKey: ['roles', serverId] });
@@ -245,7 +244,6 @@ export function useUpdateRole() {
       toast.error('Erreur lors de la mise à jour du rôle');
     },
     onSuccess: () => {
-      toast.success('Rôle mis à jour !');
     },
     onSettled: (_, __, { serverId }) => {
       queryClient.invalidateQueries({ queryKey: ['roles', serverId] });
@@ -285,7 +283,6 @@ export function useDeleteRole() {
       toast.error('Erreur lors de la suppression du rôle');
     },
     onSuccess: () => {
-      toast.success('Rôle supprimé !');
     },
     onSettled: (_, __, { serverId }) => {
       queryClient.invalidateQueries({ queryKey: ['roles', serverId] });
@@ -392,7 +389,7 @@ export function useDuplicateRole() {
         const sourceRole = previousRoles.find(r => r.id === roleId);
         if (sourceRole) {
           const tempRole: RoleWithPermissions = {
-            id: `temp-${Date.now()}`,
+            id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
             name: sourceRole.name,
             color: sourceRole.color,
             icon_url: sourceRole.icon_url,
@@ -417,7 +414,6 @@ export function useDuplicateRole() {
       toast.error('Erreur lors de la duplication du rôle');
     },
     onSuccess: (newRole) => {
-      toast.success(`Rôle "${newRole.name}" créé !`);
     },
     onSettled: (_, __, { serverId }) => {
       queryClient.invalidateQueries({ queryKey: ['roles', serverId] });
@@ -513,7 +509,6 @@ export function useAssignRoleToMember() {
       toast.error('Erreur lors de l\'attribution du rôle');
     },
     onSuccess: () => {
-      toast.success('Rôle attribué !');
     },
     onSettled: (_, __, { serverId }) => {
       queryClient.invalidateQueries({ queryKey: ['role-member-counts', serverId] });
@@ -560,7 +555,6 @@ export function useRemoveRoleFromMember() {
       toast.error('Erreur lors du retrait du rôle');
     },
     onSuccess: () => {
-      toast.success('Rôle retiré !');
     },
     onSettled: (_, __, { serverId }) => {
       queryClient.invalidateQueries({ queryKey: ['role-member-counts', serverId] });

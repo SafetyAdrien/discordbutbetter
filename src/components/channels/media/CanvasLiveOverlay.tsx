@@ -118,14 +118,14 @@ export function CanvasLiveOverlay({ postId, itemId, width, height, active, onClo
       />
       {active && (
         <div className="pointer-events-auto absolute top-2 left-1/2 -translate-x-1/2 flex items-center gap-1 px-2 py-1.5 rounded-full bg-background/95 backdrop-blur border border-border shadow-lg">
-          <button
+          <button type="button"
             onClick={() => setTool('pen')}
             className={cn('p-1.5 rounded-full', tool === 'pen' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted')}
             title="Crayon"
           >
             <Pen className="w-4 h-4" />
           </button>
-          <button
+          <button type="button"
             onClick={() => setTool('eraser')}
             className={cn('p-1.5 rounded-full', tool === 'eraser' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted')}
             title="Gomme"
@@ -134,7 +134,7 @@ export function CanvasLiveOverlay({ postId, itemId, width, height, active, onClo
           </button>
           <div className="w-px h-5 bg-border mx-1" />
           {PALETTE.map((c) => (
-            <button
+            <button type="button"
               key={c}
               onClick={() => { setColor(c); setTool('pen'); }}
               className={cn('w-5 h-5 rounded-full border', color === c && tool === 'pen' ? 'ring-2 ring-foreground ring-offset-1 ring-offset-background' : 'border-border/40')}
@@ -144,7 +144,7 @@ export function CanvasLiveOverlay({ postId, itemId, width, height, active, onClo
           ))}
           <div className="w-px h-5 bg-border mx-1" />
           {SIZES.map((s) => (
-            <button
+            <button type="button"
               key={s}
               onClick={() => setSize(s)}
               className={cn('w-6 h-6 rounded-full flex items-center justify-center hover:bg-muted', size === s && 'bg-muted')}
@@ -154,7 +154,7 @@ export function CanvasLiveOverlay({ postId, itemId, width, height, active, onClo
             </button>
           ))}
           <div className="w-px h-5 bg-border mx-1" />
-          <button
+          <button type="button"
             onClick={() => clearMine.mutate({ itemId })}
             className="p-1.5 rounded-full hover:bg-muted text-destructive"
             title="Effacer mes traits"
@@ -162,7 +162,7 @@ export function CanvasLiveOverlay({ postId, itemId, width, height, active, onClo
             <Trash2 className="w-4 h-4" />
           </button>
           {onClose && (
-            <button onClick={onClose} className="p-1.5 rounded-full hover:bg-muted" title="Fermer">
+            <button type="button" onClick={onClose} className="p-1.5 rounded-full hover:bg-muted" title="Fermer">
               <X className="w-4 h-4" />
             </button>
           )}

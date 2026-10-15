@@ -208,7 +208,7 @@ export function MobileChatView({
                 <span>Suivre</span>
               </button>
             )}
-            <button
+            <button type="button"
               onClick={() => setShowSearch(true)}
               aria-label="Rechercher dans ce salon"
               title="Rechercher"

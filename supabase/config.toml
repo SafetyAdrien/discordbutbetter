@@ -8,3 +8,12 @@ verify_jwt = true
 
 [functions.twitch-channel-status]
 verify_jwt = true
+
+[functions.giphy-search]
+verify_jwt = true
+
+[functions.livekit-token]
+verify_jwt = true
+
+[functions.import-discord-template]
+verify_jwt = true

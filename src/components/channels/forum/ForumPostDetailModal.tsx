@@ -49,7 +49,7 @@ function CommentRow({ comment, postId, canDelete }: { comment: any; postId: stri
         <p className="text-sm whitespace-pre-wrap break-words">{comment.content}</p>
       </div>
       {canDelete && (
-        <button
+        <button type="button"
           onClick={() => del.mutate(comment.id)}
           className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
           aria-label="Supprimer"

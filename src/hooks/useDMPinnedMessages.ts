@@ -27,12 +27,13 @@ interface DMPinnedMessage {
 export function useDMPinnedMessages(conversationId: string | null) {
   const queryClient = useQueryClient();
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   useEffect(() => {
     if (!conversationId) return;
 
     const channel = supabase
-      .channel(`dm-pinned-rt-${conversationId}`, { config: { private: true } })
+      .channel(`dm-pinned-rt-${conversationId}-${instanceIdRef.current}`, { config: { private: true } })
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'dm_pinned_messages', filter: `conversation_id=eq.${conversationId}` },
@@ -127,7 +128,7 @@ export function usePinDMMessage() {
       const previous = queryClient.getQueryData<DMPinnedMessage[]>(['dm-pinned-messages', conversationId]);
 
       const tempPin: DMPinnedMessage = {
-        id: `temp-${Date.now()}`,
+        id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         message_id: messageId,
         conversation_id: conversationId,
         pinned_by: user.id,
@@ -152,7 +153,6 @@ export function usePinDMMessage() {
       }
     },
     onSuccess: () => {
-      toast.success('Message épinglé');
     },
     onSettled: (_, __, { conversationId }) => {
       queryClient.invalidateQueries({ queryKey: ['dm-pinned-messages', conversationId] });
@@ -189,7 +189,6 @@ export function useUnpinDMMessage() {
       toast.error('Impossible de désépingler le message');
     },
     onSuccess: () => {
-      toast.success('Message désépinglé');
     },
     onSettled: (_, __, { conversationId }) => {
       queryClient.invalidateQueries({ queryKey: ['dm-pinned-messages', conversationId] });

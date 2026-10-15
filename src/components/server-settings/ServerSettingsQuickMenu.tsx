@@ -61,7 +61,7 @@ export function ServerSettingsQuickMenu({ onSelect, className }: ServerSettingsQ
             {section.label}
           </p>
           {section.items.map((item) => (
-            <button
+            <button type="button"
               key={item.id}
               onClick={() => onSelect(item.id)}
               className="flex items-center gap-2 w-full px-2.5 py-1.5 rounded-md text-sm text-foreground hover:bg-muted transition-colors"
@@ -74,7 +74,7 @@ export function ServerSettingsQuickMenu({ onSelect, className }: ServerSettingsQ
       ))}
       <Separator className="my-1" />
       {dangerItems.map((item) => (
-        <button
+        <button type="button"
           key={item.id}
           onClick={() => onSelect(item.id)}
           className={`flex items-center gap-2 w-full px-2.5 py-1.5 rounded-md text-sm transition-colors ${

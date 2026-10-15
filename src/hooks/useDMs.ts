@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { useAuth } from '@/contexts/AuthContext';
@@ -35,6 +35,11 @@ export interface DMConversation {
 export function useDMConversations() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  // Multiple components (ServerList via useDMMentionCounts, DMList directly,
+  // etc.) mount their own instance of this hook simultaneously — suffix the
+  // realtime channel name per instance so they don't collide on the same
+  // Supabase Realtime topic (matches the pattern in useDMMentionCounts.ts).
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   const query = useQuery({
     queryKey: ['dm-conversations', user?.id],
@@ -137,13 +142,15 @@ export function useDMConversations() {
   }, [query.data, user?.id, query.isPlaceholderData]);
 
   // Real-time subscriptions: messages (inline patch), conversations + participants (invalidate)
+  const userId = user?.id;
   useEffect(() => {
-    if (!user) return;
+    if (!userId) return;
 
-    const refetch = () => queryClient.invalidateQueries({ queryKey: ['dm-conversations', user.id] });
+    let cancelled = false;
+    const refetch = () => queryClient.invalidateQueries({ queryKey: ['dm-conversations', userId] });
 
     const channel = supabase
-      .channel(`dm-updates:${user.id}`, { config: { private: true } })
+      .channel(`dm-updates:${userId}-${instanceIdRef.current}`, { config: { private: true } })
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'dm_messages' },
@@ -155,7 +162,7 @@ export function useDMConversations() {
             author_id: string | null;
           };
           // Patch lastMessage inline + re-sort, no refetch.
-          queryClient.setQueryData<DMConversation[]>(['dm-conversations', user.id], (old) => {
+          queryClient.setQueryData<DMConversation[]>(['dm-conversations', userId], (old) => {
             if (!Array.isArray(old)) return old;
             const idx = old.findIndex((c) => c.id === msg.conversation_id);
             if (idx === -1) {
@@ -191,13 +198,14 @@ export function useDMConversations() {
         () => { refetch(); },
       )
       .subscribe((status) => {
-        if (status === 'SUBSCRIBED') refetch();
+        if (status === 'SUBSCRIBED' && !cancelled) refetch();
       });
 
     return () => {
-      supabase.removeChannel(channel);
+      cancelled = true;
+      void supabase.removeChannel(channel);
     };
-  }, [user, queryClient]);
+  }, [userId, queryClient]);
 
   return query;
 }

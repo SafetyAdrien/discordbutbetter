@@ -66,7 +66,7 @@ export function DMPage({
         {/* Header - Search input triggers New Message Modal */}
         <div className="h-12 px-4 flex items-center border-b border-border">
           <div className="relative w-full">
-            <button 
+            <button type="button" 
               onClick={() => setShowNewMessageModal(true)}
               className="w-full px-2 py-1.5 text-sm bg-[hsl(var(--surface-2))] rounded-xl border-none text-left text-muted-foreground hover:bg-[hsl(var(--surface-3))] transition-colors truncate"
             >
@@ -78,7 +78,7 @@ export function DMPage({
         {/* Navigation - Friends ABOVE Inbox */}
         <div className="px-2 pt-2 pb-0.5 space-y-[2px]">
           {/* Friends Button */}
-          <button 
+          <button type="button" 
             onClick={handleShowFriends} 
             className={cn(
               'w-full flex items-center gap-3 px-2 py-1.5 rounded-md transition-colors', 
@@ -92,7 +92,7 @@ export function DMPage({
           </button>
 
           {/* Inbox Button */}
-          <button 
+          <button type="button" 
             onClick={handleShowInbox} 
             className={cn(
               'w-full flex items-center gap-3 px-2 py-1.5 rounded-md transition-colors', 

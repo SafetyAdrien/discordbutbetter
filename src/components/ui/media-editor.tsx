@@ -469,7 +469,7 @@ export function MediaEditor({
           {/* LEFT — canvas */}
           <div style={canvasPanelStyle} className="relative flex flex-col flex-none md:flex-none p-3 sm:p-6 border-b md:border-b-0 md:border-r border-border/40 min-h-0 min-w-0 overflow-hidden max-sm:h-[var(--media-canvas-panel-h)] max-sm:max-h-[var(--media-canvas-panel-h)] [@media(max-height:520px)]:w-[42vw] [@media(max-height:520px)]:h-full [@media(max-height:520px)]:max-h-none [@media(max-height:520px)]:border-b-0 [@media(max-height:520px)]:border-r">
             <div className="flex items-center justify-between mb-2 sm:mb-4">
-              <button
+              <button type="button"
                 onClick={onClose}
                 className="p-1.5 rounded-md text-muted-foreground hover:text-foreground transition-colors"
                 aria-label="Close"
@@ -477,7 +477,7 @@ export function MediaEditor({
                 <X className="w-5 h-5" />
               </button>
               <h2 className="text-base font-semibold">{title}</h2>
-              <button
+              <button type="button"
                 onClick={reset}
                 className="p-1.5 rounded-md text-muted-foreground hover:text-foreground transition-colors"
                 aria-label="Reset"
@@ -625,7 +625,7 @@ export function MediaEditor({
 
 
             <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mt-2 sm:mt-4 min-w-0">
-              <button
+              <button type="button"
                 onClick={reset}
                 className="px-2 py-1.5 text-xs font-medium text-destructive hover:text-destructive/80 transition-colors"
                 title="Reset to default import"
@@ -634,7 +634,7 @@ export function MediaEditor({
                 Reset
               </button>
               <div className="flex items-center rounded-md border border-border/60 overflow-hidden">
-                <button
+                <button type="button"
                   onClick={() => setFitMode('fit')}
                   className={cn(
                     'px-2 py-1.5 text-xs font-medium transition-colors',
@@ -645,7 +645,7 @@ export function MediaEditor({
                 >
                   Fit
                 </button>
-                <button
+                <button type="button"
                   onClick={() => setFitMode('fill')}
                   className={cn(
                     'px-2 py-1.5 text-xs font-medium transition-colors',
@@ -657,7 +657,7 @@ export function MediaEditor({
                   Fill
                 </button>
               </div>
-              <button
+              <button type="button"
                 onClick={() => setFlip((f) => !f)}
                 className={cn(
                   'p-2 rounded-md border border-border/60 text-muted-foreground hover:text-foreground transition-colors',

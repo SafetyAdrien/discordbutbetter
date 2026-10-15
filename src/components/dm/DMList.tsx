@@ -5,8 +5,8 @@ import { useDMMentionCounts } from '@/hooks/useDMMentionCounts';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { MentionBadge } from '@/components/ui/MentionBadge';
 import { useState, useEffect } from 'react';
-import { format, isToday, isYesterday, isThisWeek } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { format, isToday, isYesterday, isThisWeek } from '@/lib/dateUtils';
+import { fr } from '@/lib/dateUtils';
 
 function formatCompactTimestamp(date: Date): string {
   const now = new Date();
@@ -155,12 +155,10 @@ function DMConversationItem({
   };
 
   const handleCall = () => {
-    toast.success('Appels vocaux', { description: 'Bientôt disponible !' });
   };
 
   const handleClose = () => {
     // TODO: Implement close conversation
-    toast.success('Conversation fermée');
   };
 
   const handleDelete = () => {
@@ -171,7 +169,7 @@ function DMConversationItem({
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
-        <button
+        <button type="button"
           onClick={onClick}
           className={cn(
             'w-full flex items-center gap-2 px-2 py-1 rounded-md transition-colors text-left',

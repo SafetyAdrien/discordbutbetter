@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -26,6 +26,7 @@ export function useDownloadPermissions() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const uid = user?.id;
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   const query = useQuery({
     queryKey: LIST_KEY(uid),
@@ -54,7 +55,7 @@ export function useDownloadPermissions() {
   useEffect(() => {
     if (!uid) return;
     const channel = supabase
-      .channel(`dl-perms-owner:${uid}`)
+      .channel(`dl-perms-owner:${uid}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         {
@@ -87,11 +88,12 @@ export function useDownloadPermissionsRecipientRealtime() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const uid = user?.id;
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   useEffect(() => {
     if (!uid) return;
     const channel = supabase
-      .channel(`dl-perms-allowed:${uid}`)
+      .channel(`dl-perms-allowed:${uid}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         {
@@ -130,7 +132,6 @@ export function useAddDownloadPermission() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: LIST_KEY(user?.id) });
-      toast.success('Personne ajoutée à la liste');
     },
     onError: (err: any) => {
       const msg = err?.message?.includes('duplicate')
@@ -157,7 +158,6 @@ export function useRemoveDownloadPermission() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: LIST_KEY(user?.id) });
-      toast.success('Personne retirée de la liste');
     },
     onError: (err: any) => toast.error(err?.message || 'Suppression impossible'),
   });

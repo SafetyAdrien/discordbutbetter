@@ -63,13 +63,14 @@ export interface AnnouncementReaction {
 export function useAnnouncements(channelId: string) {
   const queryClient = useQueryClient();
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   // Realtime subscription for announcements
   useEffect(() => {
     if (!channelId) return;
 
     const channel = supabase
-      .channel(`announcements-rt-${channelId}`)
+      .channel(`announcements-rt-${channelId}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'announcements', filter: `channel_id=eq.${channelId}` },
@@ -149,7 +150,7 @@ export function useCreateAnnouncement() {
       const previousAnnouncements = queryClient.getQueryData(['announcements', data.channelId]);
       
       const tempAnnouncement: Announcement = {
-        id: `temp-${Date.now()}`,
+        id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         channel_id: data.channelId,
         title: data.title,
         content: data.content,
@@ -178,7 +179,6 @@ export function useCreateAnnouncement() {
       toast.error('Erreur lors de la création');
     },
     onSuccess: (_, variables) => {
-      toast.success('Annonce publiée');
     },
     onSettled: (_, __, variables) => {
       queryClient.invalidateQueries({ queryKey: ['announcements', variables.channelId] });
@@ -241,7 +241,6 @@ export function useUpdateAnnouncement() {
       toast.error('Erreur lors de la modification');
     },
     onSuccess: () => {
-      toast.success('Annonce modifiée');
     },
     onSettled: (_, __, variables) => {
       queryClient.invalidateQueries({ queryKey: ['announcements', variables.channelId] });
@@ -279,7 +278,6 @@ export function useDeleteAnnouncement() {
       toast.error('Erreur lors de la suppression');
     },
     onSuccess: () => {
-      toast.success('Annonce supprimée');
     },
     onSettled: (_, __, variables) => {
       queryClient.invalidateQueries({ queryKey: ['announcements', variables.channelId] });
@@ -347,12 +345,13 @@ export function useUploadAnnouncementBanner() {
 export function useAnnouncementCategories(serverId: string) {
   const queryClient = useQueryClient();
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   useEffect(() => {
     if (!serverId) return;
 
     const channel = supabase
-      .channel(`ann-categories-rt-${serverId}`)
+      .channel(`ann-categories-rt-${serverId}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'announcement_categories', filter: `server_id=eq.${serverId}` },
@@ -411,7 +410,7 @@ export function useCreateAnnouncementCategory() {
       const previousCategories = queryClient.getQueryData(['announcement-categories', data.serverId]);
       
       const tempCategory: AnnouncementCategory = {
-        id: `temp-${Date.now()}`,
+        id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         server_id: data.serverId,
         name: data.name,
         color: data.color,
@@ -431,7 +430,6 @@ export function useCreateAnnouncementCategory() {
       toast.error('Erreur lors de la création');
     },
     onSuccess: () => {
-      toast.success('Catégorie créée');
     },
     onSettled: (_, __, variables) => {
       queryClient.invalidateQueries({ queryKey: ['announcement-categories', variables.serverId] });
@@ -468,7 +466,6 @@ export function useDeleteAnnouncementCategory() {
       toast.error('Erreur lors de la suppression');
     },
     onSuccess: () => {
-      toast.success('Catégorie supprimée');
     },
     onSettled: (_, __, variables) => {
       queryClient.invalidateQueries({ queryKey: ['announcement-categories', variables.serverId] });
@@ -480,12 +477,13 @@ export function useDeleteAnnouncementCategory() {
 export function useAnnouncementComments(announcementId: string) {
   const queryClient = useQueryClient();
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   useEffect(() => {
     if (!announcementId) return;
 
     const channel = supabase
-      .channel(`ann-comments-rt-${announcementId}`)
+      .channel(`ann-comments-rt-${announcementId}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'announcement_comments', filter: `announcement_id=eq.${announcementId}` },
@@ -618,7 +616,7 @@ export function useAddAnnouncementComment() {
       }
 
       const tempComment: AnnouncementComment = {
-        id: `temp-${Date.now()}`,
+        id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         announcement_id: data.announcementId,
         content: data.content,
         created_at: new Date().toISOString(),
@@ -687,12 +685,13 @@ export function useDeleteAnnouncementComment() {
 export function useAnnouncementReactions(announcementId: string) {
   const queryClient = useQueryClient();
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   useEffect(() => {
     if (!announcementId) return;
 
     const channel = supabase
-      .channel(`ann-reactions-rt-${announcementId}`)
+      .channel(`ann-reactions-rt-${announcementId}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'announcement_reactions', filter: `announcement_id=eq.${announcementId}` },
@@ -775,7 +774,7 @@ export function useToggleAnnouncementReaction() {
           return old.filter(r => r.id !== existing.id);
         } else {
           return [...old, {
-            id: `temp-${Date.now()}`,
+            id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
             announcement_id: data.announcementId,
             user_id: user.id,
             emoji: data.emoji,

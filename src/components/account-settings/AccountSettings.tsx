@@ -55,7 +55,6 @@ export function AccountSettings() {
         return;
       }
       await updateProfile({ username: trimmed });
-      toast.success("Nom d'utilisateur mis à jour");
       setIsChangingUsername(false);
     } catch (error: any) {
       toast.error(error.message || "Erreur lors du changement de nom d'utilisateur");
@@ -83,7 +82,6 @@ export function AccountSettings() {
 
       if (error) throw error;
 
-      toast.success("Mot de passe mis à jour avec succès");
       setIsChangingPassword(false);
       setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
     } catch (error: any) {
@@ -104,7 +102,6 @@ export function AccountSettings() {
 
       if (error) throw error;
 
-      toast.success("Un email de réinitialisation a été envoyé à votre adresse");
     } catch (error: any) {
       toast.error(error.message || "Erreur lors de l'envoi de l'email");
     } finally {
@@ -126,7 +123,6 @@ export function AccountSettings() {
 
       if (error) throw error;
 
-      toast.success("Un email de confirmation a été envoyé à votre nouvelle adresse");
       setIsChangingEmail(false);
       setNewEmail("");
     } catch (error: any) {
@@ -138,11 +134,9 @@ export function AccountSettings() {
 
   const handleLogout = async () => {
     await signOut();
-    toast.success("Déconnexion réussie");
   };
 
   const handleDeleteAccount = async () => {
-    toast.info("La suppression de compte sera bientôt disponible");
   };
 
   return (

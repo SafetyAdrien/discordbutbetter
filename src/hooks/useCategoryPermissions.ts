@@ -88,7 +88,7 @@ export function useSetCategoryPermissionOverride() {
       );
       
       const newOverride: CategoryPermissionOverride = {
-        id: `temp-${Date.now()}`,
+        id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         category_id: categoryId,
         role_id: roleId,
         permission,

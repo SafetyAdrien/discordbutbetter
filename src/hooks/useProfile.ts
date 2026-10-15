@@ -14,7 +14,6 @@ interface ProfileData {
   activity_text?: string | null;
   theme_color?: string | null;
   theme_gradient?: string | null;
-  avatar_decoration_url?: string | null;
   avatar_url?: string;
   banner_url?: string;
   connections?: Array<{ provider: string; value: string }>;
@@ -60,7 +59,6 @@ export function useUpdateProfile() {
       }
     },
     onSuccess: () => {
-      toast.success('Profil mis à jour !');
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['profile'] });
@@ -124,7 +122,6 @@ export function useUploadAvatar() {
           avatar_url: avatarUrl,
         }));
       }
-      toast.success('Avatar mis à jour !');
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['profile'] });
@@ -188,7 +185,6 @@ export function useUploadBanner() {
           banner_url: bannerUrl,
         }));
       }
-      toast.success('Bannière mise à jour !');
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['profile'] });

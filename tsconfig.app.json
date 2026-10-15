@@ -24,7 +24,10 @@
       "@dnd-kit/core": ["./src/lib/dnd-shim/core.tsx"],
       "@dnd-kit/sortable": ["./src/lib/dnd-shim/sortable.tsx"],
       "@dnd-kit/utilities": ["./src/lib/dnd-shim/utilities.ts"],
-      "@dnd-kit/modifiers": ["./src/lib/dnd-shim/modifiers.ts"]
+      "@dnd-kit/modifiers": ["./src/lib/dnd-shim/modifiers.ts"],
+      // date-fns → Intl-based drop-in (see src/lib/dateUtils.ts)
+      "date-fns": ["./src/lib/dateUtils.ts"],
+      "date-fns/locale": ["./src/lib/dateUtils.ts"]
     },
     "skipLibCheck": true,
     "strict": false,

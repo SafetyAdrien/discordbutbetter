@@ -42,7 +42,7 @@ export function RoleManagementPanel({
       >
         <div className="p-3 border-b border-border flex items-center justify-between">
           <h4 className="font-semibold text-sm">Gérer les rôles</h4>
-          <button
+          <button type="button"
             onClick={onClose}
             className="p-1 hover:bg-muted rounded transition-colors"
           >

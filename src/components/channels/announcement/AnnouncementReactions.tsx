@@ -41,7 +41,7 @@ export function AnnouncementReactions({ reactions, onToggleReaction }: Announcem
     <div className="flex flex-wrap items-center gap-2">
       {/* Existing reactions */}
       {Object.entries(groupedReactions).map(([emoji, { count, hasUserReacted }]) => (
-        <button
+        <button type="button"
           key={emoji}
           onClick={() => onToggleReaction(emoji)}
           className={cn(
@@ -59,14 +59,14 @@ export function AnnouncementReactions({ reactions, onToggleReaction }: Announcem
       {/* Add reaction button */}
       <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
         <PopoverTrigger asChild>
-          <button className="p-2 rounded-full bg-muted/50 hover:bg-muted transition-colors">
+          <button type="button" className="p-2 rounded-full bg-muted/50 hover:bg-muted transition-colors">
             <SmilePlus className="w-5 h-5 text-muted-foreground" />
           </button>
         </PopoverTrigger>
         <PopoverContent className="w-80 p-2" align="start">
           <div className="grid grid-cols-8 gap-1">
             {EMOJI_LIST.map((emoji) => (
-              <button
+              <button type="button"
                 key={emoji}
                 onClick={() => handleEmojiClick(emoji)}
                 className="p-2 hover:bg-muted rounded text-xl transition-colors"

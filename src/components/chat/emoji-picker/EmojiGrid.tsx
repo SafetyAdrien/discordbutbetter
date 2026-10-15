@@ -1,4 +1,5 @@
-import { forwardRef, useImperativeHandle, useRef } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
+import { Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/lib/haptics';
 
@@ -18,6 +19,11 @@ interface Props {
   onClearRecent?: () => void;
   height: number;
   isMobile: boolean;
+  /** Called with the id of the section currently scrolled into view. */
+  onActiveSectionChange?: (id: string) => void;
+  isFavorite?: (id: string) => boolean;
+  onToggleFavoriteUnicode?: (char: string) => void;
+  onToggleFavoriteCustom?: (item: { id: string; name: string; url: string; insertText: string }) => void;
 }
 
 export interface EmojiGridHandle {
@@ -25,20 +31,56 @@ export interface EmojiGridHandle {
 }
 
 export const EmojiGrid = forwardRef<EmojiGridHandle, Props>(function EmojiGrid(
-  { sections, onPick, onClearRecent, height, isMobile },
+  { sections, onPick, onClearRecent, height, isMobile, onActiveSectionChange, isFavorite, onToggleFavoriteUnicode, onToggleFavoriteCustom },
   ref,
 ) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  // Scroll-driven category sync is suppressed briefly after a click-to-scroll
+  // so the smooth-scroll animation doesn't fight the nav's active state.
+  const suppressObserverRef = useRef(false);
+  const suppressTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
   useImperativeHandle(ref, () => ({
     scrollToSection: (id) => {
       const el = sectionRefs.current[id];
       const container = scrollRef.current;
       if (!el || !container) return;
+      suppressObserverRef.current = true;
+      if (suppressTimeoutRef.current) clearTimeout(suppressTimeoutRef.current);
       container.scrollTo({ top: el.offsetTop - 4, behavior: 'smooth' });
+      suppressTimeoutRef.current = setTimeout(() => {
+        suppressObserverRef.current = false;
+      }, 500);
     },
   }));
+
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (!container || !onActiveSectionChange) return;
+
+    const updateActiveSection = () => {
+      if (suppressObserverRef.current) return;
+      const containerTop = container.getBoundingClientRect().top;
+      let currentId: string | null = null;
+      for (const section of sections) {
+        const el = sectionRefs.current[section.id];
+        if (!el) continue;
+        const offset = el.getBoundingClientRect().top - containerTop;
+        // Section counts as active once its header scrolls near the top.
+        if (offset <= 40) {
+          currentId = section.id;
+        } else {
+          break;
+        }
+      }
+      if (currentId) onActiveSectionChange(currentId);
+    };
+
+    updateActiveSection();
+    container.addEventListener('scroll', updateActiveSection, { passive: true });
+    return () => container.removeEventListener('scroll', updateActiveSection);
+  }, [sections, onActiveSectionChange]);
 
   const handlePick = (insert: string) => {
     if (isMobile) haptics.selection();
@@ -67,6 +109,7 @@ export const EmojiGrid = forwardRef<EmojiGridHandle, Props>(function EmojiGrid(
       ref={scrollRef}
       style={{ height }}
       className="overflow-y-auto overflow-x-hidden custom-scrollbar"
+      onWheel={(e) => e.stopPropagation()}
     >
       <div className="px-2 pb-3 space-y-3">
         {sections.map((section) => (
@@ -98,36 +141,70 @@ export const EmojiGrid = forwardRef<EmojiGridHandle, Props>(function EmojiGrid(
             >
               {section.items.map((item, idx) =>
                 item.kind === 'unicode' ? (
-                  <button
-                    key={`${section.id}-${idx}-${item.char}`}
-                    type="button"
-                    onClick={() => handlePick(item.char)}
-                    title={item.name ?? item.char}
-                    className={cn(
-                      'flex items-center justify-center rounded-xl transition-transform duration-150 hover:bg-muted active:scale-90',
-                      isMobile ? 'w-9 h-9 text-2xl' : 'w-9 h-9 text-xl hover:scale-110',
+                  <div key={`${section.id}-${idx}-${item.char}`} className="relative group">
+                    <button
+                      type="button"
+                      onClick={() => handlePick(item.char)}
+                      title={item.name ?? item.char}
+                      className={cn(
+                        'flex items-center justify-center rounded-xl transition-transform duration-150 hover:bg-muted active:scale-90',
+                        isMobile ? 'w-9 h-9 text-2xl' : 'w-9 h-9 text-xl hover:scale-110',
+                      )}
+                    >
+                      {item.char}
+                    </button>
+                    {onToggleFavoriteUnicode && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onToggleFavoriteUnicode(item.char);
+                        }}
+                        aria-label={isFavorite?.(`emoji-${item.char}`) ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+                        className={cn(
+                          'absolute -top-0.5 -right-0.5 p-0.5 rounded-full bg-background/90 transition-opacity',
+                          isFavorite?.(`emoji-${item.char}`) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
+                        )}
+                      >
+                        <Star className={cn('w-2.5 h-2.5', isFavorite?.(`emoji-${item.char}`) ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground')} />
+                      </button>
                     )}
-                  >
-                    {item.char}
-                  </button>
+                  </div>
                 ) : (
-                  <button
-                    key={`${section.id}-${idx}-${item.id}`}
-                    type="button"
-                    onClick={() => handlePick(item.insertText)}
-                    title={`:${item.name}:`}
-                    className={cn(
-                      'flex items-center justify-center rounded-xl transition-transform duration-150 hover:bg-muted active:scale-90',
-                      isMobile ? 'w-9 h-9' : 'w-9 h-9 hover:scale-110',
+                  <div key={`${section.id}-${idx}-${item.id}`} className="relative group">
+                    <button
+                      type="button"
+                      onClick={() => handlePick(item.insertText)}
+                      title={`:${item.name}:`}
+                      className={cn(
+                        'flex items-center justify-center rounded-xl transition-transform duration-150 hover:bg-muted active:scale-90',
+                        isMobile ? 'w-9 h-9' : 'w-9 h-9 hover:scale-110',
+                      )}
+                    >
+                      <img
+                        src={item.url}
+                        alt={item.name}
+                        loading="lazy"
+                        className="w-6 h-6 object-contain"
+                      />
+                    </button>
+                    {onToggleFavoriteCustom && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onToggleFavoriteCustom(item);
+                        }}
+                        aria-label={isFavorite?.(`emoji-custom-${item.id}`) ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+                        className={cn(
+                          'absolute -top-0.5 -right-0.5 p-0.5 rounded-full bg-background/90 transition-opacity',
+                          isFavorite?.(`emoji-custom-${item.id}`) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
+                        )}
+                      >
+                        <Star className={cn('w-2.5 h-2.5', isFavorite?.(`emoji-custom-${item.id}`) ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground')} />
+                      </button>
                     )}
-                  >
-                    <img
-                      src={item.url}
-                      alt={item.name}
-                      loading="lazy"
-                      className="w-6 h-6 object-contain"
-                    />
-                  </button>
+                  </div>
                 ),
               )}
             </div>

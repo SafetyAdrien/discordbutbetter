@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -38,6 +38,7 @@ const queryKey = (channelId: string) => ['channel-calendar-events', channelId] a
 export function useChannelCalendarEvents(channelId: string | null) {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   const query = useQuery({
     queryKey: queryKey(channelId ?? ''),
@@ -56,7 +57,7 @@ export function useChannelCalendarEvents(channelId: string | null) {
   useEffect(() => {
     if (!channelId) return;
     const ch = supabase
-      .channel(`channel-calendar-events-rt-${channelId}`)
+      .channel(`channel-calendar-events-rt-${channelId}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'channel_calendar_events', filter: `channel_id=eq.${channelId}` },
@@ -81,7 +82,6 @@ export function useChannelCalendarEvents(channelId: string | null) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKey(channelId ?? '') });
-      toast.success('Événement créé');
     },
     onError: (e: any) => toast.error(e?.message ?? 'Erreur lors de la création'),
   });
@@ -99,7 +99,6 @@ export function useChannelCalendarEvents(channelId: string | null) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKey(channelId ?? '') });
-      toast.success('Événement modifié');
     },
     onError: (e: any) => toast.error(e?.message ?? 'Erreur lors de la modification'),
   });
@@ -111,7 +110,6 @@ export function useChannelCalendarEvents(channelId: string | null) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKey(channelId ?? '') });
-      toast.success('Événement supprimé');
     },
     onError: (e: any) => toast.error(e?.message ?? 'Erreur lors de la suppression'),
   });
@@ -140,7 +138,7 @@ export async function uploadEventThumbnail(channelId: string, file: Blob, filena
   if (upErr) throw upErr;
   const { data, error } = await supabase.storage
     .from('channel-event-thumbnails')
-    .createSignedUrl(path, 60 * 60 * 24 * 365);
+    .createSignedUrl(path, 60 * 60 * 24 * 7);
   if (error) throw error;
   return data.signedUrl;
 }

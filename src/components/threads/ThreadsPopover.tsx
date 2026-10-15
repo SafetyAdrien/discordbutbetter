@@ -10,8 +10,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useThreads, useUpdateThread, useDeleteThread } from '@/hooks/useThreads';
 import { useIsFollowingThread, useFollowThread, useUnfollowThread } from '@/hooks/useThreadFollow';
 import { Thread } from '@/types/thread';
-import { formatDistanceToNow } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { formatDistanceToNow } from '@/lib/dateUtils';
+import { fr } from '@/lib/dateUtils';
 import CreateThreadModal from './CreateThreadModal';
 import StreamlineThreads from '@/components/icons/StreamlineThreads';
 import { cn } from '@/lib/utils';

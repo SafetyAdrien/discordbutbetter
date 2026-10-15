@@ -46,8 +46,8 @@ import { UniversalMessageContextMenu } from '@/components/chat/UniversalMessageC
 import { ReportModal } from '@/components/chat/ReportModal';
 import { ThreadMessage } from '@/types/thread';
 import { Message } from '@/types/app';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { format } from '@/lib/dateUtils';
+import { fr } from '@/lib/dateUtils';
 import { MarkdownText, setMarkdownContext, getMarkdownContext } from '@/lib/markdown';
 import { registerSnowflakeMappings } from '@/lib/snowflake';
 import StreamlineThreads from '@/components/icons/StreamlineThreads';
@@ -58,7 +58,6 @@ import { cn } from '@/lib/utils';
 import { copyToClipboard } from '@/lib/clipboard';
 import { useAuth } from '@/contexts/AuthContext';
 import { useShiftKey } from '@/hooks/useShiftKey';
-import { toast } from 'sonner';
 import { useHasChannelPermission, useMultipleChannelPermissions } from '@/hooks/useUserChannelPermissions';
 import { MobilePollActions } from '@/components/mobile/MobilePollActions';
 import { useThreadMessageReactions, useToggleThreadReaction } from '@/hooks/useThreadReactions';
@@ -247,7 +246,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
 
   const handleStartEdit = (message: ThreadMessage) => {
     setEditingMessageId(message.id);
-    setEditingContent(message.content);
+    setEditingContent(getGifOnlyUrl(message) ?? message.content);
   };
 
   const handleSaveEdit = async () => {
@@ -275,6 +274,14 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
     if (editingContent.length > 1980) return 'text-destructive';
     if (editingContent.length > 1900) return 'text-yellow-500';
     return 'text-muted-foreground';
+  };
+
+  // A GIF-only message (no text, single "gif" attachment) has nothing to
+  // edit as text — "Modifier" instead surfaces the source URL to copy/reuse.
+  const getGifOnlyUrl = (msg: { content: string; attachments?: any[] }): string | null => {
+    const atts = msg.attachments ?? [];
+    if (msg.content.trim() || atts.length !== 1) return null;
+    return atts[0]?.type === 'gif' ? atts[0].url as string : null;
   };
 
   const handleDeletePoll = (poll: Poll) => {
@@ -383,7 +390,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
 
   const handleSend = async () => {
     if (!messageContent.trim()) return;
-    
+
     try {
       await sendMessage.mutateAsync({
         threadId,
@@ -391,6 +398,20 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
         replyToId: replyingTo?.id ?? null,
       });
       setMessageContent('');
+      setReplyingTo(null);
+    } catch (error) {
+      // Error handled by mutation
+    }
+  };
+
+  const handleSendExternalAttachment = async (attachment: { url: string; name: string; type: 'sticker' | 'gif' }) => {
+    try {
+      await sendMessage.mutateAsync({
+        threadId,
+        content: '',
+        replyToId: replyingTo?.id ?? null,
+        externalAttachment: attachment,
+      });
       setReplyingTo(null);
     } catch (error) {
       // Error handled by mutation
@@ -612,7 +633,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
       <div className="relative flex-1 overflow-hidden">
         {/* New messages banner */}
         {showNewMessagesBanner && (
-          <button
+          <button type="button"
             onClick={scrollToBottom}
             className="absolute top-2 left-1/2 -translate-x-1/2 z-10 bg-primary text-primary-foreground px-4 py-2 rounded-full shadow-lg flex items-center gap-2 hover:bg-primary/90 transition-colors"
           >
@@ -687,7 +708,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                               <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 bg-toolbar border border-border rounded-md shadow-lg p-0.5 z-10 animate-fade-in">
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                    <button onClick={() => handleCopyPollLink(poll.id)} className="p-1.5 hover:bg-muted rounded transition-colors">
+                                    <button type="button" onClick={() => handleCopyPollLink(poll.id)} className="p-1.5 hover:bg-muted rounded transition-colors">
                                       <Link className="w-4 h-4 text-muted-foreground" />
                                     </button>
                                   </TooltipTrigger>
@@ -697,7 +718,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                                   <>
                                     <Tooltip>
                                       <TooltipTrigger asChild>
-                                        <button onClick={() => setEditingPoll(poll)} className="p-1.5 hover:bg-muted rounded transition-colors">
+                                        <button type="button" onClick={() => setEditingPoll(poll)} className="p-1.5 hover:bg-muted rounded transition-colors">
                                           <Pencil className="w-4 h-4 text-muted-foreground" />
                                         </button>
                                       </TooltipTrigger>
@@ -708,7 +729,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                                       if (!open) setHoveredPollId(null);
                                     }}>
                                       <DropdownMenuTrigger asChild>
-                                        <button className="p-1.5 hover:bg-muted rounded transition-colors">
+                                        <button type="button" className="p-1.5 hover:bg-muted rounded transition-colors">
                                           <MoreVertical className="w-4 h-4 text-muted-foreground" />
                                         </button>
                                       </DropdownMenuTrigger>
@@ -951,7 +972,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                               )}
                             </div>
                           )}
-                          {false ? (
+                          {editingMessageId === message.id ? (
                             <div className="space-y-2">
                               <MarkdownTextarea
                                 ref={(el) => {
@@ -978,29 +999,16 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                                     handleCancelEdit();
                                   }
                                 }}
-                                className="min-h-[40px] max-h-[200px] resize-none text-sm"
+                                className="min-h-[36px] max-h-[200px] resize-none text-sm"
                                 autoFocus
                               />
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs text-muted-foreground">
-                                  Entrée pour sauvegarder • Maj+Entrée nouvelle ligne
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <span>Échap pour annuler</span>
+                                <span>•</span>
+                                <span>Entrée pour sauvegarder • Maj+Entrée nouvelle ligne</span>
+                                <span className={cn('ml-auto font-mono', getCharacterCountColor())}>
+                                  {editingContent.length}/2000
                                 </span>
-                                <div className="flex items-center gap-2">
-                                  <span className={cn('text-xs font-mono', getCharacterCountColor())}>
-                                    {editingContent.length}/2000
-                                  </span>
-                                  <Button size="iconSm" variant="ghost" onClick={handleCancelEdit}>
-                                    <X className="w-4 h-4" />
-                                  </Button>
-                                  <Button 
-                                    size="iconSm" 
-                                    variant="ghost" 
-                                    onClick={handleSaveEdit}
-                                    disabled={!editingContent.trim() || editingContent.length > 2000}
-                                  >
-                                    <Check className="w-4 h-4" />
-                                  </Button>
-                                </div>
                               </div>
                             </div>
                           ) : (
@@ -1048,7 +1056,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
       <TypingIndicator threadId={threadId} />
 
       {/* Reply indicator */}
-      {replyingTo && !editingMessageId && (
+      {replyingTo && (
         <ReplyBanner
           authorName={replyingTo.author?.display_name || 'Inconnu'}
           authorAvatar={replyingTo.author?.avatar_url}
@@ -1057,29 +1065,15 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
         />
       )}
 
-      {editingMessageId && (
-        <div className="mx-4 mb-2 flex items-center gap-2 bg-[hsl(var(--surface-3))] rounded-xl px-3 py-2 border-l-[3px] border-primary shadow-sm">
-          <button
-            onClick={handleCancelEdit}
-            className="flex items-center justify-center w-6 h-6 rounded-full bg-[hsl(var(--surface-4))] hover:bg-[hsl(var(--surface-5))] text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
-            aria-label="Annuler la modification"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-          <span className="text-sm text-muted-foreground">Édition du message</span>
-        </div>
-      )}
-
       {/* Input */}
-      <div className="px-4 pb-4 pt-2">
+      <div>
       <MessageInput
-        value={editingMessageId ? editingContent : messageContent}
-        onChange={editingMessageId ? setEditingContent : setMessageContent}
-        onSend={editingMessageId ? () => handleSaveEdit() : handleSend}
+        value={messageContent}
+        onChange={setMessageContent}
+        onSend={handleSend}
+        onSendExternalAttachment={handleSendExternalAttachment}
         placeholder={
-          editingMessageId
-            ? 'Modifier le message…'
-            : replyingTo
+          replyingTo
             ? `Répondre à ${replyingTo.author?.display_name || 'Inconnu'}`
             : `Envoyer un message dans ${thread?.name || 'le thread'}`
         }
@@ -1090,7 +1084,6 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
         serverId={serverId}
         channelId={channelId || thread?.channel_id}
         threadId={threadId}
-        editingMessageId={editingMessageId}
         members={mentionMembers}
         roles={mentionRoles}
         channels={allChannels}
@@ -1117,7 +1110,6 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
         message={reportingMessage}
         onSubmit={(reason, details) => {
           console.log('Report submitted:', { reason, details, messageId: reportingMessage?.id });
-          toast.success('Signalement envoyé. Merci !');
           setReportingMessage(null);
         }}
       />

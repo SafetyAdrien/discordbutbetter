@@ -1,4 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { useForumTags, useForumChannelConfig, MAX_APPLIED_TAGS_PER_POST } from '@/hooks/useForumTags';
+import { Tag as TagIcon, Lock } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
@@ -12,7 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { MarkdownTextarea } from '@/components/chat/MarkdownTextarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { EyeOff, ImageIcon, Plus, X, ChevronLeft, ChevronRight, Swords } from 'lucide-react';
+import { EyeOff, ImageIcon, Plus, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface QuotedPostLite {
@@ -30,11 +33,12 @@ interface CreateMediaPostModalProps {
     description: string;
     altTexts: string[];
     isSpoiler: boolean;
-    isDuel?: boolean;
-    duelDurationHours?: number;
+    appliedTags?: string[];
   }) => void;
   isPending?: boolean;
   quotedPost?: QuotedPostLite | null;
+  /** Needed to load the channel's tag vocabulary (Fluxer: available_tags). */
+  channelId: string;
 }
 
 export function CreateMediaPostModal({
@@ -43,6 +47,7 @@ export function CreateMediaPostModal({
   onPublish,
   isPending = false,
   quotedPost = null,
+  channelId,
 }: CreateMediaPostModalProps) {
   const [files, setFiles] = useState<File[]>(initialFiles);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -54,8 +59,12 @@ export function CreateMediaPostModal({
   );
   const [altTexts, setAltTexts] = useState<string[]>(initialFiles.map(() => ''));
   const [isSpoiler, setIsSpoiler] = useState(false);
-  const [isDuel, setIsDuel] = useState(false);
-  const [duelDurationHours, setDuelDurationHours] = useState(24);
+
+  // Forum preset: channel tags + REQUIRE_TAG
+  const { data: definedTags = [] } = useForumTags(channelId);
+  const { data: channelConfig } = useForumChannelConfig(channelId);
+  const [appliedTags, setAppliedTags] = useState<string[]>([]);
+  const requireTag = channelConfig?.require_tag ?? false;
 
   const urlsRef = useRef<string[]>([]);
   const addInputRef = useRef<HTMLInputElement>(null);
@@ -79,8 +88,12 @@ export function CreateMediaPostModal({
   }, []);
 
   const descLength = description.length;
-  const duelInvalid = isDuel && files.length !== 2;
-  const isValid = title.trim().length > 0 && descLength >= 10 && descLength <= 500 && files.length > 0 && !duelInvalid;
+  const isValid =
+    title.trim().length > 0 &&
+    descLength >= 10 && descLength <= 500 &&
+    files.length > 0 &&
+    // REQUIRE_TAG: publishing without a tag is blocked.
+    (!requireTag || appliedTags.length > 0);
 
   const activeFile = files[activeIndex];
   const activeUrl = previewUrls[activeIndex];
@@ -96,8 +109,7 @@ export function CreateMediaPostModal({
       description: description.trim(),
       altTexts: altTexts.map((a) => a.trim()),
       isSpoiler,
-      isDuel,
-      duelDurationHours,
+      appliedTags,
     });
   };
 
@@ -257,6 +269,37 @@ export function CreateMediaPostModal({
             />
           </div>
 
+          {/* Tags — Fluxer's available_tags on the channel */}
+          {definedTags.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Étiquettes {requireTag && <span className="text-destructive">*</span>}</Label>
+                <span className="text-xs text-muted-foreground">
+                  {appliedTags.length}/{MAX_APPLIED_TAGS_PER_POST}
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {definedTags.map((tag) => {
+                  const active = appliedTags.includes(tag.id);
+                  const full = !active && appliedTags.length >= MAX_APPLIED_TAGS_PER_POST;
+                  return (
+                    <Badge
+                      key={tag.id}
+                      variant={active ? 'default' : 'outline'}
+                      className={cn('cursor-pointer gap-1', full && 'opacity-40')}
+                      onClick={() => !full && setAppliedTags(prev =>
+                        prev.includes(tag.id) ? prev.filter(i => i !== tag.id) : [...prev, tag.id])}
+                    >
+                      {tag.emoji_name ? <span>{tag.emoji_name}</span> : <TagIcon className="w-3 h-3" />}
+                      {tag.name}
+                      {tag.moderated && <Lock className="w-2.5 h-2.5 opacity-70" />}
+                    </Badge>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Description */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
@@ -298,44 +341,6 @@ export function CreateMediaPostModal({
               onChange={(e) => updateActiveAlt(e.target.value)}
               placeholder="Décrivez l'image pour l'accessibilité"
             />
-          </div>
-
-          {/* Duel mode */}
-          <div className="rounded-lg border border-border p-3 space-y-2">
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="media-duel"
-                checked={isDuel}
-                onCheckedChange={(v) => setIsDuel(v === true)}
-              />
-              <Label htmlFor="media-duel" className="cursor-pointer text-sm flex items-center gap-1.5">
-                <Swords className="w-3.5 h-3.5" /> Duel visuel (A vs B)
-              </Label>
-            </div>
-            {isDuel && (
-              <div className="pl-6 space-y-2">
-                <p className="text-xs text-muted-foreground">
-                  Un duel demande exactement 2 médias. {duelInvalid && (
-                    <span className="text-destructive">Vous en avez {files.length}.</span>
-                  )}
-                </p>
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="duel-dur" className="text-xs">Durée du vote</Label>
-                  <select
-                    id="duel-dur"
-                    value={duelDurationHours}
-                    onChange={(e) => setDuelDurationHours(Number(e.target.value))}
-                    className="text-xs rounded-md border border-border bg-background px-2 py-1"
-                  >
-                    <option value={1}>1 heure</option>
-                    <option value={6}>6 heures</option>
-                    <option value={24}>24 heures</option>
-                    <option value={72}>3 jours</option>
-                    <option value={168}>7 jours</option>
-                  </select>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Spoiler */}

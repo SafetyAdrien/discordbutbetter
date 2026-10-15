@@ -179,7 +179,6 @@ export function AnnouncementComposer({
           console.error('Publish failed', err);
         }
       } else if (autoPublishEnabled && followers.length === 0) {
-        toast.info('Aucun salon ne suit ce salon — rien à publier');
       }
     } catch (err) {
       console.error('Send failed', err);

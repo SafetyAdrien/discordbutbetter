@@ -86,7 +86,6 @@ export function useSetSecondaryOwner() {
         old?.map(s => s.id === serverId ? { ...s, secondary_owner_id: userId } : s)
       );
 
-      toast.success('Second propriétaire ajouté');
       return { previousServers };
     },
   });
@@ -119,7 +118,6 @@ export function useRemoveSecondaryOwner() {
         old?.map(s => s.id === serverId ? { ...s, secondary_owner_id: null } : s)
       );
 
-      toast.success('Second propriétaire retiré');
       return { previousServers };
     },
   });
@@ -133,7 +131,6 @@ export function reconcileSecondaryOwnerFromRealtime(serverId: string, remoteValu
   const intent = latestIntentByServer.get(serverId);
   if (!intent) return;
   if (intent.targetUserId !== remoteValue) {
-    toast.info('Un autre administrateur a modifié le second propriétaire');
     latestIntentByServer.delete(serverId);
   } else {
     // Server agrees with our intent — clear it.
@@ -172,7 +169,6 @@ export function useTransferOwnership() {
       toast.error('Impossible de transférer la propriété');
     },
     onSuccess: () => {
-      toast.success('Propriété transférée avec succès');
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['servers'] });

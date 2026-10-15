@@ -19,9 +19,9 @@ export function RoleBadgePopover({ role }: RoleBadgePopoverProps) {
   const isImageUrl = role.icon_url.startsWith("http");
 
   const iconElement = isImageUrl ? (
-    <img src={role.icon_url} alt={role.name} className="w-5 h-5 object-contain" />
+    <img src={role.icon_url} alt={role.name} className="w-4 h-4 object-contain" />
   ) : (
-    <span className="text-xl leading-none">{role.icon_url}</span>
+    <span className="text-base leading-none">{role.icon_url}</span>
   );
 
   return (
@@ -32,7 +32,7 @@ export function RoleBadgePopover({ role }: RoleBadgePopoverProps) {
             <PopoverTrigger asChild>
               <button
                 type="button"
-                className="flex-shrink-0 cursor-pointer hover:scale-110 transition-transform inline-flex items-center self-center translate-y-[0px]"
+                className="flex-shrink-0 cursor-pointer inline-flex items-center self-center translate-y-[0px]"
                 onClick={(e) => e.stopPropagation()}
               >
                 {iconElement}

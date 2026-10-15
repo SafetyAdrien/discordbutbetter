@@ -57,7 +57,7 @@ export function ScreenShareQualityModal({ open, onOpenChange, onStart }: ScreenS
               {QUALITY_PRESETS.map(preset => {
                 const Icon = preset.icon;
                 return (
-                  <button
+                  <button type="button"
                     key={preset.key}
                     onClick={() => setQuality(preset.key)}
                     className={cn(

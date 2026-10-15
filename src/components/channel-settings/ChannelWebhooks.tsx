@@ -43,7 +43,6 @@ export function ChannelWebhooks({ channelId }: ChannelWebhooksProps) {
       });
       setNewName('');
       setShowCreate(false);
-      toast.success('Webhook créé');
     } catch {
       toast.error('Erreur lors de la création');
     }
@@ -55,7 +54,6 @@ export function ChannelWebhooks({ channelId }: ChannelWebhooksProps) {
     try {
       await deleteWebhook.mutateAsync({ webhookId: deleteId, channelId });
       setDeleteId(null);
-      toast.success('Webhook supprimé');
     } catch {
       toast.error('Erreur lors de la suppression');
     }
@@ -64,7 +62,6 @@ export function ChannelWebhooks({ channelId }: ChannelWebhooksProps) {
   const copyUrl = (token: string) => {
     const url = `${window.location.origin}/api/webhooks/${token}`;
     navigator.clipboard.writeText(url);
-    toast.success('URL copiée');
   };
 
   if (isLoading) {

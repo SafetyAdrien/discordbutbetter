@@ -1,6 +1,20 @@
 import { useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
+/** Max results returned to the user once all filters have been applied. */
+const RESULT_LIMIT = 50;
+
+/**
+ * Escape LIKE wildcards in user input.
+ *
+ * `%` and `_` typed by the user were previously passed straight into the
+ * `ilike` pattern, turning a literal search into a wildcard match that scans
+ * far more rows than intended.
+ */
+function escapeLike(input: string): string {
+  return input.replace(/[\\%_]/g, (ch) => `\\${ch}`);
+}
+
 export interface SearchFilters {
   from?: string;
   mentions?: string;
@@ -70,13 +84,12 @@ export function useGlobalSearch(serverId: string | null) {
           )
         `)
         .in('channel_id', channelIds)
-        .order('created_at', { ascending: false })
-        .limit(50);
+        .order('created_at', { ascending: false });
 
       // Apply content filter
       if (filters.contains || query) {
         const searchText = filters.contains || query;
-        request = request.ilike('content', `%${searchText}%`);
+        request = request.ilike('content', `%${escapeLike(searchText)}%`);
       }
 
       // Apply date filters
@@ -152,27 +165,23 @@ export function useGlobalSearch(serverId: string | null) {
 
       // Handle pinned filter - requires additional query
       if (filters.pinned !== undefined) {
-        if (filters.pinned) {
-          // Get pinned message IDs
-          const { data: pinnedData } = await supabase
-            .from('pinned_messages')
-            .select('message_id')
-            .in('channel_id', channelIds);
-          
-          const pinnedIds = new Set(pinnedData?.map(p => p.message_id) || []);
-          return resultsWithChannel.filter(r => pinnedIds.has(r.id));
-        } else {
-          const { data: pinnedData } = await supabase
-            .from('pinned_messages')
-            .select('message_id')
-            .in('channel_id', channelIds);
-          
-          const pinnedIds = new Set(pinnedData?.map(p => p.message_id) || []);
-          return resultsWithChannel.filter(r => !pinnedIds.has(r.id));
-        }
+        const { data: pinnedData } = await supabase
+          .from('pinned_messages')
+          .select('message_id')
+          .in('channel_id', channelIds);
+
+        const pinnedIds = new Set(pinnedData?.map(p => p.message_id) || []);
+        const filtered = filters.pinned
+          ? resultsWithChannel.filter(r => pinnedIds.has(r.id))
+          : resultsWithChannel.filter(r => !pinnedIds.has(r.id));
+
+        return filtered.slice(0, RESULT_LIMIT);
       }
 
-      return resultsWithChannel;
+      // Cap AFTER the client-side filters. Limiting in the query first
+      // returned up to 50 rows and then narrowed them down, so a search could
+      // report fewer (or zero) matches while more existed.
+      return resultsWithChannel.slice(0, RESULT_LIMIT);
     },
   });
 }

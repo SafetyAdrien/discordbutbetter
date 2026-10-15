@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
-import { X, ArrowUp, MessageCircle, Send, Lock, Pin, Trash2, Tag as TagIcon } from 'lucide-react';
+import {
+  X, ArrowUp, MessageCircle, Send, Lock, Pin, Trash2, Tag as TagIcon, Archive, ArchiveRestore,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -10,7 +12,9 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useForumComments, useCreateForumComment, useDeleteForumComment } from '@/hooks/useForumComments';
-import { useDeleteForumPost, useToggleForumVote, type ForumPost } from '@/hooks/useForumPosts';
+import {
+  useDeleteForumPost, useToggleForumVote, useUpdateForumPost, type ForumPost,
+} from '@/hooks/useForumPosts';
 import { useHasChannelPermission } from '@/hooks/useUserChannelPermissions';
 
 function useProfile(userId: string | undefined) {
@@ -27,8 +31,13 @@ function useProfile(userId: string | undefined) {
 
 interface Props {
   post: ForumPost;
-  hasVoted: boolean;
+  hasVoted?: boolean;
   onClose: () => void;
+  /**
+   * Resolved tag entities for this post (ids from public.forum_tags, with their
+   * emoji). When omitted, the panel falls back to the legacy free-text tags.
+   */
+  tags?: Array<{ id: string; name: string; emoji_name: string | null }>;
 }
 
 function CommentRow({ comment, postId, canDelete }: { comment: any; postId: string; canDelete: boolean }) {
@@ -50,7 +59,7 @@ function CommentRow({ comment, postId, canDelete }: { comment: any; postId: stri
         <p className="text-sm whitespace-pre-wrap break-words">{comment.content}</p>
       </div>
       {canDelete && (
-        <button
+        <button type="button"
           onClick={() => del.mutate(comment.id)}
           className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
           aria-label="Supprimer"
@@ -62,13 +71,16 @@ function CommentRow({ comment, postId, canDelete }: { comment: any; postId: stri
   );
 }
 
-export function ForumPostSidePanel({ post, hasVoted, onClose }: Props) {
+export function ForumPostSidePanel({ post, hasVoted = false, onClose, tags }: Props) {
   const { user } = useAuth();
   const { data: author } = useProfile(post.author_id);
   const { data: comments = [] } = useForumComments(post.id);
   const createComment = useCreateForumComment(post.id);
   const deletePost = useDeleteForumPost(post.channel_id);
   const toggleVote = useToggleForumVote(post.channel_id);
+  // Pin / lock / archive: the columns and their RLS already existed but nothing
+  // ever wrote them, so the badges were effectively read-only.
+  const updatePost = useUpdateForumPost(post.channel_id);
   const [replyText, setReplyText] = useState('');
 
   const canManageForum = useHasChannelPermission(post.channel_id, 'manage_forum_posts').data;
@@ -94,8 +106,11 @@ export function ForumPostSidePanel({ post, hasVoted, onClose }: Props) {
           <div className="flex items-center gap-1.5 flex-wrap mb-1">
             {post.is_pinned && <Badge variant="secondary" className="text-[10px]"><Pin className="w-3 h-3 mr-1" />Épinglé</Badge>}
             {post.is_locked && <Badge variant="outline" className="text-[10px]"><Lock className="w-3 h-3 mr-1" />Verrouillé</Badge>}
-            {post.tags.map(t => (
-              <Badge key={t} variant="outline" className="text-[10px]"><TagIcon className="w-3 h-3 mr-1" />{t}</Badge>
+            {(tags ?? post.tags.map((t) => ({ id: t, name: t, emoji_name: null }))).map(t => (
+              <Badge key={t.id} variant="outline" className="text-[10px]">
+                {t.emoji_name ? <span className="mr-1">{t.emoji_name}</span> : <TagIcon className="w-3 h-3 mr-1" />}
+                {t.name}
+              </Badge>
             ))}
           </div>
           <h2 className="text-base font-semibold leading-tight truncate">{post.title}</h2>
@@ -116,6 +131,44 @@ export function ForumPostSidePanel({ post, hasVoted, onClose }: Props) {
             <ArrowUp className={cn('w-3.5 h-3.5', hasVoted && 'fill-current')} />
             {post.upvote_count}
           </Button>
+          {canManageForum && (
+            <>
+              <Button
+                size="icon"
+                variant="ghost"
+                className={cn('h-8 w-8', post.is_pinned && 'text-primary')}
+                onClick={() => updatePost.mutate({ postId: post.id, is_pinned: !post.is_pinned })}
+                aria-label={post.is_pinned ? 'Désépingler' : 'Épingler'}
+                title={post.is_pinned ? 'Désépingler' : 'Épingler'}
+              >
+                <Pin className="w-4 h-4" />
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                className={cn('h-8 w-8', post.is_locked && 'text-primary')}
+                onClick={() => updatePost.mutate({ postId: post.id, is_locked: !post.is_locked })}
+                aria-label={post.is_locked ? 'Déverrouiller' : 'Verrouiller'}
+                title={post.is_locked ? 'Déverrouiller' : 'Verrouiller'}
+              >
+                <Lock className="w-4 h-4" />
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                className={cn('h-8 w-8', post.archived && 'text-primary')}
+                onClick={() => {
+                  const next = !post.archived;
+                  updatePost.mutate({ postId: post.id, archived: next });
+                  if (next) onClose();
+                }}
+                aria-label={post.archived ? 'Désarchiver' : 'Archiver'}
+                title={post.archived ? 'Désarchiver' : 'Archiver'}
+              >
+                {post.archived ? <ArchiveRestore className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
+              </Button>
+            </>
+          )}
           {canDeletePost && (
             <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => { if (confirm('Supprimer ce sujet ?')) { deletePost.mutate(post.id); onClose(); } }}>
               <Trash2 className="w-4 h-4" />

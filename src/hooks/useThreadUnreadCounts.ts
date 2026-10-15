@@ -1,12 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 
 export const useThreadUnreadCounts = (channelId: string | undefined) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   const query = useQuery({
     queryKey: ['thread-unread-counts', channelId, user?.id],
@@ -75,7 +76,7 @@ export const useThreadUnreadCounts = (channelId: string | undefined) => {
     if (!channelId || !user?.id) return;
 
     const channel = supabase
-      .channel(`thread-messages-${channelId}`)
+      .channel(`thread-messages-${channelId}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         {

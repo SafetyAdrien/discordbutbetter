@@ -8,15 +8,14 @@ import { cn } from '@/lib/utils';
 import {
   format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay,
   addMonths, subMonths, isAfter, isToday as isDateToday, differenceInCalendarDays, startOfDay, endOfDay,
-} from 'date-fns';
-import { fr } from 'date-fns/locale';
+} from '@/lib/dateUtils';
+import { fr } from '@/lib/dateUtils';
 import { useHasChannelPermission } from '@/hooks/useUserChannelPermissions';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { useChannelCalendarEvents, type ChannelCalendarEvent } from '@/hooks/useChannelCalendarEvents';
 import { ChannelEventModal } from '@/components/channels/calendar/ChannelEventModal';
 import { canvasHasTransparentPixels, findOpaqueBounds, sourceMayHaveTransparency } from '@/components/channels/calendar/thumbnailAlpha';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 import { copyToClipboard } from '@/lib/clipboard';
 
 interface Channel {
@@ -71,9 +70,6 @@ export function CalendarChannel({ channel, onToggleMembers, showMembers, hideHea
       const delay = fireAt - now;
       if (delay > 0 && delay < 24 * 60 * 60 * 1000) {
         timers.push(setTimeout(() => {
-          toast.message(`⏰ ${e.title}`, {
-            description: `Commence dans ${e.reminder_minutes} minute(s)`,
-          });
         }, delay));
       }
     });
@@ -137,14 +133,14 @@ export function CalendarChannel({ channel, onToggleMembers, showMembers, hideHea
 
         <div className="flex items-center gap-1 sm:gap-2 ml-auto flex-shrink-0">
           <div className="flex rounded-md border border-border overflow-hidden">
-            <button
+            <button type="button"
               onClick={() => setViewMode('month')}
               className={cn('p-1.5 transition-colors', viewMode === 'month' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted')}
               aria-label="Vue mois"
             >
               <CalendarDays className="w-4 h-4" />
             </button>
-            <button
+            <button type="button"
               onClick={() => setViewMode('agenda')}
               className={cn('p-1.5 transition-colors', viewMode === 'agenda' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted')}
               aria-label="Vue agenda"
@@ -254,7 +250,7 @@ const hasAnyDayAction = canCreate || dayEvents.some(canEditEvent);
                 return (
                   <ContextMenu key={day.toISOString()}>
                     <ContextMenuTrigger asChild>
-                      <button
+                      <button type="button"
                         onClick={() => setSelectedDate(day)}
                         onDoubleClick={() => canCreate && featured && openEdit(featured)}
                         className={cn(
@@ -509,7 +505,7 @@ function EventAgendaCard({
             <Pencil className="w-4 h-4 mr-2" /> Modifier
           </ContextMenuItem>
         )}
-        <ContextMenuItem onClick={() => { copyToClipboard(event.id); toast.success('ID copié'); }}>
+        <ContextMenuItem onClick={() => { copyToClipboard(event.id); }}>
           <Copy className="w-4 h-4 mr-2" /> Copier l'ID
         </ContextMenuItem>
         {canManage && (

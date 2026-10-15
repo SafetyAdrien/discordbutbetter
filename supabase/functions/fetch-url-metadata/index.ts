@@ -1,16 +1,19 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
+import { corsHeaders as buildCorsHeaders, preflight } from '../_shared/cors.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
-  'Access-Control-Expose-Headers': 'x-cache, cache-control',
-};
 
 // ---- In-memory cache (per edge instance) ----
 interface CacheEntry {
   payload: Record<string, unknown>;
   expiresAt: number; // epoch ms
 }
+
+// Origin-restricted CORS (see _shared/cors.ts) — no more blanket '*'.
+const corsHeaders = (req: Request) => ({
+  ...buildCorsHeaders(req),
+  'Access-Control-Expose-Headers': 'x-cache, cache-control',
+});
+
 const CACHE = new Map<string, CacheEntry>();
 const CACHE_MAX = 500;
 const TTL_OK_MS = (parseInt(Deno.env.get('URL_METADATA_TTL_OK_SEC') || '3600', 10)) * 1000;
@@ -40,7 +43,7 @@ function cacheSet(key: string, payload: Record<string, unknown>, ttlMs: number) 
 function jsonResponse(payload: Record<string, unknown>, status: number, extraHeaders: Record<string, string> = {}) {
   return new Response(JSON.stringify(payload), {
     status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json', ...extraHeaders },
+    headers: { ...corsHeaders(req), 'Content-Type': 'application/json', ...extraHeaders },
   });
 }
 
@@ -143,10 +146,59 @@ function isPrivateHostname(rawHostname: string): boolean {
   return false;
 }
 
-function isSafeUrl(u: URL): boolean {
+/**
+ * True if the given hostname is a literal IPv4/IPv6 address that is private,
+ * loopback, link-local or otherwise unroutable.
+ *
+ * `isPrivateHostname` above only inspects the hostname STRING. That is not
+ * enough: a public hostname can resolve to 169.254.169.254 (cloud metadata),
+ * which is the classic DNS-rebinding SSRF bypass. This function is applied to
+ * the RESOLVED addresses of the target.
+ */
+function isPrivateIp(ip: string): boolean {
+  // IPv4
+  const v4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(ip);
+  if (v4) {
+    const [a, b] = [parseInt(v4[1], 10), parseInt(v4[2], 10)];
+    if (a === 0 || a === 10 || a === 127) return true;
+    if (a === 169 && b === 254) return true; // link-local / metadata
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 192 && b === 168) return true;
+    if (a === 100 && b >= 64 && b <= 127) return true; // CGNAT
+    if (a >= 224) return true; // multicast / reserved
+    return false;
+  }
+
+  // IPv6
+  const addr = ip.toLowerCase().split('%')[0]; // drop zone id
+  if (addr === '::1' || addr === '::') return true;
+  if (addr.startsWith('fe80')) return true; // link-local
+  if (/^f[cd][0-9a-f]{0,2}:/.test(addr)) return true; // unique local fc00::/7
+  // IPv4-mapped (::ffff:a.b.c.d) — check the embedded IPv4
+  const mapped = /^::ffff:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/.exec(addr);
+  if (mapped) return isPrivateIp(mapped[1]);
+  return false;
+}
+
+/** Resolve a hostname and reject it if ANY address is private. */
+async function isSafeResolvedUrl(u: URL): Promise<boolean> {
   if (!['http:', 'https:'].includes(u.protocol)) return false;
   if (isPrivateHostname(u.hostname)) return false;
-  return true;
+
+  let addrs: string[];
+  try {
+    const result = await Deno.resolveDns(u.hostname, 'A').catch(() => []);
+    const result6 = await Deno.resolveDns(u.hostname, 'AAAA').catch(() => []);
+    addrs = [...result, ...result6].map((a) => a as string);
+  } catch {
+    // Resolution failed — we cannot prove it is safe, so refuse.
+    return false;
+  }
+
+  // Literal IP hostnames never appear in DNS results.
+  if (addrs.length === 0) return isPrivateIp(u.hostname) === false;
+
+  return !addrs.some((a) => isPrivateIp(a));
 }
 
 async function fetchWithRetry(target: string): Promise<Response | { upstreamStatus: number | null }> {
@@ -177,7 +229,8 @@ async function fetchWithRetry(target: string): Promise<Response | { upstreamStat
         } catch {
           return null;
         }
-        if (!isSafeUrl(next)) return null;
+        // Re-validate each redirect hop against the resolved-address blocklist.
+        if (!(await isSafeResolvedUrl(next))) return null;
         current = next.toString();
         continue;
       }
@@ -227,7 +280,7 @@ async function fetchWithRetry(target: string): Promise<Response | { upstreamStat
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return preflight(req);
   }
 
   try {
@@ -261,7 +314,8 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: 'Invalid protocol' }, 400);
     }
 
-    if (isPrivateHostname(parsedUrl.hostname)) {
+    // Validate the hostname AND every resolved address (DNS-rebinding guard).
+    if (!(await isSafeResolvedUrl(parsedUrl))) {
       return jsonResponse({ error: 'Invalid URL' }, 400);
     }
 

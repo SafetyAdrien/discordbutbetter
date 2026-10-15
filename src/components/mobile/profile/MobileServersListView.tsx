@@ -61,7 +61,7 @@ function ServerList({ servers, onSelect }: { servers: any[]; onSelect: (id: stri
       {servers.map((s, idx) => (
         <div key={s.id}>
           {idx > 0 && <div className="h-px bg-border/40 mx-4" />}
-          <button
+          <button type="button"
             onClick={() => {
               haptics.light();
               onSelect(s.id);

@@ -40,7 +40,7 @@ export function MobileMoreActionsSheet({
           {actions.map((action) => {
             const Icon = action.icon;
             return (
-              <button
+              <button type="button"
                 key={action.id}
                 disabled={action.disabled}
                 onClick={() => {

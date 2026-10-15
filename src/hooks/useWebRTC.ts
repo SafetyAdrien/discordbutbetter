@@ -463,13 +463,19 @@ export function useWebRTC(): UseWebRTCReturn {
               }
 
               const rawLevel = mediaManager.getRemoteAudioLevel(peerId);
-              vadState.samples.push(rawLevel);
-              if (vadState.samples.length > AMBIENT_SAMPLE_SIZE) {
-                vadState.samples.shift();
+              // Only sample silence into the noise floor. Including speech
+              // made the estimate track the speaker, which raised the
+              // detection threshold until the peer vanished from their own
+              // speaking indicator.
+              if (!peerInfo.isSpeaking) {
+                vadState.samples.push(rawLevel);
+                if (vadState.samples.length > AMBIENT_SAMPLE_SIZE) {
+                  vadState.samples.shift();
+                }
+                const sorted = [...vadState.samples].sort((a, b) => a - b);
+                const percentileIndex = Math.floor(sorted.length * 0.2);
+                vadState.ambientLevel = sorted[percentileIndex] || 0.05;
               }
-              const sorted = [...vadState.samples].sort((a, b) => a - b);
-              const percentileIndex = Math.floor(sorted.length * 0.2);
-              vadState.ambientLevel = sorted[percentileIndex] || 0.05;
 
               const remoteVAD = mediaManager.getRemoteVADState(peerId, peerInfo.isSpeaking, vadState.ambientLevel);
 
@@ -481,7 +487,11 @@ export function useWebRTC(): UseWebRTCReturn {
 
             return hasChanges ? newPeers : prev;
           });
-        }, 50);
+          // 25 ms (40 Hz) rather than 50 ms: the poll interval is the last
+          // quantization step in the detection chain, so halving it directly
+          // halves the worst-case wait between someone starting to speak and
+          // their indicator lighting up.
+        }, 25);
 
         // Start connection stats monitoring
         statsIntervalRef.current = setInterval(() => {

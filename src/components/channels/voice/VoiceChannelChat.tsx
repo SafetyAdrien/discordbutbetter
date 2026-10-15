@@ -11,8 +11,8 @@ import { useServerRoles } from '@/hooks/useRoles';
 import { useMembers } from '@/hooks/useMembers';
 import { useAuth } from '@/contexts/AuthContext';
 import { X, Check } from 'lucide-react';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { format } from '@/lib/dateUtils';
+import { fr } from '@/lib/dateUtils';
 import { MessageInput } from '@/components/chat/MessageInput';
 import { UniversalMessageContextMenu } from '@/components/chat/UniversalMessageContextMenu';
 import { UniversalMessageActions } from '@/components/chat/UniversalMessageActions';
@@ -23,7 +23,6 @@ import { useShiftKey } from '@/hooks/useShiftKey';
 import { copyToClipboard } from '@/lib/clipboard';
 import { uuidToSnowflake } from '@/lib/snowflake';
 import { MarkdownText } from '@/lib/markdown';
-import { toast } from 'sonner';
 import { usePendingAttachments } from '@/hooks/usePendingAttachments';
 import { UploadDropOverlay } from '@/components/chat/upload/UploadDropOverlay';
 import { cn } from '@/lib/utils';
@@ -135,6 +134,10 @@ export function VoiceChannelChat({ channelId, channelName, serverId, onClose }: 
     sendMessage.mutate({ channelId, content: messageInput.trim() });
     setMessageInput('');
     clearAttachments();
+  };
+
+  const handleSendExternalAttachment = (attachment: { url: string; name: string; type: 'sticker' | 'gif' }) => {
+    sendMessage.mutate({ channelId, content: '', externalAttachment: attachment });
   };
 
   const handleStartEdit = (messageId: string, content: string) => {
@@ -251,15 +254,12 @@ export function VoiceChannelChat({ channelId, channelName, serverId, onClose }: 
                     onAddReaction={(emoji) => handleAddReaction(message.id, emoji)}
                     onCopyText={() => {
                       copyToClipboard(message.content);
-                      toast.success('Texte copié');
                     }}
                     onCopyLink={() => {
                       copyToClipboard(`${window.location.origin}/channels/${serverId}/${channelId}/${message.id}`);
-                      toast.success('Lien copié');
                     }}
                     onCopyId={() => {
                       copyToClipboard(uuidToSnowflake(message.id));
-                      toast.success('ID copié');
                     }}
                     onEdit={isOwnMessage ? () => handleStartEdit(message.id, message.content) : undefined}
                     onDelete={isOwnMessage ? () => handleDelete(message.id) : undefined}
@@ -278,15 +278,12 @@ export function VoiceChannelChat({ channelId, channelName, serverId, onClose }: 
                         onAddReaction={(emoji) => handleAddReaction(message.id, emoji)}
                         onCopyLink={() => {
                           copyToClipboard(`${window.location.origin}/channels/${serverId}/${channelId}/${message.id}`);
-                          toast.success('Lien copié');
                         }}
                         onCopyId={() => {
                           copyToClipboard(uuidToSnowflake(message.id));
-                          toast.success('ID copié');
                         }}
                         onCopyText={() => {
                           copyToClipboard(message.content);
-                          toast.success('Message copié');
                         }}
                         onEdit={isOwnMessage ? () => handleStartEdit(message.id, message.content) : undefined}
                         onDelete={isOwnMessage ? () => handleDelete(message.id) : undefined}
@@ -343,7 +340,7 @@ export function VoiceChannelChat({ channelId, channelName, serverId, onClose }: 
                               {Object.keys(groupedReactions).length > 0 && (
                                 <div className="flex flex-wrap gap-1 mt-1">
                                   {Object.values(groupedReactions).map(({ emoji, count, userReacted }) => (
-                                    <button
+                                    <button type="button"
                                       key={emoji}
                                       onClick={() => handleAddReaction(message.id, emoji)}
                                       className={cn(
@@ -372,11 +369,12 @@ export function VoiceChannelChat({ channelId, channelName, serverId, onClose }: 
         </div>
       </ScrollArea>
 
-      <div className="px-4 pb-4 pt-2">
+      <div>
         <MessageInput
           value={messageInput}
           onChange={setMessageInput}
           onSend={handleSend}
+          onSendExternalAttachment={handleSendExternalAttachment}
           placeholder={`Envoyer un message dans #${channelName}`}
           disabled={sendMessage.isPending}
           isSending={sendMessage.isPending}

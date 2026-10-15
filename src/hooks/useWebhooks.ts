@@ -19,12 +19,13 @@ export function useChannelWebhooks(channelId: string | null) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   useEffect(() => {
     if (!channelId) return;
 
     const channel = supabase
-      .channel(`webhooks-rt-${channelId}`, { config: { private: true } })
+      .channel(`webhooks-rt-${channelId}-${instanceIdRef.current}`, { config: { private: true } })
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'webhooks', filter: `channel_id=eq.${channelId}` },
@@ -102,7 +103,7 @@ export function useCreateWebhook() {
       const previousWebhooks = queryClient.getQueryData(['webhooks', channelId]);
       
       const tempWebhook: Webhook = {
-        id: `temp-${Date.now()}`,
+        id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         channel_id: channelId,
         name,
         avatar_url: avatarUrl || null,
@@ -124,7 +125,6 @@ export function useCreateWebhook() {
       toast.error('Erreur lors de la création du webhook');
     },
     onSuccess: () => {
-      toast.success('Webhook créé !');
     },
     onSettled: (_, __, { channelId }) => {
       queryClient.invalidateQueries({ queryKey: ['webhooks', channelId] });
@@ -161,7 +161,6 @@ export function useDeleteWebhook() {
       toast.error('Erreur lors de la suppression du webhook');
     },
     onSuccess: () => {
-      toast.success('Webhook supprimé !');
     },
     onSettled: (_, __, { channelId }) => {
       queryClient.invalidateQueries({ queryKey: ['webhooks', channelId] });

@@ -90,7 +90,6 @@ export function MediaPostDetailModal({
       ['media-posts', channelId],
       (old = []) => old.filter((p) => p.id !== post.id)
     );
-    toast.success('Post supprimé');
     onClose();
   };
 
@@ -102,7 +101,7 @@ export function MediaPostDetailModal({
         {/* Media side */}
         <div className="relative flex-1 min-w-0 bg-black flex items-center justify-center">
           {!revealed && post.is_spoiler ? (
-            <button
+            <button type="button"
               onClick={() => setRevealed(true)}
               className="flex flex-col items-center gap-3 text-white"
             >
@@ -127,7 +126,7 @@ export function MediaPostDetailModal({
           )}
 
           {/* Close */}
-          <button
+          <button type="button"
             onClick={onClose}
             className="absolute top-3 right-3 w-9 h-9 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center transition"
             aria-label="Fermer"
@@ -138,13 +137,13 @@ export function MediaPostDetailModal({
           {/* Carousel nav */}
           {items.length > 1 && revealed && (
             <>
-              <button
+              <button type="button"
                 onClick={() => setActiveIndex((i) => (i - 1 + items.length) % items.length)}
                 className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center transition"
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
-              <button
+              <button type="button"
                 onClick={() => setActiveIndex((i) => (i + 1) % items.length)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center transition"
               >
@@ -156,7 +155,7 @@ export function MediaPostDetailModal({
               {/* Thumbnail strip */}
               <div className="absolute bottom-12 left-1/2 -translate-x-1/2 flex gap-1.5 max-w-[80%] overflow-x-auto px-2">
                 {items.map((it, idx) => (
-                  <button
+                  <button type="button"
                     key={it.id}
                     onClick={() => setActiveIndex(idx)}
                     className={cn(

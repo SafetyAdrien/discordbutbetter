@@ -30,7 +30,7 @@ const DURATION_OPTIONS = [
   { value: '8h', label: '8 heures' },
   { value: '24h', label: '24 heures' },
   { value: '3d', label: '3 jours' },
-  { value: '7d', label: '7 jours' },
+  { value: '7d', label: '1 semaine' },
   { value: '14d', label: '2 semaines' },
 ];
 
@@ -170,7 +170,7 @@ export function CreateDMPollModal({ conversationId, open = false, onOpenChange, 
                       serverId={null}
                       onEmojiSelect={(emoji) => updateOption(option.id, { emoji })}
                       trigger={
-                        <button className="w-10 h-10 flex items-center justify-center rounded bg-[hsl(var(--surface-1))] hover:bg-[hsl(var(--surface-2))] transition-colors text-lg">
+                        <button type="button" className="w-10 h-10 flex items-center justify-center rounded bg-[hsl(var(--surface-1))] hover:bg-[hsl(var(--surface-2))] transition-colors text-lg">
                           {option.emoji || <Smile className="w-4 h-4 text-muted-foreground" />}
                         </button>
                       }
@@ -182,7 +182,7 @@ export function CreateDMPollModal({ conversationId, open = false, onOpenChange, 
                       className="flex-1 bg-[hsl(var(--surface-1))] border-none"
                     />
                     {options.length > 1 && (
-                      <button
+                      <button type="button"
                         onClick={() => removeOption(option.id)}
                         className="p-2 text-muted-foreground hover:text-destructive transition-colors"
                       >
@@ -194,12 +194,12 @@ export function CreateDMPollModal({ conversationId, open = false, onOpenChange, 
               </div>
 
               {options.length < 10 && (
-                <button
+                <button type="button"
                   onClick={addOption}
                   className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
                 >
                   <Plus className="w-4 h-4" />
-                  Ajouter une réponse
+                  Ajouter une autre réponse
                 </button>
               )}
 
@@ -213,7 +213,7 @@ export function CreateDMPollModal({ conversationId, open = false, onOpenChange, 
                   <SelectTrigger className="bg-[hsl(var(--surface-1))] border-none">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="z-[110]">
                     {DURATION_OPTIONS.map((opt) => (
                       <SelectItem key={opt.value} value={opt.value}>
                         {opt.label}

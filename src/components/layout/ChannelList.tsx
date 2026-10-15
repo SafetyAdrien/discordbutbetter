@@ -43,7 +43,17 @@ import { StreamlineVoiceLocked } from "@/components/icons/StreamlineVoiceLocked"
 import { StreamlineStage } from "@/components/icons/StreamlineStage";
 import { StreamlineLink } from "@/components/icons/StreamlineLink";
 
-import { useState, useCallback, useMemo, useRef, useEffect, forwardRef } from "react";
+import { useState, useCallback, useMemo, useRef, useEffect, forwardRef, lazy, Suspense, memo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { fetchChannelMessages } from "@/hooks/useMessages";
+import { fetchPinnedMessages } from "@/hooks/usePinnedMessages";
+import { fetchChannelPolls } from "@/hooks/usePolls";
+import { fetchChannelThreads } from "@/hooks/useThreads";
+import { Spinner } from "@/components/ui/spinner";
+
+const AccountSettingsModal = lazy(() =>
+  import("@/components/account-settings/AccountSettingsModal").then((m) => ({ default: m.AccountSettingsModal }))
+);
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MentionBadge } from "@/components/ui/MentionBadge";
@@ -70,7 +80,6 @@ import {
 "@/components/ui/alert-dialog";
 import { ChannelSettingsModal } from "@/components/channel-settings/ChannelSettingsModal";
 import { EditCategoryModal } from "@/components/category-settings/EditCategoryModal";
-import { AccountSettingsModal } from "@/components/account-settings/AccountSettingsModal";
 import { CreateChannelModal } from "@/components/modals/CreateChannelModal";
 import { DuplicateChannelModal } from "@/components/modals/DuplicateChannelModal";
 import { CreateCategoryModal } from "@/components/modals/CreateCategoryModal";
@@ -80,7 +89,7 @@ import { VoiceControls } from "./VoiceControls";
 
 import { copyToClipboard } from "@/lib/clipboard";
 import { toast } from "sonner";
-import { useVoice, useVoiceParticipants } from "@/contexts/VoiceContext";
+import { useVoice, useVoiceParticipants, useVoiceLevels } from "@/contexts/VoiceContext";
 import { VoiceParticipantContextMenu } from "@/components/channels/voice/VoiceParticipantContextMenu";
 import { UserProfilePopup } from "@/components/profile/UserProfilePopup";
 import { User } from "@/types/app";
@@ -109,7 +118,6 @@ import { useCanAccessServerSettings, usePermissions } from "@/hooks/usePermissio
 import { useLeaveServer } from "@/hooks/useLeaveServer";
 import { useServerChannelPermissions } from "@/hooks/useServerChannelPermissions";
 import { useStageAudienceCount } from "@/hooks/useStageAudience";
-import { Search } from "lucide-react";
 // DnD Kit imports
 import {
   DndContext,
@@ -128,8 +136,6 @@ import {
   useSortable } from
 "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
-import { useDndSensors } from "@/hooks/useDndSensors";
 import React from "react";
 
 // Discord-style Drop Indicator - Blue horizontal line with 80ms fade
@@ -197,6 +203,7 @@ interface Channel {
 interface Category {
   id: string;
   name: string;
+  icon?: string | null;
   channels: Channel[];
 }
 interface Server {
@@ -219,7 +226,6 @@ interface ChannelListProps {
   activeThreadId?: string | null;
   onThreadSelect?: (threadId: string) => void;
   onOpenVoiceChat?: (channelId: string) => void;
-  onOpenGlobalSearch?: () => void;
 }
 interface ThreadWithUnread extends Thread {
   unreadCount?: number;
@@ -338,7 +344,7 @@ function SortableCategory({
               {...listeners}
               className="flex items-center gap-1.5 px-3 pt-1.5 pb-0 w-full text-xs font-semibold text-muted-foreground hover:text-foreground group cursor-default">
 
-              <button
+              <button type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   onToggle();
@@ -346,6 +352,7 @@ function SortableCategory({
                 className="flex items-center gap-px flex-1">
 
                 <ChevronDown className={cn("w-3 h-3 transition-transform duration-200", isCollapsed && "-rotate-90")} />
+                {category.icon && <span className="text-sm leading-none">{category.icon}</span>}
                 <span className={cn("tracking-wide font-ginto text-[14px] font-medium my-0 py-0 px-[2px] mx-[2px] text-muted-foreground", caseClass('channelCategories', casePrefs))}>
                   {category.name}
                 </span>
@@ -507,7 +514,7 @@ const ThreadContextMenuList: React.FC<ThreadContextMenuListProps> = ({
               </div>
               <ContextMenu>
                 <ContextMenuTrigger asChild>
-                  <button
+                  <button type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       onThreadSelect?.(thread.id);
@@ -642,6 +649,7 @@ interface SortableChannelProps {
   hasUnread?: boolean;
   mentionCount?: number;
   onChannelClick: () => void;
+  onChannelHover?: () => void;
   onCopyLink: () => void;
   onMarkAsRead: () => void;
   onOpenSettings: () => void;
@@ -671,6 +679,7 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
     hasUnread = false,
     mentionCount = 0,
     onChannelClick,
+    onChannelHover,
     onCopyLink,
     onMarkAsRead,
     onOpenSettings,
@@ -730,8 +739,9 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
 
           <ContextMenu>
             <ContextMenuTrigger asChild>
-              <button
+              <button type="button"
                 onClick={onChannelClick}
+                onMouseEnter={onChannelHover}
                 className={cn(
                   "channel-item w-full group",
                   isActive && !isVoice && !isStage && "active",
@@ -931,6 +941,17 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
   }
 );
 SortableChannel.displayName = "SortableChannel";
+
+/**
+ * Memoized channel row.
+ *
+ * Without this, every re-render of ChannelList (a new message, a presence
+ * update, a drag operation, a parent state change) re-rendered every channel
+ * row in the server. `speakingUsers` is a Set that changes identity on each
+ * voice tick, so in a call this happened several times per second for the
+ * whole list; VoiceContext now preserves its identity when unchanged.
+ */
+const MemoSortableChannel = memo(SortableChannel);
 export function ChannelList({
   server,
   activeChannelId,
@@ -939,9 +960,9 @@ export function ChannelList({
   orphanChannels = [],
   activeThreadId,
   onThreadSelect,
-  onOpenVoiceChat,
-  onOpenGlobalSearch
+  onOpenVoiceChat
 }: ChannelListProps) {
+  const queryClient = useQueryClient();
   const [collapsedCategories, setCollapsedCategories] = useState<string[]>([]);
   const [showArchivedThreads, setShowArchivedThreads] = useState(false);
   const [showAccountSettings, setShowAccountSettings] = useState(false);
@@ -1036,7 +1057,10 @@ export function ChannelList({
     );
   }, [getDragClientY]);
   const { profile, signOut, updateStatus } = useAuth();
-  const { voiceState, joinChannel, leaveChannel, toggleMute, toggleDeafen, isConnected, speakingUsers } = useVoice();
+  const { voiceState, joinChannel, leaveChannel, toggleMute, toggleDeafen, isConnected } = useVoice();
+  // Subscribed separately so an audio tick only re-renders this component,
+  // not every consumer of the connection state.
+  const { speakingUsers } = useVoiceLevels();
   const updateCategory = useUpdateCategory();
   const reorderCategories = useReorderCategories();
   const reorderChannels = useReorderChannels();
@@ -1159,7 +1183,6 @@ export function ChannelList({
         channelId,
         serverId: server.id
       });
-      toast.success(`Salon #${channelName} supprimé`);
 
       // If deleted channel was active, clear selection
       if (activeChannelId === channelId) {
@@ -1194,7 +1217,7 @@ export function ChannelList({
 
       // Error already handled by the hook
     }}; // DnD sensors - optimized with touch support
-  const sensors = useDndSensors({ activationDistance: 8, touchDelay: 200 });const toggleCategory = (categoryId: string) => {setCollapsedCategories((prev) => prev.includes(categoryId) ? prev.filter((id) => id !== categoryId) : [...prev, categoryId]);
+const toggleCategory = (categoryId: string) => {setCollapsedCategories((prev) => prev.includes(categoryId) ? prev.filter((id) => id !== categoryId) : [...prev, categoryId]);
   };
   const handleSignOut = async () => {
     await signOut();
@@ -1211,7 +1234,6 @@ export function ChannelList({
     copyToClipboard(link, "Lien copié");
   };
   const handleMarkAsRead = (channelId: string) => {
-    toast.success("Marqué comme lu");
   };
   const handleCreateInvite = (channelId: string) => {
     setInviteChannelId(channelId);
@@ -1249,6 +1271,40 @@ export function ChannelList({
       joinChannel(channel.id, channel.name, server.name);
     }
   };
+  const hoverPrefetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    return () => {
+      if (hoverPrefetchTimerRef.current) clearTimeout(hoverPrefetchTimerRef.current);
+    };
+  }, []);
+  const handleChannelHover = (channel: Channel) => {
+    if (channel.type === "voice" || channel.type === "stage" || channel.type === "link") return;
+    if (channel.id === activeChannelId) return;
+    if (hoverPrefetchTimerRef.current) clearTimeout(hoverPrefetchTimerRef.current);
+    hoverPrefetchTimerRef.current = setTimeout(() => {
+      queryClient.prefetchQuery({
+        queryKey: ['messages', channel.id],
+        queryFn: () => fetchChannelMessages(channel.id),
+        staleTime: 30_000,
+      });
+      // System messages (thread-created, poll-closed, etc.) are plain rows in
+      // the same `messages` table above — already covered by the prefetch.
+      // These cover the other channel-scoped data ChatArea loads on mount.
+      queryClient.prefetchQuery({
+        queryKey: ['pinned-messages', channel.id],
+        queryFn: () => fetchPinnedMessages(channel.id),
+      });
+      queryClient.prefetchQuery({
+        queryKey: ['polls', 'channel', channel.id],
+        queryFn: () => fetchChannelPolls(channel.id),
+      });
+      queryClient.prefetchQuery({
+        queryKey: ['threads', channel.id],
+        queryFn: () => fetchChannelThreads(channel.id),
+        staleTime: 30_000,
+      });
+    }, 120);
+  };
   const handleStartEditCategory = (category: Category) => {
     setEditingCategory({
       id: category.id,
@@ -1280,24 +1336,6 @@ export function ChannelList({
     setDropMode("after");
   };
 
-  // Custom collision detection that filters by dragged item type
-  const customCollisionDetection: CollisionDetection = useCallback((args) => {
-    const { active } = args;
-    const activeIdStr = active.id.toString();
-    const isCategory = activeIdStr.startsWith("category-");
-
-    const droppableContainers = args.droppableContainers.filter((container) => {
-      const collidedId = container.id.toString();
-      if (collidedId === activeIdStr) return false;
-      if (isCategory) return collidedId.startsWith("category-");
-      return collidedId.startsWith("channel-") || collidedId.startsWith("category-") || collidedId === TOP_ORPHAN_DROP_ID;
-    });
-
-    // Pointer-first detection is critical for opened categories: their rectangles are tall,
-    // so closestCenter can keep resolving to the original category instead of the hovered block.
-    const pointerCollisions = pointerWithin({ ...args, droppableContainers });
-    return pointerCollisions.length > 0 ? pointerCollisions : closestCenter({ ...args, droppableContainers });
-  }, []);
   const handleDragOver = (event: DragOverEvent) => {
     if (!activeId) return;
     const { active, over, delta } = event;
@@ -1642,12 +1680,91 @@ export function ChannelList({
   ...visibleCategories.flatMap((c) => c.channels.map((ch) => `channel-${ch.id}`)),
   ...visibleOrphanChannels.map((ch) => `channel-${ch.id}`)];
 
-  // Banner visibility on scroll
-  const [showBanner, setShowBanner] = useState(true);
+  // Banner header — like Discord: a fixed 56px header bar (name + icons)
+  // always sits at the bottom of the header zone. When there's a banner,
+  // the header zone starts at BANNER_HEIGHT and the banner is a layer
+  // stacked above the bar, covering it. Scrolling the channel list slides
+  // the banner up (translateY) while the header zone shrinks by the same
+  // amount, so the banner tucks away behind the bar and the zone settles
+  // at exactly HEADER_HEIGHT — matching a bannerless server. Scrolling
+  // back to the top reverses both, sliding the banner back down.
+  //
+  // The per-pixel offset is applied to the DOM directly on every scroll
+  // frame and never touches React state — with a long channel list, a
+  // state update on every scroll event forces a full re-render of this
+  // (large, DnD-heavy) component in between frames, which is what caused
+  // the header to visibly stutter/flash during a real, continuous scroll
+  // even though isolated before/after screenshots looked fine. The only
+  // state involved, `showBanner`, is a coarse boolean that flips once
+  // when crossing the collapse threshold — it drives text/icon contrast,
+  // not the animation itself, so it re-renders at most twice per scroll
+  // gesture instead of once per pixel.
+  const BANNER_HEIGHT = 100;
+  const HEADER_HEIGHT = 56;
+  const BANNER_SCROLL_RANGE = BANNER_HEIGHT - HEADER_HEIGHT;
+  const [showBanner, setShowBanner] = useState(!!server.bannerUrl);
+  const bannerLayerRef = useRef<HTMLDivElement | null>(null);
+  const headerZoneRef = useRef<HTMLDivElement | null>(null);
+  const bannerRafRef = useRef<number | null>(null);
+  const showBannerRef = useRef(showBanner);
+  showBannerRef.current = showBanner;
+
+  const applyBannerOffset = useCallback((offset: number) => {
+    // Servers without a banner have nothing to animate — force the header
+    // zone to the plain HEADER_HEIGHT instead of BANNER_HEIGHT - offset,
+    // otherwise a leftover 100px-tall inline height (from BANNER_HEIGHT -
+    // 0 on reset) would leave an oversized empty header on every
+    // bannerless server.
+    if (!server.bannerUrl) {
+      if (headerZoneRef.current) headerZoneRef.current.style.height = `${HEADER_HEIGHT}px`;
+      if (bannerLayerRef.current) bannerLayerRef.current.style.transform = 'translateY(0px)';
+      if (showBannerRef.current !== false) {
+        showBannerRef.current = false;
+        setShowBanner(false);
+      }
+      return;
+    }
+    if (bannerLayerRef.current) {
+      // Slide the banner up by its own full height (not just `offset`) so
+      // it actually exits the viewport instead of merely re-centering
+      // inside a shrinking clip rect — with the clip container's bottom
+      // edge anchored, an equal shrink+translate leaves the banner's
+      // bottom edge pinned in place, permanently covering the header bar
+      // underneath instead of tucking away behind it.
+      const progress = BANNER_SCROLL_RANGE > 0 ? offset / BANNER_SCROLL_RANGE : 0;
+      bannerLayerRef.current.style.transform = `translateY(-${BANNER_HEIGHT * progress}px)`;
+    }
+    if (headerZoneRef.current) {
+      headerZoneRef.current.style.height = `${BANNER_HEIGHT - offset}px`;
+    }
+    const nextShowBanner = offset < BANNER_SCROLL_RANGE - 4;
+    if (showBannerRef.current !== nextShowBanner) {
+      showBannerRef.current = nextShowBanner;
+      setShowBanner(nextShowBanner);
+    }
+  }, [server.bannerUrl, BANNER_HEIGHT, HEADER_HEIGHT, BANNER_SCROLL_RANGE]);
 
   const handleChannelListScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    if (!server.bannerUrl) return;
     const scrollTop = (e.target as HTMLDivElement).scrollTop;
-    setShowBanner(scrollTop === 0);
+    const offset = Math.max(0, Math.min(BANNER_SCROLL_RANGE, scrollTop));
+    if (bannerRafRef.current !== null) cancelAnimationFrame(bannerRafRef.current);
+    bannerRafRef.current = requestAnimationFrame(() => {
+      bannerRafRef.current = null;
+      applyBannerOffset(offset);
+    });
+  }, [server.bannerUrl, BANNER_SCROLL_RANGE, applyBannerOffset]);
+
+  // Reset to "fully shown" whenever the active server (or its banner)
+  // changes, so a leftover scrolled-away banner from a previous server
+  // doesn't leak in.
+  useEffect(() => {
+    setShowBanner(!!server.bannerUrl);
+    applyBannerOffset(0);
+  }, [server.id, server.bannerUrl, applyBannerOffset]);
+
+  useEffect(() => () => {
+    if (bannerRafRef.current !== null) cancelAnimationFrame(bannerRafRef.current);
   }, []);
 
   // Sidebar resizing
@@ -1680,7 +1797,9 @@ export function ChannelList({
   return (
     <div
       className={cn(
-        "bg-surface-1 flex flex-col relative select-none",
+        // h-full/min-h-0 let the panel wrapper below distribute the leftover
+        // height, so the user panel always sits flush at the bottom.
+        "bg-surface-1 flex flex-col relative select-none h-full min-h-0",
         !isResizing.current && "transition-[width] duration-300 ease-out"
       )}
       style={{
@@ -1698,38 +1817,50 @@ export function ChannelList({
       />
       {/* Server Header - styled like User Panel */}
       <div className="bg-surface-1">
-        <div className="flex items-center rounded-t-xl relative overflow-hidden"
-        style={{ height: showBanner && server.bannerUrl ? '100px' : '56px' }}>
+        <div
+          ref={headerZoneRef}
+          className="relative overflow-hidden rounded-t-xl"
+          style={{ height: server.bannerUrl ? `${BANNER_HEIGHT}px` : `${HEADER_HEIGHT}px` }}>
 
-          {showBanner && server.bannerUrl &&
-          <div className="absolute inset-0 z-0 overflow-hidden rounded-t-xl">
+          {/* Fixed header bar — always present at the bottom of the header
+              zone, opaque background. The banner (if any) is a separate
+              layer stacked above it that slides up to tuck away behind it. */}
+          <div className="absolute inset-x-0 bottom-0 z-10 flex items-center bg-surface-1" style={{ height: `${HEADER_HEIGHT}px` }} />
+
+          {server.bannerUrl &&
+          <div
+            ref={bannerLayerRef}
+            className="absolute inset-x-0 top-0 z-20 overflow-hidden"
+            style={{ height: `${BANNER_HEIGHT}px` }}>
               <img src={server.bannerUrl} className="w-full h-full object-cover" alt="" />
               <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/50 to-transparent" />
             </div>
           }
-          {/* Server Name → Card Popover */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <button className={cn(
-                "flex items-center justify-start gap-2 min-w-0 max-w-full w-fit transition-colors relative z-10 h-full rounded-tl-xl",
-                showBanner && server.bannerUrl ? "hover:bg-transparent" : "hover:bg-muted/30"
-              )}>
 
-                <div className={cn(
-                  "min-w-0 text-left relative z-10 px-4",
-                  showBanner && server.bannerUrl ? "self-end pb-2" : ""
+          {/* Server Name + action icons — always on top, anchored to the
+              bottom of the header zone (so they read as "inside" the fixed
+              bar once the banner has tucked away). */}
+          <div className="absolute inset-x-0 bottom-0 z-30 flex items-center" style={{ height: `${HEADER_HEIGHT}px` }}>
+            {/* Server Name → Card Popover */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button type="button" className={cn(
+                  "flex items-center justify-start gap-2 min-w-0 max-w-full w-fit transition-colors relative h-full rounded-tl-xl",
+                  showBanner && server.bannerUrl ? "hover:bg-transparent" : "hover:bg-muted/30"
                 )}>
-                  <p className={cn(
-                    "text-sm font-semibold truncate",
-                    showBanner && server.bannerUrl && "[text-shadow:0_1px_6px_rgba(0,0,0,0.9),0_0px_2px_rgba(0,0,0,0.8)] text-white"
-                  )}>{server.name}</p>
-                  {!(showBanner && server.bannerUrl) &&
-                  <p className="text-xs text-muted-foreground">{membersData?.length || 0} membres</p>
-                  }
-                </div>
-              </button>
-            </PopoverTrigger>
-            <PopoverContent side="bottom" align="start" className="w-80 p-0 overflow-hidden rounded-xl">
+
+                  <div className="min-w-0 text-left relative px-4">
+                    <p className={cn(
+                      "text-sm font-semibold truncate",
+                      showBanner && server.bannerUrl && "[text-shadow:0_1px_6px_rgba(0,0,0,0.9),0_0px_2px_rgba(0,0,0,0.8)] text-white"
+                    )}>{server.name}</p>
+                    {!(showBanner && server.bannerUrl) &&
+                    <p className="text-xs text-muted-foreground">{membersData?.length || 0} membres</p>
+                    }
+                  </div>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent side="bottom" align="start" className="w-80 p-0 overflow-hidden rounded-xl">
               {/* Banner with Leave Button */}
               <div className="relative">
                 {server.bannerUrl ?
@@ -1742,7 +1873,7 @@ export function ChannelList({
                 {!isGod &&
                 <Tooltip>
                     <TooltipTrigger asChild>
-                      <button
+                      <button type="button"
                       onClick={() => setShowLeaveDialog(true)}
                       className="absolute top-2 right-2 p-1.5 rounded-lg bg-background/20 hover:bg-destructive/90 text-white transition-colors">
 
@@ -1817,14 +1948,26 @@ export function ChannelList({
           </Popover>
 
           {/* Action icons - right side of header */}
-          <div className={cn(
-            "flex items-center gap-1 pr-2 relative z-10 ml-auto",
-            showBanner && server.bannerUrl ? "self-end pb-2" : ""
-          )}>
+          <div className="flex items-center gap-1 pr-2 ml-auto">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button type="button"
+                  onClick={() => setInviteChannelId('server')}
+                  className={cn(
+                    "p-1.5 rounded-lg transition-colors",
+                    showBanner && server.bannerUrl ?
+                    "hover:bg-background/30 text-white" :
+                    "hover:bg-muted text-muted-foreground hover:text-foreground"
+                  )}>
+                  <UserPlus className="w-4 h-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom"><p>Créer une invitation</p></TooltipContent>
+            </Tooltip>
             {canAccessSettings &&
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <button
+                  <button type="button"
                     onClick={() => onOpenServerSettings?.()}
                     className={cn(
                       "p-1.5 rounded-lg transition-colors",
@@ -1839,27 +1982,7 @@ export function ChannelList({
               </Tooltip>
             }
           </div>
-        </div>
-
-        {/* Search bar + Invite */}
-        <div className="px-2.5 py-2 flex items-center gap-1.5">
-          <button
-            onClick={() => onOpenGlobalSearch?.()}
-            className="flex-1 flex items-center gap-2.5 px-3 py-2 rounded-full text-muted-foreground text-sm bg-surface-3"
-            style={{ transition: 'all 300ms cubic-bezier(0.2, 0, 0, 1)' }}>
-            <Search className="w-4 h-4 flex-shrink-0" />
-            <span className="truncate">Rechercher</span>
-          </button>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => setInviteChannelId('server')}
-                className="flex items-center justify-center h-[36px] w-[36px] rounded-full bg-surface-3 text-muted-foreground hover:text-foreground transition-colors">
-                <UserPlus className="w-4 h-4" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent><p>Créer une invitation</p></TooltipContent>
-          </Tooltip>
+          </div>
         </div>
       </div>
 
@@ -1871,9 +1994,6 @@ export function ChannelList({
         <ContextMenuTrigger asChild>
           <ChannelListScrollContainer onScroll={handleChannelListScroll}>
             <DndContext
-              sensors={sensors}
-              collisionDetection={customCollisionDetection}
-              modifiers={[restrictToVerticalAxis]}
               onDragStart={handleDragStart}
               onDragOver={handleDragOver}
               onDragEnd={handleDragEnd}
@@ -1891,7 +2011,7 @@ export function ChannelList({
                   strategy={verticalListSortingStrategy}>
 
                     {visibleOrphanChannels.map((channel) =>
-                  <SortableChannel
+                  <MemoSortableChannel
                     key={channel.id}
                     channel={{
                       id: channel.id,
@@ -1908,6 +2028,15 @@ export function ChannelList({
                     mentionCount={channelUnreadInfo[channel.id]?.mentionCount || 0}
                     onChannelClick={() =>
                     handleChannelClick({
+                      id: channel.id,
+                      name: channel.name,
+                      type: (channel.type || "text") as ChannelType,
+                      description: channel.description || undefined,
+                      icon_url: channel.icon_url ?? null
+                    })
+                    }
+                    onChannelHover={() =>
+                    handleChannelHover({
                       id: channel.id,
                       name: channel.name,
                       type: (channel.type || "text") as ChannelType,
@@ -1974,7 +2103,7 @@ threads={threadsByChannel[channel.id] || []}
                         strategy={verticalListSortingStrategy}>
 
                           {category.channels.map((channel) =>
-                        <SortableChannel
+                        <MemoSortableChannel
                           key={channel.id}
                           channel={channel}
                           serverId={server.id}
@@ -1984,6 +2113,7 @@ threads={threadsByChannel[channel.id] || []}
                           hasUnread={channelUnreadInfo[channel.id]?.hasUnread}
                           mentionCount={channelUnreadInfo[channel.id]?.mentionCount || 0}
                           onChannelClick={() => handleChannelClick(channel)}
+                          onChannelHover={() => handleChannelHover(channel)}
                           onCopyLink={() => handleCopyLink(channel.id)}
                           onMarkAsRead={() => handleMarkAsRead(channel.id)}
                           onOpenSettings={() => setSelectedChannelId(channel.id)}
@@ -2084,10 +2214,13 @@ threads={threadsByChannel[channel.id] || []}
         </ContextMenuContent>
       </ContextMenu>
 
-      {/* Spacer reserving room for floating VoiceStatusBadge + UserProfileCard at Index level */}
-      <div className={cn("shrink-0", isConnected && voiceState.channelName ? "h-[150px]" : "h-[64px]")} />
-
-      {showAccountSettings && <AccountSettingsModal onClose={() => setShowAccountSettings(false)} />}
+      {/* The user panel is now rendered by Index inside this same column, directly
+          after the channel list, so no reserved-space spacer is needed here. */}
+      {showAccountSettings && (
+        <Suspense fallback={<Spinner />}>
+          <AccountSettingsModal onClose={() => setShowAccountSettings(false)} />
+        </Suspense>
+      )}
 
       {selectedChannelId &&
       <ChannelSettingsModal
@@ -2240,7 +2373,8 @@ function VoiceParticipantsSidebar({
             >
               <div
                 className={cn(
-                  "rounded-full border-2 transition-colors p-0",
+                  // No transition, for the same reason as the other two rings.
+                  "rounded-full border-2 p-0",
                   isSpeaking ? "border-[hsl(var(--online))]" : "border-transparent"
                 )}
               >
@@ -2279,16 +2413,14 @@ function VoiceParticipantsSidebar({
 const ChannelListScrollContainer = forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement> & {
-    onScroll: React.UIEventHandler<HTMLDivElement>;
     children: React.ReactNode;
   }
->(function ChannelListScrollContainer({ onScroll, children, className, ...rest }, ref) {
+>(function ChannelListScrollContainer({ children, className, ...rest }, ref) {
   const guard = useScrollAwareContextMenuGuard();
   return (
     <div
       ref={ref}
       className={cn("flex-1 overflow-y-auto scrollbar-thin py-2 px-1 relative", className)}
-      onScroll={onScroll}
       {...guard}
       {...rest}
     >

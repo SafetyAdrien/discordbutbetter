@@ -171,7 +171,6 @@ export function useUnfollowChannel() {
     },
     onSuccess: (_, { sourceChannelId }) => {
       queryClient.invalidateQueries({ queryKey: ['channel-followers', sourceChannelId] });
-      toast.success('Suivi supprimé');
     },
     onError: (error) => {
       toast.error('Erreur lors de la suppression du suivi');
@@ -246,7 +245,6 @@ export function usePublishMessage() {
     },
     onSuccess: ({ count }, { channelId }) => {
       queryClient.invalidateQueries({ queryKey: ['messages', channelId] });
-      toast.success(`Message publié vers ${count} salon${count > 1 ? 's' : ''}`);
     },
     onError: (error: any) => {
       toast.error(error.message || 'Erreur lors de la publication');

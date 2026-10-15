@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -101,7 +101,6 @@ export function useDMCalls(conversationId: string | null) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dm-call', conversationId] });
-      toast.success('Appel en cours...');
     },
     onError: () => {
       toast.error('Impossible de lancer l\'appel');
@@ -162,7 +161,6 @@ export function useDMCalls(conversationId: string | null) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dm-call', conversationId] });
-      toast.success('Appel terminé');
     },
   });
 
@@ -180,6 +178,7 @@ export function useDMCalls(conversationId: string | null) {
 export function useIncomingCalls() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   const { data: incomingCalls = [] } = useQuery({
     queryKey: ['incoming-calls', user?.id],
@@ -225,7 +224,7 @@ export function useIncomingCalls() {
     if (!user) return;
 
     const channel = supabase
-      .channel('incoming-calls')
+      .channel(`incoming-calls-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         {

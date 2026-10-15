@@ -11,8 +11,8 @@ import { useImageGuardProps } from '@/hooks/useDownloadPermissions';
 import { SmartLinkEmbeds as LinkEmbeds } from '@/components/chat/embeds';
 import { ReactionBar } from '@/components/chat/ReactionBar';
 import { RepliedLine } from '@/components/chat/RepliedLine';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { format } from '@/lib/dateUtils';
+import { fr } from '@/lib/dateUtils';
 import type { DMReaction } from '@/hooks/useDMReactions';
 import type { RepliedMessageRef } from '@/types/app';
 

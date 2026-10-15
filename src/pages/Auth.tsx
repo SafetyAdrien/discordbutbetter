@@ -274,7 +274,6 @@ export default function Auth() {
       }
     } else {
       resetRateLimit('login');
-      toast.success('Connexion réussie !');
       navigate(nextPath);
     }
   };
@@ -312,7 +311,6 @@ export default function Auth() {
       }
     } else {
       setPhoneAuthStep('otp-verify');
-      toast.success('Code de vérification envoyé par SMS !');
     }
   };
 
@@ -343,7 +341,6 @@ export default function Auth() {
         toast.error(error.message);
       }
     } else {
-      toast.success('Connexion réussie !');
       navigate(nextPath);
     }
   };
@@ -361,7 +358,6 @@ export default function Auth() {
     if (error) {
       toast.error(error.message);
     } else {
-      toast.success('Nouveau code envoyé !');
       setOtpCode('');
     }
   };
@@ -417,7 +413,6 @@ export default function Auth() {
     }
 
     setLoading(false);
-    toast.success('Compte créé avec succès !');
     navigate(nextPath);
   };
 
@@ -447,7 +442,6 @@ export default function Auth() {
       toast.error(error.message);
     } else {
       setForgotPasswordSent(true);
-      toast.success('Lien de réinitialisation envoyé !');
     }
   };
 
@@ -483,7 +477,6 @@ export default function Auth() {
     if (error) {
       toast.error(error.message);
     } else {
-      toast.success('Mot de passe modifié avec succès !');
       setAuthView('login');
       setPassword('');
       setConfirmPassword('');

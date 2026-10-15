@@ -1,5 +1,6 @@
-import { forwardRef, useState, useMemo, useRef, useEffect } from "react";
+import { forwardRef, useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { User } from "@/types/app";
+import { MemberRow } from "./MemberRow";
 import { cn } from "@/lib/utils";
 import { uuidToSnowflake } from "@/lib/snowflake";
 import {
@@ -131,24 +132,6 @@ const activityColors: Record<string, string> = {
 };
 
 
-// Role Icon Component
-function RoleIcon({ role }: { role: Role | RoleWithPermissions }) {
-  if (role.icon_url) {
-    if (!role.icon_url.startsWith("http")) {
-      return <span className="text-xs">{role.icon_url}</span>;
-    }
-    return <img src={role.icon_url} alt="" className="w-3 h-3 object-contain" />;
-  }
-  return (
-    <div
-      className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-      style={{
-        backgroundColor: role.color || "#99AAB5",
-      }}
-    />
-  );
-}
-
 // Inbox Button Component
 function InboxButton() {
   const { data: notifications = [] } = useNotifications();
@@ -159,7 +142,7 @@ function InboxButton() {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <button className="relative p-1.5 rounded hover:bg-surface-hover transition-colors text-muted-foreground hover:text-foreground">
+        <button type="button" className="relative p-1.5 rounded hover:bg-surface-hover transition-colors text-muted-foreground hover:text-foreground">
           <DiscordInbox className="w-5 h-5" />
           {mentionCount > 0 ? (
             <MentionBadge
@@ -326,227 +309,38 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
     }
     return groups;
   }, [filteredMembers, allRoles]);
-  const handleCopyId = (id: string) => {
-    copyToClipboard(uuidToSnowflake(id), "ID utilisateur copié");
-  };
-  const handleSendMessage = (member: MemberWithRoles) => {
-    console.log("Send message to", member.id);
-  };
-  const handleAddFriend = (member: MemberWithRoles) => {
-    console.log("Add friend", member.id);
-  };
+  // Stable callbacks: MemberRow is memoized, so a new closure here would
+  // defeat the memo and re-render every row on each parent render.
 
-  // Get the member ID from membersData for role management
-  const getMemberId = (userId: string): string | undefined => {
-    const memberData = membersData.find((m) => m.user.id === userId);
-    return memberData?.id;
-  };
-  const renderMember = (member: MemberWithRoles) => {
-    const isOwner = member.id === ownerId;
-    const isSecondaryOwner = member.id === server?.secondary_owner_id;
-    const memberId = getMemberId(member.id);
-    return (
-      <ContextMenu key={member.id}>
-        <ContextMenuTrigger asChild>
-          <button
-            onClick={() =>
-              setSelectedMember({
-                ...member,
-                memberId,
-              })
-            }
-            className="flex items-center gap-3 w-full px-2.5 py-1 rounded-2xl hover:bg-surface-hover/40 group"
-            style={{ transition: 'all 300ms cubic-bezier(0.2, 0, 0, 1)' }}
-          >
-            <div className="relative flex-shrink-0">
-              <UserAvatarImage
-                src={member.avatar}
-                alt={member.displayName}
-                fallback={member.displayName.charAt(0).toUpperCase()}
-                ownerId={member.id}
-                className={cn("w-8 h-8", member.status === "offline" && "opacity-50 grayscale")}
-              />
-              <StatusIndicator
-                status={member.status}
-                className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 border-2 border-card"
-              />
-            </div>
+  // Membership row id, required by the role-management menu. Memoized because
+  // it is called once per rendered row.
+  const memberIdByUserId = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const m of membersData) map.set(m.user.id, m.id);
+    return map;
+  }, [membersData]);
 
-            <div className="flex-1 min-w-0 text-left overflow-hidden">
-              <div className="flex items-center gap-1 min-w-0 overflow-hidden">
-                <span
-                  className={cn(
-                    "text-sm font-medium truncate min-w-0 block",
-                    member.status === "offline" && "opacity-60",
-                  )}
-                  style={{
-                    color: member.roles?.[0]?.color || undefined,
-                  }}
-                >
-                  {member.displayName}
-                </span>
-                <div className="flex items-center gap-0.5 flex-shrink-0">
-                  {(isOwner || isSecondaryOwner) && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span className="flex-shrink-0 cursor-pointer">
-                          <StreamlineCrown size={14} className="text-yellow-500" />
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>{isOwner ? "Propriétaire du serveur" : "Second Propriétaire"}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
-                  {(() => {
-                    const badgeRoles = member.roles?.filter((r) => r.icon_url) || [];
-                    const visible = badgeRoles.slice(0, 2);
-                    const hidden = badgeRoles.length - visible.length;
-                    return (
-                      <>
-                        {visible.map((role) => (
-                          <Tooltip key={role.id}>
-                            <TooltipTrigger asChild>
-                              <span className="flex-shrink-0 cursor-pointer">
-                                <RoleIcon role={role} />
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>{role.name}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        ))}
-                        {hidden > 0 && (
-                          <span className="text-[10px] text-muted-foreground leading-none">+{hidden}</span>
-                        )}
-                      </>
-                    );
-                  })()}
-                </div>
-              </div>
-              {/* Activity or Custom Status */}
-              {member.activity_type && member.activity_text ? (
-                <div className="flex items-center gap-1 text-xs truncate">
-                  {(() => {
-                    const ActivityIcon = activityIcons[member.activity_type];
-                    return ActivityIcon ? (
-                      <ActivityIcon className={cn("w-3 h-3 flex-shrink-0", activityColors[member.activity_type])} />
-                    ) : null;
-                  })()}
-                  <span
-                    className={cn("flex-shrink-0", activityColors[member.activity_type] || "text-muted-foreground")}
-                  >
-                    {activityLabels[member.activity_type] || ""}
-                  </span>
-                  <span className="text-muted-foreground truncate">{member.activity_text}</span>
-                </div>
-              ) : member.customStatus && member.status !== 'offline' ? (
-                <p className="text-xs text-muted-foreground truncate">{member.customStatus}</p>
-              ) : null}
-            </div>
-          </button>
-        </ContextMenuTrigger>
-        <ContextMenuContent className="w-48">
-          <ContextMenuItem
-            onClick={() =>
-              setSelectedMember({
-                ...member,
-                memberId,
-              })
-            }
-          >
-            <UserIcon className="w-4 h-4 mr-2" />
-            Voir le profil
-          </ContextMenuItem>
-          <ContextMenuItem onClick={() => handleSendMessage(member)}>
-            <MessageCircle className="w-4 h-4 mr-2" />
-            Envoyer un message
-          </ContextMenuItem>
-          <ContextMenuItem onClick={() => handleAddFriend(member)}>
-            <UserPlus className="w-4 h-4 mr-2" />
-            Ajouter en ami
-          </ContextMenuItem>
-          <ContextMenuSeparator />
-          {currentUser && member.id === currentUser.id && (
-            <ContextMenuItem onClick={() => setServerProfileEditOpen(true)}>
-              <Pencil className="w-4 h-4 mr-2" />
-              Modifier le profil serveur
-            </ContextMenuItem>
-          )}
-          <ContextMenuItem onClick={() => handleCopyId(member.id)}>
-            <Hash className="w-4 h-4 mr-2" />
-            Copier l'ID
-          </ContextMenuItem>
-          {canManageRoles && memberId && (
-            <>
-              <ContextMenuSeparator />
-              <ContextMenuSub>
-                <ContextMenuSubTrigger>
-                  <Shield className="w-4 h-4 mr-2" />
-                  Gérer les rôles
-                </ContextMenuSubTrigger>
-                <ContextMenuSubContent className="w-56 p-0">
-                  <div className="p-2 border-b border-border">
-                    <h4 className="font-semibold text-xs text-muted-foreground uppercase tracking-wide">Rôles</h4>
-                  </div>
-                  <ScrollArea className="max-h-[300px]">
-                    <div className="p-2 space-y-1">
-                      {allRoles
-                        .filter((role) => !role.is_default)
-                        .sort((a, b) => (b.position ?? 0) - (a.position ?? 0))
-                        .map((role) => (
-                          <RoleCheckboxItem
-                            key={role.id}
-                            role={role}
-                            serverId={serverId!}
-                            memberId={memberId}
-                            userId={member.id}
-                          />
-                        ))}
-                    </div>
-                  </ScrollArea>
-                </ContextMenuSubContent>
-              </ContextMenuSub>
-            </>
-          )}
-          {currentUser?.id === ownerId && !isOwner && (
-            <>
-              <ContextMenuSeparator />
-              {!isSecondaryOwner ? (
-                <ContextMenuItem
-                  onClick={() => setAddSecondOwnerTarget({ id: member.id, name: member.displayName })}
-                >
-                  <StreamlineCrown size={14} className="mr-2 text-yellow-500" />
-                  Ajouter second propriétaire
-                </ContextMenuItem>
-              ) : (
-                <ContextMenuItem
-                  className="text-destructive focus:text-destructive"
-                  onClick={() => setRemoveSecondOwnerTarget({ id: member.id, name: member.displayName })}
-                >
-                  <StreamlineCrown size={14} className="mr-2" />
-                  Retirer second propriétaire
-                </ContextMenuItem>
-              )}
-            </>
-          )}
-          <ContextMenuSeparator />
-          <ContextMenuItem>
-            <VolumeX className="w-4 h-4 mr-2" />
-            Rendre muet
-          </ContextMenuItem>
-          <ContextMenuItem className="text-destructive focus:text-destructive">
-            <LogOut className="w-4 h-4 mr-2" />
-            Expulser
-          </ContextMenuItem>
-          <ContextMenuItem className="text-destructive focus:text-destructive">
-            <Ban className="w-4 h-4 mr-2" />
-            Bannir
-          </ContextMenuItem>
-        </ContextMenuContent>
-      </ContextMenu>
-    );
-  };
+  const handleOpenProfile = useCallback(
+    (member: MemberWithRoles, memberId?: string) => setSelectedMember({ ...member, memberId }),
+    [],
+  );
+  const handleCopyIdCb = useCallback(
+    (id: string) => copyToClipboard(uuidToSnowflake(id), "ID utilisateur copié"),
+    [],
+  );
+  const handleSendMessageCb = useCallback((_member: MemberWithRoles) => {}, []);
+  const handleAddFriendCb = useCallback((_member: MemberWithRoles) => {}, []);
+  const handleEditServerProfileCb = useCallback(() => setServerProfileEditOpen(true), []);
+  const handleSetSecondOwnerCb = useCallback(
+    (target: { id: string; name: string }) => setAddSecondOwnerTarget(target),
+    [],
+  );
+  const handleRemoveSecondOwnerCb = useCallback(
+    (target: { id: string; name: string }) => setRemoveSecondOwnerTarget(target),
+    [],
+  );
+
+  const handleCopyId = handleCopyIdCb;
 
   // Get displayable roles for filter (non-default roles)
   const filterableRoles = allRoles.filter((r) => !r.is_default);
@@ -586,7 +380,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
               const r = allRoles.find((rr) => rr.id === rid);
               if (!r) return null;
               return (
-                <button
+                <button type="button"
                   key={rid}
                   onClick={() => handleRoleFilterToggle(rid)}
                   className="inline-flex items-center gap-1 h-5 px-1.5 rounded text-[11px] font-medium bg-primary/20 text-primary hover:bg-primary/30 transition-colors"
@@ -597,7 +391,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
                 </button>
               );
             })}
-            <button
+            <button type="button"
               onClick={clearRoleFilters}
               className="text-[11px] text-muted-foreground hover:text-foreground ml-1"
             >
@@ -630,7 +424,29 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
                 </span>
                 <span> — {group.members.length}</span>
               </h3>
-              <div className="space-y-0">{group.members.map(renderMember)}</div>
+              <div className="space-y-0">
+                {group.members.map((member) => (
+                  <MemberRow
+                    key={member.id}
+                    member={member}
+                    isOwner={member.id === ownerId}
+                    isSecondaryOwner={member.id === server?.secondary_owner_id}
+                    memberId={memberIdByUserId.get(member.id)}
+                    roles={allRoles}
+                    serverId={serverId}
+                    currentUserId={currentUser?.id}
+                    ownerId={ownerId}
+                    canManageRoles={canManageRoles}
+                    onOpenProfile={handleOpenProfile}
+                    onSendMessage={handleSendMessageCb}
+                    onAddFriend={handleAddFriendCb}
+                    onCopyId={handleCopyId}
+                    onEditServerProfile={handleEditServerProfileCb}
+                    onSetSecondOwner={handleSetSecondOwnerCb}
+                    onRemoveSecondOwner={handleRemoveSecondOwnerCb}
+                  />
+                ))}
+              </div>
             </div>
           ))}
         </div>

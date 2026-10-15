@@ -32,8 +32,8 @@ import {
 } from '@/hooks/useGlobalSearch';
 import { MarkdownText, MarkdownProvider } from '@/lib/markdown';
 import { UserAvatarImage } from '@/components/ui/user-avatar-image';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { format } from '@/lib/dateUtils';
+import { fr } from '@/lib/dateUtils';
 import {
   SearchFiltersModal,
   emptySearchFilters,
@@ -492,7 +492,7 @@ export function MessageSearchPanel({
           {items.map((t) => {
             const Icon = t.Icon;
             return (
-              <button
+              <button type="button"
                 key={t.value}
                 onClick={() => selectHasType(t.value)}
                 className="w-full flex items-center gap-3 px-2 py-1.5 rounded text-sm hover:bg-surface-hover text-left"
@@ -518,7 +518,7 @@ export function MessageSearchPanel({
           {items.map((c) => {
             const Icon = channelTypeIcon[c.type] ?? StreamlineHash;
             return (
-              <button
+              <button type="button"
                 key={c.id}
                 onClick={() => selectChannel(c.id)}
                 className="w-full flex items-center gap-3 px-2 py-1.5 rounded text-sm hover:bg-surface-hover text-left"
@@ -545,7 +545,7 @@ export function MessageSearchPanel({
             </div>
           )}
           {items.map((m) => (
-            <button
+            <button type="button"
               key={m.id}
               onClick={() => selectFromUser(mode, m.id)}
               className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-surface-hover text-left"
@@ -592,7 +592,7 @@ export function MessageSearchPanel({
       </div>
       <div className="flex flex-col">
         {filterRows.map((row) => (
-          <button
+          <button type="button"
             key={row.key}
             onClick={() => openSubmenu(row.key)}
             className="w-full flex items-center gap-3 px-2 py-1.5 rounded text-sm hover:bg-surface-hover text-left"
@@ -609,7 +609,7 @@ export function MessageSearchPanel({
             </span>
           </button>
         ))}
-        <button
+        <button type="button"
           key="more"
           onClick={() => setFiltersOpen(true)}
           className="w-full flex items-center gap-3 px-2 py-1.5 rounded text-sm hover:bg-surface-hover text-left"
@@ -635,7 +635,7 @@ export function MessageSearchPanel({
             <span className="text-[11px] font-semibold text-muted-foreground">
               History
             </span>
-            <button
+            <button type="button"
               onClick={clearHistory}
               className="text-muted-foreground hover:text-foreground"
               aria-label="Clear history"
@@ -650,7 +650,7 @@ export function MessageSearchPanel({
                 className="group flex items-center gap-2 px-2 py-1.5 rounded hover:bg-surface-hover"
               >
                 <Search className="w-4 h-4 text-muted-foreground shrink-0" />
-                <button
+                <button type="button"
                   onClick={() => {
                     setQuery(item);
                     runSearch(item);
@@ -659,7 +659,7 @@ export function MessageSearchPanel({
                 >
                   {renderHistoryContent(item)}
                 </button>
-                <button
+                <button type="button"
                   onClick={() => removeHistoryItem(item)}
                   className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground"
                   aria-label="Remove from history"
@@ -831,7 +831,7 @@ export function MessageSearchPanel({
               results.map((r) => {
                 const ch = r.channel_id ? channelMap.get(r.channel_id) : null;
                 return (
-                  <button
+                  <button type="button"
                     key={r.id}
                     onClick={() =>
                       r.channel_id &&

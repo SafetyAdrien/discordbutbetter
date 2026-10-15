@@ -21,6 +21,7 @@ export interface ServerWithDetails {
   categories: {
     id: string;
     name: string;
+    icon: string | null;
     position: number | null;
     channels: {
       id: string;
@@ -43,10 +44,15 @@ export interface ServerWithDetails {
   }[];
 }
 
-export function useServers() {
+export function useServers(options?: { prioritizeServerId?: string }) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  // Several components mount their own instance of this hook simultaneously
+  // (e.g. ServerList and Index) — suffix realtime channel names per instance
+  // so they don't collide on the same Supabase Realtime topic.
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
+  const prioritizeServerId = options?.prioritizeServerId;
 
   const getServerScore = (servers?: ServerWithDetails[]) => {
     if (!servers) return -1;
@@ -63,7 +69,7 @@ export function useServers() {
     if (!user) return;
 
     const channel = supabase
-      .channel('servers-rt')
+      .channel(`servers-rt-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'servers' },
@@ -137,7 +143,7 @@ export function useServers() {
   useEffect(() => {
     if (!user) return;
     const ch = supabase
-      .channel(`server-members-rt:${user.id}`)
+      .channel(`server-members-rt:${user.id}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'server_members', filter: `user_id=eq.${user.id}` },
@@ -247,8 +253,14 @@ export function useServers() {
     }
   }, [query.data, user?.id, query.isPlaceholderData]);
 
-  // Background prefetch: warm channels cache for every server the user belongs to,
-  // so switching servers is instantaneous (rendered from cache, no network wait).
+  // Background prefetch: warm the channels cache so switching servers is
+  // instantaneous (rendered from cache, no network wait).
+  //
+  // It previously fetched the channels of EVERY server the user belongs to as
+  // soon as the list arrived: for a user in 50 servers that is 100+ queries
+  // fired during initial load, competing with the data needed for the screen
+  // the user is actually looking at. We now prioritise the server being viewed
+  // and only opportunistically warm the others when idle.
   const prefetchedRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (!query.data || !user) return;
@@ -270,7 +282,11 @@ export function useServers() {
 
     let cancelled = false;
     const MAX_PARALLEL = 3;
-    const queue = [...toPrefetch];
+    // The server the user is currently looking at goes first.
+    const queue = [
+      ...toPrefetch.filter((id) => id === prioritizeServerId),
+      ...toPrefetch.filter((id) => id !== prioritizeServerId),
+    ];
 
     const fetchOne = async (serverId: string) => {
       prefetchedRef.current.add(serverId);
@@ -280,7 +296,7 @@ export function useServers() {
           queryFn: async () => {
             const { data: categories, error: catError } = await supabase
               .from('categories')
-              .select('id, name, position')
+              .select('id, name, icon, position')
               .eq('server_id', serverId)
               .order('position', { ascending: true });
             if (catError) throw catError;
@@ -324,7 +340,7 @@ export function useServers() {
     Promise.all(workers).catch(() => {});
 
     return () => { cancelled = true; };
-  }, [query.data, user, queryClient]);
+  }, [query.data, user, queryClient, prioritizeServerId]);
 
   return query;
 }
@@ -535,7 +551,7 @@ export function useCreateServer() {
       const previousServers = queryClient.getQueryData(['servers']);
       
       const tempServer: ServerWithDetails = {
-        id: `temp-${Date.now()}`,
+        id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         name,
         icon_url: icon_url || null,
         banner_url: null,
@@ -561,7 +577,6 @@ export function useCreateServer() {
       console.error('Create server error:', error);
     },
     onSuccess: () => {
-      toast.success('Serveur créé avec succès !');
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['servers'] });
@@ -609,7 +624,6 @@ export function useJoinServer() {
       console.error('Join server error:', error);
     },
     onSuccess: () => {
-      toast.success('Vous avez rejoint le serveur !');
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['servers'] });

@@ -73,7 +73,7 @@ export function AddDownloadPermissionModal({ open, onOpenChange }: Props) {
             <ul className="space-y-0.5 px-2">
               {candidates.map((c) => (
                 <li key={c.id}>
-                  <button
+                  <button type="button"
                     onClick={() => handlePick(c.id)}
                     disabled={addMutation.isPending}
                     className="w-full flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-muted transition-colors text-left disabled:opacity-50"

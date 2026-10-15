@@ -91,16 +91,19 @@ const channelTypes: { value: ChannelType; label: string; icon: React.ElementType
 
 export function CreateChannelModal({
   serverId,
-  categoryId,
+  categoryId: initialCategoryId,
   categoryName,
+  categories,
+  showCategorySelector = false,
   onClose,
 }: CreateChannelModalProps) {
   const [name, setName] = useState("");
   const [type, setType] = useState<ChannelType>("text");
   const [linkUrl, setLinkUrl] = useState("");
+  const [categoryId, setCategoryId] = useState<string | null>(initialCategoryId);
   const createChannel = useCreateChannel();
   const { data: serverSettings } = useServerSettings(serverId);
-  
+
   const isFlexible = serverSettings?.flexible_channel_names ?? true;
   const isExemptFromStrict = type === 'voice' || type === 'stage';
   const shouldFormatStrict = !isFlexible && !isExemptFromStrict;
@@ -124,9 +127,26 @@ export function CreateChannelModal({
 
   return (
     <ResponsiveModal open={true} onOpenChange={(open) => !open && onClose()} title="Créer un salon">
-        <p className="text-sm text-muted-foreground mb-4">
-          {categoryId ? `Dans ${categoryName}` : "Sans catégorie"}
-        </p>
+        {showCategorySelector && categories && categories.length > 0 ? (
+          <div className="space-y-2 mb-4">
+            <Label htmlFor="category-select">Catégorie</Label>
+            <select
+              id="category-select"
+              value={categoryId ?? ''}
+              onChange={(e) => setCategoryId(e.target.value || null)}
+              className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+            >
+              <option value="">Sans catégorie</option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>{cat.name}</option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground mb-4">
+            {categoryId ? `Dans ${categoryName}` : "Sans catégorie"}
+          </p>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">

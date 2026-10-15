@@ -144,7 +144,7 @@ export function MessagePreviewSheet({
                 >
                   <div className="bg-[hsl(var(--surface-2))] rounded-full p-1.5 flex items-center justify-around shadow-xl">
                     {QUICK_REACTIONS.map((emoji) => (
-                      <button
+                      <button type="button"
                         key={emoji}
                         onClick={() => handleAction(() => onAddReaction(emoji))}
                         className="w-10 h-10 flex items-center justify-center text-2xl rounded-full hover:bg-foreground/10 active:scale-90 transition-transform"
@@ -154,7 +154,7 @@ export function MessagePreviewSheet({
                       </button>
                     ))}
                     {onOpenEmojiPicker && (
-                      <button
+                      <button type="button"
                         onClick={() => handleAction(onOpenEmojiPicker)}
                         className="w-10 h-10 flex items-center justify-center rounded-full bg-foreground/10 text-foreground hover:bg-foreground/15"
                         aria-label="Plus d'émojis"
@@ -234,7 +234,7 @@ function ActionRow({
   destructive?: boolean;
 }) {
   return (
-    <button
+    <button type="button"
       onClick={onClick}
       className={cn(
         'w-full flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors min-h-[48px] text-left',

@@ -1,18 +1,22 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Poll, PollVote, useVotePoll, useRemoveVote, useEndPoll } from '@/hooks/usePolls';
+import { Poll, PollVote, useVotePoll, useRemoveVote, useEndPoll, closePollAndNotify } from '@/hooks/usePolls';
 import { useAuth } from '@/contexts/AuthContext';
 import { useHasChannelPermission } from '@/hooks/useUserChannelPermissions';
-import { isPast } from 'date-fns';
+import { isPast } from '@/lib/dateUtils';
 import { Check, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipPortal } from '@/components/ui/tooltip';
+import { ClosePollConfirmDialog } from './ClosePollConfirmDialog';
+import { PollVotersModal } from './PollVotersModal';
+import { computePollWinner } from '@/lib/pollWinner';
 interface VoterAvatarsProps {
   votes: PollVote[];
+  onOpenVoters?: () => void;
 }
 
-function VoterAvatars({ votes }: VoterAvatarsProps) {
+function VoterAvatars({ votes, onOpenVoters }: VoterAvatarsProps) {
   const maxVisible = 3;
   const visibleVotes = votes.slice(0, maxVisible);
   const remainingCount = votes.length - maxVisible;
@@ -20,9 +24,9 @@ function VoterAvatars({ votes }: VoterAvatarsProps) {
   if (votes.length === 0) return null;
 
   return (
-    <div 
+    <div
       className="flex items-center -space-x-1.5 transition-all duration-300 ease-out"
-      onClick={(e) => e.stopPropagation()}
+      onClick={(e) => { e.stopPropagation(); onOpenVoters?.(); }}
       onMouseDown={(e) => e.stopPropagation()}
     >
       {visibleVotes.map((vote, index) => (
@@ -84,6 +88,9 @@ export function PollDisplay({
   const [showResults, setShowResults] = useState(false);
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
   const [isEditing, setIsEditing] = useState(false);
+  const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
+  const [votersModalOpen, setVotersModalOpen] = useState(false);
+  const [votersModalOptionId, setVotersModalOptionId] = useState<string | undefined>(undefined);
   const votePoll = useVotePoll();
   const removeVote = useRemoveVote();
   const endPoll = useEndPoll();
@@ -102,6 +109,7 @@ export function PollDisplay({
 
   // Real-time countdown state
   const [timeLeft, setTimeLeft] = useState<{ days: number; hours: number; minutes: number; seconds: number } | null>(null);
+  const expiryNotifiedRef = useRef(false);
 
   useEffect(() => {
     if (!poll.expires_at || isExpired) {
@@ -113,12 +121,19 @@ export function PollDisplay({
       const now = new Date();
       const expiry = new Date(poll.expires_at!);
       const diff = expiry.getTime() - now.getTime();
-      
+
       if (diff <= 0) {
         setTimeLeft(null);
+        // First client whose countdown hits 0 claims the "poll closed"
+        // system message insert; idempotent server-side, safe if several
+        // clients race here or if the poll was already closed manually.
+        if (!poll.closed_notified && !expiryNotifiedRef.current) {
+          expiryNotifiedRef.current = true;
+          closePollAndNotify(poll.id, false).catch(() => {});
+        }
         return;
       }
-      
+
       const days = Math.floor(diff / (1000 * 60 * 60 * 24));
       const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
@@ -129,9 +144,9 @@ export function PollDisplay({
 
     updateTimeLeft();
     const interval = setInterval(updateTimeLeft, 1000);
-    
+
     return () => clearInterval(interval);
-  }, [poll.expires_at, isExpired]);
+  }, [poll.expires_at, isExpired, poll.id, poll.closed_notified]);
 
   // Progress percentage calculation
   const progressPercentage = useMemo(() => {
@@ -185,6 +200,12 @@ export function PollDisplay({
     return map;
   }, [poll.votes, poll.options]);
 
+  // Winning option is only highlighted (in green) once the poll is closed.
+  const winnerOptionId = useMemo(() => {
+    if (!isExpired) return null;
+    return computePollWinner({ options: poll.options, votes: poll.votes }).winnerOptionId;
+  }, [isExpired, poll.options, poll.votes]);
+
   const shouldShowResults = (showResults || hasVoted || isExpired) && !isEditing;
 
   const handleOptionClick = (optionId: string) => {
@@ -197,7 +218,7 @@ export function PollDisplay({
           prev.includes(optionId) ? prev.filter(id => id !== optionId) : [...prev, optionId]
         );
       } else {
-        setSelectedOptions([optionId]);
+        setSelectedOptions(prev => (prev.includes(optionId) ? [] : [optionId]));
       }
       return;
     }
@@ -213,7 +234,7 @@ export function PollDisplay({
           : [...prev, optionId]
       );
     } else {
-      setSelectedOptions([optionId]);
+      setSelectedOptions(prev => (prev.includes(optionId) ? [] : [optionId]));
     }
   };
 
@@ -254,16 +275,22 @@ export function PollDisplay({
     setSelectedOptions([]);
   };
 
+  const handleRemoveVote = () => {
+    userVotes.forEach(optionId => {
+      removeVote.mutate({ pollId: poll.id, optionId, channelId, threadId });
+    });
+  };
+
   const getPercentage = (optionId: string) => {
     if (totalVotes === 0) return 0;
     return Math.round(voteCountByOption[optionId] / totalVotes * 100);
   };
 
   return (
-    <div className="bg-poll rounded-xl overflow-hidden w-full max-w-[500px] border border-primary/15 border-l-[3px] border-l-primary/40 shadow-elevation-1">
+    <div className="bg-poll rounded-xl overflow-hidden w-full max-w-[500px] shadow-elevation-1">
 
-      <div className="px-3 pb-3 space-y-3">
-        <p className="text-foreground font-medium my-[11px]">{poll.question}</p>
+      <div className="px-4 pb-4 space-y-3">
+        <p className="text-foreground font-medium text-base my-3">{poll.question}</p>
         
         {!hasVoted && !canVote && !isExpired && (
           <p className="text-muted-foreground py-0 text-xs font-thin flex items-center gap-1">
@@ -285,32 +312,49 @@ export function PollDisplay({
             const percentage = getPercentage(option.id);
             const voteCount = voteCountByOption[option.id];
             const optionVotes = votesByOption[option.id];
+            const isWinningOption = winnerOptionId === option.id;
+
+            const optionDisabled = isEditing ? false : ((!canVote && !hasVoted) || (showResults && !hasVoted));
 
             return (
-              <button
+              <div
                 key={option.id}
-                onClick={() => handleOptionClick(option.id)}
-                disabled={isEditing ? false : ((!canVote && !hasVoted) || (showResults && !hasVoted))}
-              className={cn(
+                role="button"
+                tabIndex={optionDisabled ? -1 : 0}
+                aria-disabled={optionDisabled}
+                onClick={() => !optionDisabled && handleOptionClick(option.id)}
+                onKeyDown={(e) => {
+                  if (!optionDisabled && (e.key === 'Enter' || e.key === ' ')) {
+                    e.preventDefault();
+                    handleOptionClick(option.id);
+                  }
+                }}
+                className={cn(
                   "w-full relative rounded-md border transition-all duration-300 text-left overflow-hidden",
-                  isSelected || isVoted
-                    ? "border-primary bg-primary/10"
-                    : "border-border hover:border-border/80 bg-[hsl(var(--surface-1))]"
+                  optionDisabled ? "cursor-default" : "cursor-pointer",
+                  isWinningOption
+                    ? "border-emerald-500 bg-emerald-500/10"
+                    : isSelected || isVoted
+                      ? "border-primary bg-primary/10"
+                      : "border-transparent hover:bg-[hsl(var(--surface-3))] bg-[hsl(var(--surface-elevated))]"
                 )}
               >
                 {/* Progress bar background with animation */}
-                <div 
-                  className="absolute inset-0 bg-primary/20 transition-all duration-500 ease-out"
+                <div
+                  className={cn(
+                    "absolute inset-0 transition-all duration-500 delay-150 ease-out",
+                    isWinningOption ? "bg-emerald-500/20" : "bg-primary/20"
+                  )}
                   style={{ width: shouldShowResults ? `${percentage}%` : '0%' }}
                 />
-                
-                <div className="relative flex items-center gap-3 p-3">
+
+                <div className="relative flex items-center gap-3 px-3.5 py-3.5">
                   {option.emoji && (
                     <span className="text-lg flex-shrink-0">{option.emoji}</span>
                   )}
-                  
+
                   <span className="flex-1 text-sm text-foreground">{option.text}</span>
-                  
+
                   {/* Vote indicator or radio/checkbox with transition */}
                   <div className={cn(
                     "flex items-center gap-2 flex-shrink-0 transition-all duration-300",
@@ -318,12 +362,43 @@ export function PollDisplay({
                   )}>
                     {shouldShowResults && (
                       <>
-                        <VoterAvatars votes={optionVotes} />
-                        <span className="text-xs text-muted-foreground whitespace-nowrap">
-                          {voteCount} vote{voteCount !== 1 ? 's' : ''} ({percentage}%)
-                        </span>
+                        <VoterAvatars
+                          votes={optionVotes}
+                          onOpenVoters={() => {
+                            setVotersModalOptionId(option.id);
+                            setVotersModalOpen(true);
+                          }}
+                        />
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setVotersModalOptionId(option.id);
+                                setVotersModalOpen(true);
+                              }}
+                              className={cn(
+                                "text-xs whitespace-nowrap hover:underline",
+                                isWinningOption ? "text-emerald-500 font-semibold" : "text-muted-foreground hover:text-foreground"
+                              )}
+                            >
+                              {voteCount} vote{voteCount !== 1 ? 's' : ''} ({percentage}%)
+                            </button>
+                          </TooltipTrigger>
+                          {optionVotes.length > 0 && (
+                            <TooltipPortal>
+                              <TooltipContent side="top" sideOffset={20} className="text-xs max-w-[200px]">
+                                {optionVotes.map((v) => v.user?.display_name || 'Inconnu').join(', ')}
+                              </TooltipContent>
+                            </TooltipPortal>
+                          )}
+                        </Tooltip>
                         {isVoted && (
-                          <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                          <div className={cn(
+                            "w-5 h-5 rounded-full flex items-center justify-center",
+                            isWinningOption ? "bg-emerald-500" : "bg-primary"
+                          )}>
                             <Check className="w-3 h-3 text-primary-foreground" />
                           </div>
                         )}
@@ -346,7 +421,7 @@ export function PollDisplay({
                     )}
                   </div>
                 </div>
-              </button>
+              </div>
             );
           })}
         </div>
@@ -354,7 +429,20 @@ export function PollDisplay({
         <div className="flex items-center justify-between gap-2 flex-wrap pt-1">
           <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap min-w-0">
 
-            <span className="my-0 px-0 py-0">{totalVotes} vote{totalVotes !== 1 ? 's' : ''}</span>
+            {totalVotes > 0 ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setVotersModalOptionId(undefined);
+                  setVotersModalOpen(true);
+                }}
+                className="my-0 px-0 py-0 hover:underline hover:text-foreground"
+              >
+                {totalVotes} vote{totalVotes !== 1 ? 's' : ''}
+              </button>
+            ) : (
+              <span className="my-0 px-0 py-0">{totalVotes} vote{totalVotes !== 1 ? 's' : ''}</span>
+            )}
             {poll.expires_at && (
               <div className="flex items-center gap-2">
                 {isExpired ? (
@@ -384,7 +472,7 @@ export function PollDisplay({
 
           <div className="flex items-center gap-2 flex-wrap ml-auto">
 
-            {/* Modify vote button — only while poll is open and user has voted */}
+            {/* Modify / remove vote buttons — only while poll is open and user has voted */}
             {!isExpired && hasVoted && !isEditing && canVote && (
               <Button
                 variant="ghost"
@@ -396,12 +484,24 @@ export function PollDisplay({
               </Button>
             )}
 
+            {!isExpired && hasVoted && !isEditing && canVote && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleRemoveVote}
+                disabled={removeVote.isPending}
+                className="text-xs h-8"
+              >
+                Supprimer le vote
+              </Button>
+            )}
+
             {/* End poll button for author */}
             {!isExpired && poll.author_id === user?.id && !isEditing && (
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => endPoll.mutate({ pollId: poll.id, channelId, threadId })}
+                onClick={() => setConfirmCloseOpen(true)}
                 disabled={endPoll.isPending}
                 className="text-xs h-8 text-destructive hover:text-destructive"
               >
@@ -438,7 +538,7 @@ export function PollDisplay({
                 onClick={() => setShowResults(false)}
                 className="text-xs h-8"
               >
-                Revenir aux votes
+                Revenir au vote
               </Button>
             )}
 
@@ -455,6 +555,21 @@ export function PollDisplay({
           </div>
         </div>
       </div>
+
+      <ClosePollConfirmDialog
+        open={confirmCloseOpen}
+        onOpenChange={setConfirmCloseOpen}
+        onConfirm={() => endPoll.mutate({ pollId: poll.id, channelId, threadId })}
+      />
+      <PollVotersModal
+        open={votersModalOpen}
+        onOpenChange={setVotersModalOpen}
+        question={poll.question}
+        totalVotes={totalVotes}
+        options={poll.options}
+        votesByOption={votesByOption}
+        initialOptionId={votersModalOptionId}
+      />
     </div>
   );
 }

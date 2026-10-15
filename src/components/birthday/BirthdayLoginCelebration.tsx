@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { toast } from 'sonner';
 import { ConfettiCanvas } from '@/components/effects/ConfettiCanvas';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMyBirthdayStatus, claimMyBirthdayBadge } from '@/hooks/useBirthday';
@@ -34,10 +33,6 @@ export function BirthdayLoginCelebration() {
 
     setConfetti(true);
     const name = profile?.display_name || 'toi';
-    toast.success(`🎂 Joyeux anniversaire, ${name} !`, {
-      description: 'Profite bien de ta journée — les autres verront ton badge festif.',
-      duration: 6000,
-    });
 
     // Claim the yearly badge (idempotent server-side)
     claimMyBirthdayBadge().catch(() => {

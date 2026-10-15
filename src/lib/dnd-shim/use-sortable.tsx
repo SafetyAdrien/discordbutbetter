@@ -90,7 +90,7 @@ export function useSortable(opts: UseSortableOptions): SortableResult {
 
   // rAF-throttled hover dispatch — avoids spamming onDragOver on every mousemove
   const hoverFrameRef = useRef<number | null>(null);
-  const pendingHoverRef = useRef<{ item: any; delta: { x: number; y: number } } | null>(null);
+  const pendingHoverRef = useRef<{ item: any; overId: UniqueIdentifier; delta: { x: number; y: number } } | null>(null);
 
   useEffect(() => () => {
     if (hoverFrameRef.current != null) cancelAnimationFrame(hoverFrameRef.current);
@@ -104,7 +104,13 @@ export function useSortable(opts: UseSortableOptions): SortableResult {
         if (!monitor.isOver({ shallow: true })) return;
         if (item.id === id) return;
         ctx.state.lastOverId = id;
-        pendingHoverRef.current = { item, delta: snapshotDelta(monitor) };
+        // Record the hovered id alongside the item. The previous code closed
+        // over `id` in the rAF callback, so when A then B were hovered within
+        // the same frame, A scheduled the frame, B updated `lastOverId` but
+        // returned early — and the frame reported `over: A` while the pointer
+        // was actually over B. That made the drop indicator lag one row behind
+        // the cursor and appear to move the wrong way.
+        pendingHoverRef.current = { item, overId: id, delta: snapshotDelta(monitor) };
         if (hoverFrameRef.current != null) return;
         hoverFrameRef.current = requestAnimationFrame(() => {
           hoverFrameRef.current = null;
@@ -113,11 +119,12 @@ export function useSortable(opts: UseSortableOptions): SortableResult {
           if (!pending) return;
           // Drag may have ended between scheduling and executing the frame.
           if (ctx.state.activeId == null) return;
-          const overEl = domRef.current;
-          const overRect = overEl ? overEl.getBoundingClientRect() : null;
+          // Use the element that was actually hovered, not this closure's node.
+          const overNode = ctx.state.nodes.get(pending.overId);
+          const overRect = overNode ? overNode.getBoundingClientRect() : null;
           ctx.handlersRef.current.onDragOver?.({
             active: { id: pending.item.id, data: { current: pending.item.data } },
-            over: { id, rect: overRect },
+            over: { id: pending.overId, rect: overRect },
             delta: pending.delta,
             activatorEvent: ctx.state.activatorEvent,
           });

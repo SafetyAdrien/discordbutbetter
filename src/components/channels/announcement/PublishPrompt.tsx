@@ -49,14 +49,14 @@ export function PublishPrompt({
       <span className="text-muted-foreground">
         Partage ça avec tes abonnés !
       </span>
-      <button
+      <button type="button"
         onClick={handlePublish}
         disabled={publishMessage.isPending}
         className="text-primary hover:underline font-medium"
       >
         {publishMessage.isPending ? "Publication..." : "Publier"}
       </button>
-      <button
+      <button type="button"
         onClick={handleDismiss}
         className="ml-auto text-muted-foreground hover:text-foreground transition-colors"
         title="Ne plus afficher"

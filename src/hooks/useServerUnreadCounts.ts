@@ -15,6 +15,10 @@ export function useServerUnreadCounts() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const countedMentionMessageIdsRef = useRef<Set<string>>(new Set());
+  // ServerList is mounted more than once in some views (e.g. owned/joined
+  // split in MobileServersListView) — suffix realtime channel names per
+  // instance so they don't collide on the same Supabase Realtime topic.
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   const cachedKey = user?.id ? `server-unread:${user.id}` : null;
   const cachedData = cachedKey ? cacheGetSync<Record<string, ServerUnreadInfo>>(cachedKey) : undefined;
@@ -53,7 +57,7 @@ export function useServerUnreadCounts() {
     };
 
     const messagesChannel = supabase
-      .channel('server-unread-messages')
+      .channel(`server-unread-messages-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages' },
@@ -83,7 +87,7 @@ export function useServerUnreadCounts() {
       .subscribe();
 
     const mentionsChannel = supabase
-      .channel('server-unread-mentions')
+      .channel(`server-unread-mentions-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'channel_mentions', filter: `user_id=eq.${user.id}` },
@@ -123,7 +127,7 @@ export function useServerUnreadCounts() {
     // Listen to my own channel_read_states changes so server badges clear
     // immediately after marking any channel read (incl. from another device).
     const readChannel = supabase
-      .channel(`server-unread-reads-${user.id}`)
+      .channel(`server-unread-reads-${user.id}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         {

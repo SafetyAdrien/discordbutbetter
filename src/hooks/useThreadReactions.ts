@@ -17,11 +17,12 @@ export function useThreadMessageReactions(messageIds: string[]) {
   const { user } = useAuth();
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
   const idsKey = messageIds.join(',');
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   useEffect(() => {
     if (messageIds.length === 0) return;
     const channel = supabase
-      .channel(`thread-reactions-rt-${messageIds[0]}`)
+      .channel(`thread-reactions-rt-${messageIds[0]}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'thread_message_reactions' },
@@ -105,7 +106,7 @@ export function useToggleThreadReaction() {
         const next = userHasReacted
           ? list.filter(r => !(r.user_id === user.id && r.emoji === emoji))
           : [...list, {
-              id: `temp-${Date.now()}`,
+              id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
               message_id: messageId,
               user_id: user.id,
               emoji,

@@ -1,29 +1,19 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ServerList } from '@/components/layout/ServerList';
 import { ChannelList } from '@/components/layout/ChannelList';
 import { UserProfileCard } from '@/components/profile/UserProfileCard';
 import { VoiceStatusBadge } from '@/components/layout/VoiceStatusBadge';
-import { AccountSettingsModal } from '@/components/account-settings/AccountSettingsModal';
 import { MemberList } from '@/components/layout/MemberList';
 import { ChatArea } from '@/components/chat/ChatArea';
 import { DMPage } from '@/components/dm/DMPage';
-import { DiscoverModal } from '@/components/modals/DiscoverModal';
-import { CreateServerModal } from '@/components/modals/CreateServerModal';
-import { ServerSettingsModal } from '@/components/server-settings/ServerSettingsModal';
-import { KeyboardShortcutsModal } from '@/components/modals/KeyboardShortcutsModal';
-import { MessageSearchPanel } from '@/components/layout/MessageSearchPanel';
-import { MediaChannel } from '@/components/channels/MediaChannel';
-import { ForumChannel } from '@/components/channels/ForumChannel';
-import { TasksChannel } from '@/components/channels/TasksChannel';
-import { CalendarChannel } from '@/components/channels/CalendarChannel';
-import { AnnouncementChannel } from '@/components/channels/AnnouncementChannel';
-import { VoiceChannelView } from '@/components/channels/VoiceChannelView';
-import { StageChannel } from '@/components/channels/StageChannel';
-import ThreadView from '@/components/threads/ThreadView';
-import { MobileLayout } from '@/components/mobile/MobileLayout';
-import { TabletLayout } from '@/components/tablet/TabletLayout';
+// The mobile tree is ~12k LOC (and carries most of the framer-motion usage).
+// It is statically imported at the top of this file, which meant every desktop
+// visitor downloaded the entire mobile UI — and its animation runtime — on first
+// load. Lazy-loading it keeps it out of the desktop bundle entirely.
+const MobileLayout = lazy(() => import('@/components/mobile/MobileLayout').then((m) => ({ default: m.MobileLayout })));
 import { useBreakpoint } from '@/hooks/useBreakpoint';
+import { Spinner } from '@/components/ui/spinner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useServers, usePublicServers, useCreateServer, useJoinServer } from '@/hooks/useServers';
 import { useChannels } from '@/hooks/useChannels';
@@ -37,7 +27,7 @@ import { usePrefetchThreadsForChannels } from '@/hooks/useThreads';
 import { prefetchUrls, extractUrls } from '@/hooks/useUrlMetadata';
 
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
-import { useVoice } from '@/contexts/VoiceContext';
+import { useVoice, useVoiceLevels } from '@/contexts/VoiceContext';
 import { useNavigationState } from '@/hooks/useNavigationState';
 import { useHistoryNavigation, HistoryViewState } from '@/hooks/useHistoryNavigation';
 import LoadingScreen from '@/components/LoadingScreen';
@@ -46,6 +36,49 @@ import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Menu, Users } from 'lucide-react';
 import type { Server, Message, User } from '@/types/app';
+
+// Lazily loaded: only rendered on explicit user action (open modal / switch to
+// this channel type), so they shouldn't bloat the initial bundle.
+const AccountSettingsModal = lazy(() =>
+  import('@/components/account-settings/AccountSettingsModal').then((m) => ({ default: m.AccountSettingsModal }))
+);
+const DiscoverModal = lazy(() =>
+  import('@/components/modals/DiscoverModal').then((m) => ({ default: m.DiscoverModal }))
+);
+const CreateServerModal = lazy(() =>
+  import('@/components/modals/CreateServerModal').then((m) => ({ default: m.CreateServerModal }))
+);
+const ServerSettingsModal = lazy(() =>
+  import('@/components/server-settings/ServerSettingsModal').then((m) => ({ default: m.ServerSettingsModal }))
+);
+const KeyboardShortcutsModal = lazy(() =>
+  import('@/components/modals/KeyboardShortcutsModal').then((m) => ({ default: m.KeyboardShortcutsModal }))
+);
+const MessageSearchPanel = lazy(() =>
+  import('@/components/layout/MessageSearchPanel').then((m) => ({ default: m.MessageSearchPanel }))
+);
+const MediaChannel = lazy(() =>
+  import('@/components/channels/MediaChannel').then((m) => ({ default: m.MediaChannel }))
+);
+const ForumChannel = lazy(() =>
+  import('@/components/channels/ForumChannel').then((m) => ({ default: m.ForumChannel }))
+);
+const TasksChannel = lazy(() =>
+  import('@/components/channels/TasksChannel').then((m) => ({ default: m.TasksChannel }))
+);
+const CalendarChannel = lazy(() =>
+  import('@/components/channels/CalendarChannel').then((m) => ({ default: m.CalendarChannel }))
+);
+const AnnouncementChannel = lazy(() =>
+  import('@/components/channels/AnnouncementChannel').then((m) => ({ default: m.AnnouncementChannel }))
+);
+const VoiceChannelView = lazy(() =>
+  import('@/components/channels/VoiceChannelView').then((m) => ({ default: m.VoiceChannelView }))
+);
+const StageChannel = lazy(() =>
+  import('@/components/channels/StageChannel').then((m) => ({ default: m.StageChannel }))
+);
+const ThreadView = lazy(() => import('@/components/threads/ThreadView'));
 
 // Main application component
 const Index = () => {
@@ -188,6 +221,7 @@ const Index = () => {
       categories: server.categories.map(cat => ({
         id: cat.id,
         name: cat.name,
+        icon: (cat as any).icon ?? null,
         position: cat.position ?? 0,
         channels: cat.channels.map(ch => ({
           id: ch.id,
@@ -260,7 +294,8 @@ const Index = () => {
 
 
   // Voice state
-  const { voiceState, toggleMute, toggleDeafen, leaveChannel, isConnected, speakingUsers } = useVoice();
+  const { voiceState, toggleMute, toggleDeafen, leaveChannel, isConnected } = useVoice();
+  const { speakingUsers } = useVoiceLevels();
   const [showAccountSettingsGlobal, setShowAccountSettingsGlobal] = useState(false);
 
   // Mutations
@@ -401,9 +436,9 @@ const Index = () => {
     }));
   }, [members]);
 
-  const handleSendMessage = (content: string, attachments?: any[], replyToId?: string | null) => {
+  const handleSendMessage = (content: string, attachments?: any[], replyToId?: string | null, externalAttachment?: { url: string; name: string; type: 'sticker' | 'gif' }) => {
     if (!activeChannelId) return;
-    sendMessage.mutate({ channelId: activeChannelId, content, attachments: attachments || [], replyToId: replyToId ?? null });
+    sendMessage.mutate({ channelId: activeChannelId, content, attachments: attachments || [], replyToId: replyToId ?? null, externalAttachment });
   };
 
   const handleJoinServer = (serverId: string) => {
@@ -480,6 +515,7 @@ const Index = () => {
     categories: s.categories.map(cat => ({
       id: cat.id,
       name: cat.name,
+      icon: (cat as any).icon ?? null,
       channels: cat.channels.map(ch => ({
         id: ch.id,
         name: ch.name,
@@ -502,6 +538,7 @@ const Index = () => {
     categories: resolvedCategories.map(cat => ({
       id: cat.id,
       name: cat.name,
+      icon: (cat as any).icon ?? null,
       channels: cat.channels.map(ch => ({
         id: ch.id,
         name: ch.name,
@@ -607,18 +644,20 @@ const Index = () => {
   // Mobile layout
   if (isMobile) {
     return (
-      <MobileLayout
-        servers={serverListData}
-        activeServerId={activeServerId}
-        activeDMId={activeDMId}
-        onServerSelect={handleServerSelect}
-        onOpenDM={handleOpenDM}
-        onShowFriends={handleShowFriends}
-        onJoinServer={handleJoinServer}
-        onCreateServer={handleCreateServer}
-        discoverableServers={discoverableServers}
-        rawServers={servers}
-      />
+      <Suspense fallback={<Spinner />}>
+        <MobileLayout
+          servers={serverListData}
+          activeServerId={activeServerId}
+          activeDMId={activeDMId}
+          onServerSelect={handleServerSelect}
+          onOpenDM={handleOpenDM}
+          onShowFriends={handleShowFriends}
+          onJoinServer={handleJoinServer}
+          onCreateServer={handleCreateServer}
+          discoverableServers={discoverableServers}
+          rawServers={servers}
+        />
+      </Suspense>
     );
   }
 
@@ -657,8 +696,36 @@ const Index = () => {
         setVoiceChatChannelId(channelId);
         if (isTablet) setTabletChannelsOpen(false);
       }}
-      onOpenGlobalSearch={() => setShowGlobalSearch(true)}
     />
+  ) : null;
+
+  /*
+   * User panel — desktop only, lives at the bottom of the sidebar rail.
+   *
+   * It used to be `position: fixed` with a hard-coded width of
+   * `calc(80px + 2px + 240px)` plus a fixed 60px wrapper. Any change to the
+   * rail width, or to the panel's own content height, desynchronised it from
+   * the sidebar AND from the message composer sitting next to it. Rendering it
+   * in normal flow makes width and height follow the rail automatically, which
+   * is what makes the two bottom bars line up.
+   */
+  const userPanelEl = !isMobile && !isTablet ? (
+    <div className="shrink-0 w-full">
+      {isConnected && voiceState.channelName && (
+        <VoiceStatusBadge
+          channelName={voiceState.channelName}
+          serverName={voiceState.serverName}
+          onDisconnect={() => leaveChannel()}
+          connectedToProfile
+        />
+      )}
+      <UserProfileCard
+        onOpenSettings={() => setShowAccountSettingsGlobal(true)}
+        onOpenProfile={() => setShowAccountSettingsGlobal(true)}
+        speakingUsers={speakingUsers}
+        connectedToVoice={isConnected && !!voiceState.channelName}
+      />
+    </div>
   ) : null;
 
   const closeSearch = () => {
@@ -668,22 +735,25 @@ const Index = () => {
   };
 
   const messageSearchEl = activeServer ? (
-    <MessageSearchPanel
-      key={`search-panel-${activeServer.id}`}
-      serverId={activeServer.id}
-      channels={searchChannels}
-      members={searchMembers}
-      onClose={closeSearch}
-      onSubmittedChange={setSearchSubmitted}
-      initialSubmit={searchInitialSubmit}
-      onNavigateToMessage={(channelId) => {
-        setActiveChannelId(channelId);
-        closeSearch();
-      }}
-    />
+    <Suspense fallback={<Spinner />}>
+      <MessageSearchPanel
+        key={`search-panel-${activeServer.id}`}
+        serverId={activeServer.id}
+        channels={searchChannels}
+        members={searchMembers}
+        onClose={closeSearch}
+        onSubmittedChange={setSearchSubmitted}
+        initialSubmit={searchInitialSubmit}
+        onNavigateToMessage={(channelId) => {
+          setActiveChannelId(channelId);
+          closeSearch();
+        }}
+      />
+    </Suspense>
   ) : null;
 
   const messageSearchPopoverEl = activeServer ? (
+    <Suspense fallback={<Spinner />}>
     <MessageSearchPanel
       key={`search-popover-${activeServer.id}`}
       variant="popover"
@@ -698,6 +768,7 @@ const Index = () => {
         closeSearch();
       }}
     />
+    </Suspense>
   ) : null;
 
   const renderMemberList = (opts: { fillHeight?: boolean; className?: string }) =>
@@ -782,16 +853,44 @@ const Index = () => {
 
   return (
     <div className="h-[100svh] flex bg-[hsl(var(--sidebar-background))] overflow-hidden gap-[2px]">
-      {/* Server List - compact rail on tablet (64px) */}
-      <div className={isTablet ? 'w-[64px] shrink-0 [&>div]:!w-[64px]' : 'shrink-0'}>
-        <ServerList
-          servers={serverListData}
-          activeServerId={activeServerId}
-          onServerSelect={handleServerSelect}
-          onDiscoverClick={() => setShowDiscover(true)}
-          onCreateClick={() => setShowCreate(true)}
-          onOpenServerSettings={handleOpenServerSettings}
-        />
+      {/*
+       * Sidebar rail.
+       *
+       * The server rail and the channel list sit side by side and the user
+       * panel spans BOTH of them along the bottom, which is the layout in the
+       * reference design. The panel used to be a `position: fixed` box with a
+       * hard-coded `calc(80px + 2px + 240px)` width; every change to the rail
+       * (including the user's own resize handle, 240-340px) desynchronised it.
+       * In normal flow it simply measures whatever sits above it.
+       *
+       * The inner `gap-[2px]` reproduces the separator that the outer flex gap
+       * used to provide between the server rail and the channel list.
+       */}
+      <div className="flex flex-col shrink-0 h-full min-h-0">
+        <div className="flex flex-1 min-h-0 gap-[2px]">
+          {/* Server List - compact rail on tablet (64px) */}
+          <div className={isTablet ? 'w-[64px] shrink-0 [&>div]:!w-[64px]' : 'shrink-0'}>
+            <ServerList
+              servers={serverListData}
+              activeServerId={activeServerId}
+              onServerSelect={handleServerSelect}
+              onDiscoverClick={() => setShowDiscover(true)}
+              onCreateClick={() => setShowCreate(true)}
+              onOpenServerSettings={handleOpenServerSettings}
+            />
+          </div>
+
+          {/*
+           * No width class here: ChannelList owns its own width (it is
+           * user-resizable between 240 and 340px). Forcing a width on a wrapper
+           * fought that resize handle.
+           */}
+          {!isHomeView && activeServer && serverForChannelList && !isTablet && (
+            <div className="flex flex-col shrink-0 min-h-0">{channelListEl}</div>
+          )}
+        </div>
+
+        {userPanelEl}
       </div>
 
       {/* Home/DM View */}
@@ -803,8 +902,6 @@ const Index = () => {
         />
       ) : activeServer && serverForChannelList ? (
         <>
-          {/* Channel List inline (desktop only) */}
-          {!isTablet && channelListEl}
 
           {/* Main Content Area - resizable split when thread is open */}
           <div className="flex-1 flex min-w-0 w-full overflow-x-hidden relative">
@@ -840,7 +937,8 @@ const Index = () => {
                 style={activeThreadId && (channelForChat.type === 'text' || channelForChat.type === 'announcement') && !threadFullscreen ? { flex: `${10 - threadPanelFlex} 1 0%` } : undefined}
               >
                 {channelForChat.type === 'voice' ? (
-                  <VoiceChannelView 
+                  <Suspense fallback={<Spinner />}>
+                  <VoiceChannelView
                     key={channelForChat.id}
                     channel={channelForChat}
                     serverId={activeServer.id}
@@ -850,38 +948,48 @@ const Index = () => {
                     initialShowChat={voiceChatChannelId === channelForChat.id}
                     onChatOpened={() => setVoiceChatChannelId(null)}
                   />
+                  </Suspense>
                 ) : channelForChat.type === 'media' ? (
-                  <MediaChannel 
+                  <Suspense fallback={<Spinner />}>
+                  <MediaChannel
                     key={channelForChat.id}
                     channel={channelForChat}
                     onToggleMembers={handleToggleMembers}
                     showMembers={showMembers}
                   />
+                  </Suspense>
                 ) : channelForChat.type === 'forum' ? (
-                  <ForumChannel 
+                  <Suspense fallback={<Spinner />}>
+                  <ForumChannel
                     key={channelForChat.id}
                     channel={channelForChat}
                     serverId={activeServerId ?? undefined}
                     onToggleMembers={handleToggleMembers}
                     showMembers={showMembers}
                   />
+                  </Suspense>
 
                 ) : channelForChat.type === 'tasks' ? (
-                  <TasksChannel 
+                  <Suspense fallback={<Spinner />}>
+                  <TasksChannel
                     key={channelForChat.id}
                     channel={channelForChat}
                     onToggleMembers={handleToggleMembers}
                     showMembers={showMembers}
                   />
+                  </Suspense>
                 ) : channelForChat.type === 'calendar' ? (
-                  <CalendarChannel 
+                  <Suspense fallback={<Spinner />}>
+                  <CalendarChannel
                     key={channelForChat.id}
                     channel={channelForChat}
                     onToggleMembers={handleToggleMembers}
                     showMembers={showMembers}
                   />
+                  </Suspense>
                 ) : channelForChat.type === 'announcement' ? (
-                  <AnnouncementChannel 
+                  <Suspense fallback={<Spinner />}>
+                  <AnnouncementChannel
                     key={channelForChat.id}
                     channel={channelForChat}
                     onToggleMembers={handleToggleMembers}
@@ -893,12 +1001,15 @@ const Index = () => {
                       setThreadChannelId(null);
                     }}
                   />
+                  </Suspense>
                 ) : channelForChat.type === 'stage' ? (
-                  <StageChannel 
+                  <Suspense fallback={<Spinner />}>
+                  <StageChannel
                     key={channelForChat.id}
                     channel={channelForChat}
                     serverId={activeServer.id}
                   />
+                  </Suspense>
                 ) : (
                   <ChatArea
                     key={channelForChat.id}
@@ -966,6 +1077,7 @@ const Index = () => {
                 className="min-w-[300px]"
                 style={isTablet ? { flex: '1 1 0%' } : threadFullscreen ? { flex: '1 1 0%' } : { flex: `${threadPanelFlex} 1 0%` }}
               >
+                <Suspense fallback={<Spinner />}>
                 <ThreadView
                   threadId={activeThreadId}
                   channelId={threadChannelId || activeChannelId || undefined}
@@ -979,6 +1091,7 @@ const Index = () => {
                   isFullscreen={isTablet ? true : threadFullscreen}
                   onToggleFullscreen={() => setThreadFullscreen(!threadFullscreen)}
                 />
+                </Suspense>
               </div>
               </>
             )}
@@ -1008,61 +1121,46 @@ const Index = () => {
 
       {/* Modals */}
       {showDiscover && (
-        <DiscoverModal
-          servers={discoverableServers}
-          onClose={() => setShowDiscover(false)}
-          onJoinServer={handleJoinServer}
-        />
+        <Suspense fallback={<Spinner />}>
+          <DiscoverModal
+            servers={discoverableServers}
+            onClose={() => setShowDiscover(false)}
+            onJoinServer={handleJoinServer}
+          />
+        </Suspense>
       )}
 
       {showCreate && (
-        <CreateServerModal
-          onClose={() => setShowCreate(false)}
-          onCreate={handleCreateServer}
-        />
+        <Suspense fallback={<Spinner />}>
+          <CreateServerModal
+            onClose={() => setShowCreate(false)}
+            onCreate={handleCreateServer}
+          />
+        </Suspense>
       )}
 
       {showServerSettings && activeServer && (
-        <ServerSettingsModal
-          serverId={activeServer.id}
-          serverName={activeServer.name}
-          onClose={() => { setShowServerSettings(false); setServerSettingsInitialTab(undefined); }}
-          initialTab={serverSettingsInitialTab as any}
-        />
+        <Suspense fallback={<Spinner />}>
+          <ServerSettingsModal
+            serverId={activeServer.id}
+            serverName={activeServer.name}
+            onClose={() => { setShowServerSettings(false); setServerSettingsInitialTab(undefined); }}
+            initialTab={serverSettingsInitialTab as any}
+          />
+        </Suspense>
       )}
 
       {showShortcutsHelp && (
-        <KeyboardShortcutsModal onClose={() => setShowShortcutsHelp(false)} />
+        <Suspense fallback={<Spinner />}>
+          <KeyboardShortcutsModal onClose={() => setShowShortcutsHelp(false)} />
+        </Suspense>
       )}
 
       {/* Global search is rendered inline as MessageSearchPanel below (replacing MemberList). */}
-      {/* Floating Voice + Profile Panel - desktop only, spans ServerList + ChannelList width */}
-      {!isMobile && !isTablet && (
-        <div
-          className="fixed bottom-0 left-0 z-40 flex flex-col gap-0 pb-0"
-          style={{ width: 'calc(80px + 2px + 240px)' }}
-        >
-          {isConnected && voiceState.channelName && (
-            <VoiceStatusBadge
-              channelName={voiceState.channelName}
-              serverName={voiceState.serverName}
-              onDisconnect={() => leaveChannel()}
-              connectedToProfile
-            />
-          )}
-          <div className="h-[60px]">
-            <UserProfileCard
-              onOpenSettings={() => setShowAccountSettingsGlobal(true)}
-              onOpenProfile={() => setShowAccountSettingsGlobal(true)}
-              speakingUsers={speakingUsers}
-              connectedToVoice={isConnected && !!voiceState.channelName}
-            />
-          </div>
-        </div>
-      )}
-
       {showAccountSettingsGlobal && (
-        <AccountSettingsModal onClose={() => setShowAccountSettingsGlobal(false)} />
+        <Suspense fallback={<Spinner />}>
+          <AccountSettingsModal onClose={() => setShowAccountSettingsGlobal(false)} />
+        </Suspense>
       )}
     </div>
   );

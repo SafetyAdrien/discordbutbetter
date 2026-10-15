@@ -1,9 +1,10 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
+import { corsHeaders as buildCorsHeaders, preflight } from '../_shared/cors.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
-};
+
+
+// Origin-restricted CORS (see _shared/cors.ts) — no more blanket '*'.
+const corsHeaders = (req: Request) => buildCorsHeaders(req);
 
 const DISCORD_TYPE_MAP: Record<number, string> = {
   0: 'text',
@@ -18,46 +19,9 @@ function mapChannelType(discordType: number): string {
   return DISCORD_TYPE_MAP[discordType] || 'text';
 }
 
-async function fetchAndUploadImage(
-  supabase: any,
-  imageUrl: string,
-  bucket: string,
-  path: string,
-): Promise<string | null> {
-  try {
-    const response = await fetch(imageUrl);
-    if (!response.ok) return null;
-
-    const blob = await response.blob();
-    const arrayBuffer = await blob.arrayBuffer();
-    const uint8 = new Uint8Array(arrayBuffer);
-
-    const { error } = await supabase.storage
-      .from(bucket)
-      .upload(path, uint8, {
-        contentType: blob.type || 'image/png',
-        upsert: true,
-      });
-
-    if (error) {
-      console.error(`Upload error for ${bucket}/${path}:`, error);
-      return null;
-    }
-
-    const { data: { publicUrl } } = supabase.storage
-      .from(bucket)
-      .getPublicUrl(path);
-
-    return publicUrl;
-  } catch (err) {
-    console.error(`Fetch/upload error:`, err);
-    return null;
-  }
-}
-
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return preflight(req);
   }
 
   try {
@@ -66,7 +30,7 @@ Deno.serve(async (req) => {
     if (!authHeader?.startsWith('Bearer ')) {
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 401, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } }
       );
     }
     const supabaseUrlAuth = Deno.env.get('SUPABASE_URL')!;
@@ -78,7 +42,7 @@ Deno.serve(async (req) => {
     if (userError || !userData?.user) {
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 401, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } }
       );
     }
 
@@ -88,7 +52,7 @@ Deno.serve(async (req) => {
     if (!templateCode || typeof templateCode !== 'string') {
       return new Response(
         JSON.stringify({ error: 'templateCode is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } }
       );
     }
 
@@ -106,7 +70,7 @@ Deno.serve(async (req) => {
     if (!/^[a-zA-Z0-9]+$/.test(code)) {
       return new Response(
         JSON.stringify({ error: 'Invalid template code format' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } }
       );
     }
 
@@ -117,7 +81,7 @@ Deno.serve(async (req) => {
       console.error('Discord API error:', response.status, text);
       return new Response(
         JSON.stringify({ error: 'Template not found or inaccessible' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 404, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } }
       );
     }
 
@@ -127,7 +91,7 @@ Deno.serve(async (req) => {
     if (!guild) {
       return new Response(
         JSON.stringify({ error: 'Invalid template structure' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } }
       );
     }
 
@@ -175,43 +139,9 @@ Deno.serve(async (req) => {
         hoist: r.hoist ?? false,
       }));
 
-    // --- Fetch and upload icon/banner to storage ---
-    let iconUrl: string | null = null;
-    let bannerUrl: string | null = null;
-
-    const sourceGuildId = template.source_guild_id;
-    const iconHash = guild.icon_hash;
-    const splashHash = guild.splash_hash;
-
-    if (sourceGuildId && (iconHash || splashHash)) {
-      // Create a Supabase admin client
-      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-      const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-      const supabase = createClient(supabaseUrl, serviceRoleKey);
-
-      const uploadId = crypto.randomUUID();
-
-      if (iconHash) {
-        const discordIconUrl = `https://cdn.discordapp.com/icons/${sourceGuildId}/${iconHash}.png?size=512`;
-        iconUrl = await fetchAndUploadImage(
-          supabase,
-          discordIconUrl,
-          'server-icons',
-          `imported/${uploadId}/icon.png`,
-        );
-      }
-
-      if (splashHash) {
-        const discordSplashUrl = `https://cdn.discordapp.com/splashes/${sourceGuildId}/${splashHash}.png?size=1024`;
-        bannerUrl = await fetchAndUploadImage(
-          supabase,
-          discordSplashUrl,
-          'server-banners',
-          `imported/${uploadId}/banner.png`,
-        );
-      }
-    }
-
+    // Discord's guild template API never includes the server's icon or banner
+    // (serialized_source_guild has no icon_hash/banner_hash/splash_hash field) —
+    // fetching those requires a bot installed on the source guild, which we don't have here.
     const result = {
       name: template.name,
       description: template.description || guild.description || null,
@@ -223,19 +153,17 @@ Deno.serve(async (req) => {
       creator: template.creator ? {
         username: template.creator.username,
       } : null,
-      iconUrl,
-      bannerUrl,
     };
 
     return new Response(JSON.stringify(result), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
       status: 200,
     });
   } catch (error) {
     console.error('Error:', error);
     return new Response(
       JSON.stringify({ error: 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 500, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } }
     );
   }
 });

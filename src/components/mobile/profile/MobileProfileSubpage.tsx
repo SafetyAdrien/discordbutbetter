@@ -35,7 +35,7 @@ export function MobileProfileSubpage({ title, onBack, children, rightAction }: M
       {...swipe}
     >
       <header className="h-12 px-2 flex items-center gap-1 border-b border-border shrink-0">
-        <button
+        <button type="button"
           onClick={() => {
             haptics.light();
             onBack();

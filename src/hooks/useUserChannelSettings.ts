@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 export type NotificationSetting = 'default' | 'all' | 'mentions' | 'nothing';
 
@@ -40,6 +40,7 @@ function getMuteUntilDate(duration: MuteDuration): string | null {
 export function useUserChannelSettings(serverId: string | null) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   const query = useQuery({
     queryKey: ['user-channel-settings', serverId, user?.id],
@@ -73,7 +74,7 @@ export function useUserChannelSettings(serverId: string | null) {
     if (!user) return;
 
     const channel = supabase
-      .channel('user-channel-settings-changes')
+      .channel(`user-channel-settings-changes-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         {
@@ -134,7 +135,6 @@ export function useMuteChannel() {
       return { previous };
     },
     onSuccess: (_, { duration }) => {
-      toast.success(duration ? 'Canal rendu muet' : 'Notifications réactivées');
     },
     onError: (_, __, context) => {
       if (context?.previous) {
@@ -186,7 +186,6 @@ export function useMuteCategory() {
       return { previous };
     },
     onSuccess: (_, { duration }) => {
-      toast.success(duration ? 'Catégorie rendue muette' : 'Notifications réactivées');
     },
     onError: (_, __, context) => {
       if (context?.previous) {
@@ -240,7 +239,6 @@ export function useSetChannelNotification() {
       return { previous };
     },
     onSuccess: () => {
-      toast.success('Paramètres de notification mis à jour');
     },
     onError: (_, __, context) => {
       if (context?.previous) {
@@ -294,7 +292,6 @@ export function useSetCategoryNotification() {
       return { previous };
     },
     onSuccess: () => {
-      toast.success('Paramètres de notification mis à jour');
     },
     onError: (_, __, context) => {
       if (context?.previous) {

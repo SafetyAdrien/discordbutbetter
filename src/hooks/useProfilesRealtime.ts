@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -15,13 +15,14 @@ type ServerProfileRow = Database['public']['Tables']['server_profiles']['Row'];
 export function useProfilesRealtime() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   // Global profiles realtime
   useEffect(() => {
     if (!user) return;
 
     const channel = supabase
-      .channel('public:profiles')
+      .channel(`public:profiles-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'profiles' },
@@ -138,7 +139,7 @@ export function useProfilesRealtime() {
     if (!user) return;
 
     const channel = supabase
-      .channel('public:server_profiles')
+      .channel(`public:server_profiles-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'server_profiles' },

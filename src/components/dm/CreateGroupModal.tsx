@@ -89,7 +89,6 @@ export function CreateGroupModal({ onClose, onOpenDM }: CreateGroupModalProps) {
 
       if (partError) throw partError;
 
-      toast.success('Groupe créé !');
       onOpenDM(conv.id);
       onClose();
     } catch (err) {
@@ -111,13 +110,13 @@ export function CreateGroupModal({ onClose, onOpenDM }: CreateGroupModalProps) {
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <div className="flex items-center gap-2">
             {step === 'details' && (
-              <button onClick={() => setStep('select')} className="text-sm text-muted-foreground mr-1">←</button>
+              <button type="button" onClick={() => setStep('select')} className="text-sm text-muted-foreground mr-1">←</button>
             )}
             <h2 className="font-semibold text-base">
               {step === 'select' ? 'Créer un groupe' : 'Détails du groupe'}
             </h2>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
+          <button type="button" onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
             <X className="w-5 h-5 text-muted-foreground" />
           </button>
         </div>
@@ -155,7 +154,7 @@ export function CreateGroupModal({ onClose, onOpenDM }: CreateGroupModalProps) {
                   {filteredFriends.map(friend => {
                     const isSelected = selectedFriends.includes(friend.profile.id);
                     return (
-                      <button
+                      <button type="button"
                         key={friend.id}
                         onClick={() => toggleFriend(friend.profile.id)}
                         className={cn(
@@ -189,7 +188,7 @@ export function CreateGroupModal({ onClose, onOpenDM }: CreateGroupModalProps) {
             {/* Next button */}
             {selectedFriends.length > 0 && (
               <div className="px-4 py-3 border-t border-border">
-                <button
+                <button type="button"
                   onClick={() => setStep('details')}
                   className="w-full py-2.5 bg-primary text-primary-foreground rounded-xl font-medium text-sm hover:bg-primary/90 transition-colors"
                 >
@@ -256,7 +255,7 @@ export function CreateGroupModal({ onClose, onOpenDM }: CreateGroupModalProps) {
 
             {/* Create button */}
             <div className="px-4 py-3 border-t border-border mt-auto">
-              <button
+              <button type="button"
                 onClick={handleCreate}
                 disabled={isCreating || !groupName.trim()}
                 className="w-full py-2.5 bg-primary text-primary-foreground rounded-xl font-medium text-sm hover:bg-primary/90 transition-colors disabled:opacity-50"

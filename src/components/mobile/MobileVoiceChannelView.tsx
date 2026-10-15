@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useVoice, useVoiceParticipants } from '@/contexts/VoiceContext';
+import { useVoice, useVoiceParticipants, useVoiceLevels } from '@/contexts/VoiceContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { ChevronRight, UserPlus } from 'lucide-react';
 import { VoiceParticipantGrid } from '@/components/channels/voice/VoiceParticipantGrid';
@@ -34,9 +34,9 @@ export function MobileVoiceChannelView({
 }: Props) {
   const {
     voiceState, joinChannel, toggleDeafen, toggleMute,
-    speakingUsers, audioLevels,
     localCameraStream, localScreenStream, remoteVideoStreams, remoteScreenStreams,
   } = useVoice();
+  const { speakingUsers, audioLevels } = useVoiceLevels();
   const { user } = useAuth();
 
   const { data: participants = [] } = useVoiceParticipants(channel.id);
@@ -90,7 +90,7 @@ export function MobileVoiceChannelView({
       onBack={onBack}
       onOpenDetails={() => setDetailsOpen(true)}
       rightSlot={
-        <button
+        <button type="button"
           onClick={() => setInviteOpen(true)}
           className="w-10 h-10 flex items-center justify-center rounded-full active:bg-white/10"
           aria-label="Inviter"
@@ -163,7 +163,7 @@ export function MobileVoiceChannelView({
       </div>
 
       {/* Add people row */}
-      <button
+      <button type="button"
         onClick={() => setInviteOpen(true)}
         className="flex items-center gap-3 px-4 py-3 border-t border-white/5 active:bg-white/5 transition-colors"
       >

@@ -11,8 +11,8 @@ import { MentionAutocomplete, MentionMember, MentionRole, MentionChannel } from 
 import { NAMED_COLORS, normalizeHex, nearestColorName } from '@/lib/colorNames';
 import { AttachmentStagingArea } from './upload/AttachmentStagingArea';
 import { PendingAttachment } from '@/hooks/usePendingAttachments';
-import { normalizeForSearch } from '@/lib/utils';
-import { PlusCircle, Image, BarChart2, Sticker, Smile, Send, Palette, ChevronLeft, ChevronRight, Bold, Italic, Underline, Strikethrough, Code, Quote, List, Link as LinkIcon, EyeOff, Heading1, Heading2, Heading3, Type, ListOrdered, TextQuote, SquareCode, Info, Lightbulb, MessageSquareWarning, TriangleAlert, OctagonAlert } from 'lucide-react';
+import { normalizeForSearch, cn } from '@/lib/utils';
+import { Plus, Sticker, Image, BarChart2, Smile, Send, Palette, ChevronLeft, ChevronRight, Bold, Italic, Underline, Strikethrough, Code, Quote, List, Link as LinkIcon, EyeOff, Heading1, Heading2, Heading3, Type, ListOrdered, TextQuote, SquareCode, Info, Lightbulb, MessageSquareWarning, TriangleAlert, OctagonAlert } from 'lucide-react';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { toast } from 'sonner';
 import { MentionEveryoneWarningModal, EveryoneMentionType, detectEveryoneMention } from './MentionEveryoneWarningModal';
@@ -22,6 +22,8 @@ interface MessageInputProps {
   value: string;
   onChange: (value: string) => void;
   onSend: (attachments?: { file: File; name: string; description: string; isSpoiler: boolean }[]) => void;
+  // Sends a sticker or GIF immediately as its own message (no upload — direct URL).
+  onSendExternalAttachment?: (attachment: { url: string; name: string; type: 'sticker' | 'gif' }) => void;
   placeholder: string;
   disabled?: boolean;
   isSending?: boolean;
@@ -32,6 +34,12 @@ interface MessageInputProps {
   channelId?: string | null;
   channelName?: string;
   threadId?: string | null;
+  /**
+   * Id of the message currently being edited, or null. Drives the editing UI
+   * (edit bar, Escape-to-cancel, restricted attachments). ChatArea owns the
+   * state and swaps value/onChange/onSend accordingly.
+   */
+  editingMessageId?: string | null;
   // DM context : when set, the poll button opens a DM-poll modal
   dmConversationId?: string | null;
   // Mention autocomplete data
@@ -56,8 +64,6 @@ interface MessageInputProps {
   // Announcement channel follow bar
   showFollowBar?: boolean;
   onFollowClick?: () => void;
-  // Edit mode signaling (mobile inline-edit-in-composer)
-  editingMessageId?: string | null;
 }
 
 interface MentionState {
@@ -71,6 +77,8 @@ export function MessageInput({
   value,
   onChange,
   onSend,
+  editingMessageId = null,
+  onSendExternalAttachment,
   placeholder,
   disabled = false,
   isSending = false,
@@ -98,23 +106,12 @@ export function MessageInput({
   slowmodeSeconds = 0,
   showFollowBar = false,
   onFollowClick,
-  editingMessageId = null,
 }: MessageInputProps) {
   const { isMobile, isTablet } = useBreakpoint();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
-
-  // Focus textarea when entering edit mode (mobile inline edit-in-composer)
-  useEffect(() => {
-    if (!editingMessageId) return;
-    const el = textareaRef.current;
-    if (!el) return;
-    el.focus();
-    const len = el.value.length;
-    try { el.setSelectionRange(len, len); } catch { /* noop */ }
-  }, [editingMessageId]);
 
 
   // Mention entries inserted via autocomplete (display text -> token mapping)
@@ -921,9 +918,25 @@ export function MessageInput({
     }, 0);
   }, [value, onChange]);
 
+  /*
+   * Discord composer gutter.
+   *
+   * Measured against the reference screenshot, not guessed:
+   *   box     44px  <- --custom-channel-textarea-text-area-height
+   *   gutter  8px below, nothing above (the breathing room lives in the
+   *           message scroller, not here)
+   *   row     52px, flush with the window edge
+   *   panel   53px, also flush with the window edge
+   *
+   * Both rows therefore start within 1px of each other and both blocks are
+   * bottom-aligned, which is what the reference actually shows: the panel is
+   * ~9px taller than the composer box because it has no bottom gutter.
+   *
+   * `px-4` is Discord's `.formWithLoadedChatInput { padding: 0 16px }`.
+   */
   const nonCompactPadding = isMobile
-    ? "px-0 pt-0 pb-[calc(0.125rem+env(safe-area-inset-bottom,0px))]"
-    : "px-0 py-0";
+    ? "px-2 py-0 pb-[calc(0.125rem+env(safe-area-inset-bottom,0px))]"
+    : "px-4 pt-0 pb-2";
   const nonCompactContainerClass = `${nonCompactPadding} flex-shrink-0 flex flex-col w-full min-w-0 relative`;
 
   // Render follow bar for announcement channels when permission is denied
@@ -969,7 +982,7 @@ export function MessageInput({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*,video/*"
+        accept="image/*,video/*,.svg,image/svg+xml"
         multiple
         onChange={handleFileInputChange}
         className="hidden"
@@ -1001,15 +1014,86 @@ export function MessageInput({
           />
         )}
         
-        <div className={`flex flex-col w-full min-w-0 rounded-2xl bg-[hsl(var(--input))] border border-border/50 transition-colors duration-200`} style={{ boxShadow: 'var(--shadow-elevation-2)' }}>
-          {/* Textarea container - full width on top */}
-          <div className={`relative w-full min-w-0 overflow-hidden ${compact ? 'px-3 pt-2 pb-1' : 'px-4 pt-3 pb-1'}`}>
+        {/*
+         * Discord composer: a SINGLE row — plus on the left, text in the middle,
+         * tools on the right — instead of a textarea stacked above a toolbar.
+         * The toolbar used to add a bordered second line, which made the input
+         * ~90px tall and impossible to align with the sidebar's user panel.
+         */}
+        <div
+          className={cn(
+            // 6px + 32px tool button + 6px = 44px, Discord's real
+            // `--custom-channel-textarea-text-area-height: 44px`.
+            'flex items-center gap-2 w-full min-w-0 bg-[hsl(var(--input))] transition-colors duration-200',
+            compact ? 'rounded px-2 py-1.5' : 'rounded px-4 py-1.5',
+          )}
+        >
+          <Popover open={plusMenuOpen} onOpenChange={setPlusMenuOpen}>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                aria-label="Ajouter une pièce jointe ou un sondage"
+                className={cn(
+                  'shrink-0 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors h-8 w-8',
+                )}
+              >
+                <Plus className="w-6 h-6" strokeWidth={2} />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent side="top" align="start" className="w-48 p-1">
+              {canAttachFiles && (
+                <button
+                  type="button"
+                  className="flex items-center gap-2 w-full px-3 py-2 rounded-md hover:bg-muted transition-colors text-sm"
+                  onClick={() => {
+                    setPlusMenuOpen(false);
+                    fileInputRef.current?.click();
+                  }}
+                >
+                  <Image className="w-4 h-4" />
+                  <span>Ajouter une image</span>
+                </button>
+              )}
+              {(channelId || threadId || dmConversationId) && canCreatePolls && (
+                <button
+                  type="button"
+                  className="flex items-center gap-2 w-full px-3 py-2 rounded-md hover:bg-muted transition-colors text-sm"
+                  onClick={() => {
+                    setPlusMenuOpen(false);
+                    setPollModalOpen(true);
+                  }}
+                >
+                  <BarChart2 className="w-4 h-4" />
+                  <span>Créer un sondage</span>
+                </button>
+              )}
+              <button
+                type="button"
+                className="flex items-center gap-2 w-full px-3 py-2 rounded-md hover:bg-muted transition-colors text-sm"
+                onClick={() => {
+                  setPlusMenuOpen(false);
+                  setColorPickerOpen(true);
+                }}
+              >
+                <Palette className="w-4 h-4" />
+                <span>Couleur</span>
+              </button>
+              {!canAttachFiles && !canCreatePolls && (
+                <span className="text-xs text-muted-foreground px-3 py-2 block">Aucune action disponible</span>
+              )}
+            </PopoverContent>
+          </Popover>
+
+          {/* Relative wrapper: the markdown overlay is inset-0 of this box, and
+              the textarea is its only in-flow child, so the two always align
+              pixel for pixel no matter how the draft wraps. */}
+          <div className="relative flex-1 min-w-0">
             {hasMarkdown && (
               <InputMarkdownOverlay
                 ref={overlayRef}
                 content={value}
                 compact={compact}
-                className={`${compact ? 'px-3 pt-2 pb-1' : 'px-4 pt-3 pb-1'} min-h-[28px]`}
+                className="p-0"
                 mentionData={{ members, roles, channels }}
                 mentionEntries={mentionEntriesRef.current}
               />
@@ -1114,8 +1198,9 @@ export function MessageInput({
               onPaste={handlePaste}
               onScroll={() => { if (overlayRef.current && textareaRef.current) overlayRef.current.scrollTop = textareaRef.current.scrollTop; }}
               placeholder={placeholder}
+              data-editing={editingMessageId ? 'true' : 'false'}
               disabled={disabled}
-              className={`relative z-10 m-0 w-full rounded-none border-0 bg-transparent px-0 py-0 shadow-none appearance-none placeholder:text-muted-foreground placeholder:overflow-hidden placeholder:text-ellipsis placeholder:whitespace-nowrap placeholder:opacity-30 focus:outline-none focus-visible:outline-none focus:ring-0 resize-none break-words box-border font-normal tracking-normal text-sm min-h-[28px] ${
+              className={`relative z-10 m-0 w-full rounded-none border-0 bg-transparent px-0 py-0 shadow-none appearance-none placeholder:text-muted-foreground placeholder:overflow-hidden placeholder:text-ellipsis placeholder:whitespace-nowrap placeholder:opacity-30 focus:outline-none focus-visible:outline-none focus:ring-0 resize-none break-words box-border font-normal tracking-normal text-sm min-h-[24px] ${
                 hasMarkdown ? 'text-transparent caret-foreground' : 'text-foreground'
               } ${
                 compact ? 'max-h-[120px] overflow-y-auto' : 'max-h-[200px] overflow-y-auto'
@@ -1125,107 +1210,81 @@ export function MessageInput({
             />
           </div>
 
-          {/* Action bar - bottom */}
-          <div className={`flex items-center justify-between gap-1 border-t border-border/40 ${compact ? 'px-1.5 py-1' : 'px-2 py-1.5'}`}>
-            <Popover open={plusMenuOpen} onOpenChange={setPlusMenuOpen}>
-              <PopoverTrigger asChild>
+          {/*
+           * Right-hand tool cluster, in Discord's order: GIF, sticker, emoji,
+           * then send. The old build only had a single combined emoji picker,
+           * which is why the row looked empty next to the reference design.
+           */}
+          <div className="flex items-center gap-0.5 shrink-0">
+            {/* One picker instance per entry point, each opened on its own tab —
+                that is how Discord exposes GIF, stickers and emoji as three
+                distinct buttons without duplicating the picker logic. */}
+            <EmojiStickerPicker
+              serverId={serverId}
+              onEmojiSelect={insertEmoji}
+              onStickerSelect={(url, name) => onSendExternalAttachment?.({ url, name, type: 'sticker' })}
+              onGifSelect={(url, name) => onSendExternalAttachment?.({ url, name, type: 'gif' })}
+              defaultTab="gif"
+              trigger={
                 <button
                   type="button"
-                  aria-label="Ajouter une pièce jointe ou un sondage"
-                  className={`shrink-0 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-full transition-all duration-150 active:scale-95 flex items-center justify-center min-h-0 ${compact ? 'h-8 w-8' : 'h-9 w-9'}`}
+                  aria-label="Insérer un GIF"
+                  className="flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors h-8 w-8"
                 >
-                  <PlusCircle className={compact ? 'w-4 h-4' : 'w-[18px] h-[18px]'} />
+                  <span className="rounded-[3px] border-[1.5px] border-current px-[3px] py-px text-[9px] font-bold leading-none tracking-tight">
+                    GIF
+                  </span>
                 </button>
-              </PopoverTrigger>
-              <PopoverContent side="top" align="start" className="w-48 p-1">
-                {canAttachFiles && (
-                  <button
-                    type="button"
-                    className="flex items-center gap-2 w-full px-3 py-2 rounded-md hover:bg-muted transition-colors text-sm"
-                    onClick={() => {
-                      setPlusMenuOpen(false);
-                      fileInputRef.current?.click();
-                    }}
-                  >
-                    <Image className="w-4 h-4" />
-                    <span>Ajouter une image</span>
-                  </button>
-                )}
-                {(channelId || threadId || dmConversationId) && canCreatePolls && (
-                  <button
-                    type="button"
-                    className="flex items-center gap-2 w-full px-3 py-2 rounded-md hover:bg-muted transition-colors text-sm"
-                    onClick={() => {
-                      setPlusMenuOpen(false);
-                      setPollModalOpen(true);
-                    }}
-                  >
-                    <BarChart2 className="w-4 h-4" />
-                    <span>Créer un sondage</span>
-                  </button>
-                )}
+              }
+            />
+            <EmojiStickerPicker
+              serverId={serverId}
+              onEmojiSelect={insertEmoji}
+              onStickerSelect={(url, name) => onSendExternalAttachment?.({ url, name, type: 'sticker' })}
+              onGifSelect={(url, name) => onSendExternalAttachment?.({ url, name, type: 'gif' })}
+              defaultTab="sticker"
+              trigger={
                 <button
                   type="button"
-                  className="flex items-center gap-2 w-full px-3 py-2 rounded-md hover:bg-muted transition-colors text-sm"
-                  onClick={() => {
-                    setPlusMenuOpen(false);
-                    setColorPickerOpen(true);
-                  }}
+                  aria-label="Insérer un sticker"
+                  className="flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors h-8 w-8"
                 >
-                  <Palette className="w-4 h-4" />
-                  <span>Couleur</span>
+                  <Sticker className="w-[22px] h-[22px]" strokeWidth={1.8} />
                 </button>
-                {!canAttachFiles && !canCreatePolls && (
-                  <span className="text-xs text-muted-foreground px-3 py-2 block">Aucune action disponible</span>
-                )}
-              </PopoverContent>
-            </Popover>
-
-            {/* Markdown formatting bar removed — guide available in user settings → Aide · Markdown */}
-
-
-            <div className="flex items-center justify-end gap-1 shrink-0">
-              {!isMobile && (
-                <EmojiStickerPicker
-                  serverId={serverId}
-                  onEmojiSelect={insertEmoji}
-                  defaultTab="sticker"
-                  trigger={
-                    <button
-                      type="button"
-                      aria-label="Insérer un autocollant"
-                      className={`text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-full transition-all duration-150 active:scale-95 flex items-center justify-center ${compact ? 'h-8 w-8' : 'h-9 w-9'}`}
-                    >
-                      <Sticker className={compact ? 'w-4 h-4' : 'w-[18px] h-[18px]'} />
-                    </button>
-                  }
-                />
+              }
+            />
+            <EmojiStickerPicker
+              serverId={serverId}
+              onEmojiSelect={insertEmoji}
+              onStickerSelect={(url, name) => onSendExternalAttachment?.({ url, name, type: 'sticker' })}
+              onGifSelect={(url, name) => onSendExternalAttachment?.({ url, name, type: 'gif' })}
+              defaultTab="emoji"
+              trigger={
+                <button
+                  type="button"
+                  aria-label="Insérer un emoji"
+                  className="flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors h-8 w-8"
+                >
+                  <Smile className="w-[22px] h-[22px]" strokeWidth={1.8} />
+                </button>
+              }
+            />
+            <button
+              type="submit"
+              disabled={disabled || !canSubmitMessage}
+              aria-label="Envoyer"
+              className={cn(
+                'ml-1 shrink-0 rounded-full flex items-center justify-center transition-all duration-200 active:scale-90 send-button-hover h-8 w-8',
+                isSending && 'animate-send-fly',
+                canSubmitMessage
+                  ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                  : 'text-muted-foreground/50 cursor-not-allowed',
               )}
-              <EmojiStickerPicker
-                serverId={serverId}
-                onEmojiSelect={insertEmoji}
-                defaultTab="emoji"
-                trigger={
-                  <button
-                    type="button"
-                    aria-label="Insérer un emoji"
-                    className={`text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-full transition-all duration-150 active:scale-95 flex items-center justify-center ${compact ? 'h-8 w-8' : 'h-9 w-9'}`}
-                  >
-                    <Smile className={compact ? 'w-4 h-4' : 'w-[18px] h-[18px]'} />
-                  </button>
-                }
-              />
-              <button
-                type="submit"
-                disabled={disabled || !canSubmitMessage}
-                aria-label="Envoyer"
-                className={`ml-0.5 shrink-0 rounded-full transition-all duration-200 active:scale-90 send-button-hover flex items-center justify-center ${isSending ? 'animate-send-fly' : ''} ${compact ? 'h-8 w-8' : 'h-9 w-9'} ${canSubmitMessage ? 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-[var(--shadow-elevation-1)]' : 'bg-muted/50 text-muted-foreground opacity-50 cursor-not-allowed'}`}
-              >
-                <Send className={compact ? 'w-3.5 h-3.5' : 'w-4 h-4'} strokeWidth={2.5} />
-              </button>
-            </div>
+            >
+              <Send className="w-[18px] h-[18px]" strokeWidth={2.5} />
+            </button>
           </div>
-        </div>
+      </div>
       </form>
 
       <Dialog open={colorPickerOpen} onOpenChange={setColorPickerOpen}>

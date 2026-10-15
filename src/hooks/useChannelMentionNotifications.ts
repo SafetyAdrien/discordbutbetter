@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -28,6 +28,7 @@ type ServerRow = { id: string; name: string | null; icon_url: string | null };
 export function useChannelMentionNotifications() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   const query = useQuery({
     queryKey: ['channel-mention-notifications', user?.id],
@@ -118,7 +119,7 @@ export function useChannelMentionNotifications() {
   useEffect(() => {
     if (!user) return;
     const mentionsChannel = supabase
-      .channel(`channel-mention-notifications-${user.id}`)
+      .channel(`channel-mention-notifications-${user.id}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'channel_mentions', filter: `user_id=eq.${user.id}` },
@@ -130,7 +131,7 @@ export function useChannelMentionNotifications() {
       .subscribe();
 
     const messagesChannel = supabase
-      .channel(`channel-mention-notification-messages-${user.id}`)
+      .channel(`channel-mention-notification-messages-${user.id}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages' },

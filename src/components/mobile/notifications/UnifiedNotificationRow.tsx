@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
-import { formatDistanceToNow } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { formatDistanceToNow } from '@/lib/dateUtils';
+import { fr } from '@/lib/dateUtils';
 import {
   AtSign,
   MessageSquare,
@@ -92,7 +92,7 @@ export function UnifiedNotificationRow({ n, onTap, onMarkRead, onDelete, onRespo
         </div>
       )}
 
-      <button
+      <button type="button"
         onClick={onTap}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
@@ -173,7 +173,7 @@ export function UnifiedNotificationRow({ n, onTap, onMarkRead, onDelete, onRespo
 
           {isDeletionRequest && (n.raw as ServerNotification).status === 'pending' && (
             <div className="flex gap-2 mt-2">
-              <button
+              <button type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   onRespond(true);
@@ -183,7 +183,7 @@ export function UnifiedNotificationRow({ n, onTap, onMarkRead, onDelete, onRespo
                 <Check className="w-3 h-3" />
                 Accepter
               </button>
-              <button
+              <button type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   onRespond(false);

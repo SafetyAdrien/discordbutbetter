@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { ServerProfileEditModal } from '@/components/profile/ServerProfileEditModal';
@@ -45,8 +45,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { format } from '@/lib/dateUtils';
+import { fr } from '@/lib/dateUtils';
 
 const channelIcons: Record<string, React.ElementType> = {
   text: StreamlineHash,
@@ -175,7 +175,6 @@ function ServerProfileSheet({
       queryClient.invalidateQueries({ queryKey: ['channel-unread-counts', serverId, user.id] });
       queryClient.invalidateQueries({ queryKey: ['server-unread-mentions'] });
       queryClient.invalidateQueries({ queryKey: ['server-unread-counts'] });
-      toast.success('Tous les messages marqués comme lus');
       setOpen(false);
     } catch (e: any) {
       toast.error('Impossible de marquer comme lu');
@@ -197,7 +196,7 @@ function ServerProfileSheet({
     danger?: boolean;
     disabled?: boolean;
   }) => (
-    <button
+    <button type="button"
       onClick={onClick}
       disabled={disabled}
       className={cn(
@@ -232,7 +231,7 @@ function ServerProfileSheet({
             {!isOwner && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <button className="absolute top-2.5 right-2.5 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-background/80 backdrop-blur-sm text-destructive text-xs font-medium hover:bg-background/90 transition-colors">
+                  <button type="button" className="absolute top-2.5 right-2.5 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-background/80 backdrop-blur-sm text-destructive text-xs font-medium hover:bg-background/90 transition-colors">
                     <LogOut className="w-3.5 h-3.5" />
                     Quitter
                   </button>
@@ -370,7 +369,7 @@ function ServerProfileSheet({
             {/* Secondary actions */}
             <Separator />
             <div className="space-y-1">
-              <button
+              <button type="button"
                 onClick={handleMarkAllRead}
                 disabled={markingRead}
                 className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-muted/50 hover:bg-muted transition-colors text-left disabled:opacity-50"
@@ -382,28 +381,28 @@ function ServerProfileSheet({
                 )}
                 <span className="text-sm text-foreground">Marquer comme lu</span>
               </button>
-              <button
+              <button type="button"
                 onClick={() => { setOpen(false); setShowEditServerProfile(true); }}
                 className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-muted/50 hover:bg-muted transition-colors text-left"
               >
                 <UserCog className="w-4 h-4 text-muted-foreground" />
                 <span className="text-sm text-foreground">Modifie ton profil pour le serveur</span>
               </button>
-              <button
+              <button type="button"
                 onClick={() => { setOpen(false); setShowCreateChannel(true); }}
                 className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-muted/50 hover:bg-muted transition-colors text-left"
               >
                 <Plus className="w-4 h-4 text-muted-foreground" />
                 <span className="text-sm text-foreground">Créer un salon</span>
               </button>
-              <button
+              <button type="button"
                 onClick={() => { setOpen(false); setShowCreateCategory(true); }}
                 className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-muted/50 hover:bg-muted transition-colors text-left"
               >
                 <Plus className="w-4 h-4 text-muted-foreground" />
                 <span className="text-sm text-foreground">Créer une catégorie</span>
               </button>
-              <button
+              <button type="button"
                 onClick={() => {}}
                 className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-muted/50 hover:bg-muted transition-colors text-left"
               >
@@ -478,8 +477,7 @@ export function MobileChannelListView({
   const deleteChannel = useDeleteChannel();
   const deleteCategoryMut = useDeleteCategory();
   const { channelUnreadInfo } = useChannelUnreadCounts(serverId);
-  const [bannerProgress, setBannerProgress] = useState(1);
-  
+
   const { data: servers } = useServers();
   const currentServer = servers?.find(s => s.id === serverId);
   const { data: members } = useMembers(serverId);
@@ -518,7 +516,7 @@ export function MobileChannelListView({
   };
 
   const serverNameTrigger = (isOpen: boolean) => (
-    <button className="flex items-center text-left min-w-0 leading-tight gap-1.5">
+    <button type="button" className="flex items-center text-left min-w-0 leading-tight gap-1.5">
       <div className="flex flex-col min-w-0">
         <div className="flex items-center gap-1 min-w-0">
           <h2 className="font-bold text-lg truncate text-foreground">{serverName}</h2>
@@ -532,7 +530,7 @@ export function MobileChannelListView({
   );
 
   const serverNameTriggerLight = (isOpen: boolean) => (
-    <button className="flex items-center text-left min-w-0 leading-tight gap-1.5">
+    <button type="button" className="flex items-center text-left min-w-0 leading-tight gap-1.5">
       <div className="flex flex-col min-w-0">
         <div className="flex items-center gap-1 min-w-0">
           <h2 className="font-bold text-lg truncate text-white [text-shadow:0_1px_6px_rgba(0,0,0,0.9),0_0px_2px_rgba(0,0,0,0.8)]">{serverName}</h2>
@@ -547,78 +545,142 @@ export function MobileChannelListView({
 
     const bannerUrl = currentServer?.banner_url;
 
+    // Banner header — like Discord: a fixed 56px header bar always sits at
+    // the bottom of the header zone. When there's a banner, the zone
+    // starts at BANNER_HEIGHT and the banner is a layer stacked above the
+    // bar. Scrolling the channel list slides the banner up (translateY)
+    // while the zone shrinks by the same amount, so the banner tucks away
+    // behind the bar and the zone settles at exactly HEADER_HEIGHT —
+    // matching a bannerless server. Scrolling back to the top reverses
+    // both.
+    //
+    // The per-pixel offset is applied to the DOM directly on every scroll
+    // frame and never touches React state — with a long channel list, a
+    // state update on every scroll event forces a full re-render in
+    // between frames, which visibly stutters/flashes the header during a
+    // real, continuous scroll even though isolated before/after
+    // screenshots look fine. The only state involved, `showBanner`, is a
+    // coarse boolean that flips once when crossing the collapse
+    // threshold — it drives text/icon contrast, not the animation.
     const BANNER_HEIGHT = 96;
+    const HEADER_HEIGHT = 56;
+    const BANNER_SCROLL_RANGE = BANNER_HEIGHT - HEADER_HEIGHT;
+    const [showBanner, setShowBanner] = useState(!!bannerUrl);
+    const bannerLayerRef = useRef<HTMLDivElement | null>(null);
+    const headerZoneRef = useRef<HTMLDivElement | null>(null);
+    const bannerRafRef = useRef<number | null>(null);
+    const showBannerRef = useRef(showBanner);
+    showBannerRef.current = showBanner;
+
+    const applyBannerOffset = useCallback((offset: number) => {
+      // Servers without a banner have nothing to animate — force the
+      // header zone to the plain HEADER_HEIGHT instead of BANNER_HEIGHT -
+      // offset, otherwise a leftover 96px-tall inline height (from
+      // BANNER_HEIGHT - 0 on reset) would leave an oversized empty header
+      // on every bannerless server.
+      if (!bannerUrl) {
+        if (headerZoneRef.current) headerZoneRef.current.style.height = `${HEADER_HEIGHT}px`;
+        if (bannerLayerRef.current) bannerLayerRef.current.style.transform = 'translateY(0px)';
+        if (showBannerRef.current !== false) {
+          showBannerRef.current = false;
+          setShowBanner(false);
+        }
+        return;
+      }
+      if (bannerLayerRef.current) {
+        // Slide by the banner's full height (not just `offset`) so it
+        // actually exits the viewport — an equal shrink+translate would
+        // leave the banner's bottom edge pinned to the shrinking clip
+        // container's bottom edge, permanently covering the header bar.
+        const progress = BANNER_SCROLL_RANGE > 0 ? offset / BANNER_SCROLL_RANGE : 0;
+        bannerLayerRef.current.style.transform = `translateY(-${BANNER_HEIGHT * progress}px)`;
+      }
+      if (headerZoneRef.current) {
+        headerZoneRef.current.style.height = `${BANNER_HEIGHT - offset}px`;
+      }
+      const nextShowBanner = offset < BANNER_SCROLL_RANGE - 4;
+      if (showBannerRef.current !== nextShowBanner) {
+        showBannerRef.current = nextShowBanner;
+        setShowBanner(nextShowBanner);
+      }
+    }, [bannerUrl, BANNER_HEIGHT, HEADER_HEIGHT, BANNER_SCROLL_RANGE]);
+
     const handleChannelListScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+      if (!bannerUrl) return;
       const scrollTop = (e.target as HTMLDivElement).scrollTop;
-      const progress = Math.max(0, Math.min(1, 1 - scrollTop / BANNER_HEIGHT));
-      setBannerProgress(progress);
+      const offset = Math.max(0, Math.min(BANNER_SCROLL_RANGE, scrollTop));
+      if (bannerRafRef.current !== null) cancelAnimationFrame(bannerRafRef.current);
+      bannerRafRef.current = requestAnimationFrame(() => {
+        bannerRafRef.current = null;
+        applyBannerOffset(offset);
+      });
+    }, [bannerUrl, BANNER_SCROLL_RANGE, applyBannerOffset]);
+
+    useEffect(() => {
+      setShowBanner(!!bannerUrl);
+      applyBannerOffset(0);
+    }, [serverId, bannerUrl, applyBannerOffset]);
+
+    useEffect(() => () => {
+      if (bannerRafRef.current !== null) cancelAnimationFrame(bannerRafRef.current);
     }, []);
 
     return (
     <div className="flex flex-col h-full bg-[hsl(var(--surface-1))] rounded-tl-[30px] overflow-hidden select-none">
-      {/* Banner (both embedded and non-embedded) - progressive fade */}
-      {bannerUrl && (
-        <div
-          className="relative flex-shrink-0 overflow-hidden rounded-t-xl"
-          style={{
-            height: `${BANNER_HEIGHT * bannerProgress}px`,
-            opacity: bannerProgress,
-          }}
-        >
-          <img src={bannerUrl} className="w-full h-24 object-cover" alt="" />
-          <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/50 to-transparent" />
-          <div className="absolute bottom-2.5 left-3 right-3 z-10 flex items-center gap-2">
-            {!embedded && (
-              <button onClick={onBack} className="p-1 rounded-lg bg-background/30 hover:bg-background/50 transition-colors">
-                <ChevronLeft className="w-4 h-4 text-white" />
-              </button>
-            )}
-            <div className="flex-1 min-w-0">
-              <ServerProfileSheet serverId={serverId} serverName={serverName} trigger={serverNameTriggerLight} onOpenSettings={onOpenSettings} />
-            </div>
-            <button
-              onClick={() => setShowInviteModal(true)}
-              className="p-1.5 rounded-full bg-background/30 hover:bg-background/50 text-white transition-colors flex-shrink-0"
-              aria-label="Inviter"
-            >
-              <UserPlus className="w-4 h-4" />
-            </button>
+      {/* Header zone: a fixed HEADER_HEIGHT bar always sits at the bottom;
+          when there's a banner, the zone starts taller and the banner
+          layer slides up to tuck away behind the bar on scroll (see
+          handleChannelListScroll). Without a banner it's just the bar. */}
+      <div
+        ref={headerZoneRef}
+        className="relative flex-shrink-0 overflow-hidden rounded-t-xl"
+        style={{ height: bannerUrl ? BANNER_HEIGHT : HEADER_HEIGHT }}
+      >
+        {bannerUrl && (
+          <div ref={bannerLayerRef} className="absolute inset-x-0 top-0" style={{ height: BANNER_HEIGHT }}>
+            <img src={bannerUrl} className="w-full h-24 object-cover" alt="" />
+            <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/50 to-transparent" />
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Header (shown when no banner or banner nearly hidden) */}
-      {(!bannerUrl || bannerProgress < 0.1) && !embedded && (
-        <div className="min-h-14 py-1.5 px-3 flex items-center gap-2 rounded-tl-[30px] bg-[hsl(var(--surface-1))]">
-          <button onClick={onBack} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
-            <ChevronLeft className="w-5 h-5" />
-          </button>
+        <div
+          className={cn(
+            "absolute inset-x-0 bottom-0 z-10 flex items-center gap-2 rounded-tl-[30px]",
+            showBanner ? (embedded ? "px-4 pb-2.5" : "px-3 pb-2.5") : "bg-[hsl(var(--surface-1))] py-1.5 px-3"
+          )}
+          style={{ height: HEADER_HEIGHT }}
+        >
+          {!embedded && (
+            <button type="button"
+              onClick={onBack}
+              className={cn(
+                "rounded-lg transition-colors flex-shrink-0",
+                showBanner ? "p-1 bg-background/30 hover:bg-background/50" : "p-1.5 hover:bg-muted"
+              )}
+            >
+              <ChevronLeft className={showBanner ? "w-4 h-4 text-white" : "w-5 h-5 text-current"} />
+            </button>
+          )}
           <div className="flex-1 min-w-0 mt-1">
-            <ServerProfileSheet serverId={serverId} serverName={serverName} trigger={serverNameTrigger} onOpenSettings={onOpenSettings} />
+            <ServerProfileSheet
+              serverId={serverId}
+              serverName={serverName}
+              trigger={showBanner ? serverNameTriggerLight : serverNameTrigger}
+              onOpenSettings={onOpenSettings}
+            />
           </div>
-          <button
+          <button type="button"
             onClick={() => setShowInviteModal(true)}
-            className="p-2 rounded-full hover:bg-surface-3 text-muted-foreground transition-colors flex-shrink-0"
+            className={cn(
+              "rounded-full transition-colors flex-shrink-0",
+              showBanner ? "p-1.5 bg-background/30 hover:bg-background/50 text-white" : "p-2 hover:bg-surface-3 text-muted-foreground"
+            )}
             aria-label="Inviter"
           >
             <UserPlus className="w-4 h-4" />
           </button>
         </div>
-      )}
-      {(!bannerUrl || bannerProgress < 0.1) && embedded && (
-        <div className="min-h-14 py-1.5 px-4 flex items-center gap-2 rounded-tl-[30px] bg-[hsl(var(--surface-1))]">
-          <div className="flex-1 min-w-0 mt-1">
-            <ServerProfileSheet serverId={serverId} serverName={serverName} trigger={serverNameTrigger} onOpenSettings={onOpenSettings} />
-          </div>
-          <button
-            onClick={() => setShowInviteModal(true)}
-            className="p-2 rounded-full hover:bg-surface-3 text-muted-foreground transition-colors flex-shrink-0"
-            aria-label="Inviter"
-          >
-            <UserPlus className="w-4 h-4" />
-          </button>
-        </div>
-      )}
+      </div>
 
       {/* Search bar - always visible */}
       <div className="px-3 pt-2 pb-1 bg-[hsl(var(--surface-1))] flex items-center gap-1.5">
@@ -671,7 +733,7 @@ export function MobileChannelListView({
           return (
             <Popover key={ch.id} open={longPressedChannelId === ch.id} onOpenChange={(open) => !open && setLongPressedChannelId(null)}>
               <PopoverTrigger asChild>
-                <button
+                <button type="button"
                   onClick={() => {
                     if (ch.type === 'link') {
                       const url = ch.description || '';
@@ -692,7 +754,7 @@ export function MobileChannelListView({
                 </button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-1" side="bottom" align="start">
-                <button
+                <button type="button"
                   onClick={() => {
                     setLongPressedChannelId(null);
                     setEditingChannelId(ch.id);
@@ -702,7 +764,7 @@ export function MobileChannelListView({
                   <Settings className="w-4 h-4 text-muted-foreground" />
                   Modifier le salon
                 </button>
-                <button
+                <button type="button"
                   onClick={() => {
                     setLongPressedChannelId(null);
                     setDeletingChannelId(ch.id);
@@ -743,7 +805,7 @@ export function MobileChannelListView({
             <div key={cat.id}>
               <Popover open={longPressedCategoryId === cat.id} onOpenChange={(open) => !open && setLongPressedCategoryId(null)}>
                 <PopoverTrigger asChild>
-                  <button
+                  <button type="button"
                     onClick={() => toggleCategory(cat.id)}
                     {...longPressHandlers}
                     className="w-full flex items-center gap-1 px-3 pt-3 pb-0 text-xs font-semibold text-muted-foreground tracking-wide"
@@ -753,7 +815,7 @@ export function MobileChannelListView({
                   </button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-1" side="bottom" align="start">
-                  <button
+                  <button type="button"
                     onClick={() => {
                       setLongPressedCategoryId(null);
                       setEditingCategory({ id: cat.id, name: cat.name, channelCount: cat.channels.length });
@@ -763,7 +825,7 @@ export function MobileChannelListView({
                     <FolderOpen className="w-4 h-4 text-muted-foreground" />
                     Modifier la catégorie
                   </button>
-                  <button
+                  <button type="button"
                     onClick={() => {
                       setLongPressedCategoryId(null);
                       setDeletingCategoryId(cat.id);
@@ -800,7 +862,7 @@ export function MobileChannelListView({
                 return (
                   <Popover key={ch.id} open={longPressedChannelId === ch.id} onOpenChange={(open) => !open && setLongPressedChannelId(null)}>
                     <PopoverTrigger asChild>
-                      <button
+                      <button type="button"
                         onClick={() => {
                           if (ch.type === 'link') {
                             const url = ch.description || '';
@@ -821,7 +883,7 @@ export function MobileChannelListView({
                       </button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-1" side="bottom" align="start">
-                      <button
+                      <button type="button"
                         onClick={() => {
                           setLongPressedChannelId(null);
                           setEditingChannelId(ch.id);
@@ -831,7 +893,7 @@ export function MobileChannelListView({
                         <Settings className="w-4 h-4 text-muted-foreground" />
                         Modifier le salon
                       </button>
-                      <button
+                      <button type="button"
                         onClick={() => {
                           setLongPressedChannelId(null);
                           setDeletingChannelId(ch.id);
@@ -861,14 +923,14 @@ export function MobileChannelListView({
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <button
+            <button type="button"
               onClick={() => { setShowEmptyLongPressMenu(false); setShowCreateChannel(true); }}
               className="w-full flex items-center gap-2 px-2.5 py-2 rounded-md hover:bg-muted transition-colors text-left"
             >
               <Hash className="w-4 h-4 text-muted-foreground" />
               <span className="text-xs text-foreground font-medium">Créer un salon</span>
             </button>
-            <button
+            <button type="button"
               onClick={() => { setShowEmptyLongPressMenu(false); setShowCreateCategory(true); }}
               className="w-full flex items-center gap-2 px-2.5 py-2 rounded-md hover:bg-muted transition-colors text-left"
             >
@@ -933,7 +995,6 @@ export function MobileChannelListView({
                 if (!deletingChannelId) return;
                 try {
                   await deleteChannel.mutateAsync({ channelId: deletingChannelId, serverId });
-                  toast.success('Salon supprimé');
                 } catch {
                   toast.error('Erreur lors de la suppression');
                 }
@@ -967,7 +1028,6 @@ export function MobileChannelListView({
                 if (!deletingCategoryId) return;
                 try {
                   await deleteCategoryMut.mutateAsync({ categoryId: deletingCategoryId, serverId });
-                  toast.success('Catégorie supprimée');
                 } catch {
                   toast.error('Erreur lors de la suppression');
                 }

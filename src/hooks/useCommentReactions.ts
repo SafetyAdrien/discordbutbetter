@@ -16,12 +16,13 @@ export function useAnnouncementCommentReactions(commentIds: string[]) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
   const idsKey = commentIds.join(',');
 
   useEffect(() => {
     if (commentIds.length === 0) return;
     const channel = supabase
-      .channel(`comment-reactions-rt-${commentIds[0]}`)
+      .channel(`comment-reactions-rt-${commentIds[0]}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'announcement_comment_reactions' },
@@ -105,7 +106,7 @@ export function useToggleCommentReaction() {
         const next = userHasReacted
           ? list.filter(r => !(r.user_id === user.id && r.emoji === emoji))
           : [...list, {
-              id: `temp-${Date.now()}`,
+              id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
               comment_id: commentId,
               user_id: user.id,
               emoji,

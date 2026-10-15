@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 
 export interface Poll {
@@ -13,6 +13,7 @@ export interface Poll {
   question: string;
   allow_multiple: boolean;
   expires_at: string | null;
+  closed_notified: boolean;
   created_at: string;
   author?: {
     id: string;
@@ -54,55 +55,57 @@ export interface CreatePollData {
   expiresAt: Date | null;
 }
 
+// Shared between usePolls' queryFn and the sidebar hover-prefetch.
+export async function fetchChannelPolls(channelId: string): Promise<Poll[]> {
+  const { data: polls, error } = await supabase
+    .from('polls')
+    .select(`
+      *,
+      author:profiles!polls_author_id_fkey(id, display_name, avatar_url, username)
+    `)
+    .eq('channel_id', channelId)
+    .is('thread_id', null)
+    .order('created_at', { ascending: true });
+
+  if (error) throw error;
+
+  // Fetch options and votes for each poll
+  const pollsWithDetails = await Promise.all(
+    (polls || []).map(async (poll) => {
+      const [optionsRes, votesRes] = await Promise.all([
+        supabase
+          .from('poll_options')
+          .select('*')
+          .eq('poll_id', poll.id)
+          .order('position', { ascending: true }),
+        supabase
+          .from('poll_votes')
+          .select(`
+            *,
+            user:profiles!poll_votes_user_id_fkey(id, display_name, avatar_url)
+          `)
+          .eq('poll_id', poll.id)
+      ]);
+
+      return {
+        ...poll,
+        options: optionsRes.data || [],
+        votes: votesRes.data || []
+      };
+    })
+  );
+
+  return pollsWithDetails as Poll[];
+}
+
 export function usePolls(channelId: string | null) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   const query = useQuery({
     queryKey: ['polls', 'channel', channelId],
-    queryFn: async () => {
-      if (!channelId) return [];
-
-      const { data: polls, error } = await supabase
-        .from('polls')
-        .select(`
-          *,
-          author:profiles!polls_author_id_fkey(id, display_name, avatar_url, username)
-        `)
-        .eq('channel_id', channelId)
-        .is('thread_id', null)
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
-
-      // Fetch options and votes for each poll
-      const pollsWithDetails = await Promise.all(
-        (polls || []).map(async (poll) => {
-          const [optionsRes, votesRes] = await Promise.all([
-            supabase
-              .from('poll_options')
-              .select('*')
-              .eq('poll_id', poll.id)
-              .order('position', { ascending: true }),
-            supabase
-              .from('poll_votes')
-              .select(`
-                *,
-                user:profiles!poll_votes_user_id_fkey(id, display_name, avatar_url)
-              `)
-              .eq('poll_id', poll.id)
-          ]);
-
-          return {
-            ...poll,
-            options: optionsRes.data || [],
-            votes: votesRes.data || []
-          };
-        })
-      );
-
-      return pollsWithDetails as Poll[];
-    },
+    queryFn: () => (channelId ? fetchChannelPolls(channelId) : Promise.resolve([])),
     enabled: !!channelId && !!user,
     placeholderData: () => cacheGetSync(`polls:channel:${channelId}`),
   });
@@ -118,7 +121,7 @@ export function usePolls(channelId: string | null) {
     if (!channelId) return;
 
     const pollsChannel = supabase
-      .channel(`polls-realtime-${channelId}`)
+      .channel(`polls-realtime-${channelId}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'polls' },
@@ -167,7 +170,7 @@ export function usePolls(channelId: string | null) {
     if (!channelId) return;
 
     const optionsChannel = supabase
-      .channel(`poll-options-realtime-${channelId}`)
+      .channel(`poll-options-realtime-${channelId}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'poll_options' },
@@ -185,7 +188,7 @@ export function usePolls(channelId: string | null) {
     if (!channelId) return;
 
     const votesChannel = supabase
-      .channel(`poll-votes-realtime-${channelId}`)
+      .channel(`poll-votes-realtime-${channelId}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'poll_votes' },
@@ -232,6 +235,7 @@ export function usePolls(channelId: string | null) {
 export function useThreadPolls(threadId: string | null) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   const query = useQuery({
     queryKey: ['polls', 'thread', threadId],
@@ -292,7 +296,7 @@ export function useThreadPolls(threadId: string | null) {
     if (!threadId) return;
 
     const pollsChannel = supabase
-      .channel(`polls-realtime-thread-${threadId}`)
+      .channel(`polls-realtime-thread-${threadId}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'polls' },
@@ -339,7 +343,7 @@ export function useThreadPolls(threadId: string | null) {
     if (!threadId) return;
 
     const optionsChannel = supabase
-      .channel(`poll-options-realtime-thread-${threadId}`)
+      .channel(`poll-options-realtime-thread-${threadId}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'poll_options' },
@@ -357,7 +361,7 @@ export function useThreadPolls(threadId: string | null) {
     if (!threadId) return;
 
     const votesChannel = supabase
-      .channel(`poll-votes-realtime-thread-${threadId}`)
+      .channel(`poll-votes-realtime-thread-${threadId}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'poll_votes' },
@@ -450,13 +454,14 @@ export function useCreatePoll() {
       const previousPolls = queryClient.getQueryData<Poll[]>(queryKey);
       
       const tempPoll: Poll = {
-        id: `temp-${Date.now()}`,
+        id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         channel_id: data.channelId,
         thread_id: data.threadId || null,
         author_id: user.id,
         question: data.question,
         allow_multiple: data.allowMultiple,
         expires_at: data.expiresAt?.toISOString() || null,
+        closed_notified: false,
         created_at: new Date().toISOString(),
         author: profile ? {
           id: user.id,
@@ -466,7 +471,7 @@ export function useCreatePoll() {
         } : undefined,
         options: data.options.map((opt, i) => ({
           id: `temp-opt-${i}`,
-          poll_id: `temp-${Date.now()}`,
+          poll_id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           text: opt.text,
           emoji: opt.emoji,
           position: i
@@ -508,7 +513,6 @@ export function useCreatePoll() {
         };
         return [...cleaned.filter(p => p.id !== merged.id), merged];
       });
-      toast.success('Sondage créé');
     },
     // No onSettled invalidation: optimistic swap + realtime keep the cache in sync without flicker.
   });
@@ -624,17 +628,28 @@ export function useRemoveVote() {
   });
 }
 
+/**
+ * Closes a poll (if not already expired) and inserts the "poll closed"
+ * system message exactly once, no matter how many callers race to close
+ * the same poll — atomicity is guaranteed server-side by the RPC's
+ * `WHERE closed_notified = false` claim. `manual=true` restricts closing
+ * to the poll author; `manual=false` is used for natural-expiry detection
+ * and is allowed for any member who can view the channel.
+ */
+export async function closePollAndNotify(pollId: string, manual = false) {
+  const { error } = await supabase.rpc('close_poll_and_claim_notification', {
+    _poll_id: pollId,
+    _manual: manual,
+  });
+  if (error) throw error;
+}
+
 export function useEndPoll() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ pollId, channelId, threadId }: { pollId: string; channelId: string; threadId?: string | null }) => {
-      const { error } = await supabase
-        .from('polls')
-        .update({ expires_at: new Date().toISOString() })
-        .eq('id', pollId);
-
-      if (error) throw error;
+    mutationFn: async ({ pollId }: { pollId: string; channelId: string; threadId?: string | null }) => {
+      await closePollAndNotify(pollId, true);
     },
     onMutate: async ({ pollId, channelId, threadId }) => {
       const queryKey = threadId ? ['polls', 'thread', threadId] : ['polls', 'channel', channelId];
@@ -658,7 +673,6 @@ export function useEndPoll() {
       toast.error('Erreur lors de la clôture du sondage');
     },
     onSuccess: () => {
-      toast.success('Sondage terminé');
     },
     onSettled: (_, __, variables) => {
       if (variables.threadId) {
@@ -700,7 +714,6 @@ export function useDeletePoll() {
       toast.error('Erreur lors de la suppression du sondage');
     },
     onSuccess: () => {
-      toast.success('Sondage supprimé');
     },
     onSettled: (_, __, variables) => {
       if (variables.threadId) {
@@ -787,7 +800,6 @@ export function useUpdatePoll() {
       toast.error('Erreur lors de la modification du sondage');
     },
     onSuccess: () => {
-      toast.success('Sondage modifié');
     },
     onSettled: (_, __, variables) => {
       if (variables.threadId) {

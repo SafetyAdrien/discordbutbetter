@@ -22,6 +22,7 @@ export interface ChannelWithCategory {
 export interface CategoryWithChannels {
   id: string;
   name: string;
+  icon: string | null;
   position: number | null;
   channels: ChannelWithCategory[];
 }
@@ -97,6 +98,11 @@ export function useChannels(
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  // Several components mount their own instance of this hook for the same
+  // serverId simultaneously (Index, ChatArea, AnnouncementChannel, ThreadView)
+  // — suffix realtime channel names per instance so they don't collide on
+  // the same Supabase Realtime topic.
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   const getChannelCount = (data?: { categories: CategoryWithChannels[]; orphanChannels: OrphanChannel[] }) => {
     if (!data) return -1;
@@ -154,7 +160,7 @@ export function useChannels(
     };
 
     const channelsChannel = supabase
-      .channel(`channels-rt-${serverId}`)
+      .channel(`channels-rt-${serverId}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'channels', filter: `server_id=eq.${serverId}` },
@@ -180,7 +186,7 @@ export function useChannels(
       });
 
     const categoriesChannel = supabase
-      .channel(`categories-rt-${serverId}`)
+      .channel(`categories-rt-${serverId}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'categories', filter: `server_id=eq.${serverId}` },
@@ -216,7 +222,7 @@ export function useChannels(
 
       const { data: categories, error: catError } = await supabase
         .from('categories')
-        .select('id, name, position')
+        .select('id, name, icon, position')
         .eq('server_id', serverId)
         .order('position', { ascending: true });
 
@@ -265,7 +271,7 @@ export function useCreateCategory() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ serverId, name }: { serverId: string; name: string }) => {
+    mutationFn: async ({ serverId, name, icon }: { serverId: string; name: string; icon?: string | null }) => {
       // Get max position
       const { data: existing } = await supabase
         .from('categories')
@@ -278,47 +284,48 @@ export function useCreateCategory() {
 
       const { data, error } = await supabase
         .from('categories')
-        .insert({ server_id: serverId, name, position: nextPosition })
+        .insert({ server_id: serverId, name, icon: icon ?? null, position: nextPosition })
         .select()
         .single();
 
       if (error) throw error;
       return data;
     },
-    onMutate: async ({ serverId, name }) => {
+    onMutate: async ({ serverId, name, icon }) => {
       mutationLockRef.current = true;
 
       await queryClient.cancelQueries({ queryKey: ['channels', serverId] });
       await queryClient.cancelQueries({ queryKey: ['servers'] });
-      
+
       const previousChannels = queryClient.getQueryData<{ categories: CategoryWithChannels[]; orphanChannels: OrphanChannel[] }>(['channels', serverId]);
       const previousServers = queryClient.getQueryData(['servers']);
-      
+
       const tempCategory: CategoryWithChannels = {
-        id: `temp-${Date.now()}`,
+        id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         name,
+        icon: icon ?? null,
         position: previousChannels?.categories.length ?? 0,
         channels: []
       };
-      
+
       if (previousChannels) {
         queryClient.setQueryData(['channels', serverId], {
           ...previousChannels,
           categories: [...previousChannels.categories, tempCategory]
         });
       }
-      
+
       // Also update servers cache
       if (previousServers) {
         queryClient.setQueryData(['servers'], (old: any) =>
           old?.map((server: any) =>
             server.id === serverId
-              ? { ...server, categories: [...(server.categories || []), { id: tempCategory.id, name, channels: [] }] }
+              ? { ...server, categories: [...(server.categories || []), { id: tempCategory.id, name, icon: icon ?? null, channels: [] }] }
               : server
           )
         );
       }
-      
+
       return { previousChannels, previousServers, serverId };
     },
     onError: (error: any, __, context) => {
@@ -340,7 +347,6 @@ export function useCreateCategory() {
       queryClient.invalidateQueries({ queryKey: ['servers'] });
     },
     onSuccess: () => {
-      toast.success('Catégorie créée');
     },
   });
 }
@@ -411,7 +417,7 @@ export function useCreateChannel() {
       const previousChannels = queryClient.getQueryData<{ categories: CategoryWithChannels[]; orphanChannels: OrphanChannel[] }>(['channels', serverId]);
       const previousServers = queryClient.getQueryData(['servers']);
       
-      const tempId = `temp-${Date.now()}`;
+      const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       const tempChannel: ChannelWithCategory = {
         id: tempId,
         name,
@@ -479,7 +485,6 @@ export function useCreateChannel() {
       if (context?.tempId && data?.id) {
         swapTempChannelId(queryClient, serverId, context.tempId, data.id, data as Partial<ChannelWithCategory>, user?.id);
       }
-      toast.success('Salon créé');
     },
     onError: (error: any) => {
       // No rollback — keep the optimistic state. Realtime will reconcile if the
@@ -568,7 +573,6 @@ export function useDeleteCategory() {
       queryClient.invalidateQueries({ queryKey: ['servers'] });
     },
     onSuccess: () => {
-      toast.success('Catégorie supprimée');
     },
   });
 }
@@ -630,7 +634,6 @@ export function useDeleteChannel() {
       }, 500);
     },
     onSuccess: () => {
-      toast.success('Salon supprimé');
     },
   });
 }
@@ -848,39 +851,19 @@ export function useDuplicateChannel() {
       const newPosition = (original.position ?? 0) + 1;
 
       // Shift all channels with position >= newPosition in the same category/orphan group
-      if (original.category_id) {
-        const { data: toShift } = await supabase
-          .from('channels')
-          .select('id, position')
-          .eq('category_id', original.category_id)
-          .gte('position', newPosition)
-          .neq('id', channelId)
-          .order('position', { ascending: false });
-        if (toShift) {
-          for (const ch of toShift) {
-            await supabase
-              .from('channels')
-              .update({ position: (ch.position ?? 0) + 1 })
-              .eq('id', ch.id);
-          }
-        }
-      } else {
-        const { data: toShift } = await supabase
-          .from('channels')
-          .select('id, position')
-          .eq('server_id', serverId)
-          .is('category_id', null)
-          .gte('position', newPosition)
-          .neq('id', channelId)
-          .order('position', { ascending: false });
-        if (toShift) {
-          for (const ch of toShift) {
-            await supabase
-              .from('channels')
-              .update({ position: (ch.position ?? 0) + 1 })
-              .eq('id', ch.id);
-          }
-        }
+      // Shift the affected positions atomically on the server.
+      //
+      // The previous implementation looped over the affected channels and
+      // awaited one UPDATE per row, discarding every error. A mid-loop failure
+      // therefore left every later position shifted by +1 forever, with
+      // nothing surfaced to the user. `duplicate_channel_shift` performs the
+      // whole shift inside a single transaction.
+      {
+        const { error: shiftError } = await supabase.rpc('duplicate_channel_shift', {
+          _channel_id: channelId,
+          _new_position: newPosition,
+        });
+        if (shiftError) throw shiftError;
       }
 
       const finalName = overrideName?.trim() || original.name;
@@ -1050,7 +1033,6 @@ export function useDuplicateChannel() {
       if (context?.tempId && data?.id) {
         swapTempChannelId(queryClient, sid, context.tempId, data.id, data as Partial<ChannelWithCategory>, user?.id);
       }
-      toast.success('Salon dupliqué avec succès');
     },
     onError: () => {
       // No rollback — keep the optimistic duplicate visible. Realtime will reconcile.

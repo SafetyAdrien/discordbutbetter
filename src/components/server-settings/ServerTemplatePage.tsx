@@ -5,7 +5,6 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileCode, Copy, Check, Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
 
 interface ServerTemplatePageProps {
   serverId: string;
@@ -26,7 +25,6 @@ export function ServerTemplatePage({ serverId }: ServerTemplatePageProps) {
     setTimeout(() => {
       setTemplateCode(`template_${Date.now()}`);
       setIsCreating(false);
-      toast.success('Template créé avec succès');
     }, 1000);
   };
 
@@ -35,7 +33,6 @@ export function ServerTemplatePage({ serverId }: ServerTemplatePageProps) {
       navigator.clipboard.writeText(templateCode);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-      toast.success('Code copié');
     }
   };
 

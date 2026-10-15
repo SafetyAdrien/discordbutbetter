@@ -1,4 +1,4 @@
-import { Sticker as StickerIcon } from 'lucide-react';
+import { Sticker as StickerIcon, Star } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/lib/haptics';
@@ -15,9 +15,11 @@ interface Props {
   onPick: (url: string, name: string) => void;
   height: number;
   isMobile: boolean;
+  isFavorite?: (id: string) => boolean;
+  onToggleFavorite?: (sticker: StickerEntry) => void;
 }
 
-export function StickerGrid({ stickers, onPick, height, isMobile }: Props) {
+export function StickerGrid({ stickers, onPick, height, isMobile, isFavorite, onToggleFavorite }: Props) {
   if (stickers.length === 0) {
     return (
       <div
@@ -44,23 +46,40 @@ export function StickerGrid({ stickers, onPick, height, isMobile }: Props) {
         )}
       >
         {stickers.map((s) => (
-          <button
-            key={s.id}
-            type="button"
-            onClick={() => {
-              if (isMobile) haptics.selection();
-              onPick(s.url, s.name);
-            }}
-            title={s.name}
-            className="aspect-square rounded-2xl bg-muted/40 hover:bg-muted active:scale-95 transition-all duration-150 p-2 flex items-center justify-center hover:shadow-[var(--shadow-elevation-1)]"
-          >
-            <img
-              src={s.url}
-              alt={s.name}
-              loading="lazy"
-              className="max-w-full max-h-full object-contain"
-            />
-          </button>
+          <div key={s.id} className="relative group">
+            <button
+              type="button"
+              onClick={() => {
+                if (isMobile) haptics.selection();
+                onPick(s.url, s.name);
+              }}
+              title={s.name}
+              className="aspect-square w-full rounded-2xl bg-muted/40 hover:bg-muted active:scale-95 transition-all duration-150 p-2 flex items-center justify-center hover:shadow-[var(--shadow-elevation-1)]"
+            >
+              <img
+                src={s.url}
+                alt={s.name}
+                loading="lazy"
+                className="max-w-full max-h-full object-contain"
+              />
+            </button>
+            {onToggleFavorite && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleFavorite(s);
+                }}
+                aria-label={isFavorite?.(s.id) ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+                className={cn(
+                  'absolute top-1 right-1 p-1 rounded-full bg-background/80 backdrop-blur-sm transition-opacity',
+                  isFavorite?.(s.id) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
+                )}
+              >
+                <Star className={cn('w-3 h-3', isFavorite?.(s.id) ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground')} />
+              </button>
+            )}
+          </div>
         ))}
       </div>
     </ScrollArea>

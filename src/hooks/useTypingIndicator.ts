@@ -122,6 +122,7 @@ export function useTypingIndicator(channelId?: string | null, conversationId?: s
 export function useTypingUsers(channelId?: string | null, conversationId?: string | null, threadId?: string | null) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   const queryKey = threadId
     ? ['typing-users', 'thread', threadId]
@@ -188,7 +189,7 @@ export function useTypingUsers(channelId?: string | null, conversationId?: strin
     const filterValue = threadId || channelId || conversationId;
 
     const channel = supabase
-      .channel(`typing-${filterValue}`)
+      .channel(`typing-${filterValue}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         {

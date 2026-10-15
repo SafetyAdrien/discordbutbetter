@@ -180,7 +180,7 @@ export function VoiceParticipantGrid({
         {/* Focused content */}
         <div className="flex-1 min-h-0 relative rounded-xl overflow-hidden bg-[hsl(var(--surface-elevated))]">
           {/* Close button */}
-          <button
+          <button type="button"
             onClick={() => setFocusTarget(null)}
             className="absolute top-3 right-3 z-20 p-2 rounded-lg bg-black/60 hover:bg-black/80 text-white transition-colors"
           >
@@ -222,7 +222,7 @@ export function VoiceParticipantGrid({
         {/* Bottom strip: other participants */}
         <div className="flex gap-2 overflow-x-auto pb-1 flex-shrink-0">
           {screenShares.map(share => (
-            <button
+            <button type="button"
               key={`screen-${share.userId}`}
               onClick={() => handleFocus({ type: 'screen', userId: share.userId })}
               className={cn(
@@ -249,7 +249,7 @@ export function VoiceParticipantGrid({
             const hasCam = !!cameraStream;
 
             return (
-              <button
+              <button type="button"
                 key={participant.user_id}
                 onClick={() => handleFocus({ type: 'participant', userId: participant.user_id })}
                 className={cn(
@@ -450,7 +450,10 @@ function VoiceParticipantCard({ participant, isSpeaking, audioLevel = 0, gradien
   return (
     <div 
       className={cn(
-        'relative aspect-video rounded-2xl overflow-hidden bg-gradient-to-br border-2 transition-colors duration-150',
+        'relative aspect-video rounded-2xl overflow-hidden bg-gradient-to-br border-2',
+        // No transition on the speaking border: a 150 ms colour fade on a 2px
+        // edge was the last visible step of the detection latency — the state
+        // changed, but the ring crawled into place.
         gradient,
         isSpeaking ? 'border-[hsl(var(--online))]' : 'border-transparent',
         compact && 'rounded-xl'

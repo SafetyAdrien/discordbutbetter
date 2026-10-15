@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useCategoryCasePreferences } from '@/hooks/useCategoryCasePreferences';
 import { caseClass } from '@/lib/ui/categoryCase';
-import { X, Info, Heart, Smile, Sticker, Users, Shield, Link, Ban, History, Trash2, Zap, Volume2, Puzzle, FileCode, ChevronLeft, ChevronRight, BadgeCheck } from 'lucide-react';
+import { X, Info, Heart, Smile, Sticker, Users, Shield, Link, Ban, History, Trash2, Zap, Volume2, Puzzle, FileCode, ChevronLeft, ChevronRight, BadgeCheck, Hash } from 'lucide-react';
 import { ServerProfileSettings } from './ServerProfileSettings';
 import { EngagementSettings } from './EngagementSettings';
+import { ServerChannelsManager } from './ServerChannelsManager';
 import { EmojiManager } from './EmojiManager';
 import { StickerManager } from './StickerManager';
 import { MemberManager } from './MemberManager';
@@ -28,8 +29,8 @@ interface ServerSettingsModalProps {
   initialTab?: SettingsTab;
 }
 
-type SettingsTab = 
-  | 'profile' | 'engagement' | 'boost'
+type SettingsTab =
+  | 'profile' | 'engagement' | 'boost' | 'channels'
   | 'emojis' | 'stickers' | 'soundboard'
   | 'members' | 'roles' | 'invites' | 'connection-rules'
   | 'integrations'
@@ -62,6 +63,7 @@ export function ServerSettingsModal({
       id: 'server', name: 'server',
       tabs: [
         { id: 'profile', label: 'Profil du serveur', icon: Info },
+        { id: 'channels', label: 'Salons', icon: Hash },
         { id: 'engagement', label: 'Engagement', icon: Heart },
         { id: 'boost', label: 'Avantages Boost', icon: Zap }
       ]
@@ -114,6 +116,7 @@ export function ServerSettingsModal({
   const renderContent = () => {
     switch (activeTab) {
       case 'profile': return <ServerProfileSettings serverId={serverId} />;
+      case 'channels': return <ServerChannelsManager serverId={serverId} />;
       case 'engagement': return <EngagementSettings serverId={serverId} />;
       case 'boost': return <BoostBenefitsPage serverId={serverId} />;
       case 'emojis': return <EmojiManager serverId={serverId} />;
@@ -141,7 +144,7 @@ export function ServerSettingsModal({
           </p>
           <div className="space-y-0.5">
             {section.tabs.map(tab => (
-              <button
+              <button type="button"
                 key={tab.id}
                 onClick={() => onSelect(tab.id)}
                 className={cn(
@@ -169,7 +172,7 @@ export function ServerSettingsModal({
       <div className="h-px bg-border/50 mx-2 rounded-full" />
       <div className="space-y-0.5">
         {dangerTabs.map(tab => (
-          <button
+          <button type="button"
             key={tab.id}
             onClick={() => onSelect(tab.id)}
             className={cn(
@@ -204,7 +207,7 @@ export function ServerSettingsModal({
         {activeTab === null ? (
           <>
             <div className="h-14 px-3 flex items-center gap-2 bg-[hsl(var(--surface-1))] flex-shrink-0 rounded-b-2xl" style={{ boxShadow: 'var(--shadow-elevation-1)' }}>
-              <button onClick={onClose} className="p-2 rounded-full hover:bg-muted">
+              <button type="button" onClick={onClose} className="p-2 rounded-full hover:bg-muted">
                 <X className="w-5 h-5" />
               </button>
               <h2 className="font-semibold text-base flex-1 truncate">{serverName}</h2>
@@ -216,13 +219,13 @@ export function ServerSettingsModal({
         ) : (
           <>
             <div className="h-14 px-3 flex items-center gap-2 bg-[hsl(var(--surface-1))] flex-shrink-0 rounded-b-2xl" style={{ boxShadow: 'var(--shadow-elevation-1)' }}>
-              <button onClick={() => setActiveTab(null)} className="p-2 rounded-full hover:bg-muted">
+              <button type="button" onClick={() => setActiveTab(null)} className="p-2 rounded-full hover:bg-muted">
                 <ChevronLeft className="w-5 h-5" />
               </button>
               <h3 className={cn("font-semibold text-sm flex-1 truncate", activeTab === 'delete' && "text-destructive")}>
                 {getCurrentTabLabel()}
               </h3>
-              <button onClick={onClose} className="p-2 rounded-full hover:bg-muted">
+              <button type="button" onClick={onClose} className="p-2 rounded-full hover:bg-muted">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -260,7 +263,7 @@ export function ServerSettingsModal({
           <h3 className={cn('font-semibold truncate', isTablet ? 'text-base' : 'text-lg', activeTab === 'delete' && 'text-destructive')}>
             {getCurrentTabLabel()}
           </h3>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-muted transition-all duration-200 shrink-0">
+          <button type="button" onClick={onClose} className="p-2 rounded-full hover:bg-muted transition-all duration-200 shrink-0">
             <X className="w-5 h-5" />
           </button>
         </div>

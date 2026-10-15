@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
@@ -13,6 +13,10 @@ const userBadgesCacheKey = (uid: string) => `user-badges:${uid}`;
 
 export function useUserBadges(userId?: string | null) {
   const queryClient = useQueryClient();
+  // UserBadgeList and InlineBadgeStrip can both be mounted at once (profile
+  // popup expanded into the full profile modal) — suffix the realtime
+  // channel name per instance so they don't collide on the same topic.
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   const query = useQuery({
     queryKey: ['user-badges', userId],
@@ -37,7 +41,7 @@ export function useUserBadges(userId?: string | null) {
 
   useEffect(() => {
     const channel = supabase
-      .channel('user-badges-rt')
+      .channel(`user-badges-rt-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'user_badges' },

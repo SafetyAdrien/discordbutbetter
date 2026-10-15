@@ -22,19 +22,19 @@ import { DMCallView } from '@/components/dm/DMCallView';
 import { AdaptiveSheet } from '@/components/ui/adaptive-sheet';
 import { UserProfilePopup } from '@/components/profile/UserProfilePopup';
 import { UniversalMessageActions } from '@/components/chat/UniversalMessageActions';
-import { Loader2, Bell, BellOff, Image as ImageIcon, Pin, Search, Trash2 } from 'lucide-react';
+import { Loader2, Bell, BellOff, Image as ImageIcon, Pin, Search, Trash2, Check, Camera, Video as VideoIcon, VideoOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { copyToClipboard } from '@/lib/clipboard';
 import { uuidToSnowflake } from '@/lib/snowflake';
 import { useDMLocalSet } from '@/lib/dm-local-prefs';
-import { format, isSameDay } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { format, isSameDay } from '@/lib/dateUtils';
+import { fr } from '@/lib/dateUtils';
 import { haptics } from '@/lib/haptics';
-import { toast } from 'sonner';
-import { useDMPolls, useDeleteDMPoll, useEndDMPoll, DMPoll } from '@/hooks/useDMPolls';
+import { useDMPolls, useDeleteDMPoll, DMPoll } from '@/hooks/useDMPolls';
 import { DMPollDisplay } from '@/components/chat/DMPollDisplay';
 import { BarChart2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { computePollWinner } from '@/lib/pollWinner';
 
 interface Props {
   conversationId: string;
@@ -66,7 +66,6 @@ export function MobileDMConversation({ conversationId, onBack }: Props) {
   const [profileUserId, setProfileUserId] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<DMMessage | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editingValue, setEditingValue] = useState('');
   const [replyingTo, setReplyingTo] = useState<DMMessage | null>(null);
   const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
@@ -215,7 +214,6 @@ export function MobileDMConversation({ conversationId, onBack }: Props) {
   // DM Polls
   const { data: polls = [] } = useDMPolls(conversationId);
   const deletePoll = useDeleteDMPoll();
-  const endPoll = useEndDMPoll();
   const sortedPolls = useMemo(
     () => [...polls].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()),
     [polls],
@@ -238,9 +236,6 @@ export function MobileDMConversation({ conversationId, onBack }: Props) {
           <DMPollDisplay poll={poll} conversationId={conversationId} />
           {isOwn && (
             <div className="flex items-center gap-2 mt-2">
-              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => endPoll.mutate({ pollId: poll.id, conversationId })}>
-                Terminer
-              </Button>
               <Button variant="ghost" size="sm" className="h-7 text-xs text-destructive" onClick={() => deletePoll.mutate({ pollId: poll.id, conversationId })}>
                 Supprimer
               </Button>
@@ -278,6 +273,45 @@ export function MobileDMConversation({ conversationId, onBack }: Props) {
     } catch {
       /* toast handled in hook */
     }
+  };
+
+  const handleSendExternalAttachment = async (attachment: { url: string; name: string; type: 'sticker' | 'gif' }) => {
+    haptics.light();
+    try {
+      await sendMessage.mutateAsync({
+        conversationId,
+        content: '',
+        replyToId: replyingTo?.id ?? null,
+        externalAttachment: attachment,
+      });
+      setReplyingTo(null);
+      stopTyping();
+    } catch {
+      /* toast handled in hook */
+    }
+  };
+
+  const handleStartEdit = (message: DMMessage) => {
+    const atts = message.attachments ?? [];
+    const isGifOnly = !message.content.trim() && atts.length === 1 && atts[0]?.type === 'gif';
+    setEditingId(message.id);
+    setMessageInput(isGifOnly ? atts[0].url : message.content);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingId || !messageInput.trim()) return;
+    try {
+      await editMessage.mutateAsync({ messageId: editingId, conversationId, content: messageInput.trim() });
+      setEditingId(null);
+      setMessageInput('');
+    } catch {
+      /* toast handled in hook */
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setMessageInput('');
   };
 
   const handleToggleReaction = (messageId: string, emoji: string, _r: any) => {
@@ -375,23 +409,102 @@ export function MobileDMConversation({ conversationId, onBack }: Props) {
                           </span>
                         </div>
                       )}
-                      <MobileMessageBubble
-                        message={bubble}
-                        showAvatar={showAvatar}
-                        showAuthorName={showAuthorName}
-                        isLastOfBurst={isLastOfBurst}
-                        isGroup={isGroup}
-                        reactions={reactionsData[raw.id] || []}
-                        currentUserId={user?.id ?? null}
-                        onReply={() => setReplyingTo(raw)}
-                        onLongPress={() => setActionMessage(raw)}
-                        onToggleReaction={handleToggleReaction}
-                        onAvatarTap={(uid) => {
-                          setProfileUserId(uid);
-                          setShowProfile(true);
-                        }}
-                        onJumpToMessage={handleJumpToMessage}
-                      />
+                      {raw.system_type === 'poll_closed' ? (
+                        (() => {
+                          const closedPoll = polls.find((p) => p.id === raw.system_poll_id);
+                          const winnerResult = closedPoll
+                            ? computePollWinner({ options: closedPoll.options, votes: closedPoll.votes })
+                            : null;
+                          const winnerLabel = winnerResult?.label ?? null;
+                          const hasWinner = winnerResult?.hasWinner ?? false;
+                          const winnerPercentage = winnerResult?.winnerPercentage ?? null;
+                          return (
+                            <div className="flex flex-col items-center gap-1 py-1.5 px-3">
+                              <div className="flex items-center justify-center gap-2 text-xs italic text-muted-foreground">
+                                <BarChart2 className="w-3.5 h-3.5 flex-shrink-0" />
+                                <span>
+                                  Le sondage «{' '}
+                                  <span className="font-semibold not-italic text-foreground">
+                                    {closedPoll?.question ?? 'inconnu'}
+                                  </span>
+                                  {' '}» de{' '}
+                                  <span className="font-semibold not-italic text-foreground">
+                                    {closedPoll?.author?.display_name ?? "quelqu'un"}
+                                  </span>
+                                  {' '}est clos.
+                                </span>
+                              </div>
+                              {closedPoll && (
+                                <div className="flex items-center gap-3 bg-[hsl(var(--surface-2))] rounded-xl py-2.5 pl-2.5 pr-2.5">
+                                  {hasWinner ? (
+                                    <span className="w-9 h-9 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0">
+                                      <Check className="w-5 h-5 text-white" />
+                                    </span>
+                                  ) : (
+                                    <span className="w-9 h-9 rounded-full bg-[hsl(var(--surface-3))] flex items-center justify-center text-base flex-shrink-0" role="img" aria-hidden>
+                                      💀
+                                    </span>
+                                  )}
+                                  <div className="flex flex-col items-start min-w-0">
+                                    <span className="text-sm font-medium text-foreground truncate">{winnerLabel}</span>
+                                    {hasWinner && (
+                                      <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                        Réponse gagnante • {winnerPercentage}%
+                                      </span>
+                                    )}
+                                  </div>
+                                  <button type="button"
+                                    onClick={() => handleJumpToMessage(closedPoll.id)}
+                                    className="ml-2 text-sm font-medium text-foreground bg-[hsl(var(--surface-3))] active:bg-[hsl(var(--surface-3))]/70 transition-colors rounded-lg px-4 py-2 whitespace-nowrap flex-shrink-0"
+                                  >
+                                    Voir le sondage
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()
+                      ) : raw.system_type ? (
+                        (() => {
+                          const who = raw.author?.display_name || raw.author?.username || "Quelqu'un";
+                          const Icon =
+                            raw.system_type === 'screenshot'
+                              ? Camera
+                              : raw.system_type === 'screen_recording_start'
+                              ? VideoIcon
+                              : VideoOff;
+                          const label =
+                            raw.system_type === 'screenshot'
+                              ? `${who} a pris une capture d'écran.`
+                              : raw.system_type === 'screen_recording_start'
+                              ? `${who} a démarré un enregistrement d'écran.`
+                              : `${who} a arrêté l'enregistrement d'écran.`;
+                          return (
+                            <div className="flex items-center justify-center gap-2 py-1.5 px-3 text-xs italic text-muted-foreground">
+                              <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+                              <span>{label}</span>
+                            </div>
+                          );
+                        })()
+                      ) : (
+                        <MobileMessageBubble
+                          message={bubble}
+                          showAvatar={showAvatar}
+                          showAuthorName={showAuthorName}
+                          isLastOfBurst={isLastOfBurst}
+                          isGroup={isGroup}
+                          reactions={reactionsData[raw.id] || []}
+                          currentUserId={user?.id ?? null}
+                          onReply={() => setReplyingTo(raw)}
+                          onLongPress={() => setActionMessage(raw)}
+                          onToggleReaction={handleToggleReaction}
+                          onAvatarTap={(uid) => {
+                            setProfileUserId(uid);
+                            setShowProfile(true);
+                          }}
+                          onJumpToMessage={handleJumpToMessage}
+                        />
+                      )}
                     </div>
                   </Fragment>
                 );
@@ -421,8 +534,22 @@ export function MobileDMConversation({ conversationId, onBack }: Props) {
         </div>
       </div>
 
+      {/* Edit mode banner (above input) */}
+      {editingId && (
+        <div className="mx-3 mb-1 flex items-center gap-2 bg-[hsl(var(--surface-3))] rounded-xl px-3 py-2 border-l-[3px] border-primary shadow-sm">
+          <span className="text-sm text-muted-foreground flex-1">Édition du message</span>
+          <button type="button"
+            onClick={handleCancelEdit}
+            className="p-1 -mr-1 rounded-full hover:bg-muted/50 transition-colors"
+            aria-label="Annuler la modification"
+          >
+            <span className="text-muted-foreground text-sm">✕</span>
+          </button>
+        </div>
+      )}
+
       {/* Reply preview (above input) */}
-      {replyingTo && (
+      {!editingId && replyingTo && (
         <div className="mx-3 mb-1 flex items-center gap-2 bg-[hsl(var(--surface-3))] rounded-xl px-3 py-2 border-l-[3px] border-primary shadow-sm">
           <div className="flex-1 min-w-0 flex items-center gap-2">
             <span className="text-[11px] font-semibold text-primary flex-shrink-0">
@@ -439,7 +566,7 @@ export function MobileDMConversation({ conversationId, onBack }: Props) {
                 (replyingTo.attachments.length > 0 ? '📎 Pièce jointe' : '')}
             </span>
           </div>
-          <button
+          <button type="button"
             onClick={() => setReplyingTo(null)}
             className="p-1 -mr-1 rounded-full hover:bg-muted/50 transition-colors"
             aria-label="Annuler la réponse"
@@ -458,8 +585,15 @@ export function MobileDMConversation({ conversationId, onBack }: Props) {
             if (v.length > 0) startTyping();
             else stopTyping();
           }}
-          onSend={(atts) => handleSend(atts)}
-          placeholder={replyingTo ? `Répondre à ${replyingTo.author?.display_name || 'Utilisateur'}` : `Message à ${displayName}`}
+          onSend={editingId ? () => handleSaveEdit() : (atts) => handleSend(atts)}
+          onSendExternalAttachment={editingId ? undefined : handleSendExternalAttachment}
+          placeholder={
+            editingId
+              ? 'Modifier le message…'
+              : replyingTo
+              ? `Répondre à ${replyingTo.author?.display_name || 'Utilisateur'}`
+              : `Message à ${displayName}`
+          }
           isSending={sendMessage.isPending}
           onTypingStart={startTyping}
           onTypingStop={stopTyping}
@@ -505,10 +639,8 @@ export function MobileDMConversation({ conversationId, onBack }: Props) {
               onEdit={
                 actionMessage.author?.id === user?.id
                   ? () => {
-                      setEditingId(actionMessage.id);
-                      setEditingValue(actionMessage.content);
+                      handleStartEdit(actionMessage);
                       setActionMessage(null);
-                      toast.info("Édition disponible — modifie puis Entrée pour valider");
                     }
                   : undefined
               }
@@ -545,7 +677,6 @@ export function MobileDMConversation({ conversationId, onBack }: Props) {
             label={`Messages épinglés${pinnedMessages.length > 0 ? ` (${pinnedMessages.length})` : ''}`}
             onClick={() => {
               setShowMore(false);
-              toast.info('Liste épinglée — bientôt en plein écran');
             }}
           />
           <SheetButton
@@ -561,7 +692,6 @@ export function MobileDMConversation({ conversationId, onBack }: Props) {
             label="Rechercher dans la conversation"
             onClick={() => {
               setShowMore(false);
-              toast.info('Recherche — bientôt disponible');
             }}
           />
           <SheetButton
@@ -580,7 +710,6 @@ export function MobileDMConversation({ conversationId, onBack }: Props) {
             onClick={() => {
               setShowMore(false);
               haptics.warning();
-              toast.success('Conversation archivée localement');
             }}
           />
         </div>

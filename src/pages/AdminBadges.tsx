@@ -72,7 +72,6 @@ function BadgeRow({ badge, onChanged }: { badge: Badge | null; onChanged: () => 
       toast.error(error.message);
       return;
     }
-    toast.success(isNew ? 'Badge créé' : 'Badge mis à jour');
     onChanged();
   };
 
@@ -233,7 +232,7 @@ function AssignmentPanel({ badges }: { badges: Badge[] }) {
             <div className="text-xs text-muted-foreground p-2">Aucun résultat</div>
           )}
           {results.map((u) => (
-            <button
+            <button type="button"
               key={u.id}
               onClick={() => setSelected(u)}
               className="w-full flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 text-left"
@@ -352,7 +351,7 @@ export default function AdminBadges() {
 
         <div className="flex gap-2 border-b border-border/40">
           {(['catalog', 'assign'] as const).map((t) => (
-            <button
+            <button type="button"
               key={t}
               onClick={() => setTab(t)}
               className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${

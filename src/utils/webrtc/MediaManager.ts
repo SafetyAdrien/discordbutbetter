@@ -36,7 +36,22 @@ const VOICE_FREQ_HIGH = 300;
 const FORMANT_FREQ_LOW = 300;
 const FORMANT_FREQ_HIGH = 3400;
 const SPECTRAL_HISTORY_SIZE = 4;
-const SPEAKING_HOLD_MS = 150; // More responsive for remote peers
+/**
+ * Remote VAD thresholds.
+ *
+ * These MUST mirror `VAD_PRESETS.medium` in AudioProcessor.ts. The local user is
+ * detected by the AudioProcessor and remote peers by this function, and both
+ * results end up in the same `speakingUsers` set. When the constants differed
+ * (0.24/220 ms vs 0.25/150 ms), the local user's own rings and the rings shown
+ * to other people lit up at different moments — the indicators visibly
+ * disagreed for the same voice.
+ */
+/** Same presets as AudioProcessor's VAD_PRESETS, indexed the same way. */
+const REMOTE_VAD_PRESETS = {
+  low:    { spectralSpeak: 0.34, spectralStop: 0.22, holdMs: 300 },
+  medium: { spectralSpeak: 0.24, spectralStop: 0.15, holdMs: 220 },
+  high:   { spectralSpeak: 0.18, spectralStop: 0.10, holdMs: 180 },
+} as const;
 
 // Screen share quality presets
 const SCREEN_SHARE_PRESETS: Record<ScreenShareOptions['quality'], { width: number; height: number; defaultFps: number; maxBitrate: number }> = {
@@ -46,6 +61,22 @@ const SCREEN_SHARE_PRESETS: Record<ScreenShareOptions['quality'], { width: numbe
 };
 
 export class MediaManager {
+  /**
+   * Remote VAD sensitivity, kept in sync with the local AudioProcessor setting
+   * so that adjusting sensitivity affects local and remote detection equally.
+   * Without this, remote speakers stayed on the hardcoded default while the
+   * user's own microphone followed the setting.
+   */
+  private vadSensitivity: keyof typeof REMOTE_VAD_PRESETS = 'medium';
+
+  setVADSensitivity(sensitivity: keyof typeof REMOTE_VAD_PRESETS): void {
+    this.vadSensitivity = sensitivity;
+  }
+
+  private get remoteVadPreset() {
+    return REMOTE_VAD_PRESETS[this.vadSensitivity] ?? REMOTE_VAD_PRESETS.medium;
+  }
+
   private audioContext: AudioContext | null = null;
   private localAudioStream: MediaStream | null = null;
   /**
@@ -664,7 +695,10 @@ export class MediaManager {
       const source = context.createMediaStreamSource(stream);
       const analyser = context.createAnalyser();
       analyser.fftSize = 2048;
-      analyser.smoothingTimeConstant = 0.3;
+      // Same reasoning as AudioProcessor: this analyser feeds the remote
+      // speaking indicator, so smoothing directly delays the visual response.
+      // 0.1 reacts within a poll; the hold timer absorbs the resulting jitter.
+      analyser.smoothingTimeConstant = 0.1;
       source.connect(analyser);
 
       // GainNode + brick-wall limiter + tanh saturator for amplification > 100%
@@ -824,20 +858,22 @@ export class MediaManager {
       vad = { spectralHistory: [], speakingState: false, holdTimer: null };
       this.remoteVADStates.set(peerId, vad);
     }
-    vad.spectralHistory.push(rawScore);
+    // Asymmetric smoothing (fast attack, slower release) — mirrors
+    // AudioProcessor.computeSpectralVoiceScore. The previous exponential
+    // weighting only let the newest sample contribute 38%, so a remote
+    // speaker's indicator needed several extra polls to cross the threshold.
+    const prev = vad.spectralHistory.length > 0
+      ? vad.spectralHistory[vad.spectralHistory.length - 1]
+      : 0;
+    const alpha = rawScore > prev ? 0.75 : 0.45;
+    const smoothed = prev + (rawScore - prev) * alpha;
+
+    vad.spectralHistory.push(smoothed);
     if (vad.spectralHistory.length > SPECTRAL_HISTORY_SIZE) {
       vad.spectralHistory.shift();
     }
 
-    let weightedSum = 0;
-    let weightTotal = 0;
-    for (let i = 0; i < vad.spectralHistory.length; i++) {
-      const weight = Math.pow(1.5, i);
-      weightedSum += vad.spectralHistory[i] * weight;
-      weightTotal += weight;
-    }
-
-    return Math.min(1, weightedSum / weightTotal);
+    return Math.min(1, smoothed);
   }
 
   getRemoteVADState(peerId: string, currentSpeaking: boolean, ambientLevel: number): { isSpeaking: boolean; level: number; spectralScore: number } {
@@ -850,8 +886,9 @@ export class MediaManager {
 
     const levelAboveStart = level > speakStartThreshold;
     const levelAboveStop = level >= speakStopThreshold;
-    const spectralIsVoice = spectralScore > 0.25;  // More sensitive
-    const spectralStillVoice = spectralScore > 0.12;
+    const preset = this.remoteVadPreset;
+    const spectralIsVoice = spectralScore > preset.spectralSpeak;
+    const spectralStillVoice = spectralScore > preset.spectralStop;
 
     let vad = this.remoteVADStates.get(peerId);
     if (!vad) {
@@ -873,7 +910,7 @@ export class MediaManager {
         vad.holdTimer = setTimeout(() => {
           vad!.speakingState = false;
           vad!.holdTimer = null;
-        }, SPEAKING_HOLD_MS);
+        }, preset.holdMs);
       }
       isSpeaking = vad.speakingState;
     } else if (vad.speakingState && levelAboveStop && spectralStillVoice) {

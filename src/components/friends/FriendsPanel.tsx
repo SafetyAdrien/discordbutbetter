@@ -100,7 +100,7 @@ export function FriendsPanel({ onOpenDM }: FriendsPanelProps) {
         
         {/* Tab buttons in header */}
         <div className="flex items-center gap-1">
-          <button
+          <button type="button"
             onClick={() => setActiveTab('online')}
             className={cn(
               'px-3 py-1.5 text-sm rounded-md transition-colors',
@@ -111,7 +111,7 @@ export function FriendsPanel({ onOpenDM }: FriendsPanelProps) {
           >
             En ligne — {onlineFriends.length}
           </button>
-          <button
+          <button type="button"
             onClick={() => setActiveTab('all')}
             className={cn(
               'px-3 py-1.5 text-sm rounded-md transition-colors',
@@ -122,7 +122,7 @@ export function FriendsPanel({ onOpenDM }: FriendsPanelProps) {
           >
             Tous — {acceptedFriends.length}
           </button>
-          <button
+          <button type="button"
             onClick={() => setActiveTab('pending')}
             className={cn(
               'px-3 py-1.5 text-sm rounded-md transition-colors relative',
@@ -154,7 +154,7 @@ export function FriendsPanel({ onOpenDM }: FriendsPanelProps) {
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-48 pr-8 h-8 text-sm"
                   />
-                  <button
+                  <button type="button"
                     onClick={toggleSearch}
                     className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   >

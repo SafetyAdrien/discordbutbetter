@@ -80,7 +80,6 @@ export function ChannelPermissions({ channelId, serverId, channelType = 'text' }
       } else {
         setSelectedRole(null);
       }
-      toast.success('Permissions synchronisées avec la catégorie');
     } catch {
       toast.error('Erreur lors de la synchronisation');
     }
@@ -95,7 +94,6 @@ export function ChannelPermissions({ channelId, serverId, channelType = 'text' }
       if (everyoneRole) {
         setSelectedRole(everyoneRole.id);
       }
-      toast.success('Permissions du rôle réinitialisées');
     } catch {
       toast.error('Erreur lors de la réinitialisation');
     }
@@ -267,7 +265,7 @@ export function ChannelPermissions({ channelId, serverId, channelType = 'text' }
                 {roles?.filter(role => 
                   !role.is_default && !rolesWithOverrides.some(r => r.id === role.id)
                 ).map((role) => (
-                  <button
+                  <button type="button"
                     key={role.id}
                     onClick={() => setSelectedRole(role.id)}
                     className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted text-sm text-left"

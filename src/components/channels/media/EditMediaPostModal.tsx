@@ -35,7 +35,6 @@ export function EditMediaPostModal({ post, channelId, onClose }: Props) {
     queryClient.setQueryData<MediaPost[]>(['media-posts', channelId], (old = []) =>
       old.map((p) => (p.id === post.id ? { ...p, ...data } : p))
     );
-    toast.success('Post mis à jour');
     onClose();
   };
 

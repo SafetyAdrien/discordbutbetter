@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -35,6 +35,7 @@ export function useCalendarEvents(targetUserId?: string | null) {
   const userId = targetUserId ?? user?.id ?? null;
   const publicOnly = !!targetUserId && targetUserId !== user?.id;
   const k = key(userId, publicOnly);
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   const query = useQuery({
     queryKey: k,
@@ -57,7 +58,7 @@ export function useCalendarEvents(targetUserId?: string | null) {
   useEffect(() => {
     if (!userId) return;
     const channel = supabase
-      .channel(`calendar-events:${userId}`)
+      .channel(`calendar-events:${userId}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'calendar_events', filter: `user_id=eq.${userId}` },

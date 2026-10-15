@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 export function useFavoriteFriendIds() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   const query = useQuery({
     queryKey: ['friend-favorites', user?.id],
@@ -25,7 +26,7 @@ export function useFavoriteFriendIds() {
   useEffect(() => {
     if (!user) return;
     const ch = supabase
-      .channel(`friend-favorites:${user.id}`, { config: { private: true } })
+      .channel(`friend-favorites:${user.id}-${instanceIdRef.current}`, { config: { private: true } })
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'friend_favorites', filter: `user_id=eq.${user.id}` },

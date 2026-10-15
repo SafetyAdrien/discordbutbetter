@@ -77,7 +77,7 @@ export function ReplyBanner({
           </span>
         ) : null}
       </div>
-      <button
+      <button type="button"
         onClick={onClear}
         className="p-1 hover:bg-muted rounded transition-colors"
         aria-label="Annuler la réponse"

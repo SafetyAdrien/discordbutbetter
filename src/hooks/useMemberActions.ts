@@ -71,7 +71,6 @@ export function useUnbanMember() {
       toast.error('Erreur lors du débannissement: ' + (error as Error).message);
     },
     onSuccess: () => {
-      toast.success('Membre débanni');
     },
     onSettled: (_, __, { serverId }) => {
       queryClient.invalidateQueries({ queryKey: ['banned-members', serverId] });
@@ -108,7 +107,6 @@ export function useKickMember() {
       toast.error('Erreur lors de l\'expulsion: ' + (error as Error).message);
     },
     onSuccess: () => {
-      toast.success('Membre expulsé');
     },
     onSettled: (_, __, { serverId }) => {
       queryClient.invalidateQueries({ queryKey: ['members', serverId] });
@@ -154,7 +152,6 @@ export function useBanMember() {
       toast.error('Erreur lors du bannissement: ' + (error as Error).message);
     },
     onSuccess: () => {
-      toast.success('Membre banni');
     },
     onSettled: (_, __, { serverId }) => {
       queryClient.invalidateQueries({ queryKey: ['members', serverId] });

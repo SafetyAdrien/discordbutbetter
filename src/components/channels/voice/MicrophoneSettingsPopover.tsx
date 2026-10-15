@@ -164,7 +164,7 @@ export function MicrophoneSettingsPopover({
             <Label className="text-xs text-muted-foreground">Sensibilité du micro</Label>
             <div className="flex gap-1">
               {(['low', 'medium', 'high'] as VADSensitivity[]).map((s) => (
-                <button
+                <button type="button"
                   key={s}
                   onClick={() => onVadSensitivityChange(s)}
                   className={cn(
@@ -192,7 +192,7 @@ export function MicrophoneSettingsPopover({
                 </div>
                 <div className="flex gap-1">
                   {(['off', 'low', 'high'] as NoiseSuppressonMode[]).map((m) => (
-                    <button
+                    <button type="button"
                       key={m}
                       onClick={() => onNoiseSuppressionChange(m)}
                       className={cn(

@@ -102,7 +102,6 @@ export function SoundBoardPage({ serverId }: SoundBoardPageProps) {
       .filter((q) => q.status === 'error' && q.error !== 'Fichier > 512 Ko')
       .map((q) => ({ ...q, status: 'pending' as const, error: undefined }));
     if (retry.length === 0) {
-      toast.info('Aucun fichier réessayable');
       return;
     }
     setQueue((prev) => prev.map((q) => retry.find((x) => x.id === q.id) ?? q));

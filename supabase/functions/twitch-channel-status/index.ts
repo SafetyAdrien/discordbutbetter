@@ -1,13 +1,13 @@
 // Twitch channel/stream status via the Twitch Helix API directly.
 // Returns a normalized payload regardless of online/offline state.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
+import { corsHeaders as buildCorsHeaders, preflight } from '../_shared/cors.ts';
 
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
+
+
+// Origin-restricted CORS (see _shared/cors.ts) — no more blanket '*'.
+const corsHeaders = (req: Request) => buildCorsHeaders(req);
 
 const HELIX = 'https://api.twitch.tv/helix';
 const OAUTH_TOKEN_URL = 'https://id.twitch.tv/oauth2/token';
@@ -74,7 +74,7 @@ async function helixGet(path: string, clientId: string, token: string) {
 }
 
 Deno.serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
+  if (req.method === 'OPTIONS') return preflight(req);
 
   try {
     // Require an authenticated caller to prevent unauthenticated abuse of the
@@ -83,7 +83,7 @@ Deno.serve(async (req: Request) => {
     if (!authHeader?.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
       });
     }
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -95,7 +95,7 @@ Deno.serve(async (req: Request) => {
     if (userError || !userData?.user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -104,7 +104,7 @@ Deno.serve(async (req: Request) => {
     if (!clientId || !clientSecret) {
       return new Response(JSON.stringify({ error: 'missing_credentials' }), {
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -114,7 +114,7 @@ Deno.serve(async (req: Request) => {
     if (!login || !/^[a-z0-9_]{3,25}$/.test(login)) {
       return new Response(JSON.stringify({ error: 'invalid_login' }), {
         status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -134,7 +134,7 @@ Deno.serve(async (req: Request) => {
         profileImage: null, displayName: null, login,
       };
       return new Response(JSON.stringify(payload), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -159,13 +159,13 @@ Deno.serve(async (req: Request) => {
     };
 
     return new Response(JSON.stringify(payload), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=60' },
+      headers: { ...corsHeaders(req), 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=60' },
     });
   } catch (err) {
     console.error('twitch-channel-status error', err);
     return new Response(JSON.stringify({ error: 'Internal error' }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
     });
   }
 });

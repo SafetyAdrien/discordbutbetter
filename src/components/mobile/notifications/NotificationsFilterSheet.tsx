@@ -16,7 +16,6 @@ import { useServers } from '@/hooks/useServers';
 import { useFrequentDMContacts } from '@/hooks/useFrequentDMContacts';
 import { useFavoriteFriendIds } from '@/hooks/useFavoriteFriends';
 import { haptics } from '@/lib/haptics';
-import { toast } from 'sonner';
 import type { NotifKind } from '@/hooks/useUnifiedNotifications';
 
 export type Period = 'today' | 'week' | 'month' | 'all';
@@ -124,13 +123,11 @@ export function NotificationsFilterSheet({ open, onOpenChange, filters, onChange
     const cleared: NotifFilters = { ...DEFAULT_FILTERS, kinds: new Set() };
     onChange(cleared);
     try { localStorage.removeItem(STORAGE_KEY); } catch {}
-    toast.success('Filtres réinitialisés');
   };
 
   const save = () => {
     haptics.medium();
     persistFilters(filters);
-    toast.success('Filtres sauvegardés');
     onOpenChange(false);
   };
 
@@ -211,7 +208,7 @@ export function NotificationsFilterSheet({ open, onOpenChange, filters, onChange
                     const Icon = o.icon;
                     const active = filters.kinds.has(o.id);
                     return (
-                      <button
+                      <button type="button"
                         key={o.id}
                         onClick={() => toggleKind(o.id)}
                         className={cn(
@@ -343,7 +340,7 @@ function HeaderIconBtn({
   variant?: 'primary';
 }) {
   return (
-    <button
+    <button type="button"
       onClick={onClick}
       aria-label={label}
       className={cn(
@@ -373,7 +370,7 @@ function Section({
 }) {
   return (
     <div className="border-b border-border/40 last:border-b-0">
-      <button
+      <button type="button"
         onClick={onToggle}
         className="w-full flex items-center justify-between px-3 py-2.5 active:bg-muted/40 transition-colors"
       >
@@ -427,7 +424,7 @@ function PickerRow({
   onClick: () => void;
 }) {
   return (
-    <button
+    <button type="button"
       onClick={onClick}
       className={cn(
         'w-full flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors text-left',

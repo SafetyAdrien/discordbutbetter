@@ -100,7 +100,6 @@ export function EmojiManager({ serverId }: EmojiManagerProps) {
         file: fileForUpload,
         silent: true,
       });
-      toast.success(`:${result.name}: ajouté`);
     } catch (e: unknown) {
       const message = getErrorMessage(e);
       toast.error(
@@ -205,7 +204,7 @@ export function EmojiManager({ serverId }: EmojiManagerProps) {
                         </span>
                       </div>
                     </div>
-                    <button
+                    <button type="button"
                       onClick={() => deleteEmoji.mutate({ emojiId: emoji.id, serverId })}
                       className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 p-1.5 text-muted-foreground hover:text-destructive transition-all shrink-0"
                       aria-label="Delete emoji"

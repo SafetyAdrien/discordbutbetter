@@ -20,6 +20,7 @@ interface EditCategoryModalProps {
 interface CategoryDetails {
   id: string;
   name: string;
+  icon: string | null;
   server_id: string;
   position: number | null;
   created_at: string | null;

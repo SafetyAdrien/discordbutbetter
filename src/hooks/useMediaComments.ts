@@ -30,12 +30,13 @@ export interface MediaComment {
 export function useMediaComments(postId: string) {
   const queryClient = useQueryClient();
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   useEffect(() => {
     if (!postId) return;
 
     const channel = supabase
-      .channel(`media-comments-rt-${postId}`)
+      .channel(`media-comments-rt-${postId}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'media_post_comments', filter: `post_id=eq.${postId}` },
@@ -178,7 +179,7 @@ export function useAddMediaComment() {
       }
 
       const tempComment: MediaComment = {
-        id: `temp-${Date.now()}`,
+        id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         post_id: data.postId,
         content: data.content,
         created_at: new Date().toISOString(),

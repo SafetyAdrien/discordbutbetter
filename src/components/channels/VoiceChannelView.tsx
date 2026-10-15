@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
-import { useVoice, useVoiceParticipants } from '@/contexts/VoiceContext';
+import { useVoice, useVoiceParticipants, useVoiceLevels } from '@/contexts/VoiceContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { MemberList } from '@/components/layout/MemberList';
 import { Button } from '@/components/ui/button';
@@ -58,8 +58,7 @@ export function VoiceChannelView({
     toggleMute, 
     toggleDeafen, 
     speakingUsers,
-    audioLevels,
-    hasMicrophoneAccess,
+        hasMicrophoneAccess,
     // Camera & Screen share
     isCameraActive,
     localCameraStream,
@@ -81,6 +80,7 @@ export function VoiceChannelView({
     audioFilters,
     setAudioFilter,
   } = useVoice();
+  const { audioLevels } = useVoiceLevels();
   
   const { data: participants = [] } = useVoiceParticipants(channel.id);
   const isConnectedToThisChannel = voiceState.channelId === channel.id;

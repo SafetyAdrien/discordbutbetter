@@ -95,7 +95,7 @@ export function InfiniteZoomImage({ src, alt, className }: Props) {
         }}
       />
       {scale !== 1 && (
-        <button
+        <button type="button"
           onClick={(e) => { e.stopPropagation(); setScale(1); setTx(0); setTy(0); }}
           className="absolute top-3 left-3 z-10 px-2.5 py-1 rounded-md bg-black/60 hover:bg-black/80 text-white text-xs font-medium"
         >

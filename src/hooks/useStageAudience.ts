@@ -1,10 +1,11 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 // Hook to get audience count for a stage channel (for ChannelList display)
 export function useStageAudienceCount(channelId: string | null) {
   const queryClient = useQueryClient();
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   const query = useQuery({
     queryKey: ['stage-audience-count', channelId],
@@ -51,7 +52,7 @@ export function useStageAudienceCount(channelId: string | null) {
     if (!channelId) return;
 
     const sessionChannel = supabase
-      .channel(`stage-session-count:${channelId}`)
+      .channel(`stage-session-count:${channelId}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         {
@@ -76,7 +77,7 @@ export function useStageAudienceCount(channelId: string | null) {
     if (!query.data?.sessionId) return;
 
     const participantsChannel = supabase
-      .channel(`stage-participants-count:${query.data.sessionId}`)
+      .channel(`stage-participants-count:${query.data.sessionId}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         {

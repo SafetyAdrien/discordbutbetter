@@ -361,6 +361,7 @@ export type Database = {
       categories: {
         Row: {
           created_at: string | null
+          icon: string | null
           id: string
           name: string
           position: number | null
@@ -368,6 +369,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          icon?: string | null
           id?: string
           name: string
           position?: number | null
@@ -375,6 +377,7 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          icon?: string | null
           id?: string
           name?: string
           position?: number | null
@@ -1425,8 +1428,54 @@ export type Database = {
           },
         ]
       }
+      forum_channel_config: {
+        Row: {
+          channel_id: string
+          default_auto_archive_duration: number
+          default_layout: number
+          default_reaction_emoji_id: string | null
+          default_reaction_emoji_name: string | null
+          default_sort_order: number
+          default_tag_setting: string
+          hide_media_download_options: boolean
+          require_tag: boolean
+        }
+        Insert: {
+          channel_id: string
+          default_auto_archive_duration?: number
+          default_layout?: number
+          default_reaction_emoji_id?: string | null
+          default_reaction_emoji_name?: string | null
+          default_sort_order?: number
+          default_tag_setting?: string
+          hide_media_download_options?: boolean
+          require_tag?: boolean
+        }
+        Update: {
+          channel_id?: string
+          default_auto_archive_duration?: number
+          default_layout?: number
+          default_reaction_emoji_id?: string | null
+          default_reaction_emoji_name?: string | null
+          default_sort_order?: number
+          default_tag_setting?: string
+          hide_media_download_options?: boolean
+          require_tag?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "forum_channel_config_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: true
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       forum_posts: {
         Row: {
+          applied_tags: string[]
+          archived: boolean
           author_id: string
           channel_id: string
           comment_count: number
@@ -1443,6 +1492,8 @@ export type Database = {
           upvote_count: number
         }
         Insert: {
+          applied_tags?: string[]
+          archived?: boolean
           author_id: string
           channel_id: string
           comment_count?: number
@@ -1459,6 +1510,8 @@ export type Database = {
           upvote_count?: number
         }
         Update: {
+          applied_tags?: string[]
+          archived?: boolean
           author_id?: string
           channel_id?: string
           comment_count?: number
@@ -1494,6 +1547,47 @@ export type Database = {
             columns: ["server_id"]
             isOneToOne: false
             referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      forum_tags: {
+        Row: {
+          channel_id: string
+          created_at: string
+          emoji_id: string | null
+          emoji_name: string | null
+          id: string
+          moderated: boolean
+          name: string
+          position: number
+        }
+        Insert: {
+          channel_id: string
+          created_at?: string
+          emoji_id?: string | null
+          emoji_name?: string | null
+          id?: string
+          moderated?: boolean
+          name: string
+          position?: number
+        }
+        Update: {
+          channel_id?: string
+          created_at?: string
+          emoji_id?: string | null
+          emoji_name?: string | null
+          id?: string
+          moderated?: boolean
+          name?: string
+          position?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "forum_tags_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
             referencedColumns: ["id"]
           },
         ]
@@ -1751,45 +1845,6 @@ export type Database = {
           },
         ]
       }
-      media_post_duel_votes: {
-        Row: {
-          created_at: string
-          id: string
-          item_id: string
-          post_id: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          item_id: string
-          post_id: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          item_id?: string
-          post_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "media_post_duel_votes_item_id_fkey"
-            columns: ["item_id"]
-            isOneToOne: false
-            referencedRelation: "media_post_items"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "media_post_duel_votes_post_id_fkey"
-            columns: ["post_id"]
-            isOneToOne: false
-            referencedRelation: "media_posts"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       media_post_items: {
         Row: {
           alt_text: string | null
@@ -1861,51 +1916,66 @@ export type Database = {
       media_posts: {
         Row: {
           alt_text: string | null
+          applied_tags: string[]
+          archived: boolean
           author_id: string
           channel_id: string
+          comment_count: number
           created_at: string | null
           description: string
-          duel_expires_at: string | null
           file_name: string
           file_size: number
           file_type: string
           file_url: string
           id: string
-          is_duel: boolean
+          is_locked: boolean
+          is_pinned: boolean
           is_spoiler: boolean | null
+          last_activity_at: string
           title: string
+          updated_at: string
         }
         Insert: {
           alt_text?: string | null
+          applied_tags?: string[]
+          archived?: boolean
           author_id: string
           channel_id: string
+          comment_count?: number
           created_at?: string | null
           description?: string
-          duel_expires_at?: string | null
           file_name?: string
           file_size?: number
           file_type?: string
           file_url: string
           id?: string
-          is_duel?: boolean
+          is_locked?: boolean
+          is_pinned?: boolean
           is_spoiler?: boolean | null
+          last_activity_at?: string
           title: string
+          updated_at?: string
         }
         Update: {
           alt_text?: string | null
+          applied_tags?: string[]
+          archived?: boolean
           author_id?: string
           channel_id?: string
+          comment_count?: number
           created_at?: string | null
           description?: string
-          duel_expires_at?: string | null
           file_name?: string
           file_size?: number
           file_type?: string
           file_url?: string
           id?: string
-          is_duel?: boolean
+          is_locked?: boolean
+          is_pinned?: boolean
           is_spoiler?: boolean | null
+          last_activity_at?: string
           title?: string
+          updated_at?: string
         }
         Relationships: [
           {
@@ -4004,6 +4074,18 @@ export type Database = {
         Returns: undefined
       }
       can_access_realtime_topic: { Args: { _topic: string }; Returns: boolean }
+      duplicate_channel_shift: {
+        Args: { _channel_id: string; _new_position: number }
+        Returns: number
+      }
+      check_summarize_quota: {
+        Args: { _user_id: string; _window_hours?: number; _max_calls?: number }
+        Returns: Json
+      }
+      close_poll_and_claim_notification: {
+        Args: { _poll_id: string; _manual?: boolean }
+        Returns: undefined
+      }
       can_download_user_content: {
         Args: { _owner_id: string; _viewer_id: string }
         Returns: boolean

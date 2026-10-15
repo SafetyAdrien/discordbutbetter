@@ -94,7 +94,6 @@ import { MessageInput } from "@/components/chat/MessageInput";
 import { ReportModal } from "@/components/chat/ReportModal";
 import { RoleBadgePopover } from "@/components/chat/RoleBadgePopover";
 import { DeleteMessageDialog } from "./DeleteMessageDialog";
-import { toast } from "sonner";
 import { useSummaries } from "@/hooks/useSummaries";
 import { useMarkChannelAsRead } from "@/hooks/useMarkChannelAsRead";
 import { SummariesBar } from "@/components/summaries/SummariesBar";
@@ -157,7 +156,7 @@ function PollActions({
       <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 bg-[hsl(var(--surface-3))] border border-border/50 rounded-2xl shadow-[var(--shadow-elevation-2)] p-1 z-10 animate-fade-in w-fit">
         <Tooltip>
           <TooltipTrigger asChild>
-            <button onClick={onCopyId} className={slotCls}>
+            <button type="button" onClick={onCopyId} className={slotCls}>
               <ClipboardCopy className="w-4 h-4 text-muted-foreground" />
             </button>
           </TooltipTrigger>
@@ -165,7 +164,7 @@ function PollActions({
         </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
-            <button onClick={onCopyLink} className={slotCls}>
+            <button type="button" onClick={onCopyLink} className={slotCls}>
               <Link className="w-4 h-4 text-muted-foreground" />
             </button>
           </TooltipTrigger>
@@ -174,7 +173,7 @@ function PollActions({
         {isOwnPoll && !isPollExpired && onEndPoll && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <button onClick={onEndPoll} className={slotCls}>
+              <button type="button" onClick={onEndPoll} className={slotCls}>
                 <StopCircle className="w-4 h-4 text-muted-foreground" />
               </button>
             </TooltipTrigger>
@@ -184,7 +183,7 @@ function PollActions({
         {isOwnPoll && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <button onClick={onEdit} className={slotCls}>
+              <button type="button" onClick={onEdit} className={slotCls}>
                 <Pencil className="w-4 h-4 text-muted-foreground" />
               </button>
             </TooltipTrigger>
@@ -194,7 +193,7 @@ function PollActions({
         {isOwnPoll && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <button onClick={onDelete} className={cn(slotCls, "hover:bg-destructive/15")}>
+              <button type="button" onClick={onDelete} className={cn(slotCls, "hover:bg-destructive/15")}>
                 <Trash2 className="w-4 h-4 text-destructive" />
               </button>
             </TooltipTrigger>
@@ -211,7 +210,7 @@ function PollActions({
       {QUICK_REACTIONS_HOVER.map((emoji) => (
         <Tooltip key={emoji}>
           <TooltipTrigger asChild>
-            <button
+            <button type="button"
               onClick={() => onAddReaction(emoji)}
               className={cn(slotCls, "text-base leading-none")}
             >
@@ -225,7 +224,7 @@ function PollActions({
       {/* 2. Picker emoji complet */}
       <Popover>
         <PopoverTrigger asChild>
-          <button className={slotCls}>
+          <button type="button" className={slotCls}>
 
             <SmilePlus className="w-4 h-4 text-muted-foreground" />
           </button>
@@ -266,7 +265,7 @@ function PollActions({
               "🤨",
               "😐",
             ].map((emoji) => (
-              <button
+              <button type="button"
                 key={emoji}
                 onClick={() => onAddReaction(emoji)}
                 className="p-1 hover:bg-muted rounded text-lg transition-colors"
@@ -282,7 +281,7 @@ function PollActions({
       {onReply && (
         <Tooltip>
           <TooltipTrigger asChild>
-            <button onClick={onReply} className={slotCls}>
+            <button type="button" onClick={onReply} className={slotCls}>
               <Reply className="w-4 h-4 text-muted-foreground" />
             </button>
           </TooltipTrigger>
@@ -293,7 +292,7 @@ function PollActions({
       {/* 4. Menu Plus d'options */}
       <DropdownMenu onOpenChange={onDropdownOpenChange}>
         <DropdownMenuTrigger asChild>
-          <button className={slotCls}>
+          <button type="button" className={slotCls}>
 
             <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
           </button>
@@ -1149,7 +1148,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
               <div className="w-px h-6 bg-border hidden sm:block" />
               <Popover>
                 <PopoverTrigger asChild>
-                  <button className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded hover:bg-muted/50 transition-colors max-w-[150px] md:max-w-[250px] lg:max-w-[350px] min-w-0">
+                  <button type="button" className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded hover:bg-muted/50 transition-colors max-w-[150px] md:max-w-[250px] lg:max-w-[350px] min-w-0">
                     <MessageSquareText className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                     <span className="text-sm text-muted-foreground truncate [&_.markdown-content]:inline [&_h1]:text-sm [&_h2]:text-sm [&_h3]:text-sm [&_h4]:text-sm [&_p]:inline [&_*]:!m-0">
                       <MarkdownText
@@ -1181,15 +1180,15 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
               <PopoverContent side="bottom" align="end" className="w-64 p-3">
                 <h4 className="font-semibold text-foreground mb-3">Notifications</h4>
                 <div className="space-y-2">
-                  <button className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-muted/50 transition-colors text-sm">
+                  <button type="button" className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-muted/50 transition-colors text-sm">
                     <BellRing className="w-4 h-4 text-muted-foreground" />
                     <span>Tous les messages</span>
                   </button>
-                  <button className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-muted/50 transition-colors text-sm">
+                  <button type="button" className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-muted/50 transition-colors text-sm">
                     <AtSign className="w-4 h-4 text-muted-foreground" />
                     <span>Uniquement les mentions</span>
                   </button>
-                  <button className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-muted/50 transition-colors text-sm">
+                  <button type="button" className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-muted/50 transition-colors text-sm">
                     <BellOff className="w-4 h-4 text-muted-foreground" />
                     <span>Aucun message</span>
                   </button>
@@ -1247,7 +1246,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                               <p className="text-sm text-muted-foreground line-clamp-2">{pm.message?.content}</p>
                             </div>
                           </div>
-                          <button
+                          <button type="button"
                             onClick={() =>
                               unpinMessage.mutate({
                                 messageId: pm.message_id,
@@ -1546,7 +1545,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                           <span>
                             <span className="font-semibold text-foreground">{message.author.displayName}</span> a créé
                             un thread :{" "}
-                            <button
+                            <button type="button"
                               onClick={() => onSelectThread?.(threadId)}
                               className="font-semibold text-primary hover:underline cursor-pointer"
                             >
@@ -1571,7 +1570,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                               }}
                             />
                           ) : (
-                            <button
+                            <button type="button"
                               onClick={() => onSelectThread?.(threadId)}
                               className="flex items-start gap-2 w-fit max-w-full text-left py-1.5 px-2 rounded transition-colors bg-surface-elevated"
                             >
@@ -1698,7 +1697,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                               />
                             )}
                             <div className="flex gap-3 items-start -ml-[11px]">
-                              <button onClick={() => handleUserClick(message.author)} className="flex-shrink-0 !min-h-0 h-auto p-0">
+                              <button type="button" onClick={() => handleUserClick(message.author)} className="flex-shrink-0 !min-h-0 h-auto p-0">
                                 <Avatar className="w-10 h-10 mt-[2px] hover:opacity-80 transition-opacity">
                                   <AvatarImage src={message.author.avatar} alt={message.author.displayName} />
                                   <AvatarFallback className="bg-primary/20 text-primary">
@@ -1708,7 +1707,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                               </button>
                               <div className="flex-1 min-w-0 overflow-hidden">
                                 <div className="flex items-baseline gap-2 min-w-0 overflow-hidden">
-                                  <button
+                                  <button type="button"
                                     onClick={() => handleUserClick(message.author)}
                                     className="font-semibold hover:underline cursor-pointer truncate max-w-[200px] flex-shrink-0 text-[15px] leading-[1.375rem] !min-h-0 h-auto p-0"
                                     style={{ color: memberRoles?.get(message.author.id)?.[0]?.color || undefined }}
@@ -1974,8 +1973,20 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
         </div>
       </ScrollArea>
 
-      {/* Input Container - aligned with UserProfileCard (h-14) */}
-      <div className="flex-shrink-0 w-full px-4 pb-4 pt-2 md:px-4 md:pb-4 md:pt-2 relative">
+      {/*
+       * Input container.
+       *
+       * This wrapper used to carry `px-4 pb-4 pt-2` while MessageInput also
+       * applied its own gutter, so every composer in the app was inset 32px
+       * instead of 16px and stood 76px tall (8+4+44+4+16) against a 52px user
+       * panel — that 24px mismatch is exactly the vertical offset visible
+       * next to the sidebar. The padding is removed here and MessageInput owns
+       * it, which puts the row at 4+44+4 = 52px, matching the panel.
+       *
+       * The sibling children are unaffected: ReplyBanner (mx-4), TypingIndicator
+       * (px-4) and the edit bar (mx-4) all carry their own 16px inset.
+       */}
+      <div className="flex-shrink-0 w-full relative">
         {showJumpToBottom && (
           <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 z-20 flex items-center gap-2 px-3 py-1.5 rounded-full bg-[hsl(var(--surface-elevated))] border border-border/60 shadow-[0_4px_16px_rgba(0,0,0,0.25)] text-xs animate-slide-in-bottom">
             <span className="text-muted-foreground">Vous consultez d'anciens messages</span>
@@ -2001,7 +2012,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
         )}
         {editingMessageId && (
           <div className="mx-4 mb-2 flex items-center gap-2 bg-[hsl(var(--surface-3))] rounded-xl px-3 py-2 border-l-[3px] border-primary shadow-sm">
-            <button
+            <button type="button"
               onClick={handleCancelEdit}
               className="flex items-center justify-center w-6 h-6 rounded-full bg-[hsl(var(--surface-4))] hover:bg-[hsl(var(--surface-5))] text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
               aria-label="Annuler la modification"
@@ -2092,7 +2103,6 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
             details,
             messageId: reportingMessage?.id,
           });
-          toast.success("Signalement envoyé. Merci !");
           setReportingMessage(null);
         }}
       />

@@ -26,6 +26,7 @@ export interface Server {
 export interface Category {
   id: string;
   name: string;
+  icon?: string | null;
   channels: Channel[];
 }
 
@@ -72,7 +73,13 @@ export interface Attachment {
   id: string;
   url: string;
   name: string;
-  type: 'image' | 'video' | 'file';
+  /**
+   * Reflet de `StoredAttachment` (src/components/chat/MessageAttachments.tsx) :
+   * les stickers et GIF sont bien persistés avec ces types. Les messages reply
+   * conservés doivent donc accepter les mêmes valeurs, sinon le mapping
+   * `repliedMessage.attachments` casse à la compilation.
+   */
+  type: 'image' | 'video' | 'file' | 'sticker' | 'gif';
 }
 
 export interface Reaction {

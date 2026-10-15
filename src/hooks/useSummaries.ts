@@ -189,7 +189,6 @@ export function useSummaries(channelId?: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['channel-summaries', channelId] });
-      toast.success('Résumés générés avec succès');
     },
     onError: (error: any) => {
       console.error('Error generating summaries:', error);

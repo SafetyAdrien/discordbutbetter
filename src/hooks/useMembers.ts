@@ -137,6 +137,11 @@ export function useMembers(serverId: string | null) {
 
   const membersChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const rolesChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  // Several components mount their own instance of this hook for the same
+  // serverId simultaneously (Index, ChannelList, MemberList, usePermissions
+  // consumers) — suffix realtime channel names per instance so they don't
+  // collide on the same Supabase Realtime topic.
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   // Real-time subscription for server_members changes (join/leave/kick/ban)
   useEffect(() => {
@@ -148,7 +153,7 @@ export function useMembers(serverId: string | null) {
       membersChannelRef.current = null;
     }
 
-    const channelName = `server-members:${serverId}`;
+    const channelName = `server-members:${serverId}-${instanceIdRef.current}`;
 
     membersChannelRef.current = supabase
       .channel(channelName)
@@ -203,7 +208,7 @@ export function useMembers(serverId: string | null) {
       rolesChannelRef.current = null;
     }
 
-    const channelName = `member-roles-for-members:${serverId}`;
+    const channelName = `member-roles-for-members:${serverId}-${instanceIdRef.current}`;
 
     rolesChannelRef.current = supabase
       .channel(channelName)

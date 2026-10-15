@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
@@ -17,6 +17,7 @@ const BADGES_CACHE_KEY = 'badges:all';
 
 export function useBadges() {
   const queryClient = useQueryClient();
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   const query = useQuery({
     queryKey: ['badges'],
@@ -38,7 +39,7 @@ export function useBadges() {
 
   useEffect(() => {
     const channel = supabase
-      .channel('badges-rt')
+      .channel(`badges-rt-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'badges' },

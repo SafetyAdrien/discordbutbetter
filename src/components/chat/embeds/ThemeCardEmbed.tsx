@@ -8,7 +8,6 @@ import { Sparkles, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { extractThemesFromContent, type SharedCustomTheme } from '@/lib/customTheme/encode';
 import { applySharedTheme, useCustomTheme } from '@/hooks/useCustomTheme';
-import { toast } from 'sonner';
 
 function ThemeCard({ theme }: { theme: SharedCustomTheme }) {
   const current = useCustomTheme();
@@ -28,7 +27,6 @@ function ThemeCard({ theme }: { theme: SharedCustomTheme }) {
 
   const onApply = () => {
     applySharedTheme(theme);
-    toast.success('Thème appliqué');
   };
 
   return (

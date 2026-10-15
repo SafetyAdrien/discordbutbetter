@@ -72,7 +72,6 @@ export function ServerDeletePage({ serverId, onClose }: ServerDeletePageProps) {
           old?.filter(s => s.id !== serverId) ?? []
         );
         
-        toast.success('Serveur supprimé avec succès');
         onClose();
       } else if (isSecondaryOwner) {
         const { error } = await supabase.rpc('request_server_deletion', {
@@ -81,7 +80,6 @@ export function ServerDeletePage({ serverId, onClose }: ServerDeletePageProps) {
         
         if (error) throw error;
         
-        toast.success('Demande de suppression envoyée au propriétaire');
         setShowConfirm(false);
         setPassword('');
       }

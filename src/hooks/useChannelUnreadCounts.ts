@@ -15,6 +15,7 @@ export function useChannelUnreadCounts(serverId: string | null) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const countedMentionMessageIdsRef = useRef<Set<string>>(new Set());
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   const cachedKey = serverId && user?.id ? `channel-unread:${serverId}:${user.id}` : null;
   const cachedData = cachedKey ? cacheGetSync<Record<string, ChannelUnreadInfo>>(cachedKey) : undefined;
@@ -59,7 +60,7 @@ export function useChannelUnreadCounts(serverId: string | null) {
     };
 
     const mentionsChannel = supabase
-      .channel(`channel-mentions-${serverId}`)
+      .channel(`channel-mentions-${serverId}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'channel_mentions', filter: `user_id=eq.${user.id}` },
@@ -101,7 +102,7 @@ export function useChannelUnreadCounts(serverId: string | null) {
       });
 
     const messagesChannel = supabase
-      .channel(`channel-messages-${serverId}`)
+      .channel(`channel-messages-${serverId}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages' },
@@ -152,7 +153,7 @@ export function useChannelUnreadCounts(serverId: string | null) {
     const everReadsRef = { current: false };
 
     const readChannel = supabase
-      .channel(`channel-read-states-${serverId}-${user.id}`)
+      .channel(`channel-read-states-${serverId}-${user.id}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         {
@@ -254,6 +255,10 @@ export function useChannelUnreadCounts(serverId: string | null) {
         .in('channel_id', channelIds)
         .gt('created_at', oldestRead)
         .neq('author_id', user.id)
+        // Must be ordered: without ORDER BY Postgres returns an arbitrary 2000
+        // rows, so once a server exceeds the cap some channels silently lose
+        // their unread badge (and others gain a false one).
+        .order('created_at', { ascending: false })
         .limit(2000);
 
       const hasUnreadMap: Record<string, boolean> = {};

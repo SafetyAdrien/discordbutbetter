@@ -137,7 +137,7 @@ function SortableServerIcon({
         <Tooltip>
           <ContextMenuTrigger asChild>
             <TooltipTrigger asChild>
-                <button
+                <button type="button"
                   {...attributes}
                   {...listeners}
                   onClick={onClick}
@@ -389,7 +389,6 @@ export function ServerList({
 
   const handleMarkAsRead = (serverId: string) => {
     markServerAsRead(serverId);
-    toast.success('Serveur marqué comme lu');
   };
 
   const handleInvite = (serverId: string) => {
@@ -481,11 +480,15 @@ export function ServerList({
   }, []);
 
   return (
-    <div className="w-[80px] bg-[hsl(var(--surface-server-list))] border-r border-border/20 flex flex-col items-center py-3 gap-1.5">
+    // h-full/min-h-0: the rail is now nested one level deeper (inside the
+    // sidebar column that also hosts the user panel), so it no longer inherits
+    // its full height from the outer flex. Without these it collapses to its
+    // content height and the rail background stops mid-screen.
+    <div className="w-[72px] h-full min-h-0 bg-[hsl(var(--surface-server-list))] border-r border-white/[0.06] flex flex-col items-center py-3 gap-1.5">
       {/* Home / DMs */}
       <Tooltip>
         <TooltipTrigger asChild>
-          <button
+          <button type="button"
             onClick={() => onServerSelect(null)}
             className={cn(
               'server-icon relative group',
@@ -577,7 +580,7 @@ export function ServerList({
       {/* Action Buttons */}
       <Tooltip>
         <TooltipTrigger asChild>
-          <button
+          <button type="button"
             onClick={onCreateClick}
             className="server-icon bg-surface-3 hover:bg-status-online hover:text-primary-foreground text-status-online"
           >
@@ -591,7 +594,7 @@ export function ServerList({
 
       <Tooltip>
         <TooltipTrigger asChild>
-          <button
+          <button type="button"
             onClick={onDiscoverClick}
             className="server-icon bg-surface-3 hover:bg-primary hover:text-primary-foreground text-primary"
           >

@@ -1,16 +1,16 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 import { AccessToken } from 'npm:livekit-server-sdk@^2.17.0';
 import { VideoGrant } from 'npm:livekit-server-sdk@^2.17.0';
+import { corsHeaders as buildCorsHeaders, preflight } from '../_shared/cors.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
+
+
+// Origin-restricted CORS (see _shared/cors.ts) — no more blanket '*'.
+const corsHeaders = (req: Request) => buildCorsHeaders(req);
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return preflight(req);
   }
 
   try {
@@ -19,7 +19,7 @@ Deno.serve(async (req) => {
     if (!authHeader?.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
     if (!livekitUrl || !livekitApiKey || !livekitApiSecret) {
       return new Response(JSON.stringify({ error: 'LiveKit not configured on backend' }), {
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -43,23 +43,47 @@ Deno.serve(async (req) => {
     if (userError || !userData?.user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
       });
     }
 
     const body = await req.json().catch(() => ({}));
-    const room = body?.room;
+    const channelId = body?.channelId;
     // SECURITY: Always use server-verified user ID. Never trust client-supplied identity.
     const identity = userData.user.id;
-    const name = body?.name || userData.user.user_metadata?.display_name || userData.user.email || identity;
-    const metadata = body?.metadata;
 
-    if (!room || typeof room !== 'string') {
-      return new Response(JSON.stringify({ error: 'room is required' }), {
+    if (!channelId || typeof channelId !== 'string') {
+      return new Response(JSON.stringify({ error: 'channelId is required' }), {
         status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
       });
     }
+
+    // SECURITY: the LiveKit room name is DERIVED server-side from the channel id.
+    // It is never accepted from the client — otherwise any authenticated user
+    // could request a token for an arbitrary room and join someone else's call.
+    const room = `channel:${channelId}`;
+
+    // Authorize: the caller must actually be able to connect to this voice channel.
+    // `has_channel_permission` is SECURITY DEFINER, so this works even though the
+    // `channels` table is not directly readable by every authenticated user.
+    const { data: allowed, error: permError } = await supabaseAuth.rpc('has_channel_permission', {
+      _user_id: identity,
+      _channel_id: channelId,
+      _permission: 'connect_voice',
+    });
+
+    if (permError || allowed !== true) {
+      console.error('livekit-token: permission denied', { channelId, identity, permError });
+      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403,
+        headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Name/metadata are cosmetic only; identity + room are already server-controlled.
+    const name = body?.name || userData.user.user_metadata?.display_name || userData.user.email || identity;
+    const metadata = body?.metadata;
 
     // Admin grants are never trusted from the client. If admin capabilities are
     // ever needed, derive them server-side by checking the caller's permissions
@@ -84,13 +108,13 @@ Deno.serve(async (req) => {
 
     return new Response(
       JSON.stringify({ token: jwt, url: livekitUrl }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      { headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
     );
   } catch (error) {
     console.error('LiveKit token error:', error);
     return new Response(JSON.stringify({ error: 'Internal error' }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
     });
   }
 });

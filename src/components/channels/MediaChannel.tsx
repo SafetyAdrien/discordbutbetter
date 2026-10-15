@@ -1,17 +1,21 @@
 import { useState, useCallback, useMemo } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { Upload, Grid, List, Users, EyeOff, Layers, Rss } from 'lucide-react';
+import {
+  Upload, Grid, List, Users, EyeOff, Layers, Tag as TagIcon, Lock, Clock, Pin,
+} from 'lucide-react';
 import { StreamlineMedia } from '@/components/icons/StreamlineMedia';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { UploadDropOverlay } from '@/components/chat/upload/UploadDropOverlay';
 import { useHasChannelPermission } from '@/hooks/useUserChannelPermissions';
 import { CreateMediaPostModal } from '@/components/channels/media/CreateMediaPostModal';
 import { MediaPostSidePanel } from '@/components/channels/media/MediaPostSidePanel';
-import { MediaFeed } from '@/components/channels/media/MediaFeed';
 import { useMediaPosts, useCreateMediaPost, type MediaPost } from '@/hooks/useMediaPosts';
 import { useMediaPostReactions, useToggleMediaReaction } from '@/hooks/useMediaReactions';
 import { ReactionBar } from '@/components/chat/ReactionBar';
+import { useForumTags, useForumChannelConfig, FORUM_LAYOUTS, FORUM_SORT_ORDERS } from '@/hooks/useForumTags';
 
 interface Channel {
   id: string;
@@ -30,7 +34,22 @@ export interface MediaChannelProps {
 
 export function MediaChannel({ channel, onToggleMembers, showMembers, hideHeader = false }: MediaChannelProps) {
   const { data: canUploadMedia = true } = useHasChannelPermission(channel.id, 'upload_media');
-  const [viewMode, setViewMode] = useState<'feed' | 'grid' | 'list'>('feed');
+  // Forum preset configuration (Fluxer: GUILD_MEDIA shares the Forum contract).
+  const { data: definedTags = [] } = useForumTags(channel.id);
+  const { data: config } = useForumChannelConfig(channel.id);
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+
+  const tagSetting = config?.default_tag_setting ?? 'match_some';
+  const requireTag = config?.require_tag ?? false;
+  const hideDownload = config?.hide_media_download_options ?? false;
+
+  // Fluxer: a media channel is a forum — it only has LIST and GRID layouts.
+  // The social "feed" (stories) view is gone.
+  const [viewModeOverride, setViewModeOverride] = useState<'grid' | 'list' | null>(null);
+  const forumLayout = config?.default_layout ?? FORUM_LAYOUTS.DEFAULT;
+  const viewMode: 'grid' | 'list' =
+    viewModeOverride ?? (forumLayout === FORUM_LAYOUTS.LIST ? 'list' : 'grid');
+  const setViewMode = (v: 'grid' | 'list') => setViewModeOverride(v);
   const [selectedFiles, setSelectedFiles] = useState<File[] | null>(null);
   const [quotedPost, setQuotedPost] = useState<MediaPost | null>(null);
   const [activePost, setActivePost] = useState<MediaPost | null>(null);
@@ -43,6 +62,47 @@ export function MediaChannel({ channel, onToggleMembers, showMembers, hideHeader
   // Reactions
   const postIds = useMemo(() => mediaItems.map(m => m.id), [mediaItems]);
   const { data: reactionsData = {} } = useMediaPostReactions(postIds);
+
+  const tagById = useMemo(() => {
+    const m = new Map<string, (typeof definedTags)[number]>();
+    definedTags.forEach(t => m.set(t.id, t));
+    return m;
+  }, [definedTags]);
+
+  /**
+   * Posts after the Forum tag filter.
+   *
+   * `match_some` = at least one selected tag (Fluxer's default),
+   * `match_all`  = every selected tag. A post with no tags never matches a
+   * filter, which is the expected behaviour once tags are configured.
+   */
+  const visibleMedia = useMemo(() => {
+    let list = mediaItems;
+
+    if (selectedTagIds.length > 0) {
+      list = list.filter((m) => {
+        const applied = m.applied_tags ?? [];
+        return tagSetting === 'match_all'
+          ? selectedTagIds.every((id) => applied.includes(id))
+          : selectedTagIds.some((id) => applied.includes(id));
+      });
+    }
+
+    // Forum ordering: pinned first, then by the channel's default sort order
+    // (LATEST_ACTIVITY or CREATION_TIME). Archived posts are hidden.
+    const visible = list.filter((m) => !m.archived);
+    const pinned = visible.filter((m) => m.is_pinned);
+    const rest = visible.filter((m) => !m.is_pinned);
+
+    if (config?.default_sort_order === FORUM_SORT_ORDERS.CREATION_TIME) {
+      rest.sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''));
+    } else {
+      rest.sort((a, b) =>
+        (b.last_activity_at ?? b.created_at ?? '').localeCompare(a.last_activity_at ?? a.created_at ?? ''));
+    }
+
+    return [...pinned, ...rest];
+  }, [mediaItems, selectedTagIds, tagSetting, config?.default_sort_order]);
   const toggleReaction = useToggleMediaReaction();
   const handleToggleReaction = (postId: string, emoji: string) => {
     const currentReactions = reactionsData?.[postId] || [];
@@ -108,8 +168,7 @@ export function MediaChannel({ channel, onToggleMembers, showMembers, hideHeader
     description: string;
     altTexts: string[];
     isSpoiler: boolean;
-    isDuel?: boolean;
-    duelDurationHours?: number;
+    appliedTags?: string[];
   }) => {
     createPost.mutate(data, {
       onSuccess: (created) => {
@@ -141,21 +200,21 @@ export function MediaChannel({ channel, onToggleMembers, showMembers, hideHeader
         <div className="flex items-center gap-2 min-w-0 flex-shrink">
           <StreamlineMedia className="w-4 h-4 text-muted-foreground flex-shrink-0" />
           <h2 className="font-semibold text-foreground truncate">{channel.name}</h2>
+          {/* Post count, so the channel reads as a collection rather than a feed. */}
+          <span className="text-xs text-muted-foreground tabular-nums flex-shrink-0">
+            {visibleMedia.length}
+            {mediaItems.length !== visibleMedia.length && `/${mediaItems.length}`}
+          </span>
+        </div>
+
+        <div className="hidden md:flex items-center gap-1 text-xs text-muted-foreground flex-shrink-0">
+          <Clock className="w-3.5 h-3.5" />
+          {config?.default_sort_order === FORUM_SORT_ORDERS.CREATION_TIME ? 'Par date' : 'Par activité'}
         </div>
 
         <div className="flex items-center gap-2 ml-auto flex-shrink-0">
           <div className="flex rounded-md border border-border overflow-hidden">
-            <button
-              onClick={() => setViewMode('feed')}
-              className={cn(
-                'p-1.5 transition-colors',
-                viewMode === 'feed' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'
-              )}
-              title="Fil social"
-            >
-              <Rss className="w-4 h-4" />
-            </button>
-            <button
+            <button type="button"
               onClick={() => setViewMode('grid')}
               className={cn(
                 'p-1.5 transition-colors',
@@ -165,7 +224,7 @@ export function MediaChannel({ channel, onToggleMembers, showMembers, hideHeader
             >
               <Grid className="w-4 h-4" />
             </button>
-            <button
+            <button type="button"
               onClick={() => setViewMode('list')}
               className={cn(
                 'p-1.5 transition-colors',
@@ -196,34 +255,72 @@ export function MediaChannel({ channel, onToggleMembers, showMembers, hideHeader
       </div>
       )}
 
+      {/* Tag filters — Fluxer's available_tags on the channel */}
+      {definedTags.length > 0 && (
+        <div className="px-4 py-2.5 border-b border-border flex items-center gap-1 flex-wrap">
+          <Badge
+            variant={selectedTagIds.length === 0 ? 'default' : 'outline'}
+            className="cursor-pointer"
+            onClick={() => setSelectedTagIds([])}
+          >
+            Tous
+          </Badge>
+          {definedTags.map((t) => {
+            const active = selectedTagIds.includes(t.id);
+            return (
+              <Tooltip key={t.id}>
+                <TooltipTrigger asChild>
+                  <Badge
+                    variant={active ? 'default' : 'outline'}
+                    className="cursor-pointer gap-1"
+                    onClick={() => setSelectedTagIds(prev =>
+                      prev.includes(t.id) ? prev.filter(id => id !== t.id) : [...prev, t.id])}
+                  >
+                    {t.emoji_name ? <span>{t.emoji_name}</span> : <TagIcon className="w-3 h-3" />}
+                    {t.name}
+                    {t.moderated && <Lock className="w-2.5 h-2.5 opacity-70" />}
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {tagSetting === 'match_all' && selectedTagIds.length > 1
+                    ? 'Tous les tags sélectionnés sont requis'
+                    : t.name}
+                </TooltipContent>
+              </Tooltip>
+            );
+          })}
+        </div>
+      )}
+
       {/* Content */}
-      <div className={cn('flex-1 overflow-y-auto', viewMode === 'feed' ? '' : 'p-4')}>
-        {mediaItems.length === 0 ? (
+      <div className={cn('flex-1 overflow-y-auto', viewMode === 'grid' && 'p-4')}>
+        {visibleMedia.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center p-4">
             <div className="w-20 h-20 rounded-full bg-muted/50 flex items-center justify-center mb-4">
               <StreamlineMedia className="w-10 h-10 text-muted-foreground/50" />
             </div>
-            <h3 className="text-lg font-semibold mb-2">Aucun média</h3>
+            {/* Distinguish "this channel is empty" from "filters match nothing" —
+                they need different actions. */}
+            <h3 className="text-lg font-semibold mb-2">
+              {mediaItems.length === 0 ? 'Aucun média' : 'Aucun résultat'}
+            </h3>
             <p className="text-muted-foreground text-sm max-w-md mb-4">
-              Partagez des images et vidéos avec les membres de ce salon.
+              {mediaItems.length === 0
+                ? 'Partagez des images et vidéos avec les membres de ce salon.'
+                : 'Aucun média ne correspond aux filtres sélectionnés.'}
             </p>
-            {canUploadMedia && (
+            {mediaItems.length > 0 && selectedTagIds.length > 0 && (
+              <Button variant="secondary" onClick={() => setSelectedTagIds([])}>
+                Réinitialiser les filtres
+              </Button>
+            )}
+            {canUploadMedia && mediaItems.length === 0 && (
               <Button onClick={() => handleUploadClick()}>
                 <Upload className="w-4 h-4 mr-2" />
                 Téléverser un fichier
               </Button>
             )}
           </div>
-        ) : viewMode === 'feed' ? (
-          <MediaFeed
-            posts={mediaItems}
-            channelId={channel.id}
-            serverId={null}
-            onOpenDetail={(p) => setActivePost(p)}
-            onDeleted={(id) => { if (activePost?.id === id) setActivePost(null); }}
-            onReply={(p) => handleUploadClick(p)}
-          />
-
         ) : (
           <div
             className={cn(
@@ -232,7 +329,7 @@ export function MediaChannel({ channel, onToggleMembers, showMembers, hideHeader
                 : 'space-y-2'
             )}
           >
-            {mediaItems.map((item) => {
+            {visibleMedia.map((item) => {
               const firstItem = item.items?.[0];
               const cover = firstItem ?? {
                 file_url: item.file_url,
@@ -247,6 +344,8 @@ export function MediaChannel({ channel, onToggleMembers, showMembers, hideHeader
                 onClick={() => !item._isPending && setActivePost(item)}
                 className={cn(
                   'group relative overflow-hidden bg-muted cursor-pointer hover:ring-2 hover:ring-primary transition-all',
+                  // Pinned posts get a visible accent instead of only a corner icon.
+                  item.is_pinned && 'ring-2 ring-[hsl(var(--online))]',
                   viewMode === 'grid' ? 'aspect-square rounded-[15%]' : 'flex items-center gap-4 p-2 rounded-lg',
                   item._isPending && 'opacity-60 cursor-default'
                 )}
@@ -281,6 +380,42 @@ export function MediaChannel({ channel, onToggleMembers, showMembers, hideHeader
                   </div>
                 )}
 
+                {/* Forum state badges — pinned posts first, locked posts read-only. */}
+                {(item.is_pinned || item.is_locked) && (
+                  <div className="absolute top-2 left-2 z-20 flex items-center gap-1">
+                    {item.is_pinned && (
+                      <span className="p-1 rounded-md bg-black/70 text-[hsl(var(--online))]" title="Épinglé">
+                        <Pin className="w-3 h-3" />
+                      </span>
+                    )}
+                    {item.is_locked && (
+                      <span className="p-1 rounded-md bg-black/70 text-white" title="Verrouillé">
+                        <Lock className="w-3 h-3" />
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {/* Channel tags, so a grid can be scanned by topic. */}
+                {viewMode === 'grid' && (item.applied_tags?.length ?? 0) > 0 && (
+                  <div className="absolute bottom-2 left-2 right-2 z-20 flex gap-1 overflow-hidden">
+                    {(item.applied_tags ?? [])
+                      .slice(0, 2)
+                      .map((id) => {
+                        const tag = tagById.get(id);
+                        if (!tag) return null;
+                        return (
+                          <span
+                            key={id}
+                            className="px-1.5 py-0.5 rounded bg-black/75 text-white text-[10px] font-medium truncate"
+                          >
+                            {tag.emoji_name ? `${tag.emoji_name} ` : ''}{tag.name}
+                          </span>
+                        );
+                      })}
+                  </div>
+                )}
+
                 {viewMode === 'list' && (
                   <div className="flex-1 min-w-0">
                     <p className="font-medium truncate">{item.title}</p>
@@ -307,7 +442,7 @@ export function MediaChannel({ channel, onToggleMembers, showMembers, hideHeader
 
       {/* Mobile FAB */}
       {canUploadMedia && (
-        <button
+        <button type="button"
           onClick={() => handleUploadClick()}
           className="sm:hidden fixed bottom-[calc(72px+env(safe-area-inset-bottom,0px))] right-4 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:bg-primary/90 transition-colors z-10"
           aria-label="Téléverser"
@@ -318,6 +453,7 @@ export function MediaChannel({ channel, onToggleMembers, showMembers, hideHeader
 
       {selectedFiles && (
         <CreateMediaPostModal
+          channelId={channel.id}
           files={selectedFiles}
           onClose={() => { setSelectedFiles(null); setQuotedPost(null); }}
           onPublish={handlePublish}

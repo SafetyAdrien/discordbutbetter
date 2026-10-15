@@ -5,7 +5,6 @@ import { Copy, Share2, Check, Camera } from 'lucide-react';
 import { MobileProfileSubpage } from './MobileProfileSubpage';
 import { uuidToSnowflake } from '@/lib/snowflake';
 import { haptics } from '@/lib/haptics';
-import { toast } from 'sonner';
 import { useState } from 'react';
 
 interface Props {
@@ -26,7 +25,6 @@ export function MobileQRCodeView({ onBack }: Props) {
     haptics.light();
     await navigator.clipboard.writeText(snowflake);
     setCopied(true);
-    toast.success('Identifiant copié');
     setTimeout(() => setCopied(false), 1500);
   };
 
@@ -41,7 +39,6 @@ export function MobileQRCodeView({ onBack }: Props) {
       }
     } else {
       await navigator.clipboard.writeText(qrPayload);
-      toast.success('Lien copié');
     }
   };
 
@@ -81,24 +78,23 @@ export function MobileQRCodeView({ onBack }: Props) {
 
         {/* Actions */}
         <div className="w-full max-w-sm mt-6 space-y-3">
-          <button
+          <button type="button"
             onClick={handleShare}
             className="w-full h-12 rounded-xl bg-card border border-border/50 flex items-center justify-center gap-2 text-sm font-medium active:bg-muted/60 transition-colors"
           >
             <Share2 className="w-4 h-4" />
             Partager mon code
           </button>
-          <button
+          <button type="button"
             onClick={handleCopy}
             className="w-full h-12 rounded-xl bg-card border border-border/50 flex items-center justify-center gap-2 text-sm font-medium active:bg-muted/60 transition-colors"
           >
             {copied ? <Check className="w-4 h-4 text-[hsl(var(--online))]" /> : <Copy className="w-4 h-4" />}
             Copier mon identifiant
           </button>
-          <button
+          <button type="button"
             onClick={() => {
               haptics.light();
-              toast.info('Scanner bientôt disponible');
             }}
             className="w-full h-12 rounded-xl bg-card border border-border/50 flex items-center justify-center gap-2 text-sm font-medium active:bg-muted/60 transition-colors"
           >

@@ -6,16 +6,95 @@ import { Thread } from '@/types/thread';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 
+// Shared between useThreads' queryFn and the sidebar hover-prefetch.
+export async function fetchChannelThreads(channelId: string): Promise<Thread[]> {
+  const { data, error } = await supabase
+    .from('threads')
+    .select(`
+      *,
+      creator:profiles!threads_created_by_fkey(id, username, display_name, avatar_url)
+    `)
+    .eq('channel_id', channelId)
+    .eq('archived', false)
+    .order('last_message_at', { ascending: false });
+
+  if (error) throw error;
+
+  // Get message counts, last message, and participants for each thread
+  const threadsWithData = await Promise.all(
+    (data || []).map(async (thread) => {
+      // Get message count
+      const { count } = await supabase
+        .from('thread_messages')
+        .select('*', { count: 'exact', head: true })
+        .eq('thread_id', thread.id);
+
+      // Get last message with author
+      const { data: lastMessageData } = await supabase
+        .from('thread_messages')
+        .select(`
+          content,
+          created_at,
+          author:profiles!thread_messages_author_id_fkey(id, display_name, avatar_url)
+        `)
+        .eq('thread_id', thread.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      // Get unique participants (up to 4 for display)
+      const { data: participantsData } = await supabase
+        .from('thread_messages')
+        .select(`
+          author_id,
+          author:profiles!thread_messages_author_id_fkey(id, display_name, avatar_url)
+        `)
+        .eq('thread_id', thread.id)
+        .order('created_at', { ascending: false });
+
+      // Dedupe participants
+      const uniqueParticipants = new Map<string, { id: string; display_name: string; avatar_url: string | null }>();
+      participantsData?.forEach((msg) => {
+        if (msg.author_id && msg.author && !uniqueParticipants.has(msg.author_id)) {
+          uniqueParticipants.set(msg.author_id, {
+            id: msg.author.id,
+            display_name: msg.author.display_name,
+            avatar_url: msg.author.avatar_url,
+          });
+        }
+      });
+
+      const participants = Array.from(uniqueParticipants.values()).slice(0, 4);
+      const participantCount = uniqueParticipants.size;
+
+      return {
+        ...thread,
+        message_count: count || 0,
+        last_message: lastMessageData ? {
+          content: lastMessageData.content,
+          created_at: lastMessageData.created_at,
+          author: lastMessageData.author,
+        } : undefined,
+        participants,
+        participant_count: participantCount,
+      } as Thread;
+    })
+  );
+
+  return threadsWithData;
+}
+
 export const useThreads = (channelId: string | undefined) => {
   const queryClient = useQueryClient();
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   // Realtime subscription for threads
   useEffect(() => {
     if (!channelId) return;
 
     const channel = supabase
-      .channel(`threads-rt-${channelId}`)
+      .channel(`threads-rt-${channelId}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'threads', filter: `channel_id=eq.${channelId}` },
@@ -36,84 +115,7 @@ export const useThreads = (channelId: string | undefined) => {
 
   const query = useQuery({
     queryKey: ['threads', channelId],
-    queryFn: async () => {
-      if (!channelId) return [];
-      
-      const { data, error } = await supabase
-        .from('threads')
-        .select(`
-          *,
-          creator:profiles!threads_created_by_fkey(id, username, display_name, avatar_url)
-        `)
-        .eq('channel_id', channelId)
-        .eq('archived', false)
-        .order('last_message_at', { ascending: false });
-
-      if (error) throw error;
-      
-      // Get message counts, last message, and participants for each thread
-      const threadsWithData = await Promise.all(
-        (data || []).map(async (thread) => {
-          // Get message count
-          const { count } = await supabase
-            .from('thread_messages')
-            .select('*', { count: 'exact', head: true })
-            .eq('thread_id', thread.id);
-          
-          // Get last message with author
-          const { data: lastMessageData } = await supabase
-            .from('thread_messages')
-            .select(`
-              content,
-              created_at,
-              author:profiles!thread_messages_author_id_fkey(id, display_name, avatar_url)
-            `)
-            .eq('thread_id', thread.id)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .single();
-          
-          // Get unique participants (up to 4 for display)
-          const { data: participantsData } = await supabase
-            .from('thread_messages')
-            .select(`
-              author_id,
-              author:profiles!thread_messages_author_id_fkey(id, display_name, avatar_url)
-            `)
-            .eq('thread_id', thread.id)
-            .order('created_at', { ascending: false });
-          
-          // Dedupe participants
-          const uniqueParticipants = new Map<string, { id: string; display_name: string; avatar_url: string | null }>();
-          participantsData?.forEach((msg) => {
-            if (msg.author_id && msg.author && !uniqueParticipants.has(msg.author_id)) {
-              uniqueParticipants.set(msg.author_id, {
-                id: msg.author.id,
-                display_name: msg.author.display_name,
-                avatar_url: msg.author.avatar_url,
-              });
-            }
-          });
-          
-          const participants = Array.from(uniqueParticipants.values()).slice(0, 4);
-          const participantCount = uniqueParticipants.size;
-          
-          return {
-            ...thread,
-            message_count: count || 0,
-            last_message: lastMessageData ? {
-              content: lastMessageData.content,
-              created_at: lastMessageData.created_at,
-              author: lastMessageData.author,
-            } : undefined,
-            participants,
-            participant_count: participantCount,
-          } as Thread;
-        })
-      );
-      
-      return threadsWithData;
-    },
+    queryFn: () => (channelId ? fetchChannelThreads(channelId) : Promise.resolve([])),
     enabled: !!channelId,
     placeholderData: () => cacheGetSync(`threads:${channelId}`),
     staleTime: 30_000,
@@ -134,13 +136,14 @@ export const useThreads = (channelId: string | undefined) => {
 export const useThread = (threadId: string | undefined) => {
   const queryClient = useQueryClient();
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   // Realtime: any server change to this specific thread (rename, archive, lock,
   // close, last_message_at) is reflected instantly across every client.
   useEffect(() => {
     if (!threadId) return;
     const channel = supabase
-      .channel(`thread-rt-${threadId}`)
+      .channel(`thread-rt-${threadId}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'threads', filter: `id=eq.${threadId}` },
@@ -308,7 +311,7 @@ export const useCreateThread = () => {
       const previousThreads = queryClient.getQueryData(['threads', channelId]);
       
       const tempThread: Thread = {
-        id: `temp-${Date.now()}`,
+        id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         channel_id: channelId,
         name,
         created_by: user.id,
@@ -340,7 +343,6 @@ export const useCreateThread = () => {
       toast.error('Erreur lors de la création du thread');
     },
     onSuccess: (data) => {
-      toast.success('Thread créé');
       // Cache-first: prime the detail cache + IDB so opening the newly created
       // thread renders instantly without a server round-trip.
       if (data?.id) {
@@ -389,7 +391,6 @@ export const useArchiveThread = () => {
       toast.error('Erreur lors de l\'archivage');
     },
     onSuccess: () => {
-      toast.success('Thread archivé');
     },
     onSettled: (_, __, { threadId, channelId }) => {
       queryClient.invalidateQueries({ queryKey: ['threads', channelId] });
@@ -431,7 +432,6 @@ export const useDeleteThread = () => {
       toast.error('Erreur lors de la suppression');
     },
     onSuccess: () => {
-      toast.success('Thread supprimé');
     },
     onSettled: (_, __, { threadId, channelId }) => {
       queryClient.invalidateQueries({ queryKey: ['threads', channelId] });
@@ -457,7 +457,6 @@ export const useLockThread = () => {
       return data;
     },
     onSuccess: (data) => {
-      toast.success(data.locked ? 'Fil verrouillé' : 'Fil déverrouillé');
       queryClient.invalidateQueries({ queryKey: ['thread', data.id] });
       queryClient.invalidateQueries({ queryKey: ['threads', data.channel_id] });
       queryClient.invalidateQueries({ queryKey: ['followed-threads'] });
@@ -482,7 +481,6 @@ export const useCloseThread = () => {
       return data;
     },
     onSuccess: (data) => {
-      toast.success(data.closed ? 'Fil fermé' : 'Fil rouvert');
       queryClient.invalidateQueries({ queryKey: ['thread', data.id] });
       queryClient.invalidateQueries({ queryKey: ['threads', data.channel_id] });
       queryClient.invalidateQueries({ queryKey: ['followed-threads'] });
@@ -524,7 +522,6 @@ export const useUpdateThread = () => {
       toast.error('Erreur lors du renommage');
     },
     onSuccess: () => {
-      toast.success('Thread renommé');
     },
     onSettled: (data) => {
       if (data) {

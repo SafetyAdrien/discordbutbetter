@@ -16,12 +16,13 @@ export function useDMMessageReactions(messageIds: string[]) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
   const idsKey = messageIds.join(',');
 
   useEffect(() => {
     if (messageIds.length === 0) return;
     const channel = supabase
-      .channel(`dm-reactions-rt-${messageIds[0]}`, { config: { private: true } })
+      .channel(`dm-reactions-rt-${messageIds[0]}-${instanceIdRef.current}`, { config: { private: true } })
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'dm_message_reactions' },
@@ -107,7 +108,7 @@ export function useToggleDMReaction() {
         const next = userHasReacted
           ? list.filter(r => !(r.user_id === user.id && r.emoji === emoji))
           : [...list, {
-              id: `temp-${Date.now()}`,
+              id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
               message_id: messageId,
               user_id: user.id,
               emoji,

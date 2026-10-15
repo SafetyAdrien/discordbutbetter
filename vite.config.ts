@@ -16,7 +16,9 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(),
-    mcpPlugin(),
+    // Dev-only tooling: these have no role in a production build and were
+    // previously mounted unconditionally.
+    mode === "development" && mcpPlugin(),
     mode === "development" && componentTagger(),
   ].filter(Boolean),
   resolve: {

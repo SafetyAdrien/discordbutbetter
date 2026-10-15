@@ -41,7 +41,7 @@ export function MobileBottomNav({ activeTab, onTabChange, voiceActive = false }:
         {tabs.map(({ id, label }) => {
           const isActive = activeTab === id;
           return (
-            <button
+            <button type="button"
               key={id}
               onClick={() => {
                 if (activeTab !== id) haptics.selection();

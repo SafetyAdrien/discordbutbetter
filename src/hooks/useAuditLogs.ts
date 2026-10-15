@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 
@@ -117,6 +117,7 @@ export const CATEGORY_LABELS: Record<AuditCategory, string> = {
 
 export function useAuditLogs(serverId: string, filters?: { actionTypes?: string[] }) {
   const queryClient = useQueryClient();
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   const query = useQuery({
     queryKey: ['audit-logs', serverId, filters],
@@ -149,7 +150,7 @@ export function useAuditLogs(serverId: string, filters?: { actionTypes?: string[
     if (!serverId) return;
 
     const channel = supabase
-      .channel(`audit-logs:${serverId}`, { config: { private: true } })
+      .channel(`audit-logs:${serverId}-${instanceIdRef.current}`, { config: { private: true } })
       .on(
         'postgres_changes',
         {

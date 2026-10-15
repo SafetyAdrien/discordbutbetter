@@ -5,6 +5,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { ChevronLeft, X } from 'lucide-react';
@@ -19,6 +20,7 @@ import { StreamlineLink } from '@/components/icons/StreamlineLink';
 import { ChannelOverview } from './ChannelOverview';
 import { ChannelPermissions } from './ChannelPermissions';
 import { ChannelWebhooks } from './ChannelWebhooks';
+import { ForumTagsSettings } from './ForumTagsSettings';
 
 import { useChannelDetails } from '@/hooks/useChannelSettings';
 import { ChannelType } from '@/constants/permissions';
@@ -47,8 +49,13 @@ export function ChannelSettingsModal({ channelId, serverId, onClose }: ChannelSe
 
   const Icon = channel?.type ? channelIcons[channel.type] : StreamlineHash;
 
+  // Tag management only makes sense on the thread-only channel types
+  // (forum / media), matching Fluxer's THREAD_ONLY_CHANNEL_TYPES.
+  const isThreadOnly = channel?.type === 'forum' || channel?.type === 'media';
+
   const tabItems = [
     { id: 'overview', label: 'Aperçu' },
+    ...(isThreadOnly ? [{ id: 'tags', label: 'Étiquettes' }] : []),
     { id: 'permissions', label: 'Permissions' },
     { id: 'integrations', label: 'Intégrations' },
   ];
@@ -60,6 +67,8 @@ export function ChannelSettingsModal({ channelId, serverId, onClose }: ChannelSe
         return (
           <ChannelOverview channel={channel} channelId={channelId} channelName={channel.name} serverId={serverId} onDeleted={onClose} />
         );
+      case 'tags':
+        return <ForumTagsSettings channelId={channelId} channelType={channel.type} />;
       case 'permissions':
         return <ChannelPermissions channelId={channelId} serverId={serverId} channelType={channel.type as ChannelType} />;
       case 'integrations':
@@ -74,7 +83,7 @@ export function ChannelSettingsModal({ channelId, serverId, onClose }: ChannelSe
     return (
       <div className="fixed inset-0 z-50 flex flex-col bg-background">
         <div className="h-14 px-3 flex items-center gap-2 bg-[hsl(var(--surface-1))] flex-shrink-0 rounded-b-2xl" style={{ boxShadow: 'var(--shadow-elevation-1)' }}>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-muted">
+          <button type="button" onClick={onClose} className="p-2 rounded-full hover:bg-muted">
             <X className="w-5 h-5" />
           </button>
           <div className="w-8 h-8 rounded-full bg-primary/8 flex items-center justify-center">
@@ -89,14 +98,20 @@ export function ChannelSettingsModal({ channelId, serverId, onClose }: ChannelSe
             </div>
           ) : channel ? (
             <Tabs defaultValue="overview">
-              <TabsList className="grid w-full grid-cols-3 rounded-2xl bg-[hsl(var(--surface-2))] p-1">
+              <TabsList className={cn('grid w-full rounded-2xl bg-[hsl(var(--surface-2))] p-1', isThreadOnly ? 'grid-cols-4' : 'grid-cols-3')}>
                 <TabsTrigger value="overview" className="rounded-xl">Aperçu</TabsTrigger>
+                {isThreadOnly && <TabsTrigger value="tags" className="rounded-xl">Étiquettes</TabsTrigger>}
                 <TabsTrigger value="permissions" className="rounded-xl">Permissions</TabsTrigger>
                 <TabsTrigger value="integrations" className="rounded-xl">Intégrations</TabsTrigger>
               </TabsList>
               <TabsContent value="overview" className="mt-4">
                 <ChannelOverview channel={channel} channelId={channelId} channelName={channel.name} serverId={serverId} onDeleted={onClose} />
               </TabsContent>
+              {isThreadOnly && (
+                <TabsContent value="tags" className="mt-4">
+                  <ForumTagsSettings channelId={channelId} channelType={channel.type} />
+                </TabsContent>
+              )}
               <TabsContent value="permissions" className="mt-4">
                 <ChannelPermissions channelId={channelId} serverId={serverId} channelType={channel.type as ChannelType} />
               </TabsContent>

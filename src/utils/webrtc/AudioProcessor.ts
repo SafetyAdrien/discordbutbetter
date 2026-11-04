@@ -69,6 +69,10 @@ export class AudioProcessor {
   private highPassFilter: BiquadFilterNode | null = null;
   private deEsserFilter: BiquadFilterNode | null = null;
   private lowShelfFilter: BiquadFilterNode | null = null;
+  // Clarte de la voix : presence (consonnes) + air (brillance), apres le debruitage.
+  private presenceFilter: BiquadFilterNode | null = null;
+  private airFilter: BiquadFilterNode | null = null;
+  private mudFilter: BiquadFilterNode | null = null;
   private compressorNode: DynamicsCompressorNode | null = null;
   /** User-controlled mic input gain (0..2). Decoupled from the noise gate. */
   private gainNode: GainNode | null = null;
@@ -254,6 +258,18 @@ export class AudioProcessor {
     lastNode.connect(this.lowShelfFilter);
     lastNode = this.lowShelfFilter;
 
+    // Clarte : leger creux a 320 Hz (voix moins « boite »), presence a 3,2 kHz, air a 9 kHz.
+    // Les gains suivent le mode de suppression du bruit (aucun en « off »).
+    this.mudFilter = this.audioContext.createBiquadFilter();
+    this.mudFilter.type = 'peaking'; this.mudFilter.frequency.value = 320; this.mudFilter.Q.value = 0.9;
+    this.presenceFilter = this.audioContext.createBiquadFilter();
+    this.presenceFilter.type = 'peaking'; this.presenceFilter.frequency.value = 3200; this.presenceFilter.Q.value = 0.9;
+    this.airFilter = this.audioContext.createBiquadFilter();
+    this.airFilter.type = 'highshelf'; this.airFilter.frequency.value = 9000;
+    lastNode.connect(this.mudFilter); this.mudFilter.connect(this.presenceFilter); this.presenceFilter.connect(this.airFilter);
+    lastNode = this.airFilter;
+    this.applyClarity();
+
     // Dynamic compressor
     if (this.config.enableCompression) {
       this.compressorNode = this.audioContext.createDynamicsCompressor();
@@ -357,8 +373,17 @@ export class AudioProcessor {
   /**
    * Set noise suppression mode at runtime without recreating the stream
    */
+  private applyClarity(): void {
+    const m = this.config.noiseSuppression;
+    const g = m === 'high' ? { mud: -1.5, presence: 2.5, air: 1.5 } : m === 'low' ? { mud: -1, presence: 1.5, air: 1 } : { mud: 0, presence: 0, air: 0 };
+    if (this.mudFilter) this.mudFilter.gain.value = g.mud;
+    if (this.presenceFilter) this.presenceFilter.gain.value = g.presence;
+    if (this.airFilter) this.airFilter.gain.value = g.air;
+  }
+
   setNoiseSuppression(mode: NoiseSuppressonMode): void {
     this.config.noiseSuppression = mode;
+    this.applyClarity();
 
     // Fix #1 — bypass RNNoise cleanly instead of zeroing its output gain
     // (which previously muted the mic entirely when set to "off").
@@ -753,6 +778,9 @@ export class AudioProcessor {
     this.highPassFilter?.disconnect();
     this.deEsserFilter?.disconnect();
     this.lowShelfFilter?.disconnect();
+    this.mudFilter?.disconnect();
+    this.presenceFilter?.disconnect();
+    this.airFilter?.disconnect();
     this.rnnoiseNode?.disconnect();
     this.rnnoiseGainNode?.disconnect();
     this.compressorNode?.disconnect();
@@ -764,6 +792,8 @@ export class AudioProcessor {
     this.highPassFilter = null;
     this.deEsserFilter = null;
     this.lowShelfFilter = null;
+    this.presenceFilter?.disconnect(); this.airFilter?.disconnect(); this.mudFilter?.disconnect();
+    this.presenceFilter = null; this.airFilter = null; this.mudFilter = null;
     this.rnnoiseNode = null;
     this.rnnoiseGainNode = null;
     this.preRNNoiseTap = null;

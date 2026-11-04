@@ -174,6 +174,19 @@ export default {
           "0%": { opacity: "0", transform: "translate(-50%, 8px)" },
           "100%": { opacity: "1", transform: "translate(-50%, 0)" },
         },
+        // Etapes d'une modale a plusieurs pages (creation de serveur) :
+        // la nouvelle page glisse depuis la droite.
+        "step-in": {
+          "0%": { opacity: "0", transform: "translateX(24px)" },
+          "100%": { opacity: "1", transform: "translateX(0)" },
+        },
+        // Confettis du partage d'evenement : chaque morceau part du centre
+        // vers (--tx, --ty) en tournant, puis retombe et s'efface.
+        confetti: {
+          "0%": { opacity: "1", transform: "translate(0, 0) rotate(0deg) scale(0.6)" },
+          "70%": { opacity: "1" },
+          "100%": { opacity: "0", transform: "translate(var(--tx), var(--ty)) rotate(var(--rot)) scale(1)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -185,6 +198,8 @@ export default {
         "press": "press 150ms ease-out",
         "appear": "appear 200ms ease-out",
         "slide-in-bottom": "slide-in-bottom 220ms ease-out",
+        "step-in": "step-in 220ms cubic-bezier(0.2, 0, 0, 1)",
+        confetti: "confetti 1400ms cubic-bezier(0.1, 0.8, 0.3, 1) forwards",
       },
       backgroundImage: {
         "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",

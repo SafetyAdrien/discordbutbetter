@@ -1,89 +1,61 @@
-import { Reply, X, Paperclip } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { X } from "@/components/icons/discord/lucide";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import { setReplyMention, useReplyMention } from "@/lib/replyMention";
+import { useEffect } from "react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ReplyBannerProps {
   authorName: string;
+  /** Auteur du message : le bouton de mention n'existe que pour un autre utilisateur. */
+  authorId?: string | null;
   authorAvatar?: string | null;
-  /** Optional role color for the @author label */
   authorColor?: string | null;
   content?: string;
   attachmentsCount?: number;
   onClear: () => void;
+  /** Clic sur le nom : va au message auquel on repond. */
+  onJump?: () => void;
   className?: string;
 }
 
-const MAX = 64;
-
-/**
- * Composer "Reply to @X" banner — pixel-faithful clone of the mobile DM banner
- * (see MobileDMConversation lines 651-680). Shared by ChatArea, DMConversation,
- * ThreadView and AnnouncementChannel for strict Mobile/Desktop parity.
+/*
+ * Bandeau "Repondre a X" (video de reference) : colle au-dessus du champ de saisie (meme largeur, coins hauts arrondis,
+ * le champ perd les siens via `.reply-banner ~ * .composer-box`), 38 px, fond un peu plus clair que le champ, filet de
+ * separation, nom en gras blanc et croix ronde a droite.
  */
-export function ReplyBanner({
-  authorName,
-  authorAvatar,
-  authorColor,
-  content,
-  attachmentsCount = 0,
-  onClear,
-  className,
-}: ReplyBannerProps) {
-  const cleaned = (content || "").replace(/\s+/g, " ").trim();
-  const truncated = cleaned.length > MAX ? cleaned.slice(0, MAX) : cleaned;
-  const isTruncated = cleaned.length > MAX;
-  const initial = (authorName || "?").charAt(0).toUpperCase();
-  const hasText = truncated.length > 0;
-
+export function ReplyBanner({ authorName, authorId, authorColor, onClear, onJump, className }: ReplyBannerProps) {
+  const { user } = useAuth();
+  const mention = useReplyMention();
+  const canMention = !!authorId && authorId !== user?.id;
+  // Chaque nouvelle reponse repart avec la mention activee.
+  useEffect(() => setReplyMention(true), [authorId]);
   return (
-    <div
-      className={cn(
-        "mx-4 mb-2 flex items-center gap-2 bg-[hsl(var(--surface-3))] rounded-xl px-3 py-2 border-l-[3px] border-primary shadow-sm",
-        className,
+    <div className={cn("reply-banner mx-2 flex h-9 shrink-0 items-center justify-between rounded-t-lg border border-b-0 border-[hsl(var(--input-border))] border-b-[#43434b] bg-[#3b3b45] px-4 text-sm", className)}>
+      <span className="min-w-0 truncate">
+        <span className="text-[#dbdee1]">Répondre à</span> <button type="button" onClick={onJump} translate="no" className="cursor-pointer font-semibold hover:underline" style={{ color: authorColor || "#fff" }}>{authorName}</button>
+      </span>
+      <div className="flex shrink-0 items-center">
+      {canMention && (
+        <>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button type="button" onClick={() => setReplyMention(!mention)} aria-pressed={mention} aria-label={mention ? "Mention activée" : "Mention désactivée"} className={cn("flex h-6 items-center gap-1.5 text-xs font-bold uppercase leading-4 transition-colors", mention ? "text-[#5ea8ff] hover:text-[#8cc0ff]" : "text-[#b1b1bb] hover:text-white")}>
+                <span className="text-sm font-semibold leading-none">@</span>
+                {mention ? "Activé" : "Désactivé"}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="w-[200px] text-center">
+              {mention ? "Clique pour désactiver la mention de l'auteur original." : "Clique pour activer la mention de l'auteur original."}
+            </TooltipContent>
+          </Tooltip>
+          <span aria-hidden className="mx-3 h-5 w-px bg-white/[0.06]" />
+        </>
       )}
-    >
-      <Reply className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-      <Avatar className="w-5 h-5 flex-shrink-0">
-        {authorAvatar && <AvatarImage src={authorAvatar} alt={authorName} />}
-        <AvatarFallback className="text-[9px] bg-primary/15 text-primary font-semibold">
-          {initial}
-        </AvatarFallback>
-      </Avatar>
-      <div className="flex-1 min-w-0 flex items-center gap-2">
-        <span
-          className="text-xs font-semibold flex-shrink-0"
-          style={{ color: authorColor || "hsl(var(--primary))" }}
-        >
-          @{authorName}
-        </span>
-        {hasText ? (
-          <span
-            className="text-sm text-muted-foreground whitespace-nowrap overflow-hidden min-w-0"
-            style={{
-              maskImage: isTruncated
-                ? "linear-gradient(to right, black calc(100% - 24px), transparent)"
-                : undefined,
-              WebkitMaskImage: isTruncated
-                ? "linear-gradient(to right, black calc(100% - 24px), transparent)"
-                : undefined,
-            }}
-          >
-            {truncated}
-          </span>
-        ) : attachmentsCount > 0 ? (
-          <span className="text-sm text-muted-foreground italic flex items-center gap-1 min-w-0">
-            <Paperclip className="w-3 h-3" />
-            {attachmentsCount > 1 ? `${attachmentsCount} pièces jointes` : "Pièce jointe"}
-          </span>
-        ) : null}
-      </div>
-      <button type="button"
-        onClick={onClear}
-        className="p-1 hover:bg-muted rounded transition-colors"
-        aria-label="Annuler la réponse"
-      >
-        <X className="w-4 h-4 text-muted-foreground" />
+      <button type="button" onClick={onClear} aria-label="Annuler la réponse" className="flex h-[14px] w-[14px] shrink-0 items-center justify-center rounded-full bg-[#c3c3cb] text-[#3b3b45] transition-colors hover:bg-white">
+        <X className="h-[8px] w-[8px]" strokeWidth={3} />
       </button>
+      </div>
     </div>
   );
 }

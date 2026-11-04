@@ -1,3 +1,4 @@
+import { setScreenShareInfo } from '@/lib/screenShareInfo';
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWebRTC } from '@/hooks/useWebRTC';
@@ -104,6 +105,7 @@ interface VoiceContextType {
   toggleMute: () => Promise<void>;
   toggleDeafen: () => Promise<void>;
   isConnected: boolean;
+  isReconnecting: boolean;
   speakingUsers: Set<string>;
   audioLevels: Map<string, number>;
   localAudioLevel: number;
@@ -158,6 +160,8 @@ interface VoiceContextType {
 }
 
 const VoiceContext = createContext<VoiceContextType | null>(null);
+/** Fournisseur de valeur directe : harnais de design (/design) uniquement. */
+export const VoiceContextOverride = VoiceContext.Provider;
 
 export function VoiceProvider({ children }: { children: React.ReactNode }) {
   const { user, profile } = useAuth();
@@ -847,11 +851,22 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     try {
       if (webrtc.isScreenSharing) {
         webrtc.stopScreenShare();
+        setScreenShareInfo(null);
       } else {
         await webrtc.startScreenShare(options);
+        const h = options?.height ?? ({ low: 720, medium: 1080, high: 1440 } as const)[options?.quality ?? 'medium'];
+        setScreenShareInfo({ height: h, fps: options?.frameRate ?? 30 });
       }
     } catch (error) {
-      console.log('[VoiceContext] Screen share cancelled or failed');
+      // Annulation volontaire (portail ferme) : silencieux. Toute autre erreur est annoncee, sinon le conteneur
+      // de partage n'apparait pas et on ne sait pas pourquoi.
+      const name = (error as { name?: string })?.name;
+      console.warn('[VoiceContext] Screen share failed:', error);
+      if (name !== 'NotAllowedError' && name !== 'AbortError') {
+        toast.error("Impossible de démarrer le partage d'écran", {
+          description: name === 'NotFoundError' ? "Aucune source d'écran n'a été fournie." : (error as Error)?.message || 'Erreur inconnue',
+        });
+      }
     }
   }, [webrtc]);
 
@@ -926,6 +941,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         toggleMute,
         toggleDeafen,
         isConnected: !!voiceState.channelId,
+        isReconnecting: webrtc.isReconnecting,
         speakingUsers,
         audioLevels,
         localAudioLevel,
@@ -1007,13 +1023,14 @@ export function useVoiceLevels(): VoiceLevelsContextValue {
   return ctx;
 }
 
-const defaultVoiceContext: VoiceContextType = {
+export const defaultVoiceContext: VoiceContextType = {
   voiceState: { channelId: null, channelName: null, serverName: null, isMuted: false, isDeafened: false },
   joinChannel: async () => {},
   leaveChannel: async () => {},
   toggleMute: async () => {},
   toggleDeafen: async () => {},
   isConnected: false,
+  isReconnecting: false,
   speakingUsers: new Set(),
   audioLevels: new Map(),
   localAudioLevel: 0,

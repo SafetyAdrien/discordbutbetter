@@ -1,18 +1,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { AdaptiveSheet } from '@/components/ui/adaptive-sheet';
-import {
-  BellOff,
-  Bell,
-  CheckCheck,
-  MessageCircle,
-  Phone,
-  Star,
-  StarOff,
-  Trash2,
-  User,
-  UserX,
-  Video,
-} from 'lucide-react';
+import { StarOff, UserX } from 'lucide-react';
+import { BellOff, Bell, CheckCheck, MessageCircle, Phone, Star, Trash2, User, Video } from '@/components/icons/discord/lucide';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/lib/haptics';
 import type { MobileDMListItemData } from './MobileDMListItem';

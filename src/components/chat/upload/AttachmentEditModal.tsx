@@ -40,98 +40,59 @@ export function AttachmentEditModal({
 
   if (!attachment) return null;
 
+  const isVideo = attachment.file.type.startsWith('video/');
+  const isImage = attachment.file.type.startsWith('image/');
+
+  // "Modifier la piece jointe" de Discord : apercu, nom de fichier, texte
+  // alternatif, spoiler, puis Annuler / Sauvegarder cote a cote.
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px] bg-surface border-border">
+      <DialogContent className="sm:max-w-[440px] p-4 gap-0 bg-[hsl(var(--surface-card))] border-[hsl(var(--border-subtle))]">
         <DialogHeader>
-          <DialogTitle className="text-lg font-semibold">Modifier le fichier</DialogTitle>
+          <DialogTitle className="text-xl font-semibold text-white">Modifier la pièce jointe</DialogTitle>
         </DialogHeader>
 
-        <div className="grid gap-4 py-4">
-          {/* Preview */}
-          <div className="relative mx-auto max-w-[200px] rounded-lg overflow-hidden">
-            {attachment.file.type.startsWith('video/') ? (
-              <video
-                src={attachment.previewUrl}
-                className={cn(
-                  "w-full h-auto max-h-[150px] object-contain",
-                  isSpoiler && "blur-xl"
-                )}
-                muted
-              />
-            ) : (
-              <img
-                src={attachment.previewUrl}
-                alt={name}
-                className={cn(
-                  "w-full h-auto max-h-[150px] object-contain",
-                  isSpoiler && "blur-xl"
-                )}
-              />
-            )}
-            
-            {isSpoiler && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                <span className="text-sm font-semibold text-white uppercase tracking-wider">
-                  Spoiler
-                </span>
-              </div>
-            )}
-
-            {description && (
-              <div className="absolute bottom-1 left-1 px-1.5 py-0.5 bg-white rounded text-[10px] font-bold text-black">
-                ALT
-              </div>
-            )}
-          </div>
-
-          {/* Filename */}
-          <div className="space-y-2">
-            <Label htmlFor="filename">Nom du fichier</Label>
-            <Input
-              id="filename"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Nom du fichier"
-              className="bg-input border-border"
-            />
-          </div>
-
-          {/* Description (Alt Text) */}
-          <div className="space-y-2">
-            <Label htmlFor="description">
-              Description (texte alternatif)
-              <span className="text-muted-foreground text-xs ml-2">Pour les lecteurs d'écran</span>
-            </Label>
-            <Textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Décrivez cette image pour les utilisateurs de lecteurs d'écran..."
-              className="bg-input border-border resize-none h-20"
-            />
-          </div>
-
-          {/* Spoiler checkbox */}
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="spoiler"
-              checked={isSpoiler}
-              onCheckedChange={(checked) => setIsSpoiler(checked === true)}
-            />
-            <Label htmlFor="spoiler" className="text-sm cursor-pointer">
-              Marquer comme spoiler
-            </Label>
-          </div>
+        <div className="mt-4 relative w-fit max-w-full rounded-lg overflow-hidden bg-black/20">
+          {isVideo ? (
+            <video src={attachment.previewUrl} muted className={cn('max-h-[160px] max-w-full object-contain', isSpoiler && 'blur-xl')} />
+          ) : isImage ? (
+            <img src={attachment.previewUrl} alt={name} className={cn('max-h-[160px] max-w-full object-contain', isSpoiler && 'blur-xl')} />
+          ) : (
+            <div className="h-24 w-40 flex items-center justify-center text-sm text-muted-foreground">{name}</div>
+          )}
+          {isSpoiler && (
+            <span className="absolute inset-0 flex items-center justify-center">
+              <span className="px-3 py-1 rounded-full bg-black/60 text-xs font-bold tracking-wider text-white">SPOILER</span>
+            </span>
+          )}
         </div>
 
-        <div className="flex justify-end gap-2">
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>
-            Annuler
-          </Button>
-          <Button onClick={handleSave}>
-            Enregistrer
-          </Button>
+        <Label htmlFor="attachment-filename" className="mt-4 mb-2 text-sm font-medium text-white">Nom de fichier</Label>
+        <Input
+          id="attachment-filename"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="h-10 bg-[hsl(var(--input))] border-white/[0.06]"
+        />
+
+        <Label htmlFor="attachment-description" className="mt-4 mb-2 text-sm font-medium text-white">Description (texte alternatif)</Label>
+        <Textarea
+          id="attachment-description"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          maxLength={1024}
+          placeholder="Ajouter une description"
+          className="min-h-[56px] h-14 resize-none bg-[hsl(var(--input))] border-white/[0.06]"
+        />
+
+        <label htmlFor="attachment-spoiler" className="mt-4 flex items-center gap-2 text-sm text-white cursor-pointer w-fit">
+          <Checkbox id="attachment-spoiler" checked={isSpoiler} onCheckedChange={(checked) => setIsSpoiler(checked === true)} />
+          Définir comme spoiler
+        </label>
+
+        <div className="mt-6 grid grid-cols-2 gap-2">
+          <Button variant="secondary" onClick={() => onOpenChange(false)}>Annuler</Button>
+          <Button onClick={handleSave}>Sauvegarder</Button>
         </div>
       </DialogContent>
     </Dialog>

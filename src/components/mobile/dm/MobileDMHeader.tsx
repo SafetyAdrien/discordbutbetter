@@ -1,4 +1,4 @@
-import { ArrowLeft, MoreVertical, Phone, Video } from 'lucide-react';
+import { ArrowLeft, MoreVertical, Phone, Video } from '@/components/icons/discord/lucide';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/lib/haptics';
@@ -104,7 +104,7 @@ export function MobileDMHeader({
           )}
         </div>
         <div className="flex-1 min-w-0 text-left">
-          <p className="text-sm font-semibold truncate">{displayName}</p>
+          <p translate="no" className="text-sm font-semibold truncate">{displayName}</p>
           {subtitle && (
             <p
               className={cn(

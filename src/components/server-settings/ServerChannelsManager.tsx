@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import React from 'react';
-import { GripVertical, Plus, ArrowUpDown, FolderOpen, Check } from 'lucide-react';
+import { GripVertical, ArrowUpDown } from 'lucide-react';
+import { FolderOpen, Check } from '@/components/icons/discord/lucide';
+import { Plus } from '@/components/icons/serverSettingsIcons';
 import { cn } from '@/lib/utils';
 import { channelIcons } from '@/lib/channelIcons';
 import { useChannels, useReorderCategories, useReorderChannels, type CategoryWithChannels, type OrphanChannel } from '@/hooks/useChannels';
@@ -93,7 +95,7 @@ function SortableChannelRow({
       >
         {reordering && <GripVertical className="w-3.5 h-3.5 text-muted-foreground/50 flex-shrink-0" />}
         <ChannelIcon type={channel.type} />
-        <span className="text-sm truncate">{channel.name}</span>
+        <span translate="no" className="text-sm truncate">{channel.name}</span>
       </div>
     </div>
   );
@@ -137,7 +139,7 @@ function SortableCategoryBlock({
         <DropIndicator isVisible={showDropIndicator} position={dropPosition} variant="category" />
         {reordering && <GripVertical className="w-3.5 h-3.5 text-muted-foreground/50 flex-shrink-0 cursor-grab active:cursor-grabbing touch-none" />}
         <FolderOpen className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{category.name}</span>
+        <span translate="no" className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{category.name}</span>
       </div>
       <div className="space-y-1 pl-2 mt-1">{children}</div>
     </div>
@@ -508,8 +510,8 @@ export function ServerChannelsManager({ serverId }: Props) {
     <div className="relative space-y-4 pb-20">
       <div className="flex items-center justify-between gap-2">
         <div>
-          <h3 className="text-lg font-semibold">Salons</h3>
-          <p className="text-sm text-muted-foreground">Gérez la structure des salons et catégories de votre serveur.</p>
+          <h2 className="text-xl font-semibold leading-6 text-white">Salons</h2>
+          <p className="mt-1 text-sm leading-[18px] text-foreground">Gère la structure des salons et des catégories de ton serveur.</p>
         </div>
         {reordering ? (
           <div className="flex items-center gap-2 flex-shrink-0">

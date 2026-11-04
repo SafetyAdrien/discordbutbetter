@@ -15,6 +15,7 @@ import { useVisualViewport } from '@/hooks/useVisualViewport';
 import { useSwipeBack } from '@/hooks/useSwipeBack';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { MessageInput } from '@/components/chat/MessageInput';
+import { TypingIndicatorContent } from '@/components/typing/TypingIndicator';
 import { MobileDMHeader } from './MobileDMHeader';
 import { MobileMessageBubble, type BubbleMessage } from './MobileMessageBubble';
 import { MobileDMMediaGallery } from './MobileDMMediaGallery';
@@ -22,7 +23,8 @@ import { DMCallView } from '@/components/dm/DMCallView';
 import { AdaptiveSheet } from '@/components/ui/adaptive-sheet';
 import { UserProfilePopup } from '@/components/profile/UserProfilePopup';
 import { UniversalMessageActions } from '@/components/chat/UniversalMessageActions';
-import { Loader2, Bell, BellOff, Image as ImageIcon, Pin, Search, Trash2, Check, Camera, Video as VideoIcon, VideoOff } from 'lucide-react';
+import { Loader2, Camera } from 'lucide-react';
+import { Bell, BellOff, Image as ImageIcon, Pin, Search, Trash2, Check, Video as VideoIcon, VideoOff } from '@/components/icons/discord/lucide';
 import { cn } from '@/lib/utils';
 import { copyToClipboard } from '@/lib/clipboard';
 import { uuidToSnowflake } from '@/lib/snowflake';
@@ -374,7 +376,7 @@ export function MobileDMConversation({ conversationId, onBack }: Props) {
               <div className="w-16 h-16 rounded-full bg-primary/15 text-primary flex items-center justify-center text-2xl font-bold mb-3">
                 {displayName.charAt(0).toUpperCase()}
               </div>
-              <h3 className="text-base font-semibold">{displayName}</h3>
+              <h3 translate="no" className="text-base font-semibold">{displayName}</h3>
               <p className="text-sm text-muted-foreground mt-1">
                 C'est le début de votre conversation. Dis bonjour 👋
               </p>
@@ -522,11 +524,7 @@ export function MobileDMConversation({ conversationId, onBack }: Props) {
           {otherTyping && (
             <div className="px-3 mt-1 flex items-end gap-2">
               <div className="w-8 h-8" aria-hidden />
-              <div className="px-3 py-2 rounded-2xl rounded-bl-md bg-[hsl(var(--surface-2))] flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/70 animate-pulse" />
-                <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/70 animate-pulse [animation-delay:120ms]" />
-                <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/70 animate-pulse [animation-delay:240ms]" />
-              </div>
+              <TypingIndicatorContent users={typingUsers} variant="bubble" />
             </div>
           )}
 

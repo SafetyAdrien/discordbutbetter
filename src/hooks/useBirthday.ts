@@ -53,12 +53,9 @@ export function useMyBirthdayStatus() {
     enabled: !!user?.id,
     queryFn: async () => {
       if (!user?.id) return { isBirthday: false };
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('birthday' as never)
-        .eq('id', user.id)
-        .maybeSingle();
-      const b = (profile as { birthday?: string | null } | null)?.birthday;
+      const { data, error } = await supabase.rpc('get_my_birthday');
+      if (error) throw error;
+      const b = data?.[0]?.birthday;
       if (!b) return { isBirthday: false };
       const now = new Date();
       const d = new Date(b);

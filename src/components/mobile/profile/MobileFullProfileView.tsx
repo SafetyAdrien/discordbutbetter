@@ -1,6 +1,6 @@
 import { useState, lazy, Suspense } from 'react';
 import { motion } from 'framer-motion';
-import { Settings, X, ExternalLink, Plus } from 'lucide-react';
+import { Settings, X, ExternalLink, Plus } from '@/components/icons/discord/lucide';
 import { format } from '@/lib/dateUtils';
 import { fr } from '@/lib/dateUtils';
 import { UserAvatarImage } from '@/components/ui/user-avatar-image';

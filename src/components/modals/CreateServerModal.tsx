@@ -1,5 +1,7 @@
 import { useState, useCallback } from 'react';
-import { X, Camera, ChevronRight, ChevronDown, ArrowLeft, Loader2, ImageIcon, Download, Hash, Mic, Megaphone, MessageSquare, Shield } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { Camera, Loader2 } from 'lucide-react';
+import { X, ChevronRight, ChevronDown, ArrowLeft, ImageIcon, Download, Hash, Mic, Megaphone, MessageSquare, Shield } from '@/components/icons/discord/lucide';
 import { cn } from '@/lib/utils';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { Button } from '@/components/ui/button';
@@ -8,9 +10,12 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { JoinServerModal } from './JoinServerModal';
 import { ImageCropper } from '@/components/ui/image-cropper';
 import { ServerIconUploadEditor } from '@/components/server-settings/ServerIconUploadEditor';
+import { decodeServerTemplate } from '@/lib/serverTemplateCode';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
+import { OPEN_SERVER_EVENT } from '@/lib/invites';
 
 import { StreamlineVoice } from '@/components/icons/StreamlineVoice';
 import { StreamlineForum } from '@/components/icons/StreamlineForum';
@@ -43,11 +48,29 @@ const toChannelType = (type: string): ChannelType => {
 };
 
 const templates = [
-  { id: 'gaming', name: 'Gaming', icon: '🎮', description: 'Pour les communautés de joueurs' },
-  { id: 'friends', name: 'Amis', icon: '💗', description: 'Un espace pour votre groupe d\'amis' },
-  { id: 'study', name: 'Groupe d\'étude', icon: '🍎', description: 'Pour les projets éducatifs' },
-  { id: 'school', name: 'Club Scolaire', icon: '📚', description: 'Pour les associations étudiantes' },
+  { id: 'gaming', name: 'Gaming', icon: '🎮' },
+  { id: 'friends', name: 'Amis', icon: '💗' },
+  { id: 'study', name: 'Groupe d\'étude', icon: '🍎' },
+  { id: 'school', name: 'Club scolaire', icon: '📘' },
+  { id: 'local', name: 'Communauté locale', icon: '🌿' },
+  { id: 'creators', name: 'Artistes et créateurs', icon: '🎨' },
 ];
+
+/* Ligne cliquable des etapes de creation, comme Discord : 60px, fond de carte,
+   bord 1px, icone 32px, libelle 16px et chevron a droite. */
+function OptionRow({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full h-[60px] px-4 flex items-center gap-3 rounded-lg bg-[hsl(var(--surface-card))] border border-[hsl(var(--button-secondary))] hover:bg-[hsl(var(--surface-hover))] transition-colors text-left group"
+    >
+      <span className="w-8 h-8 shrink-0 flex items-center justify-center text-2xl leading-none">{icon}</span>
+      <span className="flex-1 min-w-0 text-base font-medium text-foreground truncate">{label}</span>
+      <ChevronRight className="w-5 h-5 shrink-0 text-[hsl(var(--icon-default))] group-hover:text-foreground transition-colors" />
+    </button>
+  );
+}
 
 function ChannelTypeIcon({ type, className }: { type: string; className?: string }) {
   switch (type) {
@@ -61,12 +84,14 @@ function ChannelTypeIcon({ type, className }: { type: string; className?: string
 
 export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: CreateServerModalProps) {
   const { isMobile } = useBreakpoint();
+  const { profile } = useAuth();
+  const queryClient = useQueryClient();
   const [serverName, setServerName] = useState('');
   const [iconFile, setIconFile] = useState<File | null>(null);
   const [iconPreview, setIconPreview] = useState<string | null>(null);
   const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [bannerPreview, setBannerPreview] = useState<string | null>(null);
-  const [step, setStep] = useState<'choice' | 'type' | 'customize' | 'join' | 'import-source' | 'import-discord' | 'import-preview'>('choice');
+  const [step, setStep] = useState<'type' | 'audience' | 'customize' | 'join' | 'import-source' | 'import-discord' | 'import-preview'>('type');
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   
@@ -161,6 +186,15 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
 
   const handleSelectTemplate = (templateId: string | null) => {
     setSelectedTemplate(templateId);
+    setStep('audience');
+  };
+
+  // Etape "Personnalise ton serveur" : nom pre-rempli comme Discord.
+  const goCustomize = () => {
+    if (!serverName.trim()) {
+      const who = profile?.display_name || profile?.username;
+      if (who) setServerName(`Serveur de ${who}`);
+    }
     setStep('customize');
   };
 
@@ -171,6 +205,19 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
   // --- Import logic ---
   const handleFetchTemplate = async () => {
     if (!templateInput.trim()) return;
+    // Code de modele genere par l'app (page "Modele de serveur") : decode
+    // localement, sans passer par la fonction d'import Discord.
+    const local = decodeServerTemplate(templateInput);
+    if (local) {
+      setImportedData({ ...local, usageCount: 0, creator: null });
+      setImportServerName(local.serverName || local.name || '');
+      setIconFile(null);
+      setIconPreview(null);
+      setBannerFile(null);
+      setBannerPreview(null);
+      setStep('import-preview');
+      return;
+    }
     setIsFetching(true);
     try {
       const { data, error } = await supabase.functions.invoke('import-discord-template', {
@@ -201,81 +248,88 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
   const handleImportFinalize = async () => {
     if (!importedData || !importServerName.trim()) return;
     setIsImporting(true);
+    let step = 'création du serveur';
 
     try {
-      const [iconUrl, bannerUrl] = await Promise.all([
-        iconFile ? uploadToStorage(iconFile, 'server-icons') : Promise.resolve(null),
-        bannerFile ? uploadToStorage(bannerFile, 'server-banners') : Promise.resolve(null),
-      ]);
-
+      const userId = (await supabase.auth.getUser()).data.user?.id;
       const { data: server, error: serverError } = await supabase
         .from('servers')
-        .insert({
-          name: importServerName.trim(),
-          description: importedData.description,
-          owner_id: (await supabase.auth.getUser()).data.user?.id,
-          icon_url: iconUrl,
-          banner_url: bannerUrl,
-        })
+        .insert({ name: importServerName.trim(), description: importedData.description, owner_id: userId })
         .select()
         .single();
-
       if (serverError) throw serverError;
 
-      // Create categories and channels
+      // Les images se rangent dans le dossier du serveur (<id>/...) : la regle
+      // de stockage n'autorise que son proprietaire. Avant, l'envoi se faisait
+      // avant la creation, dans un dossier aleatoire, et echouait.
+      step = 'envoi des images';
+      const uploadAsset = async (file: File, bucket: string) => {
+        const path = `${server.id}/${Date.now()}.${file.name.split('.').pop() || 'png'}`;
+        const { error } = await supabase.storage.from(bucket).upload(path, file);
+        if (error) throw error;
+        return supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
+      };
+      const [iconUrl, bannerUrl] = await Promise.all([
+        iconFile ? uploadAsset(iconFile, 'server-icons') : Promise.resolve(null),
+        bannerFile ? uploadAsset(bannerFile, 'server-banners') : Promise.resolve(null),
+      ]);
+      if (iconUrl || bannerUrl) {
+        await supabase.from('servers').update({ icon_url: iconUrl, banner_url: bannerUrl }).eq('id', server.id);
+      }
+
+      // Un modele remplace la structure par defaut ("Salons textuels / vocaux").
+      step = 'préparation des salons';
+      const hasStructure = importedData.categories.length > 0 || importedData.orphanChannels.length > 0;
+      if (hasStructure) {
+        await supabase.from('channels').delete().eq('server_id', server.id);
+        await supabase.from('categories').delete().eq('server_id', server.id);
+      }
+
+      step = 'création des salons';
+      const failures: string[] = [];
       for (let catIdx = 0; catIdx < importedData.categories.length; catIdx++) {
         const cat = importedData.categories[catIdx];
         const { data: category, error: catError } = await supabase
           .from('categories')
-          .insert({
-            server_id: server.id,
-            name: cat.name,
-            position: catIdx + 1,
-          })
+          .insert({ server_id: server.id, name: cat.name, position: catIdx })
           .select()
           .single();
-
-        if (catError) { console.error('Cat error:', catError); continue; }
-
-        for (let chIdx = 0; chIdx < cat.channels.length; chIdx++) {
-          const ch = cat.channels[chIdx];
-          await supabase.from('channels').insert({
-            server_id: server.id,
-            category_id: category.id,
-            name: ch.name,
-            type: toChannelType(ch.type),
-            position: chIdx,
-          });
+        if (catError || !category) {
+          failures.push(cat.name);
+          continue;
+        }
+        if (cat.channels.length) {
+          const { error } = await supabase.from('channels').insert(
+            cat.channels.map((ch, chIdx) => ({ server_id: server.id, category_id: category.id, name: ch.name, type: toChannelType(ch.type), position: chIdx })),
+          );
+          if (error) failures.push(`salons de ${cat.name}`);
         }
       }
-
-      // Create orphan channels
-      for (let i = 0; i < importedData.orphanChannels.length; i++) {
-        const ch = importedData.orphanChannels[i];
-        await supabase.from('channels').insert({
-          server_id: server.id,
-          name: ch.name,
-          type: toChannelType(ch.type),
-          position: i,
-        });
+      if (importedData.orphanChannels.length) {
+        const { error } = await supabase.from('channels').insert(
+          importedData.orphanChannels.map((ch, i) => ({ server_id: server.id, name: ch.name, type: toChannelType(ch.type), position: i })),
+        );
+        if (error) failures.push('salons sans catégorie');
       }
 
-      // Create roles
-      for (let rIdx = 0; rIdx < importedData.roles.length; rIdx++) {
-        const r = importedData.roles[rIdx];
-        await supabase.from('roles').insert({
-          server_id: server.id,
-          name: r.name,
-          color: r.color,
-          hoist: r.hoist,
-          position: rIdx + 1,
-        });
+      step = 'création des rôles';
+      if (importedData.roles.length) {
+        // Les modeles Discord listent les roles du plus bas au plus haut.
+        const { error } = await supabase.from('roles').insert(
+          importedData.roles.map((r, rIdx) => ({ server_id: server.id, name: r.name, color: r.color, hoist: r.hoist, position: rIdx + 1 })),
+        );
+        if (error) failures.push('rôles');
       }
 
+      if (failures.length) toast.warning(`Serveur créé, mais certains éléments n'ont pas pu être importés : ${failures.join(', ')}`);
+      else toast.success('Serveur importé !');
+      queryClient.invalidateQueries({ queryKey: ['servers'] });
+      window.dispatchEvent(new CustomEvent(OPEN_SERVER_EVENT, { detail: { serverId: server.id } }));
       onClose();
     } catch (err) {
       console.error('Import error:', err);
-      toast.error("Erreur lors de l'importation");
+      const detail = err instanceof Error ? err.message : (err as { message?: string })?.message;
+      toast.error(`Erreur lors de l'importation (${step})${detail ? ` : ${detail}` : ''}`);
     } finally {
       setIsImporting(false);
     }
@@ -286,7 +340,7 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
     return (
       <JoinServerModal
         onClose={onClose}
-        onBack={() => setStep('choice')}
+        onBack={() => setStep('type')}
         onJoinSuccess={handleJoinSuccess}
         onDiscoverClick={onDiscoverClick}
       />
@@ -299,47 +353,46 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
         <div className="absolute inset-0 backdrop-optimized" onClick={onClose} />
         
         <div className={cn(
-          "relative w-full bg-card animate-slide-in-right gpu-accelerated",
-          isMobile ? "h-full" : "max-w-md rounded-xl border border-border shadow-2xl",
+          "relative w-full bg-[hsl(var(--search-background))] animate-appear gpu-accelerated",
+          isMobile ? "h-full" : "max-w-[440px] rounded-xl border border-[hsl(var(--button-secondary))] shadow-2xl",
           step === 'import-preview'
             ? cn("overflow-y-auto", !isMobile && "max-h-[85vh]")
             : "overflow-hidden"
         )}>
           {/* Header */}
-          <div className="p-6 text-center relative">
-            <Button 
-              variant="ghost" 
-              size="icon" 
+          <div className={cn("relative text-center", step === 'type' || step === 'audience' || step === 'customize' ? "px-4 pt-6 pb-4" : "p-6")}>
+            <button
+              type="button"
               onClick={onClose}
-              className="absolute right-4 top-4"
+              className="absolute right-4 top-4 text-[hsl(var(--icon-default))] hover:text-foreground transition-colors"
               aria-label="Fermer"
             >
-              <X className="w-5 h-5" />
-            </Button>
-            
-            {step === 'choice' && (
+              <X className="w-6 h-6" />
+            </button>
+
+            {step === 'type' && (
               <>
-                <h2 className="text-2xl font-ginto font-bold">Créer un serveur</h2>
-                <p className="text-muted-foreground mt-2">
-                  Votre serveur est l'endroit où vous et vos amis traînez. Créez le vôtre et commencez à discuter.
+                <h2 className="text-2xl font-bold text-foreground leading-[30px]">Crée ton serveur</h2>
+                <p className="mt-2 px-4 text-base leading-5 text-muted-foreground">
+                  Ton serveur est l'endroit où tu retrouves tes amis. Crée le tien et lance une discussion.
                 </p>
               </>
             )}
 
-            {step === 'type' && (
+            {step === 'audience' && (
               <>
-                <h2 className="text-2xl font-ginto font-bold">Créer votre serveur</h2>
-                <p className="text-muted-foreground mt-2">
-                  Votre serveur est l'endroit où vous et vos amis passez du temps. Créez le vôtre et commencez à discuter.
+                <h2 className="text-2xl font-bold text-foreground leading-[30px]">Dis-nous en plus sur ton serveur</h2>
+                <p className="mt-2 px-4 text-base leading-5 text-muted-foreground">
+                  Pour t'aider à configurer ton nouveau serveur, dis nous s'il est destiné à quelques amis uniquement ou à une communauté plus importante.
                 </p>
               </>
             )}
 
             {step === 'customize' && (
               <>
-                <h2 className="text-2xl font-ginto font-bold">Personnaliser votre serveur</h2>
-                <p className="text-muted-foreground mt-2">
-                  Donnez une identité à votre nouveau serveur en lui donnant un nom et une icône.
+                <h2 className="text-2xl font-bold text-foreground leading-[30px]">Personnalise ton serveur</h2>
+                <p className="mt-2 px-4 text-base leading-5 text-muted-foreground">
+                  Donne une personnalité à ton nouveau serveur en choisissant un nom et une icône. Tu pourras toujours les modifier plus tard.
                 </p>
               </>
             )}
@@ -372,51 +425,6 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
             )}
           </div>
 
-          {step === 'choice' && (
-            <div className="px-6 pb-6 space-y-3">
-              <button type="button"
-                onClick={() => setStep('type')}
-                className="w-full p-4 bg-surface-elevated rounded-lg border border-border hover:border-primary/50 hover:bg-surface-hover transition-colors duration-200 group text-left"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-gradient-gaming flex items-center justify-center group-hover:scale-110 transition-transform duration-150">
-                      <span className="text-2xl">🎮</span>
-                    </div>
-                    <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors duration-150">
-                      Créer le mien
-                    </h3>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors duration-150" />
-                </div>
-              </button>
-
-              <button type="button"
-                onClick={() => setStep('import-source')}
-                className="w-full p-4 bg-surface-elevated rounded-lg border border-border hover:border-primary/50 hover:bg-surface-hover transition-colors duration-200 group text-left"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center group-hover:scale-110 transition-transform duration-150">
-                      <Download className="w-6 h-6 text-muted-foreground group-hover:text-primary transition-colors" />
-                    </div>
-                    <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors duration-150">
-                      Importer un serveur
-                    </h3>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors duration-150" />
-                </div>
-              </button>
-
-              <div className="pt-4 border-t border-border text-center">
-                <p className="text-sm text-muted-foreground mb-3">Vous avez déjà une invitation ?</p>
-                <Button variant="outline" className="w-full" onClick={() => setStep('join')}>
-                  Rejoindre un serveur
-                </Button>
-              </div>
-            </div>
-          )}
-
           {step === 'import-source' && (
             <div className="px-6 pb-6 space-y-3">
               <button type="button"
@@ -434,7 +442,7 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
                       <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors duration-150">
                         Discord
                       </h3>
-                      <p className="text-xs text-muted-foreground">Via un template discord.new</p>
+                      <p className="text-xs text-muted-foreground">Via un template discord.new ou un code de modèle de l'app</p>
                     </div>
                   </div>
                   <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors duration-150" />
@@ -461,7 +469,7 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
                 </div>
               </button>
 
-              <Button variant="ghost" className="w-full" onClick={() => setStep('choice')}>
+              <Button variant="ghost" className="w-full" onClick={() => setStep('type')}>
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Retour
               </Button>
@@ -619,11 +627,11 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
                 <CollapsibleContent className="px-2 pb-2 space-y-2 max-h-56 overflow-y-auto">
                   {importedData.categories.map((cat, idx) => (
                     <div key={idx} className="space-y-0.5">
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1">{cat.name}</p>
+                      <p translate="no" className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1">{cat.name}</p>
                       {cat.channels.map((ch, chIdx) => (
                         <div key={chIdx} className="channel-item text-sm">
                           <ChannelTypeIcon type={ch.type} className="w-4 h-4 flex-shrink-0" />
-                          <span className="truncate">{ch.name}</span>
+                          <span translate="no" className="truncate">{ch.name}</span>
                         </div>
                       ))}
                     </div>
@@ -631,7 +639,7 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
                   {importedData.orphanChannels.map((ch, idx) => (
                     <div key={idx} className="channel-item text-sm">
                       <ChannelTypeIcon type={ch.type} className="w-4 h-4 flex-shrink-0" />
-                      <span className="truncate">{ch.name}</span>
+                      <span translate="no" className="truncate">{ch.name}</span>
                     </div>
                   ))}
                 </CollapsibleContent>
@@ -696,178 +704,137 @@ export function CreateServerModal({ onClose, onCreate, onDiscoverClick }: Create
           )}
 
           {step === 'type' && (
-            <div className="px-6 pb-6 space-y-4">
-              <button type="button"
-                onClick={() => handleSelectTemplate(null)}
-                className="w-full p-4 bg-surface-elevated rounded-lg border border-border hover:border-primary/50 hover:bg-surface-hover transition-colors duration-200 group text-left"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-gradient-gaming flex items-center justify-center group-hover:scale-110 transition-transform duration-150">
-                      <span className="text-2xl">🎮</span>
-                    </div>
-                    <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors duration-150">
-                      Créer le mien
-                    </h3>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors duration-150" />
-                </div>
-              </button>
-
-              <div className="space-y-2">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  Commencer à partir d'un modèle
-                </p>
-                {templates.map((template) => (
-                  <button type="button"
-                    key={template.id}
-                    onClick={() => handleSelectTemplate(template.id)}
-                    className="w-full p-3 bg-surface-elevated rounded-lg border border-border hover:border-primary/50 hover:bg-surface-hover transition-colors duration-200 group text-left"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <span className="text-xl">{template.icon}</span>
-                        <span className="font-medium text-foreground group-hover:text-primary transition-colors duration-150">
-                          {template.name}
-                        </span>
-                      </div>
-                      <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors duration-150" />
-                    </div>
-                  </button>
+            <div key="type" className="animate-step-in">
+              <div className="px-4 max-h-[min(330px,45vh)] overflow-y-auto scrollbar-thin space-y-2 pb-2">
+                <OptionRow icon="🖌️" label="Créer le mien" onClick={() => handleSelectTemplate(null)} />
+                <p className="pt-2 pb-0.5 text-xs font-bold text-muted-foreground">Commencer à partir d'un modèle</p>
+                {templates.map((t) => (
+                  <OptionRow key={t.id} icon={t.icon} label={t.name} onClick={() => handleSelectTemplate(t.id)} />
                 ))}
+                {/* Ajout de l'app : import d'un serveur Discord ou d'un code de modele. */}
+                <p className="pt-2 pb-0.5 text-xs font-bold text-muted-foreground">Importer</p>
+                <OptionRow
+                  icon={<Download className="w-6 h-6 text-[hsl(var(--icon-default))]" />}
+                  label="Importer un serveur"
+                  onClick={() => setStep('import-source')}
+                />
               </div>
+              <div className="px-4 pt-4 pb-4 text-center">
+                <p className="text-xl font-bold text-foreground leading-6 mb-2">Tu as déjà une invitation ?</p>
+                <button
+                  type="button"
+                  onClick={() => setStep('join')}
+                  className="w-full h-10 rounded-lg bg-[hsl(var(--input))] hover:bg-[hsl(var(--button-secondary))] text-sm font-medium text-foreground transition-colors"
+                >
+                  Rejoindre un serveur
+                </button>
+              </div>
+            </div>
+          )}
 
-              <Button variant="ghost" className="w-full" onClick={() => setStep('choice')}>
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Retour
-              </Button>
+          {step === 'audience' && (
+            <div key="audience" className="animate-step-in">
+              <div className="px-4 space-y-2">
+                <OptionRow icon="🌍" label="Pour un club ou une communauté" onClick={goCustomize} />
+                <OptionRow icon="👾" label="Pour mes amis et moi" onClick={goCustomize} />
+                <p className="pt-3 text-center text-sm text-muted-foreground">
+                  Tu ne sais pas ? Tu peux{' '}
+                  <button type="button" onClick={goCustomize} className="text-[hsl(var(--text-link))] hover:underline">
+                    ignorer cette question
+                  </button>{' '}
+                  pour l'instant.
+                </p>
+              </div>
+              <div className="mt-6 px-4 py-4 bg-[hsl(var(--card))] flex items-center">
+                <button type="button" onClick={() => setStep('type')} className="text-sm font-medium text-foreground hover:underline">
+                  Retour
+                </button>
+              </div>
             </div>
           )}
 
           {step === 'customize' && (
-            <div className="px-6 pb-6">
-              {/* Banner Upload */}
-              <div className="relative mb-4 group">
-                <label className="cursor-pointer block" aria-label="Importer ou modifier la bannière du serveur">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => handleFileSelect(e, 'banner')}
-                    className="hidden"
-                  />
-                  <div 
-                    className="h-24 rounded-lg bg-muted border-2 border-dashed border-muted-foreground/30 hover:border-primary/50 transition-all overflow-hidden flex items-center justify-center"
-                    style={bannerPreview ? { 
-                      backgroundImage: `url(${bannerPreview})`,
-                      backgroundSize: 'cover',
-                      backgroundPosition: 'center'
-                    } : undefined}
-                  >
-                    {!bannerPreview && (
-                      <div className="flex flex-col items-center gap-1 text-muted-foreground">
-                        <ImageIcon className="w-6 h-6" />
-                        <span className="text-xs">Ajouter une bannière</span>
-                      </div>
+            <div key="customize" className="animate-step-in">
+              <div className="px-4">
+                {/* Icone : cercle pointille 80px "Uploader" avec pastille + */}
+                <div className="flex justify-center pt-2 pb-6">
+                  <div className="relative group">
+                    <label className="relative cursor-pointer block" aria-label="Importer ou modifier l'icône du serveur">
+                      <input type="file" accept="image/*" onChange={(e) => handleFileSelect(e, 'icon')} className="hidden" />
+                      {iconPreview ? (
+                        <img src={iconPreview} alt="Icône du serveur" className="w-20 h-20 rounded-full object-cover" />
+                      ) : (
+                        <span className="relative w-20 h-20 rounded-full flex flex-col items-center justify-center gap-0.5 text-foreground">
+                          <svg className="absolute inset-0 w-20 h-20" viewBox="0 0 80 80" fill="none" aria-hidden="true">
+                            <circle cx="40" cy="40" r="38.5" stroke="currentColor" strokeWidth="2" strokeDasharray="10 7" className="text-[hsl(var(--icon-default))]" />
+                          </svg>
+                          <Camera className="w-6 h-6" />
+                          <span className="text-[11px] font-bold leading-none">Uploader</span>
+                        </span>
+                      )}
+                      {!iconPreview && (
+                        <span className="absolute top-0 right-0 w-5 h-5 rounded-full bg-primary text-white flex items-center justify-center text-base leading-none font-bold">+</span>
+                      )}
+                      {iconPreview && (
+                        <span className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none">
+                          <Camera className="w-6 h-6 text-white" />
+                        </span>
+                      )}
+                    </label>
+                    {iconPreview && (
+                      <button type="button" onClick={handleRemoveIcon}
+                        className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center hover:opacity-90 transition-opacity z-10"
+                        aria-label="Supprimer l'icône du serveur">
+                        <X className="w-4 h-4" />
+                      </button>
                     )}
                   </div>
-                  {bannerPreview && (
-                    <div className="absolute inset-0 rounded-lg bg-background/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none">
-                      <Camera className="w-6 h-6 text-foreground" />
-                    </div>
-                  )}
-                </label>
-                {bannerPreview && (
-                  <button type="button"
-                    onClick={handleRemoveBanner}
-                    className="absolute top-2 right-2 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center hover:opacity-90 transition-opacity z-10"
-                    aria-label="Supprimer la bannière du serveur"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-
-              {/* Icon Upload - centered overlapping banner */}
-              <div className="flex justify-center -mt-12 mb-4">
-                <div className="relative group">
-                <label className="cursor-pointer block" aria-label="Importer ou modifier l'icône du serveur">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => handleFileSelect(e, 'icon')}
-                      className="hidden"
-                    />
-                    <div className="w-20 h-20 rounded-full bg-card border-4 border-card flex items-center justify-center shadow-lg transition-all overflow-hidden">
-                      {iconPreview ? (
-                        <img src={iconPreview} alt="Server icon" className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full rounded-full bg-surface-elevated border-2 border-dashed border-muted-foreground/50 flex items-center justify-center group-hover:border-primary/50">
-                          <Camera className="w-8 h-8 text-muted-foreground group-hover:text-primary transition-colors" />
-                        </div>
-                      )}
-                    </div>
-                    {iconPreview && (
-                      <div className="absolute inset-0 rounded-full bg-background/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none">
-                        <Camera className="w-6 h-6 text-foreground" />
-                      </div>
-                    )}
-                  </label>
-                  {iconPreview && (
-                    <button type="button"
-                      onClick={handleRemoveIcon}
-                      className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center hover:opacity-90 transition-opacity z-10"
-                      aria-label="Supprimer l'icône du serveur"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
-                  <span className="mt-2 block text-center text-xs font-medium text-muted-foreground">
-                    {iconPreview ? "Changer l'icône" : 'Importer une icône'}
-                  </span>
                 </div>
-              </div>
 
-              {/* Server Name */}
-              <div className="mb-6">
-                <label className="block text-sm font-semibold text-muted-foreground mb-2">
-                  Nom du Serveur
+                <label htmlFor="create-server-name" className="block mb-2 text-base font-semibold text-foreground">
+                  Nom du serveur <span className="text-destructive">*</span>
                 </label>
-                <Input
-                  placeholder="Mon super serveur"
+                <input
+                  id="create-server-name"
+                  autoFocus
                   value={serverName}
                   onChange={(e) => setServerName(e.target.value)}
-                  className="text-center"
+                  onKeyDown={(e) => { if (e.key === 'Enter' && serverName.trim()) handleCreate(); }}
+                  maxLength={100}
+                  className="w-full h-10 px-3 rounded-lg bg-[hsl(var(--background))] border border-white/[0.06] focus:border-primary text-base text-foreground outline-none transition-colors"
                 />
-                <p className="text-xs text-muted-foreground mt-2 text-center">
-                  En créant un serveur, vous acceptez les Conditions d'utilisation.
+
+                {/* Banniere : ajout propre a l'app (facultatif). */}
+                <div className="mt-3 flex items-center gap-2">
+                  <label className="cursor-pointer inline-flex items-center gap-1.5 text-sm text-[hsl(var(--text-link))] hover:underline">
+                    <input type="file" accept="image/*" onChange={(e) => handleFileSelect(e, 'banner')} className="hidden" />
+                    <ImageIcon className="w-4 h-4" />
+                    {bannerPreview ? 'Changer la bannière' : 'Ajouter une bannière (facultatif)'}
+                  </label>
+                  {bannerPreview && (
+                    <>
+                      <img src={bannerPreview} alt="" className="h-6 w-12 rounded object-cover" />
+                      <button type="button" onClick={handleRemoveBanner} aria-label="Supprimer la bannière du serveur"
+                        className="text-[hsl(var(--icon-default))] hover:text-foreground">
+                        <X className="w-4 h-4" />
+                      </button>
+                    </>
+                  )}
+                </div>
+
+                <p className="mt-2 pb-6 text-xs text-muted-foreground">
+                  En créant un serveur, tu acceptes la{' '}
+                  <span className="font-semibold text-[hsl(var(--text-link))]">Charte d'Utilisation de la Communauté</span>.
                 </p>
               </div>
 
-              {/* Actions */}
-              <div className="flex gap-3">
-                <Button
-                  variant="ghost"
-                  className="flex-1"
-                  onClick={() => setStep(selectedTemplate ? 'type' : 'choice')}
-                  disabled={isUploading}
-                >
-                  <ArrowLeft className="w-4 h-4 mr-2" />
+              <div className="px-4 py-4 bg-[hsl(var(--card))] flex items-center justify-between">
+                <button type="button" onClick={() => setStep('audience')} disabled={isUploading}
+                  className="text-sm font-medium text-foreground hover:underline">
                   Retour
-                </Button>
-                <Button
-                  variant="gaming"
-                  className="flex-1"
-                  onClick={handleCreate}
-                  disabled={!serverName.trim() || isUploading}
-                >
-                  {isUploading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Création...
-                    </>
-                  ) : (
-                    'Créer'
-                  )}
+                </button>
+                <Button onClick={handleCreate} disabled={!serverName.trim() || isUploading} className="h-10 px-6 rounded-lg">
+                  {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Créer'}
                 </Button>
               </div>
             </div>

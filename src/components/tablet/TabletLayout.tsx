@@ -1,5 +1,5 @@
 import { ReactNode, useState } from 'react';
-import { Menu, Users } from 'lucide-react';
+import { Menu, Users } from '@/components/icons/discord/lucide';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';

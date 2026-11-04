@@ -1,4 +1,5 @@
-import { User, Palette, Bell, Shield, Pencil } from 'lucide-react';
+import { Palette } from 'lucide-react';
+import { User, Bell, Shield, Pencil } from '@/components/icons/discord/lucide';
 
 /** Mini profile card + settings modal snippet. */
 export function SceneProfileSettings() {

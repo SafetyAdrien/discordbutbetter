@@ -1,0 +1,11 @@
+create schema auth;
+create table auth.users (id uuid primary key);
+create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('app.uid', true), '')::uuid $$;
+create role authenticated; create role anon;
+create type server_permission as enum ('manage_server','administrator');
+create table public.servers (id uuid primary key default gen_random_uuid(), owner_id uuid, secondary_owner_id uuid, name text);
+create table public.server_members (id uuid primary key default gen_random_uuid(), server_id uuid references servers(id) on delete cascade, user_id uuid);
+create table public.admins (server_id uuid, user_id uuid);
+create function public.is_server_owner_or_secondary(u uuid, s uuid) returns boolean language sql stable as $$ select exists(select 1 from servers where id=s and (owner_id=u or secondary_owner_id=u)) $$;
+create function public.has_server_permission(u uuid, s uuid, p server_permission) returns boolean language sql stable as $$ select exists(select 1 from admins where server_id=s and user_id=u) $$;
+create function public.is_server_member(u uuid, s uuid) returns boolean language sql stable as $$ select exists(select 1 from server_members where server_id=s and user_id=u) $$;

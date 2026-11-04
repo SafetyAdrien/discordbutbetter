@@ -1,7 +1,8 @@
 import { useState, ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
-import { Reply, Pencil, Trash2, Link, Pin, SmilePlus, ClipboardCopy } from 'lucide-react';
+import { SmilePlus, ClipboardCopy } from 'lucide-react';
+import { Reply, Pencil, Trash2, Link, Pin } from '@/components/icons/discord/lucide';
 import StreamlineThreads from '@/components/icons/StreamlineThreads';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
@@ -118,7 +119,7 @@ export function MessagePreviewSheet({
                     </Avatar>
                     <div className="min-w-0 flex-1">
                       {authorName && (
-                        <div className="text-xs font-semibold text-foreground mb-0.5">{authorName}</div>
+                        <div translate="no" className="text-xs font-semibold text-foreground mb-0.5">{authorName}</div>
                       )}
                       {messageContent && (
                         <p className="text-sm text-foreground/90 whitespace-pre-wrap break-words line-clamp-6">

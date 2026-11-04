@@ -1,5 +1,5 @@
 import { useMemo, forwardRef, ReactNode, useState } from 'react';
-import { Copy, Check } from 'lucide-react';
+import { Copy, Check } from '@/components/icons/discord/lucide';
 import { snowflakeToUuid } from '@/lib/snowflake';
 import { nearestColorName, normalizeHex } from '@/lib/colorNames';
 import { MentionMember, MentionRole, MentionChannel } from './MentionAutocomplete';
@@ -13,8 +13,10 @@ export interface MentionLookupData {
 export interface MentionEntry {
   display: string;
   token: string;
-  kind: 'user' | 'role' | 'channel' | 'color';
+  kind: 'user' | 'role' | 'channel' | 'color' | 'emoji';
   color?: string;
+  /** Emoji de serveur : image dessinee a la place du texte reserve. */
+  url?: string;
 }
 
 interface InputMarkdownOverlayProps {
@@ -89,7 +91,8 @@ const lineStyles: Record<OverlayLine['type'], string> = {
 };
 
 // All types use identical metrics - no exceptions
-export const OVERLAY_FONT_SIZE = '0.875rem';
+// 16px : taille du texte du composeur sur la capture de reference.
+export const OVERLAY_FONT_SIZE = '1rem';
 // 24px, Discord's composer line-height (.base_b88801). Every consumer scales
 // from this constant (MarkdownLiveTextarea computes `rows * lineHeight`), so
 // the bio editors follow automatically instead of drifting.
@@ -164,6 +167,15 @@ function pillClassFor(kind: MentionEntry['kind']): string {
 }
 
 function renderMentionEntry(entry: MentionEntry, key: number, entryIndex: number): ReactNode {
+  if (entry.kind === 'emoji' && entry.url) {
+    // Le texte reserve (deux espaces, 24px) garde la largeur ; l'image est posee dessus.
+    return (
+      <span key={key} style={{ position: 'relative', display: 'inline-block', color: 'transparent' }}>
+        {entry.display}
+        <img src={entry.url} alt="" draggable={false} aria-hidden style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', height: '1.375em', width: 'auto', maxWidth: '24px', objectFit: 'contain' }} />
+      </span>
+    );
+  }
   if (entry.kind === 'color' && entry.color) {
     const bg = 'hsl(var(--surface-elevated))';
     const first = entry.display.charAt(0);
@@ -298,19 +310,19 @@ function renderLegacyAndSpecialMentions(text: string, mentionData: MentionLookup
       const uuid = snowflakeToUuid(match[3]);
       const member = uuid ? mentionData?.members?.find(m => m.id === uuid) : undefined;
       const displayName = member ? `@${member.displayName}` : full;
-      parts.push(<span key={key++} className="rounded-[3px] bg-primary/30 text-[#dee0fc]" style={{ boxShadow: sideShadow(PRIMARY_PILL_BG) }}>{displayName}</span>);
+      parts.push(<span translate="no" key={key++} className="rounded-[3px] bg-primary/30 text-[#dee0fc]" style={{ boxShadow: sideShadow(PRIMARY_PILL_BG) }}>{displayName}</span>);
     } else if (match[2] !== undefined) {
       const uuid = snowflakeToUuid(match[2]);
       const role = uuid ? mentionData?.roles?.find(r => r.id === uuid) : undefined;
       const roleColor = role?.color || '#99aab5';
       const displayName = role ? `@${role.name}` : full;
       const bg = `${roleColor}4D`;
-      parts.push(<span key={key++} className="rounded-[3px]" style={{ backgroundColor: bg, color: roleColor, boxShadow: sideShadow(bg) }}>{displayName}</span>);
+      parts.push(<span translate="no" key={key++} className="rounded-[3px]" style={{ backgroundColor: bg, color: roleColor, boxShadow: sideShadow(bg) }}>{displayName}</span>);
     } else if (match[4] !== undefined) {
       const uuid = snowflakeToUuid(match[4]);
       const channel = uuid ? mentionData?.channels?.find(c => c.id === uuid) : undefined;
       const displayName = channel ? `#${channel.name}` : full;
-      parts.push(<span key={key++} className="rounded-[3px] bg-primary/30 text-[#dee0fc]" style={{ boxShadow: sideShadow(PRIMARY_PILL_BG) }}>{displayName}</span>);
+      parts.push(<span translate="no" key={key++} className="rounded-[3px] bg-primary/30 text-[#dee0fc]" style={{ boxShadow: sideShadow(PRIMARY_PILL_BG) }}>{displayName}</span>);
     } else {
       parts.push(<span key={key++}>{full}</span>);
     }

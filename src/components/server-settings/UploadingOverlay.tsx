@@ -1,5 +1,5 @@
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { X } from 'lucide-react';
+import { X } from '@/components/icons/discord/lucide';
 
 interface UploadingOverlayProps {
   open: boolean;

@@ -8,13 +8,15 @@ import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Loader2, Gamepad2, Check, X, ShieldAlert, ArrowLeft, Mail, Phone, Smartphone } from 'lucide-react';
+import { Loader2, ShieldAlert } from 'lucide-react';
+import { Gamepad2, Check, X, ArrowLeft, Mail, Phone, Smartphone } from '@/components/icons/discord/lucide';
 import { supabase } from '@/integrations/supabase/client';
 import { checkPasswordPwned } from '@/lib/password-security';
 import { PasswordStrengthIndicator } from '@/components/auth/PasswordStrengthIndicator';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { checkRateLimit, resetRateLimit } from '@/lib/rate-limiter';
 
+import { appLocale } from '@/i18n/locale';
 type AuthView = 'login' | 'forgot-password' | 'reset-password';
 type AuthMethod = 'email' | 'phone';
 type PhoneAuthStep = 'phone-input' | 'otp-verify';
@@ -393,7 +395,7 @@ export default function Auth() {
     // Block submission if password is compromised (use real-time check result)
     if (passwordPwnedCount && passwordPwnedCount > 0) {
       setErrors({ 
-        password: `Ce mot de passe a été trouvé dans ${passwordPwnedCount.toLocaleString('fr-FR')} fuites de données. Veuillez en choisir un autre.` 
+        password: `Ce mot de passe a été trouvé dans ${passwordPwnedCount.toLocaleString(appLocale())} fuites de données. Veuillez en choisir un autre.` 
       });
       return;
     }
@@ -464,7 +466,7 @@ export default function Auth() {
     // Block submission if password is compromised (use real-time check result)
     if (passwordPwnedCount && passwordPwnedCount > 0) {
       setErrors({ 
-        password: `Ce mot de passe a été trouvé dans ${passwordPwnedCount.toLocaleString('fr-FR')} fuites de données. Veuillez en choisir un autre.` 
+        password: `Ce mot de passe a été trouvé dans ${passwordPwnedCount.toLocaleString(appLocale())} fuites de données. Veuillez en choisir un autre.` 
       });
       return;
     }

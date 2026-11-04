@@ -7,7 +7,8 @@ import { useServerEmojis } from '@/hooks/useServerAssets';
 import { UserAvatarImage } from '@/components/ui/user-avatar-image';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Circle, MinusCircle, EyeOff, Smile, X, Check, ChevronDown } from 'lucide-react';
+import { Circle, MinusCircle } from 'lucide-react';
+import { EyeOff, Smile, X, Check, ChevronDown } from '@/components/icons/discord/lucide';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/lib/haptics';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -133,7 +134,7 @@ export function MobileStatusSheet({ open, onOpenChange }: Props) {
                 ownerId={profile?.id ?? user?.id}
               />
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-sm truncate">{profile?.display_name}</p>
+                <p translate="no" className="font-semibold text-sm truncate">{profile?.display_name}</p>
                 <p className="text-xs text-muted-foreground truncate">@{profile?.username}</p>
               </div>
             </div>

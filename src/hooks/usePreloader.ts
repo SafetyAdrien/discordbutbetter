@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { recordPerf, markPerf, measurePerf } from '@/lib/perf';
+import { userKey } from '@/lib/userScope';
 
 interface PreloadStep {
   label: string;
@@ -33,7 +34,7 @@ function readPersistedNavigationState(): { activeServerId: string | null; active
   }
 
   try {
-    const saved = window.localStorage.getItem('discord_navigation_state');
+    const saved = window.localStorage.getItem(userKey('discord_navigation_state'));
     if (!saved) {
       return { activeServerId: null, activeChannelId: null };
     }

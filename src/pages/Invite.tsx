@@ -6,7 +6,8 @@ import { useJoinByInvite } from '@/hooks/useInvites';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Users, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Loader2, AlertCircle } from 'lucide-react';
+import { Users, CheckCircle2 } from '@/components/icons/discord/lucide';
 
 interface InviteDetails {
   id: string;

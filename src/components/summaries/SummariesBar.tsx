@@ -1,5 +1,6 @@
 import { SummaryTopic } from "@/hooks/useSummaries";
-import { ChevronDown, CheckCheck, Sparkles, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { ChevronDown, CheckCheck, Sparkles } from "@/components/icons/discord/lucide";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { SummariesDropdown } from "./SummariesDropdown";

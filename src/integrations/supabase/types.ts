@@ -503,6 +503,7 @@ export type Database = {
       }
       channel_followers: {
         Row: {
+          display_name: string | null
           created_at: string
           follower_user_id: string
           id: string
@@ -510,6 +511,7 @@ export type Database = {
           target_channel_id: string
         }
         Insert: {
+          display_name?: string | null
           created_at?: string
           follower_user_id: string
           id?: string
@@ -517,6 +519,7 @@ export type Database = {
           target_channel_id: string
         }
         Update: {
+          display_name?: string | null
           created_at?: string
           follower_user_id?: string
           id?: string
@@ -734,7 +737,9 @@ export type Database = {
           position: number | null
           server_id: string
           slowmode_seconds: number
+          thread_first_message_required: boolean
           type: Database["public"]["Enums"]["channel_type"] | null
+          voice_status: string | null
         }
         Insert: {
           category_id?: string | null
@@ -747,7 +752,9 @@ export type Database = {
           position?: number | null
           server_id: string
           slowmode_seconds?: number
+          thread_first_message_required?: boolean
           type?: Database["public"]["Enums"]["channel_type"] | null
+          voice_status?: string | null
         }
         Update: {
           category_id?: string | null
@@ -760,7 +767,9 @@ export type Database = {
           position?: number | null
           server_id?: string
           slowmode_seconds?: number
+          thread_first_message_required?: boolean
           type?: Database["public"]["Enums"]["channel_type"] | null
+          voice_status?: string | null
         }
         Relationships: [
           {
@@ -2022,6 +2031,8 @@ export type Database = {
       }
       messages: {
         Row: {
+          source_channel_id: string | null
+          published_at: string | null
           attachments: Json | null
           author_id: string | null
           channel_id: string
@@ -2041,6 +2052,8 @@ export type Database = {
           target_user_id: string | null
         }
         Insert: {
+          source_channel_id?: string | null
+          published_at?: string | null
           attachments?: Json | null
           author_id?: string | null
           channel_id: string
@@ -2060,6 +2073,8 @@ export type Database = {
           target_user_id?: string | null
         }
         Update: {
+          source_channel_id?: string | null
+          published_at?: string | null
           attachments?: Json | null
           author_id?: string | null
           channel_id?: string
@@ -2313,6 +2328,7 @@ export type Database = {
           connections: Json
           created_at: string | null
           custom_status: string | null
+          custom_status_expires_at: string | null
           display_name: string
           id: string
           last_activity_at: string
@@ -2337,6 +2353,7 @@ export type Database = {
           connections?: Json
           created_at?: string | null
           custom_status?: string | null
+          custom_status_expires_at?: string | null
           display_name: string
           id: string
           last_activity_at?: string
@@ -2361,6 +2378,7 @@ export type Database = {
           connections?: Json
           created_at?: string | null
           custom_status?: string | null
+          custom_status_expires_at?: string | null
           display_name?: string
           id?: string
           last_activity_at?: string
@@ -2633,6 +2651,111 @@ export type Database = {
           },
         ]
       }
+      server_events: {
+        Row: {
+          canceled_occurrences: string[]
+          channel_id: string | null
+          cover_url: string | null
+          created_at: string
+          creator_id: string | null
+          description: string | null
+          ends_at: string | null
+          id: string
+          location: string | null
+          location_type: string
+          recurrence: string
+          server_id: string
+          starts_at: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          canceled_occurrences?: string[]
+          channel_id?: string | null
+          cover_url?: string | null
+          created_at?: string
+          creator_id?: string | null
+          description?: string | null
+          ends_at?: string | null
+          id?: string
+          location?: string | null
+          location_type: string
+          recurrence?: string
+          server_id: string
+          starts_at: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          canceled_occurrences?: string[]
+          channel_id?: string | null
+          cover_url?: string | null
+          created_at?: string
+          creator_id?: string | null
+          description?: string | null
+          ends_at?: string | null
+          id?: string
+          location?: string | null
+          location_type?: string
+          recurrence?: string
+          server_id?: string
+          starts_at?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      server_event_interests: {
+        Row: {
+          created_at: string
+          event_id: string
+          skipped_occurrences: string[]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          skipped_occurrences?: string[]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          skipped_occurrences?: string[]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      server_onboarding: {
+        Row: {
+          default_channel_ids: string[]
+          enabled: boolean
+          guide: Json
+          prompts: Json
+          server_id: string
+          updated_at: string
+        }
+        Insert: {
+          default_channel_ids?: string[]
+          enabled?: boolean
+          guide?: Json
+          prompts?: Json
+          server_id: string
+          updated_at?: string
+        }
+        Update: {
+          default_channel_ids?: string[]
+          enabled?: boolean
+          guide?: Json
+          prompts?: Json
+          server_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       server_folders: {
         Row: {
           color: string | null
@@ -2673,21 +2796,27 @@ export type Database = {
         Row: {
           id: string
           joined_at: string | null
+          joined_via_invite: string | null
           nickname: string | null
+          onboarding_completed_at: string | null
           server_id: string
           user_id: string
         }
         Insert: {
           id?: string
           joined_at?: string | null
+          joined_via_invite?: string | null
           nickname?: string | null
+          onboarding_completed_at?: string | null
           server_id: string
           user_id: string
         }
         Update: {
           id?: string
           joined_at?: string | null
+          joined_via_invite?: string | null
           nickname?: string | null
+          onboarding_completed_at?: string | null
           server_id?: string
           user_id?: string
         }
@@ -2859,8 +2988,34 @@ export type Database = {
           },
         ]
       }
+      server_rule_acceptances: {
+        Row: {
+          accepted_at: string
+          server_id: string
+          user_id: string
+        }
+        Insert: {
+          accepted_at?: string
+          server_id: string
+          user_id: string
+        }
+        Update: {
+          accepted_at?: string
+          server_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       server_settings: {
         Row: {
+          filter_unknown_dms: boolean
+          hide_spammer_messages: boolean
+          hide_suspicious_dms: boolean
+          profile_banner_preset: string | null
+          profile_traits: Json
+          require_mod_2fa: boolean
+          restrict_prune_to_admins: boolean
+          warn_external_links: boolean
           activity_channel_id: string | null
           activity_feed_enabled: boolean | null
           auto_assign_roles: string[] | null
@@ -2879,8 +3034,27 @@ export type Database = {
           updated_at: string | null
           welcome_channel_id: string | null
           welcome_message: string | null
+          age_restricted: boolean
+          rules_enabled: boolean
+          rules: Json
+          verification_level: string
+          invites_paused_until: string | null
+          community_enabled: boolean
+          rules_channel_id: string | null
+          updates_channel_id: string | null
+          safety_alerts_channel_id: string | null
+          preferred_locale: string
+          automod_rules: Json
         }
         Insert: {
+          filter_unknown_dms?: boolean
+          hide_spammer_messages?: boolean
+          hide_suspicious_dms?: boolean
+          profile_banner_preset?: string | null
+          profile_traits?: Json
+          require_mod_2fa?: boolean
+          restrict_prune_to_admins?: boolean
+          warn_external_links?: boolean
           activity_channel_id?: string | null
           activity_feed_enabled?: boolean | null
           auto_assign_roles?: string[] | null
@@ -2899,8 +3073,27 @@ export type Database = {
           updated_at?: string | null
           welcome_channel_id?: string | null
           welcome_message?: string | null
+          age_restricted?: boolean
+          rules_enabled?: boolean
+          rules?: Json
+          verification_level?: string
+          invites_paused_until?: string | null
+          community_enabled?: boolean
+          rules_channel_id?: string | null
+          updates_channel_id?: string | null
+          safety_alerts_channel_id?: string | null
+          preferred_locale?: string
+          automod_rules?: Json
         }
         Update: {
+          filter_unknown_dms?: boolean
+          hide_spammer_messages?: boolean
+          hide_suspicious_dms?: boolean
+          profile_banner_preset?: string | null
+          profile_traits?: Json
+          require_mod_2fa?: boolean
+          restrict_prune_to_admins?: boolean
+          warn_external_links?: boolean
           activity_channel_id?: string | null
           activity_feed_enabled?: boolean | null
           auto_assign_roles?: string[] | null
@@ -2919,6 +3112,17 @@ export type Database = {
           updated_at?: string | null
           welcome_channel_id?: string | null
           welcome_message?: string | null
+          age_restricted?: boolean
+          rules_enabled?: boolean
+          rules?: Json
+          verification_level?: string
+          invites_paused_until?: string | null
+          community_enabled?: boolean
+          rules_channel_id?: string | null
+          updates_channel_id?: string | null
+          safety_alerts_channel_id?: string | null
+          preferred_locale?: string
+          automod_rules?: Json
         }
         Relationships: [
           {
@@ -3257,12 +3461,16 @@ export type Database = {
         Row: {
           created_at: string | null
           id: string
+          muted_until: string | null
+          notification_level: string
           thread_id: string
           user_id: string
         }
         Insert: {
           created_at?: string | null
           id?: string
+          muted_until?: string | null
+          notification_level?: string
           thread_id: string
           user_id: string
         }
@@ -3400,6 +3608,7 @@ export type Database = {
       threads: {
         Row: {
           archived: boolean
+          auto_archive_minutes: number
           archived_at: string | null
           channel_id: string
           closed: boolean
@@ -3407,38 +3616,46 @@ export type Database = {
           created_by: string | null
           id: string
           is_private: boolean
+          spoiler: boolean
           last_message_at: string | null
           locked: boolean
           message_id: string | null
           name: string
+          slowmode_seconds: number
         }
         Insert: {
           archived?: boolean
           archived_at?: string | null
+          auto_archive_minutes?: number
           channel_id: string
           closed?: boolean
           created_at?: string
           created_by?: string | null
           id?: string
           is_private?: boolean
+          spoiler?: boolean
           last_message_at?: string | null
           locked?: boolean
           message_id?: string | null
           name: string
+          slowmode_seconds?: number
         }
         Update: {
           archived?: boolean
           archived_at?: string | null
+          auto_archive_minutes?: number
           channel_id?: string
           closed?: boolean
           created_at?: string
           created_by?: string | null
           id?: string
           is_private?: boolean
+          spoiler?: boolean
           last_message_at?: string | null
           locked?: boolean
           message_id?: string | null
           name?: string
+          slowmode_seconds?: number
         }
         Relationships: [
           {
@@ -3710,6 +3927,24 @@ export type Database = {
         }
         Relationships: []
       }
+      user_settings: {
+        Row: {
+          settings: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          settings?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          settings?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_summary_likes: {
         Row: {
           created_at: string | null
@@ -3767,6 +4002,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_hidden_channels: {
+        Row: {
+          channel_id: string
+          created_at: string
+          server_id: string
+          user_id: string
+        }
+        Insert: {
+          channel_id: string
+          created_at?: string
+          server_id: string
+          user_id: string
+        }
+        Update: {
+          channel_id?: string
+          created_at?: string
+          server_id?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       user_ui_preferences: {
         Row: {
@@ -4045,6 +4301,14 @@ export type Database = {
       }
     }
     Functions: {
+      set_voice_channel_status: {
+        Args: { p_channel_id: string; p_status: string }
+        Returns: undefined
+      }
+      complete_server_onboarding: {
+        Args: { _option_ids: string[]; _server_id: string }
+        Returns: undefined
+      }
       _audit: {
         Args: {
           _action_type: string
@@ -4152,6 +4416,13 @@ export type Database = {
           token: string
         }[]
       }
+      get_channels_last_activity: {
+        Args: { _server_id: string }
+        Returns: {
+          channel_id: string
+          last_message_at: string
+        }[]
+      }
       get_dm_last_messages: {
         Args: never
         Returns: {
@@ -4160,6 +4431,21 @@ export type Database = {
           content: string
           conversation_id: string
           created_at: string
+        }[]
+      }
+      get_followed_channel_info: {
+        Args: { _channel_id: string }
+        Returns: {
+          channel_name: string
+          is_member: boolean
+          member_count: number
+          online_count: number
+          server_banner_url: string
+          server_created_at: string
+          server_description: string
+          server_icon_url: string
+          server_id: string
+          server_name: string
         }[]
       }
       get_friendship_profiles: {
@@ -4189,6 +4475,22 @@ export type Database = {
           uses: number
         }[]
       }
+      get_invite_preview: {
+        Args: { invite_code: string }
+        Returns: {
+          community_enabled: boolean
+          is_expired: boolean
+          is_maxed: boolean
+          member_count: number
+          online_count: number
+          server_banner_url: string
+          server_created_at: string
+          server_description: string
+          server_icon_url: string
+          server_id: string
+          server_name: string
+        }[]
+      }
       get_my_birthday: {
         Args: never
         Returns: {
@@ -4203,6 +4505,14 @@ export type Database = {
           can_connect: boolean
           can_view: boolean
           channel_id: string
+        }[]
+      }
+      get_server_member_accounts: {
+        Args: { _server_id: string }
+        Returns: {
+          account_created_at: string
+          joined_via_invite: string
+          user_id: string
         }[]
       }
       get_unread_channel_ids: {
@@ -4288,6 +4598,10 @@ export type Database = {
         Returns: undefined
       }
       mark_stale_users_offline: { Args: never; Returns: undefined }
+      publish_announcement: {
+        Args: { _message_id: string }
+        Returns: number
+      }
       remove_secondary_owner: {
         Args: { _server_id: string }
         Returns: undefined

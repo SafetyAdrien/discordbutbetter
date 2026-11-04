@@ -3,7 +3,7 @@ import { Sheet, SheetContent, SheetClose } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
-import { X, ChevronRight, Settings, Headphones, Video, UserPlus, Lock } from 'lucide-react';
+import { X, ChevronRight, Settings, Headphones, Video, UserPlus, Lock } from '@/components/icons/discord/lucide';
 import { MemberList } from '@/components/layout/MemberList';
 import { ChannelSettingsModal } from '@/components/channel-settings/ChannelSettingsModal';
 import { CreateInviteModal } from '@/components/modals/CreateInviteModal';
@@ -84,8 +84,8 @@ export function VoiceChannelDetailsSheet({
                 <X className="w-4 h-4" />
               </Button>
             </SheetClose>
-            <h2 className="text-xl font-bold text-foreground truncate">{channel.name}</h2>
-            {serverName && <p className="text-sm text-muted-foreground mt-0.5 truncate">{serverName}</p>}
+            <h2 translate="no" className="text-xl font-bold text-foreground truncate">{channel.name}</h2>
+            {serverName && <p translate="no" className="text-sm text-muted-foreground mt-0.5 truncate">{serverName}</p>}
             <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[hsl(var(--online))]/10 text-[hsl(var(--online))] text-xs font-medium">
               <Lock className="w-3 h-3" />
               <span>Chiffré de bout en bout</span>

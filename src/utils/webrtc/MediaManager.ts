@@ -12,6 +12,10 @@ export interface ScreenShareOptions {
   frameRate: number;
   audio: boolean;
   cursor: 'always' | 'motion' | 'never';
+  /** Hauteur voulue (480 a 2160) : prioritaire sur `quality` quand elle est fournie. */
+  height?: number;
+  /** Fluidite (mouvement) ou nettete (details) : indice de contenu de la piste video. */
+  contentType?: 'smoothness' | 'clarity';
 }
 
 interface RemoteAudioContext {
@@ -59,6 +63,16 @@ const SCREEN_SHARE_PRESETS: Record<ScreenShareOptions['quality'], { width: numbe
   medium: { width: 1920, height: 1080, defaultFps: 30, maxBitrate: 3_000_000 },
   high:   { width: 2560, height: 1440, defaultFps: 60, maxBitrate: 5_000_000 },
 };
+
+/** Reglages de capture : la hauteur choisie (si presente) fixe la taille et le debit. */
+function presetFor(o: ScreenShareOptions) {
+  if (!o.height) return SCREEN_SHARE_PRESETS[o.quality];
+  const fps = o.frameRate || 30;
+  // Debit ~ pixels x images/s x 0,05 bit, borne entre 1 et 12 Mb/s.
+  const width = Math.round((o.height * 16) / 9);
+  const bitrate = Math.min(12_000_000, Math.max(1_000_000, Math.round(width * o.height * fps * 0.05)));
+  return { width, height: o.height, defaultFps: fps, maxBitrate: bitrate };
+}
 
 export class MediaManager {
   /**
@@ -570,7 +584,7 @@ export class MediaManager {
     const opts = options || { quality: 'medium', frameRate: 30, audio: true, cursor: 'always' };
     this._lastScreenShareOptions = opts;
 
-    const preset = SCREEN_SHARE_PRESETS[opts.quality];
+    const preset = presetFor(opts);
 
     try {
       const displayMediaOptions: DisplayMediaStreamOptions = {
@@ -587,7 +601,7 @@ export class MediaManager {
       const videoTrack = this.localScreenStream.getVideoTracks()[0];
       if (videoTrack) {
         try {
-          (videoTrack as any).contentHint = 'detail';
+          (videoTrack as any).contentHint = opts.contentType === 'smoothness' ? 'motion' : 'detail';
         } catch { /* contentHint not supported */ }
 
         videoTrack.onended = () => {
@@ -610,7 +624,7 @@ export class MediaManager {
    */
   getScreenShareEncodingOptions(): { maxBitrate: number; maxFramerate: number } | null {
     if (!this._lastScreenShareOptions) return null;
-    const preset = SCREEN_SHARE_PRESETS[this._lastScreenShareOptions.quality];
+    const preset = presetFor(this._lastScreenShareOptions);
     return {
       maxBitrate: preset.maxBitrate,
       maxFramerate: this._lastScreenShareOptions.frameRate || preset.defaultFps,

@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Search, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
+import { Search } from '@/components/icons/discord/lucide';
 import { UserAvatarImage } from '@/components/ui/user-avatar-image';
 import {
   useSearchDownloadableCandidates,

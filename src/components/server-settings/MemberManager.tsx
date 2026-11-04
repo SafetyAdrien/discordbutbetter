@@ -30,7 +30,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Search, MoreHorizontal, UserMinus, Ban, Plus, ArrowRightLeft } from 'lucide-react';
+import { UserMinus, Ban, ArrowRightLeft } from 'lucide-react';
+import { Search, MoreHorizontal, Plus } from '@/components/icons/serverSettingsIcons';
 import { StreamlineCrown } from '@/components/icons/StreamlineCrown';
 import { useServers } from '@/hooks/useServers';
 import { useAuth } from '@/contexts/AuthContext';
@@ -112,8 +113,8 @@ export function MemberManager({ serverId }: MemberManagerProps) {
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-lg font-semibold mb-1">Gestion des membres</h3>
-        <p className="text-sm text-muted-foreground">
+        <h2 className="text-xl font-semibold leading-6 text-white">Membres du serveur</h2>
+        <p className="mt-1 text-sm leading-[18px] text-foreground">
           {members.length} membre{members.length > 1 ? 's' : ''}
         </p>
       </div>
@@ -149,7 +150,7 @@ export function MemberManager({ serverId }: MemberManagerProps) {
                 </Avatar>
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-medium">{member.user.display_name}</span>
+                    <span translate="no" className="font-medium">{member.user.display_name}</span>
                     {(isMemberOwner || isMemberSecondaryOwner) && (
                       <Tooltip>
                         <TooltipTrigger asChild>

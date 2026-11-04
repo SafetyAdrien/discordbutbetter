@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
-import { Link, Pencil, Trash2, StopCircle, Hash, ClipboardCopy } from 'lucide-react';
+import { StopCircle, ClipboardCopy } from 'lucide-react';
+import { Link, Pencil, Trash2, Hash } from '@/components/icons/discord/lucide';
 import { cn } from '@/lib/utils';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 
@@ -65,7 +66,7 @@ export function MobilePollActions({
             <>
               <div className="h-px bg-border mx-2 my-1" />
               {!isPollExpired && onEndPoll && (
-                <ActionButton icon={StopCircle} label="Terminer le sondage" onClick={() => handleAction(onEndPoll)} />
+                <ActionButton icon={StopCircle} label="Clore le sondage maintenant" onClick={() => handleAction(onEndPoll)} />
               )}
               {onEdit && (
                 <ActionButton icon={Pencil} label="Modifier le sondage" onClick={() => handleAction(onEdit)} />

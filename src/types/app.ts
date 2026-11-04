@@ -63,10 +63,22 @@ export interface Message {
   reactions?: Reaction[];
   isSystemMessage?: boolean;
   is_system?: boolean;
+  isQueued?: boolean;
   /** Snowflake/uuid of the message this one replies to (channel-level) */
   replyToId?: string | null;
   /** Resolved replied message snapshot (joined client-side) */
   repliedMessage?: RepliedMessageRef | null;
+  /** Message publie depuis un salon d'annonces suivi (auteur = serveur source). */
+  published?: {
+    sourceChannelId: string | null;
+    serverId: string | null;
+    serverName: string;
+    channelName: string | null;
+    serverIcon: string | null;
+  } | null;
+  /** Salon d'annonces : date de publication vers les abonnes. */
+  publishedAt?: string | null;
+  publishDismissed?: boolean;
 }
 
 export interface Attachment {
@@ -79,7 +91,7 @@ export interface Attachment {
    * conservés doivent donc accepter les mêmes valeurs, sinon le mapping
    * `repliedMessage.attachments` casse à la compilation.
    */
-  type: 'image' | 'video' | 'file' | 'sticker' | 'gif';
+  type: 'image' | 'video' | 'audio' | 'file' | 'sticker' | 'gif';
 }
 
 export interface Reaction {

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { X, Check, Camera } from 'lucide-react';
+import { Camera } from 'lucide-react';
+import { X, Check } from '@/components/icons/discord/lucide';
 import { Input } from '@/components/ui/input';
 import { useFriends } from '@/hooks/useFriends';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -169,7 +170,7 @@ export function CreateGroupModal({ onClose, onOpenDM }: CreateGroupModalProps) {
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{friend.profile.display_name}</p>
+                          <p translate="no" className="text-sm font-medium truncate">{friend.profile.display_name}</p>
                           <p className="text-xs text-muted-foreground truncate">@{friend.profile.username}</p>
                         </div>
                         <div className={cn(
@@ -246,7 +247,7 @@ export function CreateGroupModal({ onClose, onOpenDM }: CreateGroupModalProps) {
                           {friend.profile.display_name.charAt(0)}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="text-xs">{friend.profile.display_name}</span>
+                      <span translate="no" className="text-xs">{friend.profile.display_name}</span>
                     </div>
                   );
                 })}

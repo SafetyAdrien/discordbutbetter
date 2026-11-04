@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
-import { Send, Trash2, Reply, X } from 'lucide-react';
+import { Send, Trash2, Reply, X } from '@/components/icons/discord/lucide';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,6 +20,7 @@ import {
 import { useMembers } from '@/hooks/useMembers';
 import type { RepliedMessageRef } from '@/types/app';
 
+import { appLocale } from '@/i18n/locale';
 interface MediaCommentsProps {
   postId: string;
   serverId?: string | null;
@@ -37,7 +38,7 @@ function formatRelativeTime(dateString: string): string {
   if (diffMins < 60) return `il y a ${diffMins} min`;
   if (diffHours < 24) return `il y a ${diffHours}h`;
   if (diffDays < 7) return `il y a ${diffDays}j`;
-  return date.toLocaleDateString('fr-FR');
+  return date.toLocaleDateString(appLocale());
 }
 
 function toRepliedRef(c: NonNullable<MediaComment['repliedComment']>): RepliedMessageRef {

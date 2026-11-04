@@ -1,3 +1,5 @@
+import { ThreadsModal } from '@/components/threads/ThreadsModal';
+import type { ReminderTarget } from '@/hooks/useReminders';
 import React, { useState, forwardRef, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
@@ -5,32 +7,26 @@ import { Message, Channel, User } from "@/types/app";
 import { cn } from "@/lib/utils";
 import { uuidToSnowflake } from "@/lib/snowflake";
 import { messageMentionsMe } from "@/lib/mention-detection";
-import {
-  Hash,
-  Bell,
-  Pin,
-  Users,
-  Inbox,
-  Copy,
-  ClipboardCopy,
-  Reply,
-  Pencil,
-  Trash2,
-  MessageSquareText,
-  BellOff,
-  BellRing,
-  AtSign,
-  X,
-  Check,
-  Link,
-  SmilePlus,
-  BarChart2,
-  MoreHorizontal,
-  Smile,
-  Flag,
-  StopCircle,
-} from "lucide-react";
+import { MessageSquareText, BellRing, SmilePlus, StopCircle } from "lucide-react";
+import { Hash, Bell, Pin, Users, Reply, Pencil, Trash2, BellOff, AtSign, X, Check, Link, MoreHorizontal } from "@/components/icons/discord/lucide";
 import { StreamlineHash } from "@/components/icons/StreamlineHash";
+import { StreamlineMegaphone } from "@/components/icons/StreamlineMegaphone";
+import {
+  ChannelFollowedSystemMessage,
+  PublishActionButton,
+  PublishConfirmDialog,
+  PublishPrompt,
+  PublishedAuthorName,
+  PublishedAvatar,
+} from "@/components/announcements/AnnouncementBits";
+import { FollowChannelModal } from "@/components/channels/announcement/FollowChannelModal";
+import { FollowSuccessModal } from "@/components/channels/announcement/FollowSuccessModal";
+import { AnnouncementComposer } from "@/components/channels/announcement/AnnouncementComposer";
+import { useChannelFollowers, useDismissPublishPrompt, usePublishMessage } from "@/hooks/useChannelFollowers";
+import { PollClosedSystemMessage } from "@/components/chat/PollClosedSystemMessage";
+import { CHANNEL_FOLLOWED_RE, POLL_CLOSED_RE } from "@/lib/announcements";
+import { DiscordRules } from "@/components/icons/DiscordRules";
+import { MessageListSkeleton } from "@/components/chat/MessageListSkeleton";
 import StreamlineSummaries from "@/components/icons/StreamlineSummaries";
 import { UniversalMessageActions } from "@/components/chat/UniversalMessageActions";
 import { UniversalMessageContextMenu } from "@/components/chat/UniversalMessageContextMenu";
@@ -81,15 +77,25 @@ import { usePolls, useDeletePoll, useEndPoll, Poll } from "@/hooks/usePolls";
 import { useThreads, useUpdateThread, useDeleteThread } from "@/hooks/useThreads";
 import { useServerRoles } from "@/hooks/useRoles";
 import { useChannels } from "@/hooks/useChannels";
+import { useServers } from "@/hooks/useServers";
+import { useQueryClient } from "@tanstack/react-query";
+import { CreateInviteModal } from "@/components/modals/CreateInviteModal";
+import { LazyServerWelcomeChecklist as ServerWelcomeChecklist } from "@/components/lazy/LazyModals";
+import { useServerSetupProgress, useFirstTextChannelId, firstMessageQueryKey } from "@/hooks/useServerSetupProgress";
+import { AgeGate, RulesGate } from "./ServerGates";
+import { useServerSettings } from "@/hooks/useServerSettings";
 import { Thread } from "@/types/thread";
 import { PollDisplay } from "./PollDisplay";
+import { ClosePollConfirmDialog } from "./ClosePollConfirmDialog";
 import { CreatePollModal } from "./CreatePollModal";
 import StreamlineThreads from "@/components/icons/StreamlineThreads";
 import ThreadsPopover from "@/components/threads/ThreadsPopover";
-import CreateThreadModal from "@/components/threads/CreateThreadModal";
+import { openNewThread } from "@/lib/threadEvents";
+import { ServerTagBadge } from '@/components/server-tags/ServerTagBadge';
 import { ThreadSpine } from "@/components/threads/ThreadSpine";
 import { SwipeToReplyRow } from "@/components/mobile/SwipeToReplyRow";
 import { ThreadSystemMessage } from "@/components/threads/ThreadSystemMessage";
+import { ViewThreadButton } from "@/components/threads/ViewThreadButton";
 import { MessageInput } from "@/components/chat/MessageInput";
 import { ReportModal } from "@/components/chat/ReportModal";
 import { RoleBadgePopover } from "@/components/chat/RoleBadgePopover";
@@ -100,232 +106,40 @@ import { SummariesBar } from "@/components/summaries/SummariesBar";
 import { UploadDropOverlay } from "@/components/chat/upload/UploadDropOverlay";
 import { usePendingAttachments, PendingAttachment } from "@/hooks/usePendingAttachments";
 import { MessageAttachments, StoredAttachment } from "@/components/chat/MessageAttachments";
+import { ForwardedFrame } from "@/components/chat/ForwardedFrame";
+import { toast } from "sonner";
+import { EditableAttachments } from "@/components/chat/EditableAttachments";
+import { AttachmentEditsPanel, useAttachmentEdits } from "@/components/chat/upload/AttachmentEditsPanel";
+import { useForwardedFrom } from "@/hooks/useForwardedFrom";
+import { useMarkMessageUnread } from "@/hooks/useMarkMessageUnread";
+import { openForwardMessage } from "@/lib/forwardMessage";
+import { JUMP_TO_MESSAGE_EVENT } from "@/lib/threadEvents";
 import { useHasChannelPermission, useMultipleChannelPermissions } from "@/hooks/useUserChannelPermissions";
 import { usePermissions } from "@/hooks/usePermissions";
-import { ChannelSettingsModal } from "@/components/channel-settings/ChannelSettingsModal";
+import { LazyChannelSettingsModal as ChannelSettingsModal } from "@/components/lazy/LazyModals";
 import { SmartLinkEmbeds as LinkEmbeds } from "@/components/chat/embeds";
 import { useChannelDetails } from "@/hooks/useChannelSettings";
 import { extractUrls, fetchMetadata } from "@/hooks/useUrlMetadata";
+import { isInviteUrl } from "@/lib/invites";
+import { formatClock } from "@/lib/userSettings";
+import { useEphemeralMessages } from "@/lib/ephemeralMessages";
+import { EphemeralMessageRow } from "@/components/chat/slash/EphemeralMessageRow";
+import { ClydeProfileCard } from "@/components/chat/slash/ClydeProfileCard";
+import { useUserSettingsValue } from "@/hooks/useUserSettings";
+import { CommunitySystemMessage, COMMUNITY_SYSTEM_RE } from "@/components/chat/CommunitySystemMessage";
 import { MobilePollActions } from "@/components/mobile/MobilePollActions";
 import { ReactionBar } from "@/components/chat/ReactionBar";
 import { RepliedLine } from "@/components/chat/RepliedLine";
 
 import { ReplyBanner } from "@/components/chat/ReplyBanner";
+import { withReplyMention } from "@/lib/replyMention";
 
+import { appLocale } from '@/i18n/locale';
+import { ChannelSheetIcon } from "@/components/icons/ChannelSheetIcon";
 // Quick reactions - exactement 3 émojis les plus populaires pour le hover standard
 const QUICK_REACTIONS_HOVER = ["👍", "❤️", "😂"];
 
 
-// QUICK_REACTIONS for PollActions
-
-// Poll Actions Component (shown on hover) - Discord style
-function PollActions({
-  isVisible,
-  isShiftPressed = false,
-  onCopyLink,
-  onCopyId,
-  onEdit,
-  onDelete,
-  onReply,
-  onAddReaction,
-  isOwnPoll,
-  isPollExpired,
-  onEndPoll,
-  onDropdownOpenChange,
-}: {
-  isVisible: boolean;
-  isShiftPressed?: boolean;
-  onCopyLink: () => void;
-  onCopyId: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
-  onReply?: () => void;
-  onAddReaction: (emoji: string) => void;
-  isOwnPoll: boolean;
-  isPollExpired?: boolean;
-  onEndPoll?: () => void;
-  onDropdownOpenChange?: (open: boolean) => void;
-}) {
-  if (!isVisible) return null;
-
-  const slotCls = "h-7 w-7 shrink-0 inline-flex items-center justify-center hover:bg-primary/10 rounded-full transition-colors";
-
-  // Mode SHIFT : actions alternatives (technique / administration) en icônes
-  if (isShiftPressed) {
-    return (
-      <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 bg-[hsl(var(--surface-3))] border border-border/50 rounded-2xl shadow-[var(--shadow-elevation-2)] p-1 z-10 animate-fade-in w-fit">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button type="button" onClick={onCopyId} className={slotCls}>
-              <ClipboardCopy className="w-4 h-4 text-muted-foreground" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="top">Copier l'ID</TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button type="button" onClick={onCopyLink} className={slotCls}>
-              <Link className="w-4 h-4 text-muted-foreground" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="top">Copier le lien</TooltipContent>
-        </Tooltip>
-        {isOwnPoll && !isPollExpired && onEndPoll && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button type="button" onClick={onEndPoll} className={slotCls}>
-                <StopCircle className="w-4 h-4 text-muted-foreground" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="top">Terminer le sondage</TooltipContent>
-          </Tooltip>
-        )}
-        {isOwnPoll && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button type="button" onClick={onEdit} className={slotCls}>
-                <Pencil className="w-4 h-4 text-muted-foreground" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="top">Modifier</TooltipContent>
-          </Tooltip>
-        )}
-        {isOwnPoll && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button type="button" onClick={onDelete} className={cn(slotCls, "hover:bg-destructive/15")}>
-                <Trash2 className="w-4 h-4 text-destructive" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="top">Supprimer</TooltipContent>
-          </Tooltip>
-        )}
-      </div>
-    );
-  }
-
-  return (
-    <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 bg-[hsl(var(--surface-3))] border border-border/50 rounded-2xl shadow-[var(--shadow-elevation-2)] p-1 z-10 animate-fade-in w-fit">
-      {/* 1. Réactions rapides - 3 émojis */}
-      {QUICK_REACTIONS_HOVER.map((emoji) => (
-        <Tooltip key={emoji}>
-          <TooltipTrigger asChild>
-            <button type="button"
-              onClick={() => onAddReaction(emoji)}
-              className={cn(slotCls, "text-base leading-none")}
-            >
-              {emoji}
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="top">{emoji}</TooltipContent>
-        </Tooltip>
-      ))}
-
-      {/* 2. Picker emoji complet */}
-      <Popover>
-        <PopoverTrigger asChild>
-          <button type="button" className={slotCls}>
-
-            <SmilePlus className="w-4 h-4 text-muted-foreground" />
-          </button>
-        </PopoverTrigger>
-        <PopoverContent side="top" align="end" className="w-64 p-2">
-          <div className="grid grid-cols-8 gap-1">
-            {[
-              "😀",
-              "😃",
-              "😄",
-              "😁",
-              "😆",
-              "😅",
-              "🤣",
-              "😂",
-              "🙂",
-              "😊",
-              "😇",
-              "🥰",
-              "😍",
-              "🤩",
-              "😘",
-              "😗",
-              "😚",
-              "😙",
-              "🥲",
-              "😋",
-              "😛",
-              "😜",
-              "🤪",
-              "😝",
-              "🤑",
-              "🤗",
-              "🤭",
-              "🤫",
-              "🤔",
-              "🤐",
-              "🤨",
-              "😐",
-            ].map((emoji) => (
-              <button type="button"
-                key={emoji}
-                onClick={() => onAddReaction(emoji)}
-                className="p-1 hover:bg-muted rounded text-lg transition-colors"
-              >
-                {emoji}
-              </button>
-            ))}
-          </div>
-        </PopoverContent>
-      </Popover>
-
-      {/* 3. Répondre */}
-      {onReply && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button type="button" onClick={onReply} className={slotCls}>
-              <Reply className="w-4 h-4 text-muted-foreground" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="top">Répondre</TooltipContent>
-        </Tooltip>
-      )}
-
-      {/* 4. Menu Plus d'options */}
-      <DropdownMenu onOpenChange={onDropdownOpenChange}>
-        <DropdownMenuTrigger asChild>
-          <button type="button" className={slotCls}>
-
-            <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={onCopyLink}>
-            <Link className="w-4 h-4 mr-2" />
-            Copier le lien
-          </DropdownMenuItem>
-          {isOwnPoll && (
-            <>
-              <DropdownMenuSeparator />
-              {!isPollExpired && onEndPoll && (
-                <DropdownMenuItem onClick={onEndPoll}>
-                  <StopCircle className="w-4 h-4 mr-2" />
-                  Terminer le sondage
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuItem onClick={onEdit}>
-                <Pencil className="w-4 h-4 mr-2" />
-                Modifier
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
-                <Trash2 className="w-4 h-4 mr-2" />
-                Supprimer
-              </DropdownMenuItem>
-            </>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
-  );
-}
 interface Role {
   id: string;
   name: string;
@@ -337,7 +151,7 @@ interface Role {
 interface ChatAreaProps {
   channel: Channel;
   messages: Message[];
-  onSendMessage: (content: string, attachments?: PendingAttachment[], replyToId?: string | null) => void;
+  onSendMessage: (content: string, attachments?: PendingAttachment[], replyToId?: string | null, externalAttachment?: { url: string; name: string; type: 'sticker' | 'gif' }) => void;
   memberRoles?: Map<string, Role[]>;
   onOpenDM?: (conversationId: string) => void;
   onToggleMembers?: () => void;
@@ -349,6 +163,10 @@ interface ChatAreaProps {
   onChannelSelect?: (channelId: string) => void;
   onLoadOlder?: () => Promise<number>;
   hasMoreOlder?: boolean;
+  /** Premier chargement des messages : squelette comme Discord. */
+  messagesLoading?: boolean;
+  /** Ouvre les parametres du serveur sur un onglet (checklist du nouveau serveur). */
+  onOpenServerSettings?: (tab?: string) => void;
 }
 // Long-press wrapper for polls on mobile
 function PollLongPressWrapper({
@@ -392,12 +210,8 @@ function PollLongPressWrapper({
   );
 }
 
-function formatTime(date: Date): string {
-  return date.toLocaleTimeString("fr-FR", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
+// Respecte le format 12/24 h de Langue et heure.
+const formatTime = formatClock;
 function formatDate(date: Date): string {
   const today = new Date();
   const yesterday = new Date(today);
@@ -407,7 +221,7 @@ function formatDate(date: Date): string {
   } else if (date.toDateString() === yesterday.toDateString()) {
     return "Hier";
   }
-  return date.toLocaleDateString("fr-FR", {
+  return date.toLocaleDateString(appLocale(), {
     day: "numeric",
     month: "long",
     year: "numeric",
@@ -429,6 +243,8 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     onChannelSelect,
     onLoadOlder,
     hasMoreOlder = false,
+    messagesLoading = false,
+    onOpenServerSettings,
   },
   ref,
 ) {
@@ -447,6 +263,14 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [createThreadForMessageId, setCreateThreadForMessageId] = useState<string | null>(null);
+  const [threadsOpen, setThreadsOpen] = useState(false);
+  const [threadsModalOpen, setThreadsModalOpen] = useState(false);
+  // "Creer un fil" depuis le menu d'un message : ouvre le panneau "Nouveau fil" (messageId = message d'origine).
+  useEffect(() => {
+    if (!createThreadForMessageId) return;
+    openNewThread(channel.id, createThreadForMessageId);
+    setCreateThreadForMessageId(null);
+  }, [createThreadForMessageId, channel.id]);
   const [editingPoll, setEditingPoll] = useState<Poll | null>(null);
   const [isShiftPressed, setIsShiftPressed] = useState(false);
   const [openDropdownMessageId, setOpenDropdownMessageId] = useState<string | null>(null);
@@ -689,6 +513,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     };
   }, []);
   const { user } = useAuth();
+  const attachmentEdits = useAttachmentEdits();
   const { startTyping, stopTyping } = useTypingIndicator(channel.id, null);
   const editMessage = useEditMessage();
   const deleteMessage = useDeleteMessage();
@@ -701,6 +526,59 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   // Fetch server roles and channels for markdown context
   const { data: serverRoles = [] } = useServerRoles(channel.server_id);
   const { data: channelsData } = useChannels(channel.server_id);
+
+  // Checklist "Bienvenue sur <serveur>" : proprietaire uniquement, dans le
+  // premier salon textuel (salons hors categorie d'abord, comme la liste).
+  const { data: allServers = [] } = useServers();
+  const currentServer = allServers.find((s) => s.id === channel.server_id);
+  const buildReminder = (m: Message): ReminderTarget => ({
+    source: 'channel',
+    messageId: m.id,
+    channelId: channel.id,
+    serverId: channel.server_id ?? null,
+    snapshot: {
+      authorId: m.author.id,
+      authorName: m.author.displayName,
+      authorAvatar: m.author.avatar ?? null,
+      content: m.content,
+      createdAt: m.timestamp.toISOString(),
+      imageUrl: m.attachments?.find((a) => /^image\//.test(a.type ?? '') || /\.(png|jpe?g|gif|webp)(\?|$)/i.test(a.url ?? ''))?.url ?? null,
+      channelName: channel.name,
+      serverName: currentServer?.name ?? null,
+      serverIcon: currentServer?.icon_url ?? null,
+      categoryName: channelsData?.categories.find((c) => c.channels.some((ch) => ch.id === channel.id))?.name ?? null,
+    },
+  });
+  // Salon d'annonces : bouton Suivre, publication vers les salons abonnes.
+  const isAnnouncement = channel.type === "announcement";
+  const { data: announcementFollowers = [] } = useChannelFollowers(isAnnouncement ? channel.id : null);
+  const publishMessage = usePublishMessage();
+  const dismissPublish = useDismissPublishPrompt();
+  const [publishConfirmId, setPublishConfirmId] = useState<string | null>(null);
+  const [followModalOpen, setFollowModalOpen] = useState(false);
+  const [followSuccessOpen, setFollowSuccessOpen] = useState(false);
+  const [richAnnouncementOpen, setRichAnnouncementOpen] = useState(false);
+  const firstTextChannelId = useFirstTextChannelId(channel.server_id ?? null);
+  // Etat partage avec la ligne "Progression de la configuration" de la
+  // liste des salons (serveur recent, proprietaire uniquement).
+  const queryClient = useQueryClient();
+  const setup = useServerSetupProgress(channel.server_id ?? null);
+  const [checklistInviteOpen, setChecklistInviteOpen] = useState(false);
+  const showChecklist = setup.visible && firstTextChannelId === channel.id;
+  // Premier message envoye : l'etape passe tout de suite a "terminee", sans
+  // attendre la requete du hook (la checklist et l'en-tete avancent ensemble).
+  const ownMessageSent = !!user && messages.some((m) => !m.is_system && m.author?.id === user.id);
+  useEffect(() => {
+    if (setup.eligible && ownMessageSent && !setup.done.message) {
+      queryClient.setQueryData(firstMessageQueryKey(channel.server_id ?? null, user?.id), true);
+    }
+  }, [setup.eligible, setup.done.message, ownMessageSent, queryClient, channel.server_id, user?.id]);
+  const { data: serverAccess } = useServerSettings(channel.server_id ?? '');
+  const roleColorMode = useUserSettingsValue().accessibility.role_colors;
+  const focusComposer = useCallback(() => {
+    const ta = document.querySelector<HTMLTextAreaElement>('textarea[data-editing]');
+    ta?.focus();
+  }, []);
 
   // Pinned messages
   const { data: pinnedMessages } = usePinnedMessages(channel.id);
@@ -796,8 +674,11 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   // Permission denied: shown immediately based on cached/resolved verdict.
   // We no longer wait for `permissionsLoading` because that caused a 1s flash
   // of the writable input for users who actually don't have send_messages.
+  // Tant que le verdict n'est pas connu (salon jamais ouvert : rien en cache), on garde la barre de saisie normale :
+  // afficher "pas la permission" par defaut faisait clignoter une barre plus basse et sautiller tout le contenu du salon.
+  const sendVerdictPending = permissionsLoading && !isAdminOrOwner;
   const permissionDeniedMessage =
-    isAdminOrOwner || canSendMessages
+    isAdminOrOwner || canSendMessages || sendVerdictPending
       ? undefined
       : "Vous n'avez pas la permission d'envoyer des messages dans ce salon.";
 
@@ -913,7 +794,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
   useEffect(() => {
     messages.forEach((msg) => {
       // Pre-fetch link metadata
-      const urls = extractUrls(msg.content);
+      const urls = extractUrls(msg.content).filter((url) => !isInviteUrl(url));
       urls.forEach((url) => fetchMetadata(url));
 
       // Pre-load images from attachments
@@ -980,6 +861,8 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     );
     return items.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
   }, [messages, polls]);
+  const ephemeralMessages = useEphemeralMessages(channel.id);
+  const [clydeCard, setClydeCard] = useState<DOMRect | null>(null);
   const handleCopyPollLink = (pollId: string) => {
     const link = `${window.location.origin}/channels/${channel.server_id}/${channel.id}/poll/${pollId}`;
     copyToClipboard(link, "Lien du sondage copié");
@@ -990,12 +873,9 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
       channelId: channel.id,
     });
   };
-  const handleEndPoll = (poll: Poll) => {
-    endPollMutation.mutate({
-      pollId: poll.id,
-      channelId: channel.id,
-    });
-  };
+  // Comme Discord : "Clore le sondage maintenant ?" avant de cloturer.
+  const [pollToClose, setPollToClose] = useState<Poll | null>(null);
+  const handleEndPoll = (poll: Poll) => setPollToClose(poll);
   const handleSubmit = () => {
     if (messageInput.trim() || attachments.length > 0) {
       // Trigger send animation
@@ -1004,7 +884,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
 
       const replyTarget = replyingTo;
       const replyToId = replyTarget && messages.some((m) => m.id === replyTarget.id) ? replyTarget.id : null;
-      onSendMessage(messageInput, attachments, replyToId);
+      onSendMessage(replyToId ? withReplyMention(messageInput, replyTarget?.author.id, user?.id) : messageInput, attachments, replyToId);
 
       setMessageInput("");
       setReplyingTo(null);
@@ -1060,6 +940,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     lockScrollForEditTransition(message.id);
     setEditingMessageId(message.id);
     setEditingContent(message.content);
+    attachmentEdits.reset(((message as any).attachments ?? []) as never);
     requestAnimationFrame(() => {
       const el = editingTextareaRef.current;
       if (!el || hasFocusedEditTextareaRef.current) return;
@@ -1069,22 +950,35 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
       restoreEditScrollLock();
     });
   };
-  const handleSaveEdit = () => {
-    if (editingMessageId && editingContent.trim()) {
-      lockScrollForEditTransition(editingMessageId);
+  const handleSaveEdit = async () => {
+    if (!editingMessageId || !user) return;
+    // Fichiers deja prepares dans la zone de saisie : ils s'ajoutent au message modifie.
+    const hasMedia = attachmentEdits.count > 0 || attachments.length > 0;
+    if (!editingContent.trim() && !hasMedia) return;
+    const messageId = editingMessageId;
+    try {
+      const finalAttachments = attachmentEdits.hasChanges || attachments.length > 0 ? await attachmentEdits.resolve(user.id, attachments) : undefined;
+      lockScrollForEditTransition(messageId);
       editMessage.mutate({
-        messageId: editingMessageId,
+        messageId,
         channelId: channel.id,
         content: editingContent,
+        attachments: finalAttachments,
       });
+      if (attachments.length > 0) clearAttachments();
       setEditingMessageId(null);
       setEditingContent("");
+      attachmentEdits.reset();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erreur lors de la modification");
     }
   };
   const handleCancelEdit = () => {
     lockScrollForEditTransition(editingMessageId);
     setEditingMessageId(null);
     setEditingContent("");
+    attachmentEdits.reset();
+    if (attachments.length > 0) clearAttachments();
   };
   const handleDelete = (messageId: string) => {
     deleteMessage.mutate({
@@ -1102,6 +996,32 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
     requestAnimationFrame(() => setPendingContextDeleteMessageId(messageId));
   };
 
+  // "Y aller" depuis un fil : defile jusqu'au message demande une fois le salon reaffiche.
+  useEffect(() => {
+    const onJump = (e: Event) => {
+      const { channelId, messageId } = (e as CustomEvent<{ channelId: string; messageId: string }>).detail;
+      if (channelId !== channel.id) return;
+      window.setTimeout(() => scrollToMessage(messageId), 350);
+    };
+    window.addEventListener(JUMP_TO_MESSAGE_EVENT, onJump);
+    return () => window.removeEventListener(JUMP_TO_MESSAGE_EVENT, onJump);
+  }, [channel.id, scrollToMessage]);
+  const forwardedMap = useForwardedFrom("channel", channel.id, messages.map((m) => m.id));
+  const markMessageUnread = useMarkMessageUnread();
+  const forwardMessage = (message: Message) =>
+    openForwardMessage({
+      content: message.content,
+      attachments: ((message as any).attachments ?? []) as StoredAttachment[],
+      edited: !!message.edited_at,
+      from: {
+        kind: "channel",
+        messageId: message.id,
+        createdAt: (message as any).created_at ?? (message.timestamp ? new Date(message.timestamp).toISOString() : null),
+        channelId: channel.id,
+        channelName: channel.name,
+        serverId: channel.server_id,
+      },
+    });
   const handleCopyMessageLink = (messageId: string) => {
     const link = `${window.location.origin}/channels/${channel.server_id}/${channel.id}/${messageId}`;
     copyToClipboard(link, "Lien du message copié");
@@ -1117,30 +1037,44 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
           ref.current = node;
         }
       }}
-      className="flex-1 flex flex-col bg-[hsl(var(--surface-2)/0.3)] min-w-0 min-h-0 w-full overflow-x-hidden relative"
+      className="flex-1 flex flex-col bg-background min-w-0 min-h-0 w-full overflow-x-hidden relative"
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
     >
+      {serverAccess?.age_restricted && !isAdminOrOwner && channel.server_id && (
+        <AgeGate serverId={channel.server_id} onLeave={() => navigate("/")} />
+      )}
       {/* Upload Drop Overlay */}
       <AnimatePresence>{isDragging && <UploadDropOverlay channelName={channel.name} />}</AnimatePresence>
       {/* Channel Header - hidden on mobile where MobileChatView provides its own */}
       {!isMobile && (
         <div
-          className="h-12 px-3 sm:px-4 flex items-center gap-2 sm:gap-4 flex-shrink-0 bg-[hsl(var(--surface-2))] w-full"
-          style={{
-            borderBottom: "1px solid hsl(var(--border) / 0.5)",
-            boxShadow: "var(--shadow-elevation-1)",
-          }}
+          // En-tete de la capture : 48px, filet #3e3f45, pas d'ombre. Il se
+          // prolonge visuellement par la rangee de recherche de MemberList.
+          className="h-12 px-4 flex items-center gap-4 flex-shrink-0 bg-background w-full border-b border-border"
         >
           <div className="flex items-center gap-2 min-w-0 flex-shrink">
             {channel.icon_url ? (
               <img src={channel.icon_url} alt="" className="w-5 h-5 rounded-sm object-contain flex-shrink-0" />
+            ) : serverAccess?.community_enabled && serverAccess.rules_channel_id === channel.id ? (
+              <DiscordRules className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+            ) : isAnnouncement ? (
+              <StreamlineMegaphone className="w-5 h-5 text-muted-foreground flex-shrink-0" />
             ) : (
-              <Hash className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+              <StreamlineHash size={20} className="text-muted-foreground flex-shrink-0" />
             )}
-            <h2 className="font-semibold text-foreground truncate">{channel.name}</h2>
+            <h2 translate="no" className="text-base font-semibold text-white truncate">{channel.name}</h2>
+            {isAnnouncement && (
+              <button
+                type="button"
+                onClick={() => setFollowModalOpen(true)}
+                className="ml-1 h-6 px-2 rounded-md bg-[hsl(var(--button-secondary))] hover:bg-[hsl(var(--interactive-background-selected))] text-xs font-semibold text-white shrink-0"
+              >
+                Suivre
+              </button>
+            )}
           </div>
 
           {channel.description && (
@@ -1169,26 +1103,38 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
             </>
           )}
 
-          <div className="flex items-center gap-1 ml-auto">
+          <div className="flex items-center gap-4 ml-auto">
+            {/* Threads Popover */}
+            <Popover open={threadsOpen} onOpenChange={setThreadsOpen}>
+              <PopoverTrigger asChild>
+                <button type="button" aria-label="Fils" className={cn("p-0.5 text-[hsl(var(--header-icon))] hover:text-[hsl(var(--interactive-text-hover))] transition-colors", threadsOpen && "text-white")}>
+                  <StreamlineThreads className="w-6 h-6" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent side="bottom" align="end" sideOffset={8} collisionPadding={12} className="w-[min(674px,calc(100vw-1rem))] p-0 rounded-lg bg-[#383840] border border-white/[0.06] shadow-[0_8px_24px_rgba(0,0,0,0.4)]">
+                <ThreadsPopover channelId={channel.id} channelName={channel.name} onSelectThread={(threadId) => onSelectThread?.(threadId)} onDone={() => setThreadsOpen(false)} />
+              </PopoverContent>
+            </Popover>
+
             {/* Notifications Popover */}
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="ghost" size="iconSm">
-                  <Bell className="w-5 h-5" />
-                </Button>
+                <button type="button" aria-label="Notifications" className={"p-0.5 text-[hsl(var(--header-icon))] hover:text-[hsl(var(--interactive-text-hover))] transition-colors"}>
+                  <Bell className="w-6 h-6" />
+                </button>
               </PopoverTrigger>
               <PopoverContent side="bottom" align="end" className="w-64 p-3">
                 <h4 className="font-semibold text-foreground mb-3">Notifications</h4>
                 <div className="space-y-2">
-                  <button type="button" className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-muted/50 transition-colors text-sm">
+                  <button type="button" className="flex items-center gap-2 w-full px-2 py-[6px] rounded-[4px] text-[14px] leading-[18px] text-foreground hover:bg-[hsl(var(--surface-hover))] transition-colors">
                     <BellRing className="w-4 h-4 text-muted-foreground" />
                     <span>Tous les messages</span>
                   </button>
-                  <button type="button" className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-muted/50 transition-colors text-sm">
+                  <button type="button" className="flex items-center gap-2 w-full px-2 py-[6px] rounded-[4px] text-[14px] leading-[18px] text-foreground hover:bg-[hsl(var(--surface-hover))] transition-colors">
                     <AtSign className="w-4 h-4 text-muted-foreground" />
                     <span>Uniquement les mentions</span>
                   </button>
-                  <button type="button" className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-muted/50 transition-colors text-sm">
+                  <button type="button" className="flex items-center gap-2 w-full px-2 py-[6px] rounded-[4px] text-[14px] leading-[18px] text-foreground hover:bg-[hsl(var(--surface-hover))] transition-colors">
                     <BellOff className="w-4 h-4 text-muted-foreground" />
                     <span>Aucun message</span>
                   </button>
@@ -1196,33 +1142,22 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
               </PopoverContent>
             </Popover>
 
-            {/* Threads Popover */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="ghost" size="iconSm">
-                  <StreamlineThreads className="w-5 h-5" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent side="bottom" align="end" className="w-[calc(100vw-2rem)] sm:w-80 md:w-96 max-w-96 p-0">
-                <ThreadsPopover channelId={channel.id} onSelectThread={(threadId) => onSelectThread?.(threadId)} />
-              </PopoverContent>
-            </Popover>
-
             {/* Pinned Messages Popover */}
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="ghost" size="iconSm" className="relative">
-                  <Pin className="w-5 h-5" />
+                <button type="button" aria-label="Messages épinglés" className={cn("p-0.5 text-[hsl(var(--header-icon))] hover:text-[hsl(var(--interactive-text-hover))] transition-colors", "relative")}>
+                  <Pin className="w-6 h-6" />
                   {pinnedMessages && pinnedMessages.length > 0 && (
                     <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-primary text-primary-foreground text-xs rounded-full flex items-center justify-center">
                       {pinnedMessages.length}
                     </span>
                   )}
-                </Button>
+                </button>
               </PopoverTrigger>
-              <PopoverContent side="bottom" align="end" className="w-[calc(100vw-2rem)] sm:w-80 md:w-96 max-w-96 p-0">
-                <div className="p-3 border-b border-border">
-                  <h4 className="font-semibold text-foreground">Messages Épinglés</h4>
+              <PopoverContent side="bottom" align="end" sideOffset={8} collisionPadding={12} className="w-[min(504px,calc(100vw-1rem))] p-0 overflow-hidden rounded-lg bg-[#383840] border border-white/[0.06] shadow-[0_8px_24px_rgba(0,0,0,0.4)]">
+                <div className="flex items-center gap-3 px-5 h-[60px] border-b border-black/[0.2]">
+                  <Pin className="w-6 h-6 text-[#b5bac1]" />
+                  <h4 className="text-base font-semibold text-white">Messages épinglés</h4>
                 </div>
                 <ScrollArea className="max-h-80">
                   {pinnedMessages && pinnedMessages.length > 0 ? (
@@ -1261,8 +1196,20 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                       ))}
                     </div>
                   ) : (
-                    <div className="text-sm text-muted-foreground/70 text-center py-8">
-                      Ce salon n'a pas encore de message épinglé... pour l'instant.
+                    <div>
+                      <div className="flex flex-col items-center px-8 pt-10 pb-8">
+                        <svg width="112" height="112" viewBox="0 0 112 112" fill="none" aria-hidden>
+                          <circle cx="52" cy="62" r="40" fill="#2a2a31" stroke="#202026" strokeWidth="4" />
+                          <circle cx="38" cy="54" r="4" fill="#202026" /><circle cx="66" cy="54" r="4" fill="#202026" />
+                          <path d="M38 78c4-7 24-7 28 0" stroke="#202026" strokeWidth="4" strokeLinecap="round" />
+                          <path d="M70 28l22-22m-26 6 28 28-8 8-6-3-10 10 3 6-8 8-24-24 8-8 6 3 10-10-3-6z" fill="#3b3b45" stroke="#202026" strokeWidth="3" strokeLinejoin="round" />
+                        </svg>
+                        <p className="mt-4 text-base leading-6 font-medium text-[#dbdee1] text-center max-w-[280px]">Ce salon n'a pas encore de message épinglé... pour l'instant.</p>
+                      </div>
+                      <div className="bg-[#32323a] px-6 py-5 text-center">
+                        <p className="text-sm font-bold text-[#43b581]">Conseil de pro :</p>
+                        <p className="mt-1 text-sm leading-[18px] text-[#dbdee1]">Les utilisateurs ayant la permission « Épingler les messages » peuvent épingler un message depuis son menu contextuel.</p>
+                      </div>
                     </div>
                   )}
                 </ScrollArea>
@@ -1282,13 +1229,13 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                       onToggleMembers?.();
                     }
                   }}
-                  className={cn(showMembers && !activeThreadId && "bg-surface-hover")}
+                  className={cn("h-auto w-auto p-0.5 hover:bg-transparent text-[hsl(var(--header-icon))] hover:text-[hsl(var(--interactive-text-hover))]", showMembers && !activeThreadId && "text-white")}
                 >
-                  <Users className="w-5 h-5" />
+                  <Users className="w-6 h-6" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                {activeThreadId ? "Fermer le thread" : showMembers ? "Masquer les membres" : "Afficher les membres"}
+                {activeThreadId ? "Fermer le thread" : showMembers ? "Masquer la liste des membres" : "Afficher la liste des membres"}
               </TooltipContent>
             </Tooltip>
 
@@ -1299,9 +1246,9 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                   variant="ghost"
                   size="iconSm"
                   onClick={toggleSummaries}
-                  className={cn(isSummariesEnabled && "bg-surface-hover text-primary")}
+                  className={cn("h-auto w-auto p-0.5 hover:bg-transparent text-[hsl(var(--header-icon))] hover:text-[hsl(var(--interactive-text-hover))]", isSummariesEnabled && "text-white")}
                 >
-                  <StreamlineSummaries className="w-5 h-5" />
+                  <StreamlineSummaries className="w-[22px] h-[22px]" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>{isSummariesEnabled ? "Masquer les résumés" : "Résumés IA"}</TooltipContent>
@@ -1330,25 +1277,54 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
       )}
 
       {/* Messages */}
-      <ScrollArea className="flex-1 min-h-0 w-full [&>div[data-radix-scroll-area-viewport]]:!flex [&>div[data-radix-scroll-area-viewport]]:!flex-col [&>div[data-radix-scroll-area-viewport]>div]:!flex [&>div[data-radix-scroll-area-viewport]>div]:!flex-col [&>div[data-radix-scroll-area-viewport]>div]:!min-h-full [&>div[data-radix-scroll-area-viewport]>div]:!justify-end">
-        <div className="flex flex-col min-h-full px-4 py-4 space-y-0.5 w-full max-w-full">
+      <ScrollArea className="flex-1 min-h-0 w-full mb-6 [&>div[data-radix-scroll-area-viewport]]:!flex [&>div[data-radix-scroll-area-viewport]]:!flex-col [&>div[data-radix-scroll-area-viewport]>div]:!flex [&>div[data-radix-scroll-area-viewport]>div]:!flex-col [&>div[data-radix-scroll-area-viewport]>div]:!min-h-full [&>div[data-radix-scroll-area-viewport]>div]:!justify-end">
+        <div className="msg-timeline flex flex-col min-h-full px-4 pt-4 pb-0 space-y-0.5 w-full max-w-full">
           {/* Spacer to push content to bottom */}
           <div className="flex-1" />
 
-          {/* Welcome message - anchored at bottom like Discord */}
-          <div className="mb-8 animate-fade-in">
-            <div className="w-[72px] h-[72px] rounded-3xl bg-[hsl(var(--surface-3))] border border-border/30 flex items-center justify-center mb-4 shadow-[var(--shadow-elevation-1)]">
-              <StreamlineHash size={42} className="text-muted-foreground" />
+          {messagesLoading && messages.length === 0 ? (
+            <MessageListSkeleton />
+          ) : showChecklist && currentServer ? (
+            <div className="mb-6">
+              <ServerWelcomeChecklist
+                serverName={currentServer.name}
+                done={setup.done}
+                onMarkLocal={setup.markLocal}
+                onInvite={() => setChecklistInviteOpen(true)}
+                onCustomizeIcon={() => onOpenServerSettings?.("profile")}
+                onFirstMessage={focusComposer}
+                onAddApp={() => onOpenServerSettings?.("integrations")}
+                onBoosts={() => onOpenServerSettings?.("boost")}
+              />
             </div>
-            <h1 className="text-3xl font-ginto font-bold mb-2">Bienvenue dans #{channel.name} !</h1>
-            <p className="text-muted-foreground">C'est le début du salon #{channel.name}.</p>
+          ) : (
+          <>
+          {/* Debut du salon, comme sur la capture : aligne a gauche, pastille
+              ronde de 68px, titre 32px extra-gras, sous-titre 16px, puis un
+              bouton secondaire (#3e3f45, 32px, rayon 8px). */}
+          <div className="mb-4 animate-fade-in">
+            <div className="w-[68px] h-[68px] rounded-full bg-[hsl(var(--button-secondary))] flex items-center justify-center mb-2">
+              {isAnnouncement ? <StreamlineMegaphone className="w-10 h-10 text-white" /> : <StreamlineHash size="lg" className="text-white" />}
+            </div>
+            <h1 className="text-[32px] leading-10 font-extrabold text-white mb-1">
+              Bienvenue dans #{channel.name} !
+            </h1>
+            <p className="text-base text-foreground">
+              C'est le début du salon #{channel.name}.
+            </p>
             {canManageChannels && (
-              <Button variant="outline" size="sm" className="mt-4" onClick={() => setChannelSettingsId(channel.id)}>
-                <Pencil className="w-3 h-3 mr-1.5" />
-                Edit Channel
-              </Button>
+              <button
+                type="button"
+                className="mt-3 inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-[hsl(var(--button-secondary))] border border-white/[0.03] text-base font-medium text-white hover:bg-[hsl(var(--interactive-background-selected))] transition-colors"
+                onClick={() => setChannelSettingsId(channel.id)}
+              >
+                <Pencil className="w-4 h-4" />
+                Modifier le salon
+              </button>
             )}
           </div>
+          </>
+          )}
 
           {/* Timeline Items (Messages + Polls) with dynamic date separators */}
           {timelineItems.map((item, index) => {
@@ -1356,14 +1332,9 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
             const prevItem = index > 0 ? timelineItems[index - 1] : null;
             const showDateSeparator = !prevItem || currentDate.toDateString() !== prevItem.timestamp.toDateString();
 
+            /* Séparateur de date (vidéo de référence) : filet discret de part et d'autre de la date. */
             const DateSeparator = showDateSeparator ? (
-              <div className="flex items-center gap-4 my-3">
-                <div className="flex-1 h-px bg-border/40" />
-                <span className="text-[11px] text-muted-foreground font-semibold bg-[hsl(var(--surface-3))] border border-border/30 px-3 py-1 rounded-full shadow-sm">
-                  {formatDate(currentDate)}
-                </span>
-                <div className="flex-1 h-px bg-border/40" />
-              </div>
+              <div className="flex items-center gap-2 my-4 mx-4"><div className="flex-1 h-px bg-white/[0.06]" /><span className="text-xs font-semibold text-[#949ba4] px-1">{formatDate(currentDate)}</span><div className="flex-1 h-px bg-white/[0.06]" /></div>
             ) : null;
 
             // Render Poll
@@ -1377,7 +1348,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
               const isOwnPoll = user?.id === poll.author_id;
               const isPollExpired = poll.expires_at ? new Date(poll.expires_at) <= new Date() : false;
               return (
-                <div key={`poll-${poll.id}`}>
+                <div key={`poll-${poll.id}`} data-poll-id={poll.id}>
                   {DateSeparator}
                   <UniversalMessageContextMenu
                     messageId={poll.id}
@@ -1396,7 +1367,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                       isOwnPoll && !isPollExpired ? (
                         <ContextMenuItem onClick={() => handleEndPoll(poll)}>
                           <StopCircle className="w-4 h-4 mr-2" />
-                          Terminer le sondage
+                          Clore le sondage maintenant
                         </ContextMenuItem>
                       ) : undefined
                     }
@@ -1405,8 +1376,8 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                         isMobile={isMobile}
                         onLongPress={() => setMobilePollSheetId(poll.id)}
                         className={cn(
-                          "group message-hover px-2 -mx-2 mb-1 relative",
-                          showAuthor ? "pt-1" : "py-0",
+                          "group message-hover px-4 -mx-4 mb-1 relative",
+                          showAuthor ? "pt-[2px]" : "py-0",
                           messageMentionsMe(
                             poll.question,
                             user?.id,
@@ -1419,22 +1390,17 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                         }}
                       >
                         {!isMobile && (
-                          <PollActions
+                          <UniversalMessageActions
                             isVisible={hoveredPollId === poll.id || openDropdownPollId === poll.id}
                             isShiftPressed={isShiftPressed}
+                            isOwnMessage={isOwnPoll}
+                            canAddReactions={canAddReactions}
+                            canManageMessages={canManageMessages}
+                            onAddReaction={canAddReactions ? (emoji) => handleAddReaction(poll.id, emoji) : undefined}
                             onCopyLink={() => handleCopyPollLink(poll.id)}
                             onCopyId={() => handleCopyId(poll.id)}
-                            onEdit={() => setEditingPoll(poll)}
-                            onDelete={() => handleDeletePoll(poll)}
-                            onReply={undefined}
-                            onAddReaction={(emoji) => handleAddReaction(poll.id, emoji)}
-                            isOwnPoll={isOwnPoll}
-                            isPollExpired={isPollExpired}
-                            onEndPoll={() => handleEndPoll(poll)}
-                            onDropdownOpenChange={(open) => {
-                              setOpenDropdownPollId(open ? poll.id : null);
-                              if (!open) setHoveredPollId(null);
-                            }}
+                            onEdit={isOwnPoll ? () => setEditingPoll(poll) : undefined}
+                            onDelete={isOwnPoll || canManageMessages ? () => handleDeletePoll(poll) : undefined}
                           />
                         )}
                         <MobilePollActions
@@ -1450,7 +1416,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                           onAddReaction={(emoji) => handleAddReaction(poll.id, emoji)}
                         />
                         {showAuthor ? (
-                          <div className="flex gap-3 my-0 py-[5px]">
+                          <div className="flex gap-4 my-0 pt-0 pb-[11px]">
                             <Avatar className="w-10 h-10 mt-0.5 flex-shrink-0">
                               <AvatarImage src={poll.author?.avatar_url || undefined} />
                               <AvatarFallback className="bg-primary/20 text-primary">
@@ -1459,16 +1425,16 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                             </Avatar>
                             <div className="flex-1 min-w-0 my-0 py-0">
                               <div className="flex items-baseline gap-2">
-                                <span className="font-semibold text-foreground">
+                                <span
+                                  className="font-semibold text-base leading-[1.375rem]"
+                                  style={{ color: roleColorMode === "names" ? memberRoles?.get(poll.author_id ?? "")?.[0]?.color || undefined : undefined }}
+                                >
                                   {poll.author?.display_name || "Utilisateur inconnu"}
                                 </span>
                                 <span className="text-xs text-muted-foreground">
                                   {formatTime(new Date(poll.created_at))}
                                 </span>
-                                <div className="flex items-center gap-1 text-[#5865f2] text-xs font-medium bg-[#5865f2]/10 px-1.5 py-0.5 rounded">
-                                  <BarChart2 className="w-3 h-3" />
-                                  POLL
-                                </div>
+
                               </div>
                               <div className="mt-2">
                                 <PollDisplay poll={poll} channelId={channel.id} />
@@ -1476,7 +1442,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                             </div>
                           </div>
                         ) : (
-                          <div className="flex gap-1 items-start">
+                          <div className="flex gap-4 items-start">
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <span className="w-10 flex-shrink-0 text-xs text-muted-foreground/40 text-right pt-0.5 cursor-default">
@@ -1484,7 +1450,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                 </span>
                               </TooltipTrigger>
                               <TooltipContent side="top" className="text-xs">
-                                {new Date(poll.created_at).toLocaleString("fr-FR", {
+                                {new Date(poll.created_at).toLocaleString(appLocale(), {
                                   weekday: "long",
                                   day: "numeric",
                                   month: "long",
@@ -1509,6 +1475,51 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
 
             // Render Message
             const message = item.data as Message;
+
+            // Messages systeme de l'activation de la Communaute
+            const followedMatch = message.is_system ? message.content.match(CHANNEL_FOLLOWED_RE) : null;
+            if (followedMatch) {
+              return (
+                <div key={`msg-${message.id}`}>
+                  {DateSeparator}
+                  <ChannelFollowedSystemMessage
+                    sourceChannelId={followedMatch[1]}
+                    actorName={message.author.displayName}
+                    onActorClick={() => handleUserClick(message.author)}
+                    timeLabel={formatTime(message.timestamp)}
+                  />
+                </div>
+              );
+            }
+            const pollClosedMatch = message.is_system ? message.content.match(POLL_CLOSED_RE) : null;
+            if (pollClosedMatch) {
+              const closedPoll = (polls ?? []).find((p) => p.id === pollClosedMatch[1]) ?? null;
+              return (
+                <div key={`msg-${message.id}`}>
+                  {DateSeparator}
+                  <PollClosedSystemMessage
+                    poll={closedPoll}
+                    timeLabel={formatTime(message.timestamp)}
+                    mentionsMe={!!closedPoll && closedPoll.author_id === user?.id}
+                    onAuthorClick={() => handleUserClick(message.author)}
+                  />
+                </div>
+              );
+            }
+            const communityMatch = message.is_system ? message.content.match(COMMUNITY_SYSTEM_RE) : null;
+            if (communityMatch) {
+              return (
+                <div key={`msg-${message.id}`}>
+                  {DateSeparator}
+                  <CommunitySystemMessage
+                    kind={communityMatch[1] as "ALERTS" | "UPDATES"}
+                    timestamp={message.timestamp}
+                    timeLabel={formatTime(message.timestamp)}
+                    actor={message.author}
+                  />
+                </div>
+              );
+            }
 
             // Render system message for thread creation
             if (message.is_system && message.content.startsWith("[SYSTEM:THREAD_CREATED:")) {
@@ -1538,52 +1549,61 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                       onViewReactions={() => setReactionsViewerMessageId(message.id)}
                       onClearAllReactions={() => clearMessageReactions.mutate({ messageId: message.id })}
                     >
-                      <div className="group message-hover px-4 pb-2 pt-1 mb-1">
+                      <div
+                        className="group message-hover relative -mx-4 px-8 pb-2 pt-1 mb-1"
+                        onMouseEnter={() => setHoveredMessageId(message.id)}
+                        onMouseLeave={() => {
+                          if (openDropdownMessageId !== message.id) setHoveredMessageId(null);
+                        }}
+                      >
+                        <UniversalMessageActions
+                          isVisible={hoveredMessageId === message.id || openDropdownMessageId === message.id}
+                          isShiftPressed={isShiftPressed}
+                          isOwnMessage={user?.id === message.author.id}
+                          onAddReaction={canAddReactions ? (emoji) => handleAddReaction(message.id, emoji) : undefined}
+                          onCopyLink={() => handleCopyMessageLink(message.id)}
+                          onCopyId={() => handleCopyId(message.id)}
+                          onCopyText={() => handleCopyMessage(message.content)}
+                          onMarkUnread={() => markMessageUnread({ kind: "channel", channelId: channel.id, createdAt: (message as any).created_at ?? new Date(message.timestamp).toISOString() })}
+                          onDelete={user?.id === message.author.id || canManageMessages ? () => handleDelete(message.id) : undefined}
+                          onDropdownOpenChange={(open) => {
+                            setOpenDropdownMessageId(open ? message.id : null);
+                            if (!open) setHoveredMessageId(null);
+                          }}
+                          canAddReactions={canAddReactions}
+                          canManageMessages={canManageMessages}
+                          customAction={thread ? <ViewThreadButton onClick={() => onSelectThread?.(threadId)} /> : undefined}
+                        />
                         {/* System text line */}
                         <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                          <StreamlineThreads className="w-3.5 h-3.5 flex-shrink-0" />
-                          <span>
-                            <span className="font-semibold text-foreground">{message.author.displayName}</span> a créé
-                            un thread :{" "}
-                            <button type="button"
+                          <StreamlineThreads className="w-6 h-6 flex-shrink-0 text-[#b5bac1] -ml-[3px] mr-[9px]" />
+                          <span className="text-base text-[#b5bac1]">
+                            <span translate="no" className="font-semibold text-white">{message.author.displayName}</span> a commencé un fil :{" "}
+                            <button translate="no" type="button"
                               onClick={() => onSelectThread?.(threadId)}
-                              className="font-semibold text-primary hover:underline cursor-pointer"
+                              className="font-semibold text-white hover:underline cursor-pointer"
                             >
                               {threadName}
                             </button>
+                            . <button type="button" onClick={() => setThreadsModalOpen(true)} className="hover:underline cursor-pointer">Voir tous les <span className="font-semibold text-white">fils</span></button>.
                           </span>
-                          <span className="text-muted-foreground/60 ml-1">{formatTime(message.timestamp)}</span>
+                          <span className="text-xs text-[#b5bac1] ml-1">{formatTime(message.timestamp)}</span>
                         </div>
 
-                        {/* Spine + Thread embed */}
-                        <div className="pt-1.5 pl-[50px] relative">
-                          <div className="absolute left-[6px] top-0 w-[34px] h-1/2 border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
-                          {thread ? (
+                        {/* Spine + Thread embed : rien quand le fil a ete supprime (le message d'annonce reste, video de reference). */}
+                        {thread && (
+                          <div className="pt-1.5 pl-[40px] relative">
+                            <div className="absolute left-[6px] top-0 w-[34px] h-1/2 border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
                             <ThreadSystemMessage
                               thread={thread}
                               onClick={() => onSelectThread?.(threadId)}
                               canManage={thread.created_by === user?.id || canManageChannels}
-                              onRename={(name) => updateThreadMut.mutate({ threadId: thread.id, name })}
-                              onDelete={() => {
-                                deleteThreadMut.mutate({ threadId: thread.id, channelId: channel.id });
-                                deleteMessage.mutate({ messageId: message.id, channelId: channel.id });
-                              }}
+                              channelName={channel.name}
+                              serverId={channel.server_id}
+                              onDelete={() => deleteThreadMut.mutate({ threadId: thread.id, channelId: channel.id })}
                             />
-                          ) : (
-                            <button type="button"
-                              onClick={() => onSelectThread?.(threadId)}
-                              className="flex items-start gap-2 w-fit max-w-full text-left py-1.5 px-2 rounded transition-colors bg-surface-elevated"
-                            >
-                              <StreamlineThreads className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-semibold text-primary hover:underline">
-                                  {threadName}
-                                </span>
-                                <span className="text-xs text-foreground">0 Messages</span>
-                              </div>
-                            </button>
-                          )}
-                        </div>
+                          </div>
+                        )}
                       </div>
                     </UniversalMessageContextMenu>
 
@@ -1606,6 +1626,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                 {DateSeparator}
                 <UniversalMessageContextMenu
                   messageId={message.id}
+                  reminder={buildReminder(message)}
                   isOwnMessage={isOwnMessage}
                   isPinned={pinnedMessageIds.has(message.id)}
                   canAddReactions={canAddReactions}
@@ -1619,6 +1640,8 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                   onCopyText={() => handleCopyMessage(message.content)}
                   onCopyLink={() => handleCopyMessageLink(message.id)}
                   onCopyId={() => handleCopyId(message.id)}
+                  onForward={message.is_system ? undefined : () => forwardMessage(message)}
+                  onMarkUnread={() => markMessageUnread({ kind: "channel", channelId: channel.id, createdAt: (message as any).created_at ?? new Date(message.timestamp).toISOString() })}
                   onEdit={isOwnMessage ? () => handleStartEdit(message) : undefined}
                   onDelete={isOwnMessage || canManageMessages ? () => handleDelete(message.id) : undefined}
                   onPin={canManageMessages ? () => handlePinMessage(message.id) : undefined}
@@ -1639,7 +1662,9 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                           if (el) messageRefs.current.set(message.id, el);
                         }}
                         className={cn(
-                          "group/message group message-hover -mx-4 px-8 mb-0 relative pt-[5px] pb-[2px]",
+                          "group/message group message-hover -mx-4 px-8 mb-0 relative pt-[2px] pb-[4px]",
+                          replyingTo?.id === message.id && "reply-target",
+                          showAuthor && prevItem && "message-group-start",
                           messageMentionsMe(
                             message.content,
                             user?.id,
@@ -1652,6 +1677,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                         }}
                       >
                         <UniversalMessageActions
+                          reminder={buildReminder(message)}
                           isVisible={
                             (hoveredMessageId === message.id || openDropdownMessageId === message.id) && !isEditing
                           }
@@ -1662,6 +1688,8 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                           onCopyLink={() => handleCopyMessageLink(message.id)}
                           onCopyId={() => handleCopyId(message.id)}
                           onCopyText={() => handleCopyMessage(message.content)}
+                          onForward={message.is_system ? undefined : () => forwardMessage(message)}
+                          onMarkUnread={() => markMessageUnread({ kind: "channel", channelId: channel.id, createdAt: (message as any).created_at ?? new Date(message.timestamp).toISOString() })}
                           onEdit={isOwnMessage ? () => handleStartEdit(message) : undefined}
                           onDelete={isOwnMessage || canManageMessages ? () => handleDelete(message.id) : undefined}
                           onCreateThread={canCreateThreads ? () => setCreateThreadForMessageId(message.id) : undefined}
@@ -1673,6 +1701,11 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                           }}
                           canAddReactions={canAddReactions}
                           canManageMessages={canManageMessages}
+                          customAction={
+                            isAnnouncement && !message.published && !message.publishedAt && (isOwnMessage || canManageMessages)
+                              ? <PublishActionButton onClick={() => setPublishConfirmId(message.id)} />
+                              : undefined
+                          }
                         />
                                                 {showAuthor ? (
                           <div className="relative">
@@ -1696,7 +1729,10 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                 className="mb-1"
                               />
                             )}
-                            <div className="flex gap-3 items-start -ml-[11px]">
+                            <div className="flex gap-4 items-start -ml-[16px]">
+                              {message.published ? (
+                                <span className="mt-[2px]"><PublishedAvatar src={message.published} /></span>
+                              ) : (
                               <button type="button" onClick={() => handleUserClick(message.author)} className="flex-shrink-0 !min-h-0 h-auto p-0">
                                 <Avatar className="w-10 h-10 mt-[2px] hover:opacity-80 transition-opacity">
                                   <AvatarImage src={message.author.avatar} alt={message.author.displayName} />
@@ -1705,15 +1741,24 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                   </AvatarFallback>
                                 </Avatar>
                               </button>
+                              )}
                               <div className="flex-1 min-w-0 overflow-hidden">
-                                <div className="flex items-baseline gap-2 min-w-0 overflow-hidden">
-                                  <button type="button"
+                                <div className="flex items-center gap-1 min-w-0 overflow-hidden">
+                                  {message.published ? (
+                                    <PublishedAuthorName src={message.published} />
+                                  ) : (
+                                  <button translate="no" type="button"
                                     onClick={() => handleUserClick(message.author)}
-                                    className="font-semibold hover:underline cursor-pointer truncate max-w-[200px] flex-shrink-0 text-[15px] leading-[1.375rem] !min-h-0 h-auto p-0"
-                                    style={{ color: memberRoles?.get(message.author.id)?.[0]?.color || undefined }}
+                                    className="font-semibold hover:underline cursor-pointer truncate max-w-[200px] flex-shrink-0 text-base leading-[1.375rem] !min-h-0 h-auto p-0"
+                                    style={{ color: roleColorMode === "names" ? memberRoles?.get(message.author.id)?.[0]?.color || undefined : undefined }}
                                   >
                                     {message.author.displayName}
                                   </button>
+                                  )}
+                                  {!message.published && <ServerTagBadge userId={message.author.id} />}
+                                  {!message.published && roleColorMode === "beside" && memberRoles?.get(message.author.id)?.[0]?.color && (
+                                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: memberRoles.get(message.author.id)![0].color! }} aria-hidden="true" />
+                                  )}
                                   {/* SYSTEM tag for system messages */}
                                   {(message as any).isSystemMessage && (
                                     <span className="flex items-center gap-1 text-[10px] font-semibold text-[#5865f2] bg-[#5865f2]/10 px-1.5 py-0.5 rounded uppercase tracking-wider flex-shrink-0">
@@ -1721,10 +1766,11 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                     </span>
                                   )}
                                   {/* Role badge icon - displayed to the right of username */}
-                                  {memberRoles?.get(message.author.id)?.[0] &&
-                                    memberRoles.get(message.author.id)![0].icon_url && (
-                                      <RoleBadgePopover role={memberRoles.get(message.author.id)![0]} />
-                                    )}
+                                  {(() => {
+                                    // Comme Discord : icone du role le plus eleve QUI EN A une.
+                                    const iconRole = message.published ? null : memberRoles?.get(message.author.id)?.find((r) => r.icon_url);
+                                    return iconRole ? <RoleBadgePopover role={iconRole} /> : null;
+                                  })()}
                                   <Tooltip>
                                     <TooltipTrigger asChild>
                                       <span className="text-xs text-muted-foreground flex-shrink-0 cursor-default">
@@ -1732,7 +1778,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                       </span>
                                     </TooltipTrigger>
                                     <TooltipContent side="top" className="text-xs">
-                                      {new Date(message.timestamp).toLocaleString("fr-FR", {
+                                      {new Date(message.timestamp).toLocaleString(appLocale(), {
                                         weekday: "long",
                                         day: "numeric",
                                         month: "long",
@@ -1744,6 +1790,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                     </TooltipContent>
                                   </Tooltip>
                                 </div>
+                                <ForwardedFrame from={forwardedMap.get(message.id)} onJump={forwardedMap.get(message.id)?.kind === 'channel' && forwardedMap.get(message.id)?.channelId === channel.id ? (f) => scrollToMessage(f.messageId) : undefined}>
                                 {false ? (
                                   <div className="mt-1 space-y-2">
                                     <MarkdownTextarea
@@ -1790,28 +1837,32 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                   </div>
                                 ) : (
                                   <>
-                                    <div className="text-foreground break-words max-w-full font-ginto text-[15px] leading-[1.375rem]">
-                                      <MarkdownText variant="chat" content={message.content} />
-                                     </div>
+                                    <div className="flex flex-wrap items-baseline gap-x-1 text-foreground break-words max-w-full font-ginto text-base leading-[1.375rem]"><MarkdownText variant="chat" content={message.content} />{message.edited_at && !forwardedMap.get(message.id) && <span className="text-[11px] leading-[1.375rem] text-muted-foreground/60 select-none">(modifié)</span>}{message.isQueued && <span className="text-[11px] text-muted-foreground select-none">(en attente du réseau)</span>}</div>
                                   </>
                                 )}
 
                                 {/* Message Attachments */}
                                 {(message as any).attachments && (message as any).attachments.length > 0 && (
-                                  <MessageAttachments
+                                  <EditableAttachments
                                     attachments={(message as any).attachments as StoredAttachment[]}
                                     authorId={(message as any).author_id ?? (message as any).user_id ?? null}
+                                    messageId={message.id}
+                                    scope={{ kind: "channel", scopeId: channel.id }}
+                                    editable={isOwnMessage && !message.is_system && !(message as any).isPending}
+                                    hasText={!!message.content?.trim()}
                                   />
                                 )}
 
                                 {/* Link Embeds */}
                                 <LinkEmbeds content={message.content} />
-
-                                {/* Edited indicator - after attachments */}
-                                {message.edited_at && (
-                                  <span className="text-[.625rem] text-muted-foreground/40 mt-0.5 block">
-                                    (modifié)
-                                  </span>
+                                </ForwardedFrame>
+                                {isAnnouncement && !message.is_system && !message.published && !message.publishedAt && !message.publishDismissed &&
+                                  (isOwnMessage || canManageMessages) && announcementFollowers.length > 0 && (
+                                  <PublishPrompt
+                                    disabled={publishMessage.isPending}
+                                    onPublish={() => setPublishConfirmId(message.id)}
+                                    onDismiss={() => dismissPublish.mutate({ messageId: message.id, channelId: channel.id })}
+                                  />
                                 )}
 
                                 {(reactionsData?.[message.id]?.length ?? 0) > 0 && (
@@ -1833,10 +1884,14 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
 
                             {/* Thread System Message */}
                             {threadsByMessageId.has(message.id) && (
-                              <div className="pt-1.5 pl-[50px]">
+                              <div className="pt-1.5 pl-[40px]">
                                 <ThreadSystemMessage
                                   thread={threadsByMessageId.get(message.id)!}
                                   onClick={() => onSelectThread?.(threadsByMessageId.get(message.id)!.id)}
+                                  canManage={threadsByMessageId.get(message.id)!.created_by === user?.id || canManageChannels}
+                                  channelName={channel.name}
+                              serverId={channel.server_id}
+                                  onDelete={() => deleteThreadMut.mutate({ threadId: threadsByMessageId.get(message.id)!.id, channelId: channel.id })}
                                 />
                               </div>
                             )}
@@ -1845,7 +1900,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                           <div className="relative">
                             {threadsByMessageId.has(message.id) && <ThreadSpine startY={0} />}
                             {/* Note: hasReply forces showAuthor=true, so RepliedLine never renders here. */}
-                            <div className="flex gap-3 items-start -ml-[11px]">
+                            <div className="flex gap-4 items-start -ml-[16px]">
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <span className="w-10 flex-shrink-0 text-xs text-muted-foreground/40 text-right pt-0.5 cursor-default opacity-0 group-hover/message:opacity-100 transition-opacity">
@@ -1853,7 +1908,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                   </span>
                                 </TooltipTrigger>
                                 <TooltipContent side="top" className="text-xs">
-                                  {new Date(message.timestamp).toLocaleString("fr-FR", {
+                                  {new Date(message.timestamp).toLocaleString(appLocale(), {
                                     weekday: "long",
                                     day: "numeric",
                                     month: "long",
@@ -1865,6 +1920,7 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                 </TooltipContent>
                               </Tooltip>
                               <div className="flex-1 min-w-0">
+                                <ForwardedFrame from={forwardedMap.get(message.id)} onJump={forwardedMap.get(message.id)?.kind === 'channel' && forwardedMap.get(message.id)?.channelId === channel.id ? (f) => scrollToMessage(f.messageId) : undefined}>
                                 {false ? (
                                   <div className="space-y-2">
                                     <MarkdownTextarea
@@ -1911,28 +1967,32 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
                                   </div>
                                 ) : (
                                   <>
-                                     <div className="text-foreground break-words max-w-full font-ginto text-[15px] leading-[1.375rem]">
-                                       <MarkdownText variant="chat" content={message.content} />
-                                     </div>
+                                     <div className="flex flex-wrap items-baseline gap-x-1 text-foreground break-words max-w-full font-ginto text-base leading-[1.375rem]"><MarkdownText variant="chat" content={message.content} />{message.edited_at && !forwardedMap.get(message.id) && <span className="text-[11px] leading-[1.375rem] text-muted-foreground/60 select-none">(modifié)</span>}{message.isQueued && <span className="text-[11px] text-muted-foreground select-none">(en attente du réseau)</span>}</div>
                                   </>
                                 )}
 
                                 {/* Message Attachments for grouped messages */}
                                 {(message as any).attachments && (message as any).attachments.length > 0 && (
-                                  <MessageAttachments
+                                  <EditableAttachments
                                     attachments={(message as any).attachments as StoredAttachment[]}
                                     authorId={(message as any).author_id ?? (message as any).user_id ?? null}
+                                    messageId={message.id}
+                                    scope={{ kind: "channel", scopeId: channel.id }}
+                                    editable={isOwnMessage && !message.is_system && !(message as any).isPending}
+                                    hasText={!!message.content?.trim()}
                                   />
                                 )}
 
                                 {/* Link Embeds */}
                                 <LinkEmbeds content={message.content} />
-
-                                {/* Edited indicator - after attachments */}
-                                {message.edited_at && (
-                                  <span className="text-[.625rem] text-muted-foreground/40 mt-0.5 block">
-                                    (modifié)
-                                  </span>
+                                </ForwardedFrame>
+                                {isAnnouncement && !message.is_system && !message.published && !message.publishedAt && !message.publishDismissed &&
+                                  (isOwnMessage || canManageMessages) && announcementFollowers.length > 0 && (
+                                  <PublishPrompt
+                                    disabled={publishMessage.isPending}
+                                    onPublish={() => setPublishConfirmId(message.id)}
+                                    onDismiss={() => dismissPublish.mutate({ messageId: message.id, channelId: channel.id })}
+                                  />
                                 )}
 
                                 {(reactionsData?.[message.id]?.length ?? 0) > 0 && (
@@ -1954,10 +2014,14 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
 
                             {/* Thread System Message for grouped messages */}
                             {threadsByMessageId.has(message.id) && (
-                              <div className="pt-1.5 pl-[50px]">
+                              <div className="pt-1.5 pl-[40px]">
                                 <ThreadSystemMessage
                                   thread={threadsByMessageId.get(message.id)!}
                                   onClick={() => onSelectThread?.(threadsByMessageId.get(message.id)!.id)}
+                                  canManage={threadsByMessageId.get(message.id)!.created_by === user?.id || canManageChannels}
+                                  channelName={channel.name}
+                              serverId={channel.server_id}
+                                  onDelete={() => deleteThreadMut.mutate({ threadId: threadsByMessageId.get(message.id)!.id, channelId: channel.id })}
                                 />
                               </div>
                             )}
@@ -1969,7 +2033,18 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
               </div>
             );
           })}
-          <div ref={messagesEndRef} />
+          {ephemeralMessages.map((m, i) => {
+            const prev = i > 0 ? ephemeralMessages[i - 1].createdAt : timelineItems[timelineItems.length - 1]?.timestamp;
+            return (
+              <div key={m.id}>
+                {(!prev || prev.toDateString() !== m.createdAt.toDateString()) && (
+                  <div className="flex items-center gap-2 my-4 mx-4"><div className="flex-1 h-px bg-white/[0.06]" /><span className="text-xs font-semibold text-[#949ba4] px-1">{formatDate(m.createdAt)}</span><div className="flex-1 h-px bg-white/[0.06]" /></div>
+                )}
+                <EphemeralMessageRow message={m} time={formatTime(m.createdAt)} onAuthorClick={(rect) => setClydeCard(rect)} />
+              </div>
+            );
+          })}
+          <div ref={messagesEndRef} className="msg-end" />
         </div>
       </ScrollArea>
 
@@ -2003,6 +2078,8 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
         {replyingTo && !editingMessageId && (
           <ReplyBanner
             authorName={replyingTo.author.displayName}
+            authorId={replyingTo.author.id}
+            onJump={() => scrollToMessage(replyingTo.id)}
             authorAvatar={replyingTo.author.avatar}
             authorColor={memberRoles?.get(replyingTo.author.id)?.[0]?.color || undefined}
             content={replyingTo.content}
@@ -2022,6 +2099,34 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
             <span className="text-sm text-muted-foreground">Édition du message</span>
           </div>
         )}
+        {editingMessageId && (
+          <div className="mx-4 mb-2 rounded-xl bg-[hsl(var(--surface-3))] px-3 py-2.5">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Médias du message</p>
+            <AttachmentEditsPanel edits={attachmentEdits} />
+          </div>
+        )}
+        <RulesGate
+          enabled={!!serverAccess?.rules_enabled && (serverAccess?.rules.length ?? 0) > 0 && !isAdminOrOwner}
+          serverId={channel.server_id}
+          rules={serverAccess?.rules ?? []}
+        >
+        {isAnnouncement && richAnnouncementOpen && !editingMessageId ? (
+          // Memes marges que MessageInput (px-2, 8px en bas) : le composeur
+          // enrichi garde exactement la largeur du champ de saisie normal.
+          <div className="animate-step-in flex-shrink-0 w-full min-w-0 px-2 pt-0 pb-2 max-md:pb-[calc(0.125rem+env(safe-area-inset-bottom,0px))]">
+            <AnnouncementComposer
+              channel={channel}
+              serverName={currentServer?.name ?? ""}
+              serverIcon={currentServer?.icon_url ?? undefined}
+              canAttachFiles={canAttachFiles}
+              canCreateThreads={canCreateThreads}
+              canPublish={isAdminOrOwner || canManageMessages}
+              canMentionEveryone={canMentionEveryone}
+              onSent={() => setRichAnnouncementOpen(false)}
+              onExit={() => setRichAnnouncementOpen(false)}
+            />
+          </div>
+        ) : (
         <MessageInput
           value={editingMessageId ? editingContent : messageInput}
           onChange={editingMessageId ? setEditingContent : setMessageInput}
@@ -2054,11 +2159,28 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
           onClearAttachments={clearAttachments}
           permissionDeniedMessage={permissionDeniedMessage}
           canAttachFiles={canAttachFiles}
+          extraPlusItems={
+            isAnnouncement
+              ? [{ key: "rich-announcement", label: "Annonce enrichie", icon: StreamlineMegaphone, onClick: () => setRichAnnouncementOpen(true) }]
+              : undefined
+          }
           canCreatePolls={canCreatePolls}
           canMentionEveryone={canMentionEveryone}
           slowmodeSeconds={channelDetails?.slowmode_seconds ?? 0}
+          slash={
+            channel.server_id && !editingMessageId
+              ? {
+                  sendText: (content) => onSendMessage(content, [], null),
+                  sendExternal: (attachment) => onSendMessage('', [], null, attachment),
+                }
+              : undefined
+          }
         />
+        )}
+        </RulesGate>
       </div>
+
+      {clydeCard && <ClydeProfileCard anchor={clydeCard} onClose={() => setClydeCard(null)} />}
 
       <UserProfilePopup
         user={selectedUser?.user ?? null}
@@ -2072,16 +2194,38 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
       />
 
       {/* Create Thread from Message Modal */}
-      <CreateThreadModal
-        open={!!createThreadForMessageId}
-        onOpenChange={(open) => !open && setCreateThreadForMessageId(null)}
-        channelId={channel.id}
-        messageId={createThreadForMessageId || undefined}
-        onThreadCreated={(threadId) => {
-          setCreateThreadForMessageId(null);
-          onSelectThread?.(threadId);
+      {isAnnouncement && (
+        <>
+          <FollowChannelModal
+            open={followModalOpen}
+            onClose={() => setFollowModalOpen(false)}
+            sourceChannelId={channel.id}
+            sourceChannelName={channel.name}
+            sourceServerName={currentServer?.name ?? ""}
+            sourceServerIcon={currentServer?.icon_url ?? undefined}
+            onSuccess={() => {
+              setFollowModalOpen(false);
+              setFollowSuccessOpen(true);
+            }}
+          />
+          <FollowSuccessModal open={followSuccessOpen} onClose={() => setFollowSuccessOpen(false)} />
+          <PublishConfirmDialog
+            open={!!publishConfirmId}
+            onOpenChange={(o) => !o && setPublishConfirmId(null)}
+            onConfirm={() => publishConfirmId && publishMessage.mutate({ messageId: publishConfirmId, channelId: channel.id })}
+          />
+        </>
+      )}
+      <ClosePollConfirmDialog
+        open={!!pollToClose}
+        onOpenChange={(o) => !o && setPollToClose(null)}
+        onConfirm={() => {
+          if (pollToClose) endPollMutation.mutate({ pollId: pollToClose.id, channelId: channel.id });
+          setPollToClose(null);
         }}
       />
+
+      <ThreadsModal open={threadsModalOpen} onOpenChange={setThreadsModalOpen} channelId={channel.id} channelName={channel.name} onSelectThread={(id) => onSelectThread?.(id)} />
 
       {/* Edit Poll Modal */}
       <CreatePollModal
@@ -2119,6 +2263,14 @@ export const ChatArea = forwardRef<HTMLDivElement, ChatAreaProps>(function ChatA
           }
         }}
       />
+
+      {checklistInviteOpen && channel.server_id && (
+        <CreateInviteModal
+          serverId={channel.server_id}
+          channelName={channel.name}
+          onClose={() => setChecklistInviteOpen(false)}
+        />
+      )}
 
       {/* Channel Settings Modal */}
       {channelSettingsId && (

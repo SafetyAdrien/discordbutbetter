@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Check, Clock, User, Users } from 'lucide-react';
+import { Plus, Check, Clock, User, Users } from '@/components/icons/discord/lucide';
 import { StreamlineTasks } from '@/components/icons/StreamlineTasks';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { cn } from '@/lib/utils';
 import { useHasChannelPermission } from '@/hooks/useUserChannelPermissions';
 
+import { appLocale } from '@/i18n/locale';
 interface Channel {
   id: string;
   name: string;
@@ -66,7 +67,7 @@ export function TasksChannel({ channel, onToggleMembers, showMembers, hideHeader
       <div className="h-12 px-2 sm:px-4 flex items-center gap-2 sm:gap-4 flex-shrink-0 bg-[hsl(var(--surface-2))] w-full" style={{ borderBottom: "1px solid hsl(var(--border) / 0.5)", boxShadow: "var(--shadow-elevation-1)" }}>
         <div className="flex items-center gap-2 min-w-0 flex-shrink">
           <StreamlineTasks className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-          <h2 className="font-semibold text-foreground truncate">{channel.name}</h2>
+          <h2 translate="no" className="font-semibold text-foreground truncate">{channel.name}</h2>
         </div>
 
         <div className="flex items-center gap-1 sm:gap-2 ml-auto flex-shrink-0">
@@ -97,7 +98,7 @@ export function TasksChannel({ channel, onToggleMembers, showMembers, hideHeader
                   <Users className="w-5 h-5" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>{showMembers ? "Masquer les membres" : "Afficher les membres"}</TooltipContent>
+              <TooltipContent>{showMembers ? "Masquer la liste des membres" : "Afficher la liste des membres"}</TooltipContent>
             </Tooltip>
           )}
         </div>
@@ -180,7 +181,7 @@ export function TasksChannel({ channel, onToggleMembers, showMembers, hideHeader
                       {task.dueDate && (
                         <span className="flex items-center gap-1 text-xs text-muted-foreground">
                           <Clock className="w-3 h-3" />
-                          {task.dueDate.toLocaleDateString('fr-FR')}
+                          {task.dueDate.toLocaleDateString(appLocale())}
                         </span>
                       )}
                       {task.assignee && (

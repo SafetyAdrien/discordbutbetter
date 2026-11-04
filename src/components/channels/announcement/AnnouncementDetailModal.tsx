@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Eye, MessageSquare, MoreVertical, Pencil, Trash2 } from 'lucide-react';
+import { Eye, MessageSquare, MoreVertical, Pencil, Trash2 } from '@/components/icons/discord/lucide';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -24,6 +24,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useHasChannelPermission } from '@/hooks/useUserChannelPermissions';
 
+import { appLocale } from '@/i18n/locale';
 interface AnnouncementDetailModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -38,7 +39,7 @@ interface AnnouncementDetailModalProps {
 }
 
 function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString('fr-FR', {
+  return new Date(dateString).toLocaleDateString(appLocale(), {
     day: 'numeric',
     month: 'long',
     year: 'numeric',

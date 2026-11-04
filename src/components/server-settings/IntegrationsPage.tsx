@@ -1,172 +1,213 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { ChevronRight } from "@/components/icons/discord/lucide";
+import { ChevronDown, Clock, Webhook as WebhookIcon } from "@/components/icons/serverSettingsIcons";
 import { Button } from "@/components/ui/button";
-import { Bot, Webhook, ExternalLink, Plus } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useChannels } from "@/hooks/useChannels";
-import { useCreateWebhook } from "@/hooks/useWebhooks";
+import { useMembers } from "@/hooks/useMembers";
+import {
+  useCreateWebhook,
+  useDeleteWebhook,
+  useServerWebhooks,
+  useUpdateWebhook,
+  type Webhook,
+} from "@/hooks/useWebhooks";
+import { copyToClipboard } from "@/lib/clipboard";
+import { cn } from "@/lib/utils";
+import { SettingsPage, UnsavedChangesBar } from "./SettingsUI";
+import { settingsInputCls, settingsLinkCls } from "./settingsStyles";
 
-interface IntegrationsPageProps {
-  serverId: string;
+import { appLocale } from '@/i18n/locale';
+/*
+ * "Integrations" puis "Integrations > Webhooks" (video de reference) :
+ * cartes depliables par webhook avec nom, salon, copie de l'URL et
+ * suppression ; "Nouveau webhook" en cree un dans le premier salon textuel.
+ */
+
+export function IntegrationsPage({ serverId }: { serverId: string }) {
+  const [view, setView] = useState<"overview" | "webhooks">("overview");
+  const { data } = useChannels(serverId);
+  const textChannels = useMemo(
+    () => (data ? [...data.orphanChannels, ...data.categories.flatMap((c) => c.channels)].filter((c) => c.type === "text") : []),
+    [data],
+  );
+  const { data: webhooks = [] } = useServerWebhooks(serverId, textChannels.map((c) => c.id));
+
+  if (view === "webhooks") {
+    return <WebhooksView serverId={serverId} textChannels={textChannels} webhooks={webhooks} onBack={() => setView("overview")} />;
+  }
+
+  return (
+    <SettingsPage
+      title="Intégrations"
+      description="Personnalise ton serveur avec des intégrations. Gère les webhooks qui publient des messages depuis d'autres applications."
+    >
+      <button
+        type="button"
+        onClick={() => setView("webhooks")}
+        className="w-full flex items-center gap-4 p-4 rounded-lg bg-[hsl(var(--card))] hover:bg-[hsl(var(--interactive-background-hover))] text-left transition-colors"
+      >
+        <span className="w-10 h-10 shrink-0 rounded-full bg-[hsl(var(--button-secondary))] flex items-center justify-center">
+          <WebhookIcon className="w-5 h-5 text-foreground" />
+        </span>
+        <span className="flex-1 min-w-0">
+          <span className="block text-base font-semibold text-white">Webhooks</span>
+          <span className="block text-sm text-muted-foreground">
+            {webhooks.length} webhook{webhooks.length > 1 ? "s" : ""}
+          </span>
+        </span>
+        <span className="text-sm font-medium text-foreground">{webhooks.length > 0 ? "Voir les webhooks" : "Créer un webhook"}</span>
+        <ChevronRight className="w-5 h-5 text-muted-foreground" />
+      </button>
+    </SettingsPage>
+  );
 }
 
-export function IntegrationsPage({ serverId }: IntegrationsPageProps) {
-  const [showCreateWebhook, setShowCreateWebhook] = useState(false);
-  const [webhookName, setWebhookName] = useState("");
-  const [webhookChannel, setWebhookChannel] = useState("");
-  const { data } = useChannels(serverId);
+function WebhooksView({
+  serverId,
+  textChannels,
+  webhooks,
+  onBack,
+}: {
+  serverId: string;
+  textChannels: { id: string; name: string }[];
+  webhooks: Webhook[];
+  onBack: () => void;
+}) {
   const createWebhook = useCreateWebhook();
+  const updateWebhook = useUpdateWebhook();
+  const deleteWebhook = useDeleteWebhook();
+  const { data: members = [] } = useMembers(serverId);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [drafts, setDrafts] = useState<Record<string, { name: string; channelId: string }>>({});
 
-  const textChannels = data?.categories
-    ?.flatMap((cat) => cat.channels)
-    .filter((ch) => ch.type === "text") ?? [];
+  // Cle stable : `webhooks` vaut un nouveau `[]` a chaque rendu tant que la
+  // requete n'a rien renvoye, ce qui relancait cet effet en boucle.
+  const webhooksKey = webhooks.map((w) => `${w.id}:${w.name}:${w.channel_id}`).join("|");
+  useEffect(() => setDrafts({}), [webhooksKey]);
 
-  const integrations = [
-    {
-      id: "webhooks",
-      name: "Webhooks",
-      description: "Recevez des notifications automatiques depuis d'autres services",
-      icon: Webhook,
-      count: 0,
-    },
-    {
-      id: "bots",
-      name: "Bots",
-      description: "Ajoutez des bots pour automatiser des tâches",
-      icon: Bot,
-      count: 0,
-    },
-    {
-      id: "followed-channels",
-      name: "Channels Followed",
-      description: "Suivez des salons d'autres serveurs",
-      icon: Webhook,
-      count: 0,
-    },
-  ];
+  const draftOf = (w: Webhook) => drafts[w.id] ?? { name: w.name, channelId: w.channel_id };
+  const dirtyIds = webhooks.filter((w) => {
+    const d = drafts[w.id];
+    return d && (d.name !== w.name || d.channelId !== w.channel_id);
+  });
+  const creatorName = (id: string | null) => members.find((m) => m.user.id === id)?.user.username ?? "inconnu";
+  const channelName = (id: string) => textChannels.find((c) => c.id === id)?.name ?? "salon";
 
-  const handleCreateWebhook = () => {
-    if (!webhookName.trim() || !webhookChannel) return;
+  const create = () => {
+    const first = textChannels[0];
+    if (!first) return;
     createWebhook.mutate(
-      { channelId: webhookChannel, name: webhookName.trim() },
-      {
-        onSuccess: () => {
-          setShowCreateWebhook(false);
-          setWebhookName("");
-          setWebhookChannel("");
-        },
-      }
+      { channelId: first.id, name: `Webhook ${webhooks.length + 1}` },
+      { onSuccess: (w) => w && setOpenId((w as Webhook).id) },
     );
   };
 
+  const save = () => {
+    dirtyIds.forEach((w) => {
+      const d = drafts[w.id];
+      updateWebhook.mutate({
+        webhookId: w.id,
+        name: d.name !== w.name ? d.name.trim() || w.name : undefined,
+        channelId: d.channelId !== w.channel_id ? d.channelId : undefined,
+      });
+    });
+  };
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold mb-1">Intégrations</h3>
-        <p className="text-sm text-muted-foreground">
-          Connectez des applications et services externes à votre serveur
-        </p>
-      </div>
-
-      <div className="space-y-2">
-        {integrations.map((integration) => (
-          <div
-            key={integration.id}
-            className="flex items-center justify-between py-3 px-4 border border-border rounded-lg bg-card"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                <integration.icon className="w-5 h-5 text-primary" />
-              </div>
-              <div className="flex flex-col justify-center">
-                <span className="font-semibold text-sm">{integration.name}</span>
-                {integration.description && (
-                  <span className="text-xs text-muted-foreground">{integration.description}</span>
-                )}
-              </div>
-            </div>
-            <Button variant="outline" size="sm" className="shrink-0 ml-4">
-              Gérer
-              <ExternalLink className="w-3 h-3 ml-2" />
-            </Button>
-          </div>
-        ))}
-      </div>
-
-      <Button
-        variant="outline"
-        className="w-full"
-        onClick={() => setShowCreateWebhook(true)}
-      >
-        <Plus className="w-4 h-4 mr-2" />
-        Créer un Webhook
+    <SettingsPage
+      title={
+        <span className="flex items-center gap-1.5">
+          <button type="button" onClick={onBack} className="text-muted-foreground hover:text-white hover:underline">Intégrations</button>
+          <ChevronRight className="w-4 h-4 text-muted-foreground" />
+          Webhooks
+        </span>
+      }
+      description={
+        <>
+          Les webhooks sont une manière simple de poster des messages dans tes salons à partir d'autres applications ou
+          sites web.{" "}
+          <a href="/trust" target="_blank" rel="noopener" className={settingsLinkCls}>En savoir plus</a>
+        </>
+      }
+    >
+      <Button size="sm" onClick={create} disabled={!textChannels.length || createWebhook.isPending}>
+        Nouveau webhook
       </Button>
 
-      <Dialog open={showCreateWebhook} onOpenChange={setShowCreateWebhook}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Créer un Webhook</DialogTitle>
-            <DialogDescription>
-              Les webhooks permettent à des services externes d'envoyer des messages dans vos salons.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label htmlFor="webhook-name">Nom</Label>
-              <Input
-                id="webhook-name"
-                placeholder="Mon Webhook"
-                value={webhookName}
-                onChange={(e) => setWebhookName(e.target.value)}
-              />
+      <div className="mt-6 space-y-2">
+        {webhooks.length === 0 && <p className="text-sm text-muted-foreground">Aucun webhook pour l'instant.</p>}
+        {webhooks.map((w) => {
+          const open = openId === w.id;
+          const d = draftOf(w);
+          return (
+            <div key={w.id} className="rounded-lg bg-[hsl(var(--card))] border border-white/[0.06]">
+              <button
+                type="button"
+                onClick={() => setOpenId(open ? null : w.id)}
+                className="w-full flex items-center gap-3 p-4 text-left"
+              >
+                <Avatar className="w-10 h-10">
+                  <AvatarImage src={w.avatar_url ?? undefined} />
+                  <AvatarFallback className="bg-primary text-white"><WebhookIcon className="w-5 h-5" /></AvatarFallback>
+                </Avatar>
+                <span className="flex-1 min-w-0">
+                  <span className="block text-base font-semibold text-white truncate">{w.name}</span>
+                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Clock className="w-3 h-3" />
+                    Créé le {w.created_at ? new Date(w.created_at).toLocaleDateString(appLocale(), { day: "numeric", month: "short", year: "numeric" }) : "—"} par {creatorName(w.created_by)} · #{channelName(w.channel_id)}
+                  </span>
+                </span>
+                <ChevronDown className={cn("w-5 h-5 text-muted-foreground transition-transform", open && "rotate-180")} />
+              </button>
+              {open && (
+                <div className="px-4 pb-4 pt-1 border-t border-border">
+                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block mb-2 text-xs font-semibold text-foreground">Nom</label>
+                      <input
+                        value={d.name}
+                        maxLength={80}
+                        onChange={(e) => setDrafts((all) => ({ ...all, [w.id]: { ...d, name: e.target.value } }))}
+                        className={settingsInputCls}
+                      />
+                    </div>
+                    <div>
+                      <label className="block mb-2 text-xs font-semibold text-foreground">Salon</label>
+                      <select
+                        value={d.channelId}
+                        onChange={(e) => setDrafts((all) => ({ ...all, [w.id]: { ...d, channelId: e.target.value } }))}
+                        className={settingsInputCls}
+                      >
+                        {textChannels.map((c) => <option key={c.id} value={c.id}>#{c.name}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="mt-4 flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => copyToClipboard(`${window.location.origin}/api/webhooks/${w.token}`, "URL du webhook copiée !")}
+                    >
+                      Copier l'URL du webhook
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => deleteWebhook.mutate({ webhookId: w.id, channelId: w.channel_id })}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      Suppression de webhook
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
+          );
+        })}
+      </div>
 
-            <div className="space-y-2">
-              <Label>Salon</Label>
-              <Select value={webhookChannel} onValueChange={setWebhookChannel}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Choisir un salon" />
-                </SelectTrigger>
-                <SelectContent>
-                  {textChannels.map((ch) => (
-                    <SelectItem key={ch.id} value={ch.id}>
-                      # {ch.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setShowCreateWebhook(false)}>
-              Annuler
-            </Button>
-            <Button
-              onClick={handleCreateWebhook}
-              disabled={!webhookName.trim() || !webhookChannel || createWebhook.isPending}
-            >
-              {createWebhook.isPending ? "Création..." : "Créer"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+      <UnsavedChangesBar visible={dirtyIds.length > 0} onReset={() => setDrafts({})} onSave={save} saving={updateWebhook.isPending} />
+    </SettingsPage>
   );
 }

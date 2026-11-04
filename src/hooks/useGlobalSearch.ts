@@ -1,5 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { uuidToSnowflake } from '@/lib/snowflake';
 
 /** Max results returned to the user once all filters have been applied. */
 const RESULT_LIMIT = 50;
@@ -15,6 +16,8 @@ function escapeLike(input: string): string {
   return input.replace(/[\\%_]/g, (ch) => `\\${ch}`);
 }
 
+export type SearchHasType = 'image' | 'video' | 'link' | 'file' | 'embed' | 'sound' | 'poll' | 'sticker' | 'forward';
+
 export interface SearchFilters {
   from?: string;
   mentions?: string;
@@ -25,11 +28,24 @@ export interface SearchFilters {
   after?: string;
   pinned?: boolean;
   authorType?: string;
+  /** Selections multiples de la fenetre Filtres (ids exacts). */
+  fromIds?: string[];
+  channelIds?: string[];
+  mentionIds?: string[];
+  authorTypes?: string[];
+  /** "contient:" : types de contenu. */
+  has?: SearchHasType[];
+  /** Ordre des resultats ("Trier"). */
+  sort?: 'newest' | 'oldest';
 }
 
-interface SearchResult {
+export interface SearchResult {
   id: string;
+  /** 'poll' : resultat issu de la table polls ("contient: sondage"). */
+  kind?: 'message' | 'poll';
   content: string;
+  attachments?: unknown;
+  original_message_id?: string | null;
   created_at: string | null;
   channel_id: string;
   author_id: string | null;
@@ -44,6 +60,35 @@ interface SearchResult {
     name: string;
     type: string | null;
   } | null;
+}
+
+const URL_RE = /https?:\/\/\S+/i;
+const AUDIO_RE = /\.(mp3|wav|ogg|oga|m4a|aac|flac|opus)$/i;
+
+function attachmentsOf(m: SearchResult): { type?: string; name?: string }[] {
+  return Array.isArray(m.attachments) ? (m.attachments as { type?: string; name?: string }[]) : [];
+}
+
+function messageHas(m: SearchResult, h: SearchHasType): boolean {
+  const atts = attachmentsOf(m);
+  switch (h) {
+    case 'image': return atts.some((a) => a.type === 'image' || a.type === 'gif');
+    case 'video': return atts.some((a) => a.type === 'video');
+    case 'sticker': return atts.some((a) => a.type === 'sticker');
+    case 'sound': return atts.some((a) => a.type === 'file' && AUDIO_RE.test(a.name ?? ''));
+    case 'file': return atts.some((a) => a.type === 'file');
+    case 'link':
+    case 'embed': return URL_RE.test(m.content);
+    case 'forward': return !!m.original_message_id;
+    default: return false;
+  }
+}
+
+function authorMatches(m: SearchResult, t: string): boolean {
+  const isBot = !!m.author?.username.toLowerCase().includes('bot');
+  if (t === 'webhook') return m.author_id === null;
+  if (t === 'bot') return isBot;
+  return m.author_id !== null && !isBot;
 }
 
 export function useGlobalSearch(serverId: string | null) {
@@ -76,6 +121,8 @@ export function useGlobalSearch(serverId: string | null) {
           created_at,
           channel_id,
           author_id,
+          attachments,
+          original_message_id,
           author:profiles!messages_author_id_fkey (
             id,
             username,
@@ -83,8 +130,12 @@ export function useGlobalSearch(serverId: string | null) {
             avatar_url
           )
         `)
-        .in('channel_id', channelIds)
-        .order('created_at', { ascending: false });
+        .in('channel_id', filters.channelIds?.length ? channelIds.filter((id) => filters.channelIds!.includes(id)) : channelIds)
+        .order('created_at', { ascending: filters.sort === 'oldest' });
+
+      if (filters.fromIds?.length) {
+        request = request.in('author_id', filters.fromIds);
+      }
 
       // Apply content filter
       if (filters.contains || query) {
@@ -133,6 +184,26 @@ export function useGlobalSearch(serverId: string | null) {
         );
       }
 
+      // Mentions par identifiant : le contenu stocke <@uuid> ou <@snowflake>.
+      if (filters.mentionIds?.length) {
+        const tokens = filters.mentionIds.flatMap((id) => {
+          const snow = uuidToSnowflake(id);
+          return [`<@${id}>`, `<@!${id}>`, `<@${snow}>`, `<@!${snow}>`];
+        });
+        results = results.filter((m) => tokens.some((t) => m.content.includes(t)));
+      }
+
+      // "contient:" : chaque type selectionne doit etre present.
+      if (filters.has?.length) {
+        const hasTypes = filters.has.filter((h) => h !== 'poll');
+        results = results.filter((m) => hasTypes.every((h) => messageHas(m, h)));
+      }
+
+      // Plusieurs types d'auteur : le message doit correspondre a l'un d'eux.
+      if (filters.authorTypes?.length) {
+        results = results.filter((m) => filters.authorTypes!.some((t) => authorMatches(m, t)));
+      }
+
       // Filter by mentions
       if (filters.mentions) {
         const mentionPattern = `@${filters.mentions}`.toLowerCase();
@@ -158,10 +229,42 @@ export function useGlobalSearch(serverId: string | null) {
       }
 
       // Add channel info to results
-      const resultsWithChannel = results.map(r => ({
+      let resultsWithChannel: (SearchResult & { channel: { id: string; name: string; type: string | null } | null })[] = results.map(r => ({
         ...r,
+        kind: 'message' as const,
         channel: serverChannels.find(c => c.id === r.channel_id) || null,
       }));
+
+      // "contient: sondage" : les sondages vivent dans leur propre table.
+      if (filters.has?.includes('poll')) {
+        const pollChannels = filters.channelIds?.length ? channelIds.filter((id) => filters.channelIds!.includes(id)) : channelIds;
+        let pollReq = supabase
+          .from('polls')
+          .select('id, question, created_at, channel_id, author_id, author:profiles!polls_author_id_fkey (id, username, display_name, avatar_url)')
+          .in('channel_id', pollChannels)
+          .order('created_at', { ascending: filters.sort === 'oldest' });
+        if (filters.fromIds?.length) pollReq = pollReq.in('author_id', filters.fromIds);
+        const text = filters.contains || query;
+        if (text) pollReq = pollReq.ilike('question', `%${escapeLike(text)}%`);
+        const { data: polls } = await pollReq;
+        const pollResults = (polls || []).map((p) => ({
+          id: p.id,
+          kind: 'poll' as const,
+          content: `📊 ${p.question}`,
+          created_at: p.created_at,
+          channel_id: p.channel_id,
+          author_id: p.author_id,
+          author: (p.author as SearchResult['author']) ?? null,
+          channel: serverChannels.find((c) => c.id === p.channel_id) || null,
+        }));
+        const otherTypes = filters.has.filter((h) => h !== 'poll');
+        resultsWithChannel = otherTypes.length ? [...resultsWithChannel, ...pollResults] : pollResults;
+        resultsWithChannel.sort((a, b) =>
+          filters.sort === 'oldest'
+            ? (a.created_at ?? '').localeCompare(b.created_at ?? '')
+            : (b.created_at ?? '').localeCompare(a.created_at ?? ''),
+        );
+      }
 
       // Handle pinned filter - requires additional query
       if (filters.pinned !== undefined) {

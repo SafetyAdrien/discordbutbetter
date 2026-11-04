@@ -1,7 +1,7 @@
 import { ResponsiveModal } from '@/components/ui/responsive-modal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ExternalLink, Copy } from 'lucide-react';
+import { ExternalLink, Copy } from '@/components/icons/discord/lucide';
 import { copyToClipboard } from '@/lib/clipboard';
 
 interface ExternalLinkWarningModalProps {

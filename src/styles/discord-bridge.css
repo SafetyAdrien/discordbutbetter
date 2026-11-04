@@ -1,0 +1,300 @@
+/* ============================================================================
+   PONT PROGRESSIF — tokens shadcn du projet -> tokens Discord officiels
+   Genere. Ne pas editer a la main : voir docs/design-reference/GENERATION.md
+
+   Principe : on ne redefinit QUE des variables deja declarees dans
+   src/index.css. Aucun composant n'est modifie. Supprimer l'import de ce
+   fichier dans index.css suffit a annuler l'integration.
+
+   Les tokens cibles restent des triplets HSL : Tailwind les consomme via
+   hsl(var(--x)) et hsl(var(--x) / <alpha>). Les variables Discord
+   --*-hsl sont deja des triplets, donc on peut les referencer tel quel.
+
+   Les tokens Discord porteurs d'alpha (bordures, fonds modales) sont
+   aplatis sur leur surface de reference : un triplet ne peut pas porter
+   d'alpha. Valeur identique a l'ecran, mais non rejouable via /opacity.
+   ========================================================================= */
+
+@import "./discord-tokens.css";
+
+/* ---------------------------------------------------------------- DARK ---
+   Selecteurs volontairement plus specifiques que ceux de src/index.css
+   (`.dark` = 0,1,0 et `:root` = 0,1,0). On passe a (0,1,1) via `html.dark`
+   et `html:not(.dark)` : la cascade ne depend alors plus de l'ordre du
+   fichier, ce qui importe puisque Vite remonte les @import en tete. */
+html.dark {
+  /* Valeurs relevees au pixel sur la capture de reference (Discord 2025,
+     theme sombre, zoom 120 %). Le cadre (rail + liste de salons) et le
+     chat ne sont plus deux gris eloignes : 2c2d32 contre 323339. */
+
+  /* --- Surfaces --- */
+  --background: 231.4 6.5% 21%;                /* #323339 chat + membres */
+  --card: 230 6.4% 18.4%;                      /* #2c2d32 */
+  --popover: 230 7% 16.9%;                     /* #28292e menus, popovers */
+  --toolbar: 230 6.4% 18.4%;
+  --surface-1: 230 6.4% 18.4%;                 /* #2c2d32 cadre */
+  --surface-2: 231.4 6.5% 21%;                 /* #323339 chat */
+  --surface-3: 230 5% 23.5%;                   /* #393a3f tuiles du rail */
+  --surface-header: 231.4 6.5% 21%;
+  --surface-elevated: 230 7% 16.9%;
+  --sidebar-background: 230 6.4% 18.4%;        /* #2c2d32 */
+  --sidebar-accent: 232.5 6.9% 22.7%;          /* #36373e */
+  --user-panel: 232.5 6.9% 22.7%;              /* #36373e carte utilisateur */
+  --surface-server-list: 230 6.4% 18.4%;       /* rail = meme gris que le cadre */
+  --surface-card: 232.5 6.9% 22.7%;            /* #36373e cartes posees sur le cadre */
+
+  /* --- Texte --- */
+  --foreground: 240 4.3% 95.5%;                /* #f3f3f4 */
+  --card-foreground: 240 4.3% 95.5%;
+  --popover-foreground: 240 4.3% 95.5%;
+  --muted-foreground: 232.5 4.1% 61.6%;        /* #999aa1 salons, titres de groupe */
+  --sidebar-foreground: 240 4.3% 95.5%;
+  --sidebar-accent-foreground: 240 4.3% 95.5%;
+  --text-placeholder: 234 4.4% 44.3%;          /* #6c6d76 composeur */
+  --header-icon: 231.4 4.3% 68.4%;             /* #abacb2 icones d'en-tete */
+  --icon-default: 228 4.5% 78.2%;              /* #c5c6ca icones du composeur, panneau */
+
+  /* --- Marque --- */
+  --primary: var(--blurple-50-hsl);            /* #5865f2 */
+  --primary-hover: var(--blurple-65-hsl);
+  --accent: var(--blurple-50-hsl);
+  --accent-foreground: var(--neutral-1-hsl);
+  --ring: var(--blurple-50-hsl);
+  --sidebar-primary: var(--blurple-50-hsl);
+  --sidebar-ring: var(--blurple-50-hsl);
+  --glow-primary: var(--blurple-50-hsl);
+  --mention-text: var(--blurple-26-hsl);
+  --text-link: 213.3 87.7% 71.4%;              /* #76aff6 liens (capture checklist) */
+
+  /* --- Checklist "Bienvenue sur <serveur>" --- */
+  --checklist-card: 231.4 5.7% 24.1%;          /* #3a3b41 */
+  --checklist-card-border: 231.4 4.8% 28.4%;   /* #45464c */
+  --checklist-done: 144.8 32.6% 34.9%;         /* #3c7654 pastille terminee */
+  --checklist-done-text: 220 1.9% 69.6%;       /* #b0b1b3 */
+
+  /* --- Bordures --- */
+  --border: 231.4 5.3% 25.7%;                  /* #3e3f45 sur le chat */
+  --border-subtle: 231.4 5.3% 25.7%;
+  --divider: 231.4 5.3% 25.7%;
+  --sidebar-border: 230 5% 23.5%;              /* #393a3f sur le cadre */
+  --frame-border: 230 5% 23.5%;
+  --input: 232.5 6.6% 23.9%;                   /* #393a41 composeur */
+  /* Infobulles (videos de reference) : #393a41, filet 6% blanc, texte clair */
+  --tooltip-bg: 232.5 6.6% 23.9%;
+  --tooltip-fg: 240 4.3% 95.5%;
+  --tooltip-border: rgba(255, 255, 255, 0.06);
+  /* Glisser-deposer (video de reference) : barre d'insertion et zone de depot verts */
+  --dnd-line: 139 47% 44%;                     /* #3ba55d */
+  /* Carte d'invitation de serveur */
+  --invite-card: 232.5 6.6% 23.9%;             /* #393a41 */
+  --invite-border: 231.4 5.6% 28.2%;           /* #44454c */
+  --invite-pill: 240 4.4% 31.4%;               /* #4c4c54 */
+  --invite-text: 225 4.2% 78%;                 /* #c5c6ca */
+  --invite-join: 151 100% 26.1%;               /* #008545 */
+  --invite-join-hover: 151 100% 21.6%;         /* #006e39 */
+  --input-border: 231.4 5.4% 25.3%;            /* #3d3e44 */
+  --search-background: 231.4 7.1% 19.4%;       /* #2e2f35 */
+  --button-secondary: 231.4 5.3% 25.7%;        /* #3e3f45 boutons du message d'accueil */
+  --switch-off: 223 4.5% 52.9%;                /* #80848e piste d'interrupteur desactive */
+
+  /* --- Etats --- */
+  --destructive: var(--red-400-hsl);           /* #f23f43 */
+  --destructive-foreground: var(--neutral-1-hsl);
+  --muted: 232.5 6.9% 22.7%;
+  --surface-hover: 232.5 6.6% 23.9%;           /* survol d'une ligne sur le chat */
+  --poll-background: 232.5 6.9% 22.7%;
+  --voice-muted: 357.7 67.8% 54.9%;            /* #da3e44 micro / casque coupes */
+  --voice-muted-background: 336 15.9% 24.7%;   /* #49353d */
+
+  /* --- Statuts --- */
+  --online: var(--green-360-hsl);              /* #23a55a */
+  --voice-active: var(--green-360-hsl);
+  --idle: var(--yellow-300-hsl);               /* #f0b232 */
+  --dnd: var(--red-400-hsl);
+  --offline: var(--neutral-27-hsl);
+
+  /* --- Rayons --- */
+  --radius-input: var(--radius-sm);            /* 8px */
+  --radius-card: var(--radius-sm);             /* 8px */
+  --radius: var(--radius-sm);                  /* 8px */
+  --radius-xl: var(--radius-lg);               /* 16px */
+  --radius-2xl: var(--radius-xl);              /* 24px */
+  --radius-3xl: var(--radius-xxl);             /* 32px */
+}
+
+/* --------------------------------------------------------------- LIGHT --- */
+html:not(.dark) {
+  /* Meme structure, valeurs de .theme-light de Discord. */
+  --background: var(--neutral-2-hsl);          /* #fbfbfb chat */
+  --card: var(--neutral-2-hsl);
+  --popover: var(--neutral-1-hsl);             /* #ffffff */
+  --toolbar: var(--neutral-1-hsl);
+  --surface-1: var(--neutral-2-hsl);
+  --surface-2: var(--neutral-1-hsl);
+  --surface-3: var(--neutral-4-hsl);
+  --surface-header: var(--neutral-4-hsl);      /* #f3f3f4 */
+  --surface-elevated: var(--neutral-1-hsl);
+  --sidebar-background: var(--neutral-4-hsl);  /* #f3f3f4 liste de salons */
+  --sidebar-accent: var(--neutral-10-hsl);     /* #dcdcdf */
+  --user-panel: var(--neutral-4-hsl);
+
+  --foreground: var(--neutral-72-hsl);         /* #2e2e34 text-default */
+  --card-foreground: var(--neutral-72-hsl);
+  --popover-foreground: var(--neutral-72-hsl);
+  --muted-foreground: var(--neutral-41-hsl);   /* #6c6d76 text-muted */
+  --sidebar-foreground: var(--neutral-72-hsl);
+  --sidebar-accent-foreground: var(--neutral-72-hsl);
+
+  --primary: var(--blurple-50-hsl);            /* #5865f2 brand-500 */
+  --primary-hover: var(--blurple-55-hsl);
+  --accent: var(--blurple-50-hsl);
+  --accent-foreground: var(--neutral-1-hsl);
+  --ring: var(--blurple-50-hsl);
+  --sidebar-primary: var(--blurple-50-hsl);
+  --sidebar-ring: var(--blurple-50-hsl);
+  --glow-primary: var(--blurple-50-hsl);
+  --text-link: var(--blue-new-53-hsl);
+
+  --border: var(--border-normal-flat-light-hsl);
+  --border-subtle: var(--border-subtle-flat-light-hsl);
+  --divider: var(--border-subtle-flat-light-hsl);
+  --sidebar-border: var(--border-subtle-flat-light-hsl);
+  --input: var(--neutral-4-hsl);
+  /* Infobulle claire : fond blanc, texte #313338, ombre portee */
+  --tooltip-bg: 0 0% 100%;
+  --tooltip-fg: 223 6.7% 20.4%;
+  --tooltip-border: rgba(0, 0, 0, 0.08);
+  --dnd-line: 139 47% 44%;
+  --invite-card: 0 0% 100%;
+  --invite-border: 240 4% 88%;
+  --invite-pill: 240 5% 92%;
+  --invite-text: 230 5% 30%;
+  --invite-join: 151 100% 26.1%;
+  --invite-join-hover: 151 100% 21.6%;
+
+  --destructive: var(--red-430-hsl);
+  --destructive-foreground: var(--neutral-1-hsl);
+  --muted: var(--background-mod-subtle-flat-light-hsl);
+  --surface-hover: var(--interactive-hover-flat-light-hsl);
+  --poll-background: var(--background-mod-subtle-flat-light-hsl);
+
+  --online: var(--green-400-hsl);
+  --voice-active: var(--green-400-hsl);
+  --idle: var(--yellow-400-hsl);
+  --dnd: var(--red-430-hsl);
+  --offline: var(--neutral-50-hsl);
+
+  --radius-input: var(--radius-xs);
+  --radius-card: var(--radius-sm);
+  --radius: var(--radius-md);
+  --radius-xl: var(--radius-lg);
+  --radius-2xl: var(--radius-xl);
+  --radius-3xl: var(--radius-xxl);
+}
+
+/* Tokens propres a la refonte, transposes au theme clair. */
+html:not(.dark) {
+  --checklist-card: var(--neutral-1-hsl);
+  --checklist-card-border: var(--border-subtle-flat-light-hsl);
+  --checklist-done: 145 45% 42%;
+  --checklist-done-text: var(--neutral-41-hsl);
+  --surface-card: var(--neutral-10-hsl);
+  --text-placeholder: var(--neutral-41-hsl);
+  --header-icon: var(--neutral-47-hsl);
+  --icon-default: var(--neutral-47-hsl);
+  --frame-border: var(--border-subtle-flat-light-hsl);
+  --input-border: var(--border-subtle-flat-light-hsl);
+  --search-background: var(--neutral-4-hsl);
+  --button-secondary: var(--neutral-10-hsl);
+  --switch-off: 220 6% 72%;
+  --voice-muted: var(--red-430-hsl);
+  --voice-muted-background: 357 60% 93%;
+}
+
+/* ================================================================
+   SYSTEME INTERACTIF
+   Les tokens --interactive-* de Discord ne sont declares QUE dans
+   les blocs .theme-dark / .theme-light. Or l'app pose .dark / .light
+   sur <html> : ces blocs ne sont donc jamais actives et tous ces tokens
+   restent indefinis a l'execution. On les re-declare ici, aplatis sur
+   le fond de la liste de salons (#2b2d31 en dark, #f3f3f4 en light).
+   ================================================================ */
+html.dark {
+  --interactive-background-hover:    231.4 6.2% 22.2%;     /* #35363c */
+  --interactive-background-selected: 233.3 6.7% 26.5%;     /* #3f4048 salon actif */
+  --interactive-background-active:   233.3 6.7% 26.5%;
+  --interactive-background-default:  230 6.4% 18.4%;
+  --interactive-icon-default:        232.5 4.1% 61.6%;     /* #999aa1 */
+  --interactive-icon-hover:          220 4.9% 88%;         /* #dfe0e2 */
+  --interactive-icon-active:         0 0% 100%;
+  --interactive-text-default:        232.5 4.1% 61.6%;
+  --interactive-text-hover:          220 4.9% 88%;
+  --interactive-text-active:         0 0% 100%;
+  --interactive-muted:               232.5 4.1% 35%;
+}
+
+html:not(.dark) {
+  --interactive-background-hover:    240 4.16% 91.27%;     /* #e8e8ea */
+  --interactive-background-selected: 240 4.13% 89.91%;     /* #e4e4e6 */
+  --interactive-background-active:   240 4.16% 91.27%;
+  --interactive-background-default:  var(--neutral-1-hsl);
+  --interactive-icon-default:        var(--neutral-47-hsl);/* #595a63 */
+  --interactive-icon-hover:          var(--neutral-76-hsl);
+  --interactive-icon-active:         var(--neutral-76-hsl);
+  --interactive-text-default:        var(--neutral-47-hsl);
+  --interactive-text-hover:          var(--neutral-76-hsl);
+  --interactive-text-active:         var(--neutral-76-hsl);
+  --interactive-muted:               var(--primary-300-hsl);
+}
+
+/* ================================================================
+   VALEURS APLATIES
+   Ces tokens n'existent pas chez Discord : ce sont les resultats du
+   melange alpha/oklab aplati sur une surface de reference, converts
+   en triplet HSL pour rester compatibles avec le shadcn existant.
+
+   Surfaces de reference :
+     chat dark    #313338   (primary-600)
+     modale dark  #111214   (primary-800)
+     chat light   #fbfbfb   (neutral-2)
+
+   Note : Discord n'utilise pas du noir pour ses bordures mais le gris
+   d'opacite --opacity-N (#97979f), y compris en theme clair.
+   ================================================================ */
+:root {
+  /* Surfaces de reference utilisees pour l'aplatissement */
+  --chat-bg-dark:      222.86 6.67% 20.59%;   /* primary-600 #313338 */
+  --modal-bg-dark:     220 8.11% 7.25%;       /* primary-800 #111214 */
+  --chat-bg-light:     0 0% 98.43%;           /* neutral-2   #fbfbfb */
+}
+
+/* La barre de serveurs est la surface la plus sombre de l'app : c'est le
+   fond de l'image de fond de la fenetre (`--background-app-frame`). Elle
+   vaut --primary-700 (#1e1f22), et non la meme valeur que la liste de
+   salons. */
+html:not(.dark) {
+  --surface-server-list: var(--neutral-10-hsl);
+}
+
+/* -- fond du composeur et des champs de saisie.
+     Discord n'expose pas de token dedie : on prend la surface elevee la
+     plus proche (`--background-surface-high` = neutral-64), qui donne la
+     meme clarte que le composeur d'origine (#383a40). */
+html:not(.dark) {
+  --input: var(--neutral-4-hsl);            /* #f3f3f4 — neutral-2 = fond du chat */
+}
+
+:root {
+  /* -- dark : --opacity-N (#97979f) pose sur les fonds ci-dessus */
+  --border-normal-flat-hsl:              226.67 4.93% 28.63%;  /* a 20%   sur chat */
+  --border-subtle-flat-hsl:              225.2 5.48% 25.47%;   /* a 12.2% sur chat */
+  --interactive-hover-flat-hsl:          225.2 5.48% 25.47%;   /* a 12.2% sur chat */
+  --background-mod-subtle-flat-hsl:      225.2 5.48% 25.47%;   /* a 12.2% sur chat */
+  --modal-mod-subtle-flat-hsl:           225.39 5.14% 13.76%;  /* a 12.2% sur modale */
+
+  /* -- light : meme gris d'opacite, pose sur le fond clair */
+  --border-normal-flat-light-hsl:        240 3.77% 83.37%;     /* a 40%    */
+  --border-subtle-flat-light-hsl:        240 3.62% 87.95%;     /* a 27.8%  */
+  --interactive-hover-flat-light-hsl:    240 3.1% 93.85%;      /* a 12.2%  */
+  --background-mod-subtle-flat-light-hsl: 240 3.1% 93.85%;     /* a 12.2%  */
+}

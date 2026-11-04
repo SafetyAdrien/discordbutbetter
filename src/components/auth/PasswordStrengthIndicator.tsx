@@ -1,7 +1,9 @@
 import { useMemo } from 'react';
-import { Check, X, Loader2, ShieldCheck, ShieldAlert } from 'lucide-react';
+import { Loader2, ShieldCheck, ShieldAlert } from 'lucide-react';
+import { Check, X } from '@/components/icons/discord/lucide';
 import { calculatePasswordStrength, type PasswordStrength } from '@/lib/password-security';
 
+import { appLocale } from '@/i18n/locale';
 interface PasswordStrengthIndicatorProps {
   password: string;
   pwnedCount?: number | null;
@@ -98,7 +100,7 @@ function HibpStatus({ checkingPwned, pwnedCount }: { checkingPwned?: boolean; pw
   return (
     <div className="flex items-center gap-2 text-xs text-orange-500">
       <ShieldAlert className="w-3.5 h-3.5" />
-      <span>Trouvé dans {pwnedCount.toLocaleString('fr-FR')} fuites de données</span>
+      <span>Trouvé dans {pwnedCount.toLocaleString(appLocale())} fuites de données</span>
     </div>
   );
 }

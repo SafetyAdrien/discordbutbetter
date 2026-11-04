@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useVoice, useVoiceParticipants, useVoiceLevels } from '@/contexts/VoiceContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { ChevronRight, UserPlus } from 'lucide-react';
+import { ChevronRight, UserPlus } from '@/components/icons/discord/lucide';
 import { VoiceParticipantGrid } from '@/components/channels/voice/VoiceParticipantGrid';
 import { useMultipleChannelPermissions } from '@/hooks/useUserChannelPermissions';
 import { MobileChannelHeader } from './MobileChannelHeader';

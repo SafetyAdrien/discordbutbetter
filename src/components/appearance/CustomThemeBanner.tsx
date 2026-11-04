@@ -1,4 +1,4 @@
-import { Sparkles } from 'lucide-react';
+import { Sparkles } from '@/components/icons/discord/lucide';
 import { openCustomThemeSheet } from './CustomThemeSheetHost';
 import { useAccountSettings } from '@/components/account-settings/AccountSettingsContext';
 

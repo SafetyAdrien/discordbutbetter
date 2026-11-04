@@ -5,7 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { PermissionState } from '@/components/ui/permission-toggle';
 import { PermissionCategoryAccordion } from '@/components/ui/permission-category-accordion';
-import { Loader2, RefreshCw, Plus, RotateCcw, CheckCircle2, ShieldAlert, Users } from 'lucide-react';
+import { Loader2, RotateCcw, ShieldAlert } from 'lucide-react';
+import { RefreshCw, Plus, CheckCircle2, Users } from '@/components/icons/discord/lucide';
 import { useServerRoles } from '@/hooks/useRoles';
 import { 
   useCategoryPermissionOverrides, 
@@ -263,7 +264,7 @@ export function CategoryPermissions({ categoryId, serverId }: CategoryPermission
                   <button type="button"
                     key={role.id}
                     onClick={() => setSelectedRole(role.id)}
-                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted text-sm text-left"
+                    className="w-full flex items-center gap-2 px-2 py-[6px] rounded-[4px] text-[14px] leading-[18px] text-foreground hover:bg-[hsl(var(--surface-hover))] transition-colors"
                   >
                     <div 
                       className="w-2 h-2 rounded-full" 

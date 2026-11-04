@@ -1,17 +1,19 @@
 import React from 'react';
+import { DISCORD_ICON_SIZE_PX, resolveIconSize } from '@/lib/icon-config';
 
 interface StreamlineThreadBranchProps {
   className?: string;
-  size?: number;
+  size?: number | string;
 }
 
-const StreamlineThreadBranch: React.FC<StreamlineThreadBranchProps> = ({ className, size = 16 }) => {
+const StreamlineThreadBranch: React.FC<StreamlineThreadBranchProps> = ({ className, size = DISCORD_ICON_SIZE_PX }: StreamlineThreadBranchProps) => {
+  const resolvedSize = resolveIconSize(size);
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 10 20"
-      width={size * 0.5}
-      height={size}
+      width={resolvedSize * 0.5}
+      height={resolvedSize}
       className={className}
       fill="currentColor"
     >

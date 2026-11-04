@@ -1,14 +1,7 @@
-import { useState } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
-import { ChevronLeft, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Trash2 } from '@/components/icons/discord/lucide';
 import { StreamlineHash } from '@/components/icons/StreamlineHash';
 import { StreamlineVoice } from '@/components/icons/StreamlineVoice';
 import { StreamlineForum } from '@/components/icons/StreamlineForum';
@@ -17,21 +10,35 @@ import { StreamlineMedia } from '@/components/icons/StreamlineMedia';
 import { StreamlineCalendar } from '@/components/icons/StreamlineCalendar';
 import { StreamlineTasks } from '@/components/icons/StreamlineTasks';
 import { StreamlineLink } from '@/components/icons/StreamlineLink';
+import { StreamlineStage } from '@/components/icons/StreamlineStage';
 import { ChannelOverview } from './ChannelOverview';
 import { ChannelPermissions } from './ChannelPermissions';
+import { FollowedChannelsSettings } from './FollowedChannelsSettings';
 import { ChannelWebhooks } from './ChannelWebhooks';
-import { ForumTagsSettings } from './ForumTagsSettings';
-
+import { ChannelDangerZone } from './ChannelDangerZone';
+import { ForumOverviewSettings } from './ForumOverviewSettings';
 import { useChannelDetails } from '@/hooks/useChannelSettings';
+import { useChannels } from '@/hooks/useChannels';
 import { ChannelType } from '@/constants/permissions';
+
+/*
+ * Parametres d'un salon, plein ecran comme Discord (videos de reference) :
+ * navigation a gauche ("# salon CATEGORIE", Vue d'ensemble, Permissions,
+ * Integrations, Supprimer le salon), contenu au centre, fermeture ESC. Les
+ * salons Forum et Multimedia ont leur propre Vue d'ensemble (guide des
+ * posts, tags, reaction par defaut, mode lent...).
+ */
+
+export type ChannelSettingsTab = 'overview' | 'permissions' | 'integrations';
 
 interface ChannelSettingsModalProps {
   channelId: string;
   serverId: string;
   onClose: () => void;
+  initialTab?: ChannelSettingsTab;
 }
 
-const channelIcons = {
+const channelIcons: Record<string, React.ElementType> = {
   text: StreamlineHash,
   voice: StreamlineVoice,
   forum: StreamlineForum,
@@ -40,134 +47,145 @@ const channelIcons = {
   calendar: StreamlineCalendar,
   tasks: StreamlineTasks,
   link: StreamlineLink,
+  stage: StreamlineStage,
 };
 
-export function ChannelSettingsModal({ channelId, serverId, onClose }: ChannelSettingsModalProps) {
+const TABS: { id: ChannelSettingsTab; label: string }[] = [
+  { id: 'overview', label: "Vue d'ensemble" },
+  { id: 'permissions', label: 'Permissions' },
+  { id: 'integrations', label: 'Intégrations' },
+];
+
+export function ChannelSettingsModal({ channelId, serverId, onClose, initialTab = 'overview' }: ChannelSettingsModalProps) {
   const { isMobile } = useBreakpoint();
-  const [activeTab, setActiveTab] = useState<string | null>(isMobile ? null : 'overview');
+  const [activeTab, setActiveTab] = useState<ChannelSettingsTab | null>(isMobile ? null : initialTab);
   const { data: channel, isLoading } = useChannelDetails(channelId);
+  const { data: channelsData } = useChannels(serverId);
+  const category = channelsData?.categories.find((c) => c.id === channel?.category_id);
 
-  const Icon = channel?.type ? channelIcons[channel.type] : StreamlineHash;
-
-  // Tag management only makes sense on the thread-only channel types
-  // (forum / media), matching Fluxer's THREAD_ONLY_CHANNEL_TYPES.
+  const Icon = (channel?.type && channelIcons[channel.type]) || StreamlineHash;
   const isThreadOnly = channel?.type === 'forum' || channel?.type === 'media';
 
-  const tabItems = [
-    { id: 'overview', label: 'Aperçu' },
-    ...(isThreadOnly ? [{ id: 'tags', label: 'Étiquettes' }] : []),
-    { id: 'permissions', label: 'Permissions' },
-    { id: 'integrations', label: 'Intégrations' },
-  ];
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || e.defaultPrevented) return;
+      if (document.querySelector('[role="dialog"][data-state="open"], [data-radix-popper-content-wrapper]')) return;
+      onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
 
-  const renderTabContent = () => {
-    if (!channel) return null;
+  const content = () => {
+    if (isLoading) {
+      return (
+        <div className="flex items-center justify-center py-16">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+        </div>
+      );
+    }
+    if (!channel) return <p className="text-muted-foreground text-center py-8">Salon introuvable</p>;
     switch (activeTab) {
       case 'overview':
-        return (
+        return isThreadOnly ? (
+          <ForumOverviewSettings channel={channel} serverId={serverId} />
+        ) : (
           <ChannelOverview channel={channel} channelId={channelId} channelName={channel.name} serverId={serverId} onDeleted={onClose} />
         );
-      case 'tags':
-        return <ForumTagsSettings channelId={channelId} channelType={channel.type} />;
       case 'permissions':
         return <ChannelPermissions channelId={channelId} serverId={serverId} channelType={channel.type as ChannelType} />;
       case 'integrations':
-        return <ChannelWebhooks channelId={channelId} />;
+        return (
+          <div className="space-y-8">
+            <FollowedChannelsSettings channelId={channelId} serverId={serverId} channelName={channel.name} />
+            <ChannelWebhooks channelId={channelId} />
+          </div>
+        );
       default:
         return null;
     }
   };
 
-  // Mobile: Material You full screen with tabs
+  const nav = (
+    <nav aria-label="Paramètres du salon">
+      <p className="px-2.5 pb-1.5 flex items-center gap-1 text-xs font-semibold text-muted-foreground truncate">
+        <Icon className="w-3 h-3 shrink-0" size={12} />
+        <span translate="no" className="truncate">{channel?.name}</span>
+        {category && <span translate="no" className="truncate uppercase text-[hsl(var(--header-icon))]">{category.name}</span>}
+      </p>
+      {TABS.map((tab) => (
+        <button
+          key={tab.id}
+          type="button"
+          onClick={() => setActiveTab(tab.id)}
+          className={cn(
+            'w-full flex items-center gap-2 h-8 px-2.5 mb-0.5 rounded-[4px] text-left text-base font-medium transition-colors',
+            activeTab === tab.id
+              ? 'bg-[hsl(var(--interactive-background-selected))] text-white'
+              : 'text-[hsl(var(--icon-default))] hover:bg-[hsl(var(--interactive-background-hover))] hover:text-[hsl(var(--interactive-text-hover))]',
+          )}
+        >
+          <span className="flex-1 truncate">{tab.label}</span>
+          {isMobile && <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+        </button>
+      ))}
+      {channel && (
+        <>
+          <div className="mx-2.5 my-2 h-px bg-[hsl(var(--border-subtle))]" />
+          <ChannelDangerZone
+            channelId={channelId}
+            channelName={channel.name}
+            serverId={serverId}
+            onDeleted={onClose}
+            renderTrigger={(open) => (
+              <button type="button" onClick={open} className="w-full flex items-center gap-2 h-8 px-2.5 rounded-[4px] text-left text-base font-medium text-[hsl(var(--destructive))] hover:bg-[hsl(var(--interactive-background-hover))]">
+                <span className="flex-1">Supprimer le salon</span>
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+          />
+        </>
+      )}
+    </nav>
+  );
+
   if (isMobile) {
     return (
       <div className="fixed inset-0 z-50 flex flex-col bg-background">
-        <div className="h-14 px-3 flex items-center gap-2 bg-[hsl(var(--surface-1))] flex-shrink-0 rounded-b-2xl" style={{ boxShadow: 'var(--shadow-elevation-1)' }}>
-          <button type="button" onClick={onClose} className="p-2 rounded-full hover:bg-muted">
-            <X className="w-5 h-5" />
+        <div className="h-14 px-3 flex items-center gap-2 bg-[hsl(var(--surface-1))] flex-shrink-0 border-b border-[hsl(var(--frame-border))]">
+          <button type="button" aria-label={activeTab ? 'Retour' : 'Fermer'} onClick={() => (activeTab ? setActiveTab(null) : onClose())} className="p-2 rounded-full hover:bg-muted">
+            {activeTab ? <ChevronLeft className="w-5 h-5" /> : <X className="w-5 h-5" />}
           </button>
-          <div className="w-8 h-8 rounded-full bg-primary/8 flex items-center justify-center">
-            <Icon className="w-4 h-4 text-primary" />
-          </div>
-          <h2 className="font-semibold text-sm flex-1 truncate">Paramètres de {channel?.name || 'salon'}</h2>
+          <h2 className="font-semibold text-sm flex-1 truncate">{activeTab ? TABS.find((t) => t.id === activeTab)?.label : `Paramètres de ${channel?.name ?? 'salon'}`}</h2>
         </div>
-        <div className="flex-1 overflow-y-auto p-4">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-            </div>
-          ) : channel ? (
-            <Tabs defaultValue="overview">
-              <TabsList className={cn('grid w-full rounded-2xl bg-[hsl(var(--surface-2))] p-1', isThreadOnly ? 'grid-cols-4' : 'grid-cols-3')}>
-                <TabsTrigger value="overview" className="rounded-xl">Aperçu</TabsTrigger>
-                {isThreadOnly && <TabsTrigger value="tags" className="rounded-xl">Étiquettes</TabsTrigger>}
-                <TabsTrigger value="permissions" className="rounded-xl">Permissions</TabsTrigger>
-                <TabsTrigger value="integrations" className="rounded-xl">Intégrations</TabsTrigger>
-              </TabsList>
-              <TabsContent value="overview" className="mt-4">
-                <ChannelOverview channel={channel} channelId={channelId} channelName={channel.name} serverId={serverId} onDeleted={onClose} />
-              </TabsContent>
-              {isThreadOnly && (
-                <TabsContent value="tags" className="mt-4">
-                  <ForumTagsSettings channelId={channelId} channelType={channel.type} />
-                </TabsContent>
-              )}
-              <TabsContent value="permissions" className="mt-4">
-                <ChannelPermissions channelId={channelId} serverId={serverId} channelType={channel.type as ChannelType} />
-              </TabsContent>
-              <TabsContent value="integrations" className="mt-4">
-                <ChannelWebhooks channelId={channelId} />
-              </TabsContent>
-            </Tabs>
-          ) : (
-            <p className="text-muted-foreground text-center py-8">Salon introuvable</p>
-          )}
-        </div>
+        <div className="flex-1 overflow-y-auto p-4">{activeTab ? content() : nav}</div>
       </div>
     );
   }
 
-  // Desktop - Material You dialog
   return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col min-h-[400px] rounded-3xl" style={{ boxShadow: 'var(--shadow-elevation-3)' }}>
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
-              <Icon className="w-5 h-5 text-primary" />
+    <div className="fixed inset-0 z-50 flex bg-background animate-fade-in">
+      <aside className="flex-[1_0_218px] flex justify-end bg-[hsl(var(--sidebar-background))] overflow-y-auto scrollbar-thin">
+        <div className="w-[218px] shrink-0 pt-[60px] pb-10 pl-5 pr-2">{nav}</div>
+      </aside>
+      <main className="flex-[1_1_800px] min-w-0 overflow-y-auto scrollbar-thin">
+        <div className="flex">
+          <div className="flex-1 min-w-0 max-w-[740px] px-10 pt-[60px] pb-20">{content()}</div>
+          <div className="w-[72px] shrink-0 pt-[60px]">
+            <div className="sticky top-[60px] flex flex-col items-center gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Fermer"
+                className="w-9 h-9 rounded-full border-2 border-[hsl(var(--header-icon))] text-[hsl(var(--header-icon))] hover:border-white hover:text-white flex items-center justify-center transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <span className="text-[13px] font-semibold text-[hsl(var(--header-icon))]">ESC</span>
             </div>
-            Paramètres de {channel?.name || 'salon'}
-          </DialogTitle>
-        </DialogHeader>
-
-        {isLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
           </div>
-        ) : channel ? (
-          <Tabs value={activeTab || 'overview'} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
-            <TabsList className="grid w-full grid-cols-3 rounded-2xl bg-[hsl(var(--surface-2))] p-1">
-              {tabItems.map(item => (
-                <TabsTrigger key={item.id} value={item.id} className="rounded-xl">{item.label}</TabsTrigger>
-              ))}
-            </TabsList>
-
-            <div className="flex-1 overflow-y-auto mt-4 pb-2">
-              <TabsContent value="overview" className="mt-0" forceMount={activeTab === 'overview' ? undefined : true} hidden={activeTab !== 'overview'}>
-                <ChannelOverview channel={channel} channelId={channelId} channelName={channel.name} serverId={serverId} onDeleted={onClose} />
-              </TabsContent>
-              <TabsContent value="permissions" className="mt-0" forceMount={activeTab === 'permissions' ? undefined : true} hidden={activeTab !== 'permissions'}>
-                <ChannelPermissions channelId={channelId} serverId={serverId} channelType={channel.type as ChannelType} />
-              </TabsContent>
-              <TabsContent value="integrations" className="mt-0" forceMount={activeTab === 'integrations' ? undefined : true} hidden={activeTab !== 'integrations'}>
-                <ChannelWebhooks channelId={channelId} />
-              </TabsContent>
-            </div>
-          </Tabs>
-        ) : (
-          <p className="text-muted-foreground text-center py-8">Salon introuvable</p>
-        )}
-      </DialogContent>
-    </Dialog>
+        </div>
+      </main>
+    </div>
   );
 }

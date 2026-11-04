@@ -1,4 +1,4 @@
-import { Star } from 'lucide-react';
+import { Star } from '@/components/icons/discord/lucide';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/lib/haptics';
 import type { FavoriteItem } from './useFavorites';

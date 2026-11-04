@@ -1,4 +1,4 @@
-import { X } from 'lucide-react';
+import { X } from '@/components/icons/discord/lucide';
 import { KEYBOARD_SHORTCUTS } from '@/hooks/useKeyboardShortcuts';
 
 interface KeyboardShortcutsModalProps {

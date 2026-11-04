@@ -1,6 +1,7 @@
 import React from 'react';
 
 import { cn } from '@/lib/utils';
+import { DISCORD_ICON_SIZE_PX } from '@/lib/icon-config';
 
 interface StreamlineCrownProps {
   className?: string;
@@ -9,15 +10,17 @@ interface StreamlineCrownProps {
 
 export const StreamlineCrown: React.FC<StreamlineCrownProps> = ({ 
   className = '', 
-  size = 24 
+  size = DISCORD_ICON_SIZE_PX 
 }) => {
+  const resolvedSize = typeof size === 'number' ? size : Number(size) || DISCORD_ICON_SIZE_PX;
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      width={size}
-      height={size}
+      width={resolvedSize}
+      height={resolvedSize}
       viewBox="0 0 24 24"
       className={cn("cursor-pointer", className)}
+      style={{ width: resolvedSize, height: resolvedSize }}
     >
       <path 
         fill="currentColor" 

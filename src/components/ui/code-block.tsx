@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Copy, Check } from 'lucide-react';
+import { Copy, Check } from '@/components/icons/discord/lucide';
 import { loadHljs } from '@/lib/hljs';
 import '@/styles/hljs-theme.css';
 

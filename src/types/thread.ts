@@ -27,6 +27,9 @@ export interface Thread {
   is_private?: boolean;
   locked?: boolean;
   closed?: boolean;
+  slowmode_seconds?: number;
+  auto_archive_minutes?: number;
+  spoiler?: boolean;
   creator?: {
     id: string;
     username: string;

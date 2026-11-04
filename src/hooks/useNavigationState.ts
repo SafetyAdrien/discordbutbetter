@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
+import { userKey } from '@/lib/userScope';
 
 const STORAGE_KEY = 'discord_navigation_state';
 
@@ -40,7 +41,7 @@ const defaultState: NavigationState = {
 export function useNavigationState() {
   const [state, setState] = useState<NavigationState>(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
+      const saved = localStorage.getItem(userKey(STORAGE_KEY));
       if (saved) {
         const parsed = JSON.parse(saved);
         return { ...defaultState, ...parsed };
@@ -54,7 +55,7 @@ export function useNavigationState() {
   // Persist to localStorage whenever state changes
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      localStorage.setItem(userKey(STORAGE_KEY), JSON.stringify(state));
     } catch (e) {
       console.error('Failed to save navigation state:', e);
     }

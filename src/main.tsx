@@ -1,8 +1,13 @@
+import { initI18n } from "./i18n";
 import { createRoot } from "react-dom/client";
 import { warmCache, purgeAllCaches, enforceCacheSchemaVersionSync } from "./lib/cache";
+import { ensureRandomUUID } from "./lib/cryptoCompat";
 import { logSelfXssRepeating, logSelfXssClosing } from "./lib/self-xss-warning";
 import App from "./App.tsx";
 import "./index.css";
+import { preloadHeavyModals } from "./components/lazy/LazyModals";
+
+ensureRandomUUID();
 
 // Synchronous schema purge BEFORE render — guarantees no stale data leaks
 // into placeholders. IDB hydration runs in background via warmCache().
@@ -14,6 +19,10 @@ void warmCache().catch((e) => {
 });
 
 createRoot(document.getElementById("root")!).render(<App />);
+// Fenetres lourdes (parametres de salon, medias, evenements) : telechargees plus tard, pendant les temps morts.
+window.addEventListener("load", preloadHeavyModals, { once: true });
+// Langue de l'interface (Parametres > Langue et heure), appliquee a chaud.
+initI18n();
 
 // Self-XSS warning in the production DevTools console.
 logSelfXssRepeating();

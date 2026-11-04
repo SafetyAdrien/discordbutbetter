@@ -1,8 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { parseUuid } from '@/lib/validation';
 
 export interface DMReaction {
   id: string;
@@ -17,19 +18,20 @@ export function useDMMessageReactions(messageIds: string[]) {
   const { user } = useAuth();
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
   const instanceIdRef = useRef(Math.random().toString(36).slice(2));
-  const idsKey = messageIds.join(',');
+  const idsKey = messageIds.filter((id) => !id.startsWith('temp-')).join(',');
 
   useEffect(() => {
-    if (messageIds.length === 0) return;
+    if (!idsKey) return;
+    const persistedMessageIds = idsKey.split(',');
     const channel = supabase
-      .channel(`dm-reactions-rt-${messageIds[0]}-${instanceIdRef.current}`, { config: { private: true } })
+      .channel(`dm-reactions-rt-${persistedMessageIds[0]}-${instanceIdRef.current}`, { config: { private: true } })
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'dm_message_reactions' },
         (payload) => {
           const record = (payload.new || payload.old) as { message_id?: string; user_id?: string } | undefined;
           if (!record?.message_id) return;
-          if (!messageIds.includes(record.message_id)) return;
+          if (!persistedMessageIds.includes(record.message_id)) return;
           if (user && record.user_id === user.id) return;
           clearTimeout(debounceRef.current);
           debounceRef.current = setTimeout(() => {
@@ -42,16 +44,18 @@ export function useDMMessageReactions(messageIds: string[]) {
       clearTimeout(debounceRef.current);
       supabase.removeChannel(channel);
     };
-  }, [idsKey, user?.id, queryClient]);
+  }, [idsKey, user, queryClient]);
+
+  const persistedMessageIds = useMemo(() => (idsKey ? idsKey.split(',') : []), [idsKey]);
 
   return useQuery({
-    queryKey: ['dm-reactions', messageIds],
+    queryKey: ['dm-reactions', idsKey],
     queryFn: async () => {
-      if (messageIds.length === 0) return {};
-      const { data, error } = await (supabase
-        .from('dm_message_reactions') as any)
+      if (persistedMessageIds.length === 0) return {};
+      const { data, error } = await supabase
+        .from('dm_message_reactions')
         .select('*')
-        .in('message_id', messageIds);
+        .in('message_id', persistedMessageIds);
       if (error) throw error;
       const grouped: Record<string, DMReaction[]> = {};
       (data ?? []).forEach((r: DMReaction) => {
@@ -60,7 +64,7 @@ export function useDMMessageReactions(messageIds: string[]) {
       });
       return grouped;
     },
-    enabled: messageIds.length > 0,
+    enabled: persistedMessageIds.length > 0,
   });
 }
 
@@ -75,22 +79,23 @@ export function useToggleDMReaction() {
       currentReactions: DMReaction[];
     }) => {
       if (!user) throw new Error('Not authenticated');
+      const persistedMessageId = parseUuid(messageId, 'Message not saved yet');
       const userHasReacted = currentReactions.some(
         r => r.user_id === user.id && r.emoji === emoji
       );
 
       if (userHasReacted) {
-        const { error } = await (supabase
-          .from('dm_message_reactions') as any)
+        const { error } = await supabase
+          .from('dm_message_reactions')
           .delete()
-          .eq('message_id', messageId)
+          .eq('message_id', persistedMessageId)
           .eq('user_id', user.id)
           .eq('emoji', emoji);
         if (error) throw error;
       } else {
-        const { error } = await (supabase
-          .from('dm_message_reactions') as any)
-          .insert({ message_id: messageId, user_id: user.id, emoji });
+        const { error } = await supabase
+          .from('dm_message_reactions')
+          .insert({ message_id: persistedMessageId, user_id: user.id, emoji });
         if (error) throw error;
       }
       return { messageId, emoji, removed: userHasReacted };

@@ -1,4 +1,5 @@
-import { Clapperboard, Loader2, Star } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
+import { Clapperboard, Star } from '@/components/icons/discord/lucide';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/lib/haptics';

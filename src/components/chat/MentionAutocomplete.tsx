@@ -1,6 +1,6 @@
 import { useRef, useEffect } from "react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { AtSign } from "lucide-react";
+import { AtSign } from "@/components/icons/discord/lucide";
 import { StreamlineHash } from "@/components/icons/StreamlineHash";
 import { StreamlineVoice } from "@/components/icons/StreamlineVoice";
 import { StreamlineForum } from "@/components/icons/StreamlineForum";
@@ -201,7 +201,7 @@ export function MentionAutocomplete({
                           {member.displayName.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="font-medium">{member.displayName}</span>
+                      <span translate="no" className="font-medium">{member.displayName}</span>
                       <span className="text-muted-foreground">{member.username.toLowerCase()}</span>
                     </button>
                   ))}
@@ -232,7 +232,7 @@ export function MentionAutocomplete({
                         )}
                       >
                         <AtSign className="w-4 h-4" style={{ color: role.color || "#99aab5" }} />
-                        <span style={{ color: role.color || "#99aab5" }}>
+                        <span translate="no" style={{ color: role.color || "#99aab5" }}>
                           {role.name}
                         </span>
                       </button>
@@ -261,7 +261,7 @@ export function MentionAutocomplete({
                     )}
                   >
                     <ChannelIcon className="w-4 h-4 text-muted-foreground" />
-                    <span>{channel.name}</span>
+                    <span translate="no">{channel.name}</span>
                   </button>
                 );
               })}

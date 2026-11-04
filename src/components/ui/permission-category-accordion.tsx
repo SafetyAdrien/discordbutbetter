@@ -1,9 +1,24 @@
 import { useState } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown } from '@/components/icons/discord/lucide';
 import { cn } from '@/lib/utils';
 import { PermissionToggle, PermissionState } from './permission-toggle';
 import { Switch } from './switch';
 import type { PermissionCategory, ServerPermission } from '@/constants/permissions';
+import { ChannelSheetIcon, type ChannelSheetIconName } from '@/components/icons/ChannelSheetIcon';
+
+// Groupes de permissions propres a un type de salon : icone du type.
+const CATEGORY_ICONS: Partial<Record<string, ChannelSheetIconName>> = {
+  text: 'text',
+  threads: 'textThread',
+  voice: 'voice',
+  stage: 'stage',
+  forum: 'forum',
+  announcement: 'announcement',
+  media: 'media',
+  calendar: 'calendar',
+  tasks: 'tasks',
+  administration: 'lock',
+};
 
 interface PermissionCategoryAccordionProps {
   category: PermissionCategory;
@@ -40,6 +55,7 @@ export function PermissionCategoryAccordion({
         )}
       >
         <div className="flex items-center gap-2">
+          {CATEGORY_ICONS[category.id] && <ChannelSheetIcon name={CATEGORY_ICONS[category.id]!} className="w-4 h-4 text-muted-foreground" />}
           <span className="font-medium text-sm">{category.label}</span>
           {modifiedCount > 0 && (
             <span className="text-xs px-1.5 py-0.5 rounded-full bg-primary/20 text-primary">

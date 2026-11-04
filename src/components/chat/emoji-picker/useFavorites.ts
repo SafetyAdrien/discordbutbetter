@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { userKey } from '@/lib/userScope';
 
 const STORAGE_KEY = 'picker-favorites';
 const MAX_FAVORITES = 48;
@@ -17,7 +18,7 @@ export function useFavorites() {
   const [favorites, setFavorites] = useState<FavoriteItem[]>(() => {
     if (typeof window === 'undefined') return [];
     try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
+      const raw = window.localStorage.getItem(userKey(STORAGE_KEY));
       if (!raw) return [];
       const parsed = JSON.parse(raw);
       return Array.isArray(parsed) ? parsed.slice(0, MAX_FAVORITES) : [];
@@ -45,7 +46,7 @@ export function useFavorites() {
   const persist = useCallback((next: FavoriteItem[]) => {
     setFavorites(next);
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      window.localStorage.setItem(userKey(STORAGE_KEY), JSON.stringify(next));
     } catch {
       /* quota exceeded — silent */
     }
@@ -63,7 +64,7 @@ export function useFavorites() {
         ? prev.filter((f) => f.id !== item.id)
         : [item, ...prev].slice(0, MAX_FAVORITES);
       try {
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+        window.localStorage.setItem(userKey(STORAGE_KEY), JSON.stringify(next));
       } catch {
         /* quota exceeded — silent */
       }

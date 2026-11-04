@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils';
-import { Compass, Globe } from 'lucide-react';
+import { Globe } from 'lucide-react';
+import { Compass } from '@/components/icons/discord/lucide';
 import { motion } from 'framer-motion';
 import { haptics } from '@/lib/haptics';
 import { useAuth } from '@/contexts/AuthContext';

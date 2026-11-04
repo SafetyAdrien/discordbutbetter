@@ -70,7 +70,7 @@ export function EveryoneHerePopup({ type, serverId, children }: EveryoneHerePopu
                     className="h-6 w-6"
                     ownerId={m.id}
                   />
-                  <span className="text-sm text-foreground truncate">{m.displayName}</span>
+                  <span translate="no" className="text-sm text-foreground truncate">{m.displayName}</span>
                 </div>
               ))
             )}

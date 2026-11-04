@@ -12,9 +12,11 @@ interface ResponsiveModalProps {
   className?: string;
   /** When true on mobile, the drawer fills the dynamic viewport height. */
   fullscreenOnMobile?: boolean;
+  /** Desktop only: classes for the title header (e.g. padding when content is p-0). */
+  headerClassName?: string;
 }
 
-export function ResponsiveModal({ open, onOpenChange, title, children, className, fullscreenOnMobile }: ResponsiveModalProps) {
+export function ResponsiveModal({ open, onOpenChange, title, children, className, fullscreenOnMobile, headerClassName }: ResponsiveModalProps) {
   const { isMobile } = useBreakpoint();
 
   if (isMobile) {
@@ -44,7 +46,7 @@ export function ResponsiveModal({ open, onOpenChange, title, children, className
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={className}>
         {title && (
-          <DialogHeader>
+          <DialogHeader className={headerClassName}>
             <DialogTitle>{title}</DialogTitle>
           </DialogHeader>
         )}

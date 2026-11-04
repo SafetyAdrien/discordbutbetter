@@ -120,8 +120,10 @@ export function useVoiceParticipants(channelId: string | null) {
     enabled: !!channelId,
     staleTime: 30_000,
     refetchOnWindowFocus: false,
-    // Always poll as backup: fast when realtime is down, slow otherwise
-    refetchInterval: isRealtimeActive ? 10_000 : 3_000,
+    // Sauvegarde du temps reel : on ne relance la requete que lorsqu'au moins une personne est
+    // connectee au salon (10 s), jamais pour un salon vide (le temps reel signale la premiere
+    // arrivee). Si le temps reel est coupe, on revient a 3 s partout pour ne rien rater.
+    refetchInterval: (q) => (!isRealtimeActive ? 3_000 : (q.state.data?.length ?? 0) > 0 ? 10_000 : false),
   });
 
   // Real-time subscription with ISOLATED channel name per instance

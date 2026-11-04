@@ -2,9 +2,9 @@ import * as React from 'react';
 import { type LucideIcon, type LucideProps } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
-  ICON_SIZE_PX,
   ICON_STROKE_WIDTH,
   FILLABLE_LUCIDE_ICONS,
+  resolveIconSize,
   type IconSize,
   type IconVariant,
 } from '@/lib/icon-config';
@@ -28,7 +28,7 @@ export interface IconProps extends Omit<LucideProps, 'size' | 'ref'> {
  */
 export const Icon = React.forwardRef<SVGSVGElement, IconProps>(
   ({ icon: LucideComp, size = 'md', variant = 'outline', className, strokeWidth, ...rest }, ref) => {
-    const px = ICON_SIZE_PX[size];
+    const px = resolveIconSize(size);
     const isFillable = FILLABLE_LUCIDE_ICONS.has(LucideComp.displayName ?? '');
     const shouldFill = variant === 'filled' && isFillable;
 
@@ -44,6 +44,7 @@ export const Icon = React.forwardRef<SVGSVGElement, IconProps>(
         className={cn('shrink-0', className)}
         aria-hidden="true"
         {...rest}
+        style={{ ...rest.style, width: px, height: px }}
       />
     );
   },

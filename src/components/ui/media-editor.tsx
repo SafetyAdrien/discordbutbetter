@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerE
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
-import { X, RotateCcw, FlipHorizontal2, ZoomOut, ZoomIn, RotateCw, ArrowLeft, ArrowRight } from 'lucide-react';
+import { RotateCcw, FlipHorizontal2, ZoomOut, ZoomIn } from 'lucide-react';
+import { X, RotateCw, ArrowLeft, ArrowRight } from '@/components/icons/discord/lucide';
 import { cn } from '@/lib/utils';
 
 export interface EditorTransform {

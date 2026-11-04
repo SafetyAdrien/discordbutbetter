@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils';
-import { X, Minus, Check } from 'lucide-react';
+import { Minus } from 'lucide-react';
+import { X, Check } from '@/components/icons/discord/lucide';
 
 export type PermissionState = 'deny' | 'inherit' | 'allow';
 

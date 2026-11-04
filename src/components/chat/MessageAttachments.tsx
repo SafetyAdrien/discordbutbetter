@@ -1,6 +1,8 @@
+import { StickerInfoPopover } from './StickerInfoPopover';
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
-import { FileIcon, Download, ExternalLink, Play, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { FileIcon, Play, Music } from 'lucide-react';
+import { Download, ExternalLink, X, ChevronLeft, ChevronRight, Pencil, Trash2 } from '@/components/icons/discord/lucide';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { useImageGuardProps, useCanDownload } from '@/hooks/useDownloadPermissions';
 import { SvgAttachment } from './SvgAttachment';
@@ -12,12 +14,13 @@ import {
   CarouselNext,
   type CarouselApi 
 } from '@/components/ui/carousel';
+import { useUserSettingsValue } from '@/hooks/useUserSettings';
 
 export interface StoredAttachment {
   id: string;
   url: string;
   name: string;
-  type: 'image' | 'video' | 'file' | 'sticker' | 'gif';
+  type: 'image' | 'video' | 'audio' | 'file' | 'sticker' | 'gif';
   size: number;
   description?: string;
   isSpoiler?: boolean;
@@ -27,6 +30,98 @@ interface MessageAttachmentsProps {
   attachments: StoredAttachment[];
   /** Author id of the message — used to gate download/right-click/drag. */
   authorId?: string | null;
+  /** Message de l'utilisateur : boutons "Modifier" / "Supprimer" au survol d'une image. */
+  onEditAttachment?: (attachment: StoredAttachment) => void;
+  onRemoveAttachment?: (attachment: StoredAttachment) => void;
+}
+
+/* Pastille "SPOILER" (video de reference) : capsule sombre, texte blanc en capitales grasses. */
+const SPOILER_PILL = 'rounded-full bg-[#1b1b20]/90 px-3.5 py-1.5 text-sm font-bold uppercase tracking-wide text-white';
+
+/** Boutons de modification d'une piece jointe, affiches au survol dans le coin haut droit. */
+function AttachmentTools({ attachment, onEdit, onRemove }: { attachment: StoredAttachment; onEdit?: (a: StoredAttachment) => void; onRemove?: (a: StoredAttachment) => void }) {
+  if (!onEdit && !onRemove) return null;
+  const btn = 'w-8 h-8 flex items-center justify-center rounded-md text-[#dbdee1] hover:text-white hover:bg-white/10 transition-colors';
+  return (
+    <div className="absolute top-2 right-2 z-10 flex items-center rounded-lg bg-[#2b2b32]/95 border border-white/[0.06] p-0.5 opacity-0 group-hover/attachment:opacity-100 focus-within:opacity-100 transition-opacity">
+      {onEdit && <button type="button" aria-label="Modifier la pièce jointe" title="Modifier" onClick={(e) => { e.stopPropagation(); onEdit(attachment); }} className={btn}><Pencil className="w-[18px] h-[18px]" /></button>}
+      {onRemove && <button type="button" aria-label="Supprimer la pièce jointe" title="Supprimer" onClick={(e) => { e.stopPropagation(); onRemove(attachment); }} className={cn(btn, 'text-[#f57976] hover:text-[#f57976]')}><Trash2 className="w-[18px] h-[18px]" /></button>}
+    </div>
+  );
+}
+
+/*
+ * Mosaique d'images (video de reference) : 2 = cotes a cote, 3 = une grande + deux empilees, 4 = 2x2, 5 = 2 + 3,
+ * 6 et plus = rangees de 3. Largeur maximale 550 px, 4 px entre les vignettes.
+ */
+function ImageMosaic({
+  images,
+  onOpenLightbox,
+  authorId,
+  onEdit,
+  onRemove,
+}: {
+  images: StoredAttachment[];
+  onOpenLightbox: (index: number) => void;
+  authorId?: string | null;
+  onEdit?: (a: StoredAttachment) => void;
+  onRemove?: (a: StoredAttachment) => void;
+}) {
+  const guard = useImageGuardProps(authorId);
+  const [revealed, setRevealed] = useState<Record<string, boolean>>({});
+  const list = images.slice(0, 10);
+  const n = list.length;
+
+  // Colonnes sur 6 : [debut, fin, ligne debut, ligne fin] de chaque vignette + hauteurs de rangee (fraction de la largeur).
+  type Cell = { c: number; w: number; r: number; h?: number };
+  let cells: Cell[] = [];
+  let rows: number[] = [];
+  if (n === 2) { cells = [{ c: 1, w: 3, r: 1 }, { c: 4, w: 3, r: 1 }]; rows = [0.5]; }
+  else if (n === 3) { cells = [{ c: 1, w: 3, r: 1, h: 2 }, { c: 4, w: 3, r: 1 }, { c: 4, w: 3, r: 2 }]; rows = [0.25, 0.25]; }
+  else if (n === 4) { cells = [{ c: 1, w: 3, r: 1 }, { c: 4, w: 3, r: 1 }, { c: 1, w: 3, r: 2 }, { c: 4, w: 3, r: 2 }]; rows = [0.3, 0.3]; }
+  else if (n === 5) { cells = [{ c: 1, w: 3, r: 1 }, { c: 4, w: 3, r: 1 }, { c: 1, w: 2, r: 2 }, { c: 3, w: 2, r: 2 }, { c: 5, w: 2, r: 2 }]; rows = [0.3, 0.33]; }
+  else {
+    cells = list.map((_, i) => ({ c: (i % 3) * 2 + 1, w: 2, r: Math.floor(i / 3) + 1 }));
+    rows = Array.from({ length: Math.ceil(n / 3) }, () => 0.33);
+  }
+
+  return (
+    <div className="w-[550px] max-w-full" style={{ containerType: 'inline-size' }}>
+    <div
+      className="grid gap-1 w-full rounded-lg overflow-hidden"
+      style={{ gridTemplateColumns: 'repeat(6, minmax(0, 1fr))', gridTemplateRows: rows.map((r) => `calc(100cqw * ${r})`).join(' ') }}
+    >
+      {list.map((img, i) => {
+        const cell = cells[i];
+        const hidden = !!img.isSpoiler && !revealed[img.id];
+        return (
+          <div
+            key={img.id}
+            className="group/attachment relative min-h-0 min-w-0 overflow-hidden bg-[#2f2f37]"
+            style={{ gridColumn: `${cell.c} / span ${cell.w}`, gridRow: `${cell.r} / span ${cell.h ?? 1}` }}
+          >
+            <img
+              src={img.url}
+              alt={img.description || img.name}
+              loading="lazy"
+              decoding="async"
+              draggable={guard.draggable as any}
+              onContextMenu={guard.onContextMenu}
+              onClick={() => (hidden ? setRevealed((r) => ({ ...r, [img.id]: true })) : onOpenLightbox(i))}
+              className={cn('absolute inset-0 w-full h-full object-cover cursor-pointer transition-[filter] duration-150', hidden && 'blur-2xl brightness-50 scale-110')}
+            />
+            {hidden && (
+              <button type="button" onClick={() => setRevealed((r) => ({ ...r, [img.id]: true }))} className="absolute inset-0 flex items-center justify-center">
+                <span className={SPOILER_PILL}>Spoiler</span>
+              </button>
+            )}
+            {!hidden && <AttachmentTools attachment={img} onEdit={onEdit} onRemove={onRemove} />}
+          </div>
+        );
+      })}
+    </div>
+    </div>
+  );
 }
 
 function formatFileSize(bytes: number): string {
@@ -42,11 +137,15 @@ function ImageAttachment({
   onOpenLightbox,
   blurFactor = 0, // 0 = net, 1 = flou max
   authorId,
+  onEdit,
+  onRemove,
 }: { 
   attachment: StoredAttachment;
   onOpenLightbox: () => void;
   blurFactor?: number;
   authorId?: string | null;
+  onEdit?: (a: StoredAttachment) => void;
+  onRemove?: (a: StoredAttachment) => void;
 }) {
   const [revealed, setRevealed] = useState(!attachment.isSpoiler);
   const [loaded, setLoaded] = useState(false);
@@ -57,7 +156,7 @@ function ImageAttachment({
   const brightnessValue = revealed ? 1 - (blurFactor * 0.1) : 1; // 100%-90%
 
   return (
-    <div className="relative group">
+    <div className="relative group group/attachment">
       <img
         src={attachment.url}
         alt={attachment.description || attachment.name}
@@ -88,11 +187,10 @@ function ImageAttachment({
           className="absolute inset-0 flex items-center justify-center cursor-pointer"
           onClick={() => setRevealed(true)}
         >
-          <span className="bg-background/90 px-3 py-1.5 rounded-md text-sm font-medium">
-            SPOILER
-          </span>
+          <span className={SPOILER_PILL}>Spoiler</span>
         </div>
       )}
+      {revealed && <AttachmentTools attachment={attachment} onEdit={onEdit} onRemove={onRemove} />}
       {attachment.description && revealed && (
         <p className="text-xs text-muted-foreground mt-1 italic">
           {attachment.description}
@@ -112,21 +210,25 @@ function StickerOrGifAttachment({
   const [loaded, setLoaded] = useState(false);
   const isSticker = attachment.type === 'sticker';
 
+  const image = (
+    <img
+      src={attachment.url}
+      alt={attachment.name}
+      loading="lazy"
+      decoding="async"
+      onClick={isSticker ? undefined : onOpenLightbox}
+      className={cn(
+        'rounded-lg cursor-pointer transition-opacity duration-150',
+        isSticker ? 'w-40 h-40 object-contain' : 'max-h-72 max-w-full object-contain',
+        !loaded && 'opacity-0'
+      )}
+      onLoad={() => setLoaded(true)}
+    />
+  );
+
   return (
     <div className={cn('relative', isSticker ? 'w-40 h-40' : 'max-w-[280px]')}>
-      <img
-        src={attachment.url}
-        alt={attachment.name}
-        loading="lazy"
-        decoding="async"
-        onClick={onOpenLightbox}
-        className={cn(
-          'rounded-lg cursor-pointer transition-opacity duration-150',
-          isSticker ? 'w-40 h-40 object-contain' : 'max-h-72 max-w-full object-contain',
-          !loaded && 'opacity-0'
-        )}
-        onLoad={() => setLoaded(true)}
-      />
+      {isSticker ? <StickerInfoPopover url={attachment.url} name={attachment.name}>{image}</StickerInfoPopover> : image}
       {!loaded && (
         <div className={cn('absolute inset-0 bg-muted rounded-lg animate-pulse', isSticker ? 'w-40 h-40' : '')} />
       )}
@@ -295,6 +397,25 @@ function VideoAttachment({ attachment, authorId }: { attachment: StoredAttachmen
   );
 }
 
+/** Musique / son : carte avec lecteur natif (le telechargement suit les permissions de l'auteur). */
+function AudioAttachment({ attachment, authorId, onEdit, onRemove }: { attachment: StoredAttachment; authorId?: string | null; onEdit?: (a: StoredAttachment) => void; onRemove?: (a: StoredAttachment) => void }) {
+  const { canDownload } = useCanDownload(authorId);
+  return (
+    <div className="group/attachment relative w-full max-w-[420px] rounded-lg bg-[#2b2b32] border border-white/[0.06] p-3">
+      <div className="flex items-center gap-3 min-w-0">
+        <span className="w-10 h-10 rounded-lg bg-primary/20 text-primary flex items-center justify-center shrink-0"><Music className="w-5 h-5" /></span>
+        <div className="min-w-0 flex-1">
+          <p translate="no" className="text-sm font-medium text-white truncate">{attachment.name}</p>
+          <p className="text-xs text-muted-foreground">{formatFileSize(attachment.size)}</p>
+        </div>
+      </div>
+      <audio controls preload="metadata" src={attachment.url} controlsList={canDownload ? undefined : 'nodownload'} className="mt-2 w-full h-9" />
+      {attachment.description && <p className="mt-1 text-xs text-muted-foreground italic">{attachment.description}</p>}
+      <AttachmentTools attachment={attachment} onEdit={onEdit} onRemove={onRemove} />
+    </div>
+  );
+}
+
 function FileAttachment({ attachment, authorId }: { attachment: StoredAttachment; authorId?: string | null }) {
   const { canDownload, isLoading } = useCanDownload(authorId);
   const showDownload = canDownload && !isLoading;
@@ -326,7 +447,13 @@ function FileAttachment({ attachment, authorId }: { attachment: StoredAttachment
   );
 }
 
-export function MessageAttachments({ attachments, authorId }: MessageAttachmentsProps) {
+export function MessageAttachments({ attachments: rawAttachments, authorId, onEditAttachment, onRemoveAttachment }: MessageAttachmentsProps) {
+  // "Lorsqu'ils sont uploades directement dans Discord" desactive : les
+  // images et videos s'affichent comme des fichiers a ouvrir.
+  const showUploadedMedia = useUserSettingsValue().appearance.show_uploaded_media;
+  const attachments = showUploadedMedia
+    ? rawAttachments
+    : rawAttachments?.map((a) => (a.type === 'image' || a.type === 'video' ? { ...a, type: 'file' as const } : a));
   const lightboxGuard = useImageGuardProps(authorId);
   const { canDownload: lightboxCanDownload, isLoading: lightboxLoading } = useCanDownload(authorId);
   const showExternalLink = lightboxCanDownload && !lightboxLoading;
@@ -340,6 +467,7 @@ export function MessageAttachments({ attachments, authorId }: MessageAttachments
   const images = allImages.filter(a => !isSvgAttachment(a));
   const svgAttachments = allImages.filter(isSvgAttachment);
   const videos = attachments?.filter(a => a.type === 'video') ?? [];
+  const audios = attachments?.filter(a => a.type === 'audio') ?? [];
   const files = attachments?.filter(a => a.type === 'file') ?? [];
   const stickersAndGifs = attachments?.filter(a => a.type === 'sticker' || a.type === 'gif') ?? [];
 
@@ -408,16 +536,20 @@ export function MessageAttachments({ attachments, authorId }: MessageAttachments
             attachment={images[0]}
             onOpenLightbox={() => setLightboxIndex(0)}
             authorId={authorId}
+            onEdit={onEditAttachment}
+            onRemove={onRemoveAttachment}
           />
         </div>
       )}
 
-      {/* Multiple images - carousel */}
+      {/* Plusieurs images : mosaique */}
       {images.length > 1 && (
-        <ImageCarousel 
+        <ImageMosaic
           images={images}
           onOpenLightbox={setLightboxIndex}
           authorId={authorId}
+          onEdit={onEditAttachment}
+          onRemove={onRemoveAttachment}
         />
       )}
 
@@ -426,6 +558,15 @@ export function MessageAttachments({ attachments, authorId }: MessageAttachments
         <div className="space-y-2">
           {videos.map(video => (
             <VideoAttachment key={video.id} attachment={video} authorId={authorId} />
+          ))}
+        </div>
+      )}
+
+      {/* Musiques */}
+      {audios.length > 0 && (
+        <div className="space-y-2">
+          {audios.map(a => (
+            <AudioAttachment key={a.id} attachment={a} authorId={authorId} onEdit={onEditAttachment} onRemove={onRemoveAttachment} />
           ))}
         </div>
       )}

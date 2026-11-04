@@ -1,204 +1,84 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+import { UserAvatarImage } from '@/components/ui/user-avatar-image';
+import { ServerTagBadge } from '@/components/server-tags/ServerTagBadge';
 import { Thread } from '@/types/thread';
-import { ChevronRight, Pencil, Trash2 } from 'lucide-react';
-import { formatDistanceToNow } from '@/lib/dateUtils';
-import { fr } from '@/lib/dateUtils';
-import StreamlineThreads from '@/components/icons/StreamlineThreads';
-import { ContextMenuItem } from '@/components/ui/context-menu';
-import { UniversalMessageContextMenu } from '@/components/chat/UniversalMessageContextMenu';
-import { copyToClipboard } from '@/lib/clipboard';
-import { uuidToSnowflake } from '@/lib/snowflake';
-
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+import { ChevronRight } from '@/components/icons/discord/lucide';
+import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu';
+import { ThreadContextMenuBody } from './ThreadContextMenuBody';
+import { ThreadSettingsPage } from './ThreadSettingsPage';
+import { DeleteThreadDialog } from './DeleteThreadDialog';
+import { shortAgo } from '@/lib/shortAgo';
+import { useMembers } from '@/hooks/useMembers';
 
 interface ThreadSystemMessageProps {
   thread: Thread;
   onClick: () => void;
-  onRename?: (newName: string) => void;
   onDelete?: () => void;
   canManage?: boolean;
+  channelName?: string;
+  /** Pour afficher le pseudo et l'avatar du serveur (comme les messages du salon). */
+  serverId?: string | null;
 }
 
-export function ThreadSystemMessage({
-  thread,
-  onClick,
-  onRename,
-  onDelete,
-  canManage = false,
-}: ThreadSystemMessageProps) {
-  const [renameOpen, setRenameOpen] = useState(false);
+/*
+ * Apercu d'un fil sous "X a commence un fil" (video de reference). Le clic droit ouvre le menu du fil (le meme que dans
+ * la liste des salons et la liste des fils) : lu, favoris, fermer, verrouiller, modifier, lien, muet, notifications,
+ * supprimer, quitter, identifiant.
+ */
+export function ThreadSystemMessage({ thread, onClick, onDelete, canManage = false, channelName = '', serverId }: ThreadSystemMessageProps) {
+  const { data: members = [] } = useMembers(serverId || '');
+  const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [newName, setNewName] = useState(thread.name);
 
   const messageCount = thread.message_count || 0;
   const lastMessage = thread.last_message;
-  const relativeTime = thread.last_message_at
-    ? formatDistanceToNow(new Date(thread.last_message_at), { addSuffix: false, locale: fr })
-    : thread.created_at
-      ? formatDistanceToNow(new Date(thread.created_at), { addSuffix: false, locale: fr })
-      : null;
-
-  const handleRename = () => {
-    const trimmed = newName.trim();
-    if (trimmed && trimmed !== thread.name && onRename) {
-      onRename(trimmed);
-    }
-    setRenameOpen(false);
-  };
-
-  const handleDeleteConfirm = () => {
-    onDelete?.();
-    setDeleteOpen(false);
-  };
+  const lastMember = lastMessage?.author?.id ? members.find((m) => m.user?.id === lastMessage.author?.id) : undefined;
+  const lastName = lastMember?.serverProfile?.display_name || lastMember?.nickname || lastMessage?.author?.display_name;
+  const lastAvatar = lastMember?.serverProfile?.avatar_url || lastMessage?.author?.avatar_url || null;
+  const lastActivity = thread.last_message_at ?? thread.created_at;
+  const relativeTime = lastActivity ? shortAgo(new Date(lastActivity)) : null;
 
   const embedContent = (
     <button type="button"
       onClick={onClick}
-      className="group/thread flex items-start gap-2 w-fit max-w-full text-left py-1.5 px-2 -mx-2 rounded-lg transition-colors bg-[hsl(var(--surface-3)/0.4)] hover:bg-[hsl(var(--surface-3)/0.7)]"
+      className="group/thread flex flex-col items-start w-fit max-w-full text-left py-[7px] px-2 rounded-md transition-colors bg-[#383840] hover:bg-[#3e3e46] border border-[#43434b]"
     >
-      <StreamlineThreads className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-primary hover:underline">
-            {thread.name}
-          </span>
-          <span className="text-xs flex items-center gap-1 text-foreground">
-            {messageCount} {messageCount === 1 ? 'Message' : 'Messages'}
-            <ChevronRight className="w-3 h-3" />
-          </span>
-        </div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          {lastMessage ? (
-            <span className="truncate max-w-[200px]">
-              {lastMessage.author?.display_name}: {lastMessage.content}
-            </span>
-          ) : (
-            <span className="italic">
-              Il n'y a pas de messages récents dans ce thread.
-            </span>
-          )}
-          {relativeTime && (
-            <>
-              <span className="flex-shrink-0">•</span>
-              <span className="flex-shrink-0">{relativeTime}</span>
-            </>
-          )}
-        </div>
+      <div className="flex items-baseline gap-2 min-w-0">
+        <span translate="no" className="text-sm leading-5 font-semibold text-white truncate">{thread.name}</span>
+        <span className="text-sm leading-5 flex items-center gap-0.5 text-[#6e9dff] shrink-0">
+          {messageCount} {messageCount === 1 ? 'message' : 'messages'}
+          <ChevronRight className="w-3.5 h-3.5" />
+        </span>
+      </div>
+      <div className="flex items-center gap-1.5 text-sm leading-5 text-[#dbdee1] min-w-0">
+        {lastMessage ? (
+          <>
+            <UserAvatarImage src={lastAvatar} alt="" className="w-4 h-4 shrink-0" fallbackClassName="text-[8px]" fallback={(lastName ?? '?').charAt(0).toUpperCase()} ownerId={lastMessage.author?.id} />
+            <span translate="no" className="font-medium text-white shrink-0">{lastName}</span>
+            <ServerTagBadge userId={lastMessage.author?.id} variant="compact" interactive={false} />
+            <span translate="no" className="truncate max-w-[260px]">{lastMessage.content}</span>
+          </>
+        ) : (
+          <span className="italic">Il n'y a pas encore de messages récents dans ce fil.</span>
+        )}
+        {relativeTime && <span className="shrink-0 text-[#b5bac1]">{relativeTime}</span>}
       </div>
     </button>
   );
 
-  const handleCopyId = () => {
-    copyToClipboard(uuidToSnowflake(thread.id));
-  };
-  const handleCopyLink = () => {
-    copyToClipboard(`${window.location.origin}/thread/${thread.id}`);
-  };
-
   return (
     <>
-      <div onContextMenu={(e) => e.stopPropagation()}>
-      <UniversalMessageContextMenu
+      <ContextMenu>
+        <ContextMenuTrigger asChild>
+          <div onContextMenu={(e) => e.stopPropagation()} className="w-fit max-w-full">{embedContent}</div>
+        </ContextMenuTrigger>
+        <ThreadContextMenuBody thread={thread} channelId={thread.channel_id} canManage={canManage} onEdit={() => setEditOpen(true)} onDelete={() => setDeleteOpen(true)} />
+      </ContextMenu>
 
-        messageId={thread.id}
-        isOwnMessage={false}
-        canAddReactions={false}
-        canManageMessages={canManage}
-        variant="system"
-        copyLinkLabel="Copier le lien du thread"
-        copyIdLabel="Copier l'ID du thread"
-        onAddReaction={() => {}}
-        onCopyLink={handleCopyLink}
-        onCopyId={handleCopyId}
-        extraItems={
-          canManage ? (
-            <>
-              <ContextMenuItem
-                onClick={() => requestAnimationFrame(() => setRenameOpen(true))}
-              >
-                <Pencil className="w-4 h-4 mr-2" />
-                Modifier le nom
-              </ContextMenuItem>
-              <ContextMenuItem
-                className="text-destructive focus:text-destructive"
-                onClick={() => requestAnimationFrame(() => setDeleteOpen(true))}
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Supprimer le Thread
-              </ContextMenuItem>
-            </>
-          ) : undefined
-        }
-      >
-        {embedContent}
-      </UniversalMessageContextMenu>
-      </div>
-
-
-
-      {/* Rename Dialog */}
-      <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Modifier le nom du Thread</DialogTitle>
-          </DialogHeader>
-          <Input
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            placeholder="Nom du thread"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleRename();
-            }}
-          />
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setRenameOpen(false)}>
-              Annuler
-            </Button>
-            <Button onClick={handleRename} disabled={!newName.trim() || newName.trim() === thread.name}>
-              Enregistrer
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete AlertDialog */}
-      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Supprimer le Thread</AlertDialogTitle>
-            <AlertDialogDescription>
-              Êtes-vous sûr de vouloir supprimer le thread « {thread.name} » ? Cette action est irréversible et supprimera tous les messages du thread.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={handleDeleteConfirm}
-            >
-              Supprimer
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteThreadDialog open={deleteOpen} onOpenChange={setDeleteOpen} name={thread.name} onConfirm={() => onDelete?.()} />
+      {editOpen && (
+        <ThreadSettingsPage thread={thread} channelName={channelName} onClose={() => setEditOpen(false)} onDelete={() => onDelete?.()} />
+      )}
     </>
   );
 }

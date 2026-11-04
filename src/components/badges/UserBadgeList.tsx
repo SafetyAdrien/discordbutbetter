@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Award } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { badgeIconUrl } from '@/lib/badgeIcons';
 import { useBadges, type Badge } from '@/hooks/useBadges';
 import { useUserBadges } from '@/hooks/useUserBadges';
 import { useBirthdayGrantYears } from '@/hooks/useBirthdayGrants';
@@ -68,8 +69,8 @@ export function UserBadgeList({ userId, size = 'sm', className, showEmpty = fals
               )}
               style={{ color: b.color }}
             >
-              {b.icon_url ? (
-                <img src={b.icon_url} alt={b.name} className={cn(sz.img, 'object-contain')} />
+              {badgeIconUrl(b) ? (
+                <img src={badgeIconUrl(b)!} alt={b.name} className={cn(sz.img, 'object-contain')} />
               ) : b.key === 'birthday' ? (
                 <span className={cn(sz.img, 'flex items-center justify-center leading-none')} style={{ fontSize: size === 'lg' ? '20px' : size === 'md' ? '15px' : '12px' }}>🎂</span>
               ) : (

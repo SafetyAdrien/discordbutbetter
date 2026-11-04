@@ -1,5 +1,6 @@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { RoleIcon } from "./RoleIcon";
 
 interface Role {
   id: string;
@@ -16,13 +17,6 @@ interface RoleBadgePopoverProps {
 export function RoleBadgePopover({ role }: RoleBadgePopoverProps) {
   if (!role.icon_url) return null;
 
-  const isImageUrl = role.icon_url.startsWith("http");
-
-  const iconElement = isImageUrl ? (
-    <img src={role.icon_url} alt={role.name} className="w-4 h-4 object-contain" />
-  ) : (
-    <span className="text-base leading-none">{role.icon_url}</span>
-  );
 
   return (
     <Popover>
@@ -32,15 +26,15 @@ export function RoleBadgePopover({ role }: RoleBadgePopoverProps) {
             <PopoverTrigger asChild>
               <button
                 type="button"
-                className="flex-shrink-0 cursor-pointer inline-flex items-center self-center translate-y-[0px]"
+                className="flex-shrink-0 cursor-pointer inline-flex items-center self-center"
                 onClick={(e) => e.stopPropagation()}
               >
-                {iconElement}
+                <RoleIcon role={role} size={20} />
               </button>
             </PopoverTrigger>
           </TooltipTrigger>
           <TooltipContent side="top" className="bg-popover border-none px-2 py-1">
-            <p className="text-white text-xs font-medium">{role.name}</p>
+            <p translate="no" className="text-white text-xs font-medium">{role.name}</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -50,14 +44,10 @@ export function RoleBadgePopover({ role }: RoleBadgePopoverProps) {
             className="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0"
             style={{ backgroundColor: role.color ? `${role.color}20` : "hsl(var(--muted))" }}
           >
-            {isImageUrl ? (
-              <img src={role.icon_url} alt={role.name} className="w-6 h-6 object-contain" />
-            ) : (
-              <span className="text-xl">{role.icon_url}</span>
-            )}
+            <RoleIcon role={role} size={24} />
           </div>
           <div className="flex-1 min-w-0">
-            <h4 className="font-semibold text-sm truncate text-white">{role.name}</h4>
+            <h4 translate="no" className="font-semibold text-sm truncate text-white">{role.name}</h4>
             {role.description && <p className="text-xs text-muted-foreground mt-1 line-clamp-3">{role.description}</p>}
             {!role.description && (
               <p className="text-xs text-muted-foreground/60 mt-1">Icône de rôle personnalisée pour {role.name}.</p>

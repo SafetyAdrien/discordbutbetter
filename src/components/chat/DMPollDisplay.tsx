@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { DMPoll, DMPollVote, useVoteDMPoll, useRemoveDMVote, useEndDMPoll, closeDMPollAndNotify } from '@/hooks/useDMPolls';
 import { useAuth } from '@/contexts/AuthContext';
 import { isPast } from '@/lib/dateUtils';
-import { Check } from 'lucide-react';
+import { Check } from '@/components/icons/discord/lucide';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipPortal } from '@/components/ui/tooltip';
@@ -185,9 +185,9 @@ export function DMPollDisplay({ poll, conversationId }: DMPollDisplayProps) {
   const getPercentage = (id: string) => (totalVotes === 0 ? 0 : Math.round((voteCountByOption[id] / totalVotes) * 100));
 
   return (
-    <div className="bg-poll rounded-xl overflow-hidden w-full max-w-[500px] shadow-elevation-1">
+    <div className="bg-[#383840] border border-[#43434b] rounded-lg overflow-hidden w-full max-w-[472px]">
       <div className="px-4 pb-4 space-y-3">
-        <p className="text-foreground font-medium text-base my-3">{poll.question}</p>
+        <p translate="no" className="text-foreground font-medium text-base my-3">{poll.question}</p>
 
         {!hasVoted && canVote && !showResults && (
           <p className="text-muted-foreground py-0 text-xs font-thin">
@@ -226,7 +226,7 @@ export function DMPollDisplay({ poll, conversationId }: DMPollDisplayProps) {
                     ? 'border-emerald-500 bg-emerald-500/10'
                     : isSelected || isVoted
                       ? 'border-primary bg-primary/10'
-                      : 'border-transparent hover:bg-[hsl(var(--surface-3))] bg-[hsl(var(--surface-elevated))]',
+                      : 'border-transparent hover:bg-[#46464e] bg-[#404048]',
                 )}
               >
                 <div
@@ -238,7 +238,7 @@ export function DMPollDisplay({ poll, conversationId }: DMPollDisplayProps) {
                 />
                 <div className="relative flex items-center gap-3 px-3.5 py-3.5">
                   {option.emoji && <span className="text-lg flex-shrink-0">{option.emoji}</span>}
-                  <span className="flex-1 text-sm text-foreground">{option.text}</span>
+                  <span translate="no" className="flex-1 text-sm text-foreground">{option.text}</span>
                   <div className={cn('flex items-center gap-2 flex-shrink-0 transition-all duration-300', shouldShowResults ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-2')}>
                     {shouldShowResults && (
                       <>

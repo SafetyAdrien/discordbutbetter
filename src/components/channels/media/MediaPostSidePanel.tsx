@@ -1,8 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import {
-  ChevronLeft, ChevronRight, X, EyeOff, Brush, Heart, MessageCircle,
-  Pin, Lock, Archive, ArchiveRestore,
-} from 'lucide-react';
+import { Brush, Archive, ArchiveRestore } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, EyeOff, Heart, MessageCircle, Pin, Lock } from '@/components/icons/discord/lucide';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -21,6 +19,7 @@ import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import type { MediaPost } from '@/hooks/useMediaPosts';
 
+import { appLocale } from '@/i18n/locale';
 interface Props {
   post: MediaPost;
   channelId: string;
@@ -127,7 +126,7 @@ export function MediaPostSidePanel({ post, channelId, serverId = null, onClose, 
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-sm truncate leading-tight">{post.title || author?.display_name || 'Post'}</p>
           <p className="text-xs text-muted-foreground truncate">
-            {author?.display_name ?? 'Utilisateur'} · {new Date(post.created_at).toLocaleDateString('fr-FR')}
+            {author?.display_name ?? 'Utilisateur'} · {new Date(post.created_at).toLocaleDateString(appLocale())}
           </p>
         </div>
         {canModerate && (

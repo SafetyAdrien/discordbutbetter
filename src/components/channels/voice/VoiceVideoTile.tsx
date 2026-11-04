@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { DiscordMic } from '@/components/icons/DiscordMic';
 import { DiscordMicOff } from '@/components/icons/DiscordMicOff';
@@ -29,6 +29,27 @@ export function VoiceVideoTile({
   className,
 }: VoiceVideoTileProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  // Apercu de son propre partage : mis en pause 5 s apres que la fenetre a perdu le focus.
+  const [paused, setPaused] = useState(false);
+  useEffect(() => {
+    if (!(isLocal && type === 'screen')) return;
+    let t: ReturnType<typeof setTimeout> | undefined;
+    const sync = () => {
+      clearTimeout(t);
+      if (document.visibilityState === 'visible' && document.hasFocus()) { setPaused(false); return; }
+      t = setTimeout(() => setPaused(true), 5000);
+    };
+    sync();
+    window.addEventListener('focus', sync);
+    window.addEventListener('blur', sync);
+    document.addEventListener('visibilitychange', sync);
+    return () => { clearTimeout(t); window.removeEventListener('focus', sync); window.removeEventListener('blur', sync); document.removeEventListener('visibilitychange', sync); };
+  }, [isLocal, type]);
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el) return;
+    if (paused) el.pause(); else void el.play().catch(() => undefined);
+  }, [paused]);
 
   useEffect(() => {
     const el = videoRef.current;
@@ -75,7 +96,7 @@ export function VoiceVideoTile({
       )}
 
       {/* Name badge */}
-      <div className="absolute bottom-2 left-2 flex items-center gap-2 px-2 py-1 rounded-md bg-black/60 backdrop-blur-sm">
+      <div className="absolute bottom-2 left-2 flex items-center gap-2 px-2 py-1 rounded-md bg-black/60">
         {isMuted ? (
           <DiscordMicOff className="w-4 h-4 text-destructive" />
         ) : isDeafened ? (
@@ -89,10 +110,18 @@ export function VoiceVideoTile({
         </span>
       </div>
 
-      {/* Screen share indicator */}
+      {/* Partage d'ecran : pastille "EN DIRECT" (video de reference) */}
       {type === 'screen' && (
-        <div className="absolute top-2 left-2 px-2 py-1 rounded-md bg-primary/80 text-white text-xs font-medium">
-          Partage d'écran
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 px-1.5 h-[18px] flex items-center rounded-[4px] bg-[#da373c] text-white text-[10px] font-bold uppercase leading-none">
+          En direct
+        </div>
+      )}
+
+      {/* Apercu local en pause quand la fenetre est masquee : on garde le stream, on economise le rendu */}
+      {paused && (
+        <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center text-center px-6">
+          <p className="text-base font-semibold text-white">Ton stream est toujours en cours !</p>
+          <p className="mt-1 text-sm text-white/80">Nous avons mis cet aperçu en pause pour économiser tes ressources.</p>
         </div>
       )}
     </div>

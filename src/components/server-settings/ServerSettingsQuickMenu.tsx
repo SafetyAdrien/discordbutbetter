@@ -1,4 +1,5 @@
-import { Info, Heart, Zap, Smile, Sticker, Volume2, Users, Shield, Link, Puzzle, History, Ban, FileCode, Trash2 } from 'lucide-react';
+import { Zap, Puzzle, Ban, FileCode } from 'lucide-react';
+import { Info, Heart, Smile, Sticker, Volume2, Users, Shield, Link, History, Trash2 } from '@/components/icons/discord/lucide';
 import { Separator } from '@/components/ui/separator';
 
 interface ServerSettingsQuickMenuProps {
@@ -64,7 +65,7 @@ export function ServerSettingsQuickMenu({ onSelect, className }: ServerSettingsQ
             <button type="button"
               key={item.id}
               onClick={() => onSelect(item.id)}
-              className="flex items-center gap-2 w-full px-2.5 py-1.5 rounded-md text-sm text-foreground hover:bg-muted transition-colors"
+              className="flex items-center gap-2 w-full px-2 py-[6px] rounded-[4px] text-[14px] leading-[18px] text-foreground hover:bg-[hsl(var(--surface-hover))] transition-colors"
             >
               <item.icon className="w-4 h-4 text-muted-foreground" />
               {item.label}
@@ -77,10 +78,10 @@ export function ServerSettingsQuickMenu({ onSelect, className }: ServerSettingsQ
         <button type="button"
           key={item.id}
           onClick={() => onSelect(item.id)}
-          className={`flex items-center gap-2 w-full px-2.5 py-1.5 rounded-md text-sm transition-colors ${
+          className={`flex items-center gap-2 w-full px-2 py-[6px] rounded-[4px] text-[14px] leading-[18px] transition-colors ${
             item.danger
-              ? 'text-destructive hover:bg-destructive/10'
-              : 'text-foreground hover:bg-muted'
+              ? 'text-destructive hover:bg-[hsl(var(--destructive)/0.12)]'
+              : 'text-foreground hover:bg-[hsl(var(--surface-hover))]'
           }`}
         >
           <item.icon className="w-4 h-4" />

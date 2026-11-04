@@ -1,11 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { refreshSignedUrls } from '@/lib/storageUrls';
 import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { useCacheReady } from '@/hooks/useCacheReady';
 import { ThreadMessage } from '@/types/thread';
 import { toast } from 'sonner';
 import { useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { uploadAttachments } from '@/hooks/useMessages';
+import type { PendingAttachment } from '@/hooks/usePendingAttachments';
 
 export const useThreadMessages = (threadId: string | undefined) => {
   const queryClient = useQueryClient();
@@ -49,7 +52,7 @@ export const useThreadMessages = (threadId: string | undefined) => {
 
   const query = useQuery({
     queryKey: ['thread-messages', threadId],
-    queryFn: async () => {
+    queryFn: async () => refreshSignedUrls(await (async () => {
       if (!threadId) return [];
       
       const { data, error } = await supabase
@@ -113,7 +116,7 @@ export const useThreadMessages = (threadId: string | undefined) => {
           },
         };
       });
-    },
+    })()),
     enabled: !!threadId,
     placeholderData: () => cacheGetSync(`thread-messages:${threadId}`),
     staleTime: 30_000,
@@ -135,18 +138,22 @@ export const useSendThreadMessage = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ threadId, content, replyToId, externalAttachment }: {
+    mutationFn: async ({ threadId, content, replyToId, externalAttachment, files }: {
       threadId: string;
       content: string;
       replyToId?: string | null;
       externalAttachment?: { url: string; name: string; type: 'sticker' | 'gif' };
+      /** Fichiers joints (images, videos, PDF), uploades avant l'envoi. */
+      files?: PendingAttachment[];
     }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      if ((content.trim().length === 0 && !externalAttachment) || content.length > 2000) {
+      const hasFiles = (files?.length ?? 0) > 0;
+      if ((content.trim().length === 0 && !externalAttachment && !hasFiles) || content.length > 2000) {
         throw new Error('Message must be between 1 and 2000 characters');
       }
+      const uploaded = hasFiles ? await uploadAttachments(user.id, files!) : [];
 
       const insertPayload: any = {
         thread_id: threadId,
@@ -154,7 +161,7 @@ export const useSendThreadMessage = () => {
         content: content.trim(),
         attachments: externalAttachment
           ? [{ id: crypto.randomUUID(), url: externalAttachment.url, name: externalAttachment.name, type: externalAttachment.type, size: 0 }]
-          : [],
+          : uploaded,
       };
       if (replyToId) insertPayload.reply_to_id = replyToId;
 
@@ -211,11 +218,16 @@ export const useSendThreadMessage = () => {
       
       return { previous };
     },
-    onError: (_, { threadId }, context) => {
+    onError: (err, { threadId }, context) => {
       if (context?.previous) {
         queryClient.setQueryData(['thread-messages', threadId], context.previous);
       }
-      toast.error('Erreur lors de l\'envoi du message');
+      const msg = err instanceof Error ? err.message : '';
+      toast.error(
+        msg.includes('THREAD_LOCKED') ? 'Ce post est verrouillé.'
+          : msg.includes('SLOWMODE') ? 'Le mode lent est activé : patiente avant d\'envoyer un nouveau message.'
+          : 'Erreur lors de l\'envoi du message',
+      );
     },
     onSettled: (_, __, { threadId }) => {
       // Single invalidation — Realtime skips own INSERTs so this is necessary
@@ -229,23 +241,23 @@ export const useEditThreadMessage = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ messageId, content, threadId }: { messageId: string; content: string; threadId: string }) => {
+    mutationFn: async ({ messageId, content, threadId, attachments }: { messageId: string; content: string; threadId: string; attachments?: unknown[] }) => {
       const { error } = await supabase
         .from('thread_messages')
-        .update({ content, edited_at: new Date().toISOString() })
+        .update({ content, edited_at: new Date().toISOString(), ...(attachments ? { attachments: attachments as never } : {}) })
         .eq('id', messageId);
 
       if (error) throw error;
       return { messageId, content, threadId };
     },
-    onMutate: async ({ messageId, content, threadId }) => {
+ onMutate: async ({ messageId, content, threadId, attachments }) => {
       await queryClient.cancelQueries({ queryKey: ['thread-messages', threadId] });
       const previous = queryClient.getQueryData(['thread-messages', threadId]);
       
       queryClient.setQueryData(['thread-messages', threadId], (old: ThreadMessage[] | undefined) =>
         old?.map(m => 
           m.id === messageId 
-            ? { ...m, content, edited_at: new Date().toISOString() } 
+            ? { ...m, content, edited_at: new Date().toISOString(), ...(attachments ? { attachments } : {}) } 
             : m
         )
       );

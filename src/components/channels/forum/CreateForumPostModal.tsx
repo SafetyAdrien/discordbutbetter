@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { X, Tag as TagIcon, Lock } from 'lucide-react';
+import { X, Tag as TagIcon, Lock } from '@/components/icons/discord/lucide';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { ForumEmoji } from './ForumEmoji';
 import {
   useForumTags,
   useForumChannelConfig,
@@ -129,7 +130,7 @@ export function CreateForumPostModal({
                           onClick={() => !full && toggleTag(tag)}
                         >
                           {tag.emoji_name
-                            ? <span className="mr-0.5">{tag.emoji_name}</span>
+                            ? <ForumEmoji emoji={tag.emoji_name} className="mr-0.5" />
                             : <TagIcon className="w-3 h-3" />}
                           {tag.name}
                           {active && <X className="w-3 h-3" />}

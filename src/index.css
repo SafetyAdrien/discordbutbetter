@@ -1,3 +1,5 @@
+@import "./styles/discord-tokens.css";
+@import "./styles/discord-bridge.css";
 @tailwind base;
 
 /* ============================================
@@ -40,9 +42,9 @@
   left: 8px;
   right: 8px;
   height: 2px;
-  background: #5865f2;
-  border-radius: 1px;
-  box-shadow: 0 0 8px rgba(88, 101, 242, 0.6);
+  background: hsl(var(--dnd-line));
+  border-radius: 9999px;
+  height: 3px;
   z-index: 50;
 }
 
@@ -54,10 +56,13 @@
   bottom: -1px;
 }
 
-/* Dragging item ghost */
+/* Element en cours de glissement : emplacement gris a sa place, contenu masque */
 .dnd-dragging {
-  opacity: 0.4 !important;
-  background: hsl(var(--muted) / 0.3) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-radius: 8px;
+}
+.dnd-dragging > * {
+  visibility: hidden;
 }
 
 /* Drag overlay styling */
@@ -411,55 +416,78 @@
     background-image: var(--gradient-primary);
   }
 
-  /* === MATERIAL YOU SERVER ICON === */
+  /* === SERVER ICON ===
+     Capture de reference : tuile de 40px, rayon 12px, identique au repos et
+     au survol (seule la couleur change). */
   .server-icon {
-    @apply w-[52px] h-[52px] flex items-center justify-center cursor-pointer;
-    border-radius: 50%;
-    transition: border-radius 220ms cubic-bezier(0.2, 0, 0, 1), background-color 220ms cubic-bezier(0.2, 0, 0, 1);
-  }
-
-  /* Cercle plein -> "squircle" (30%) quand le serveur est sélectionné, comme
-     pour les avatars/icônes actifs de référence. */
-  .server-icon.is-active {
-    border-radius: 30%;
+    @apply w-10 h-10 flex items-center justify-center cursor-pointer;
+    border-radius: 12px;
+    transition: background-color 150ms ease, color 150ms ease;
   }
 
 
-  /* === MATERIAL YOU CHANNEL ITEM === */
+  /* === DISCORD CHANNEL ITEM ===
+     Cotes reprises des tokens du bundle officiel :
+       hauteur        --control-item-height-sm   32px
+       padding interne                         8px
+       rayon            --radius-sm             8px
+       icone                                   20px (6px avant le nom)
+       texte            gg sans 16 / 500
+     Les couleurs d'etat passent par --interactive-* plutot que par des
+     melanges manuels, ce qui les rend themables.
+     Pas de marge ici : un `margin: 0 8px` combine a `w-full` faisait
+     deborder l'item de 16px (la surbrillance touchait le bord droit), et la
+     classe est aussi utilisee sur mobile. L'inset de 8px est pose par la
+     liste de salons desktop elle-meme. */
   .channel-item {
-    @apply flex items-center gap-2 px-2 py-[6px] cursor-pointer
-           text-muted-foreground hover:text-foreground;
-    border-radius: 4px;
-    transition: all 300ms cubic-bezier(0.2, 0, 0, 1);
+    @apply flex items-center w-full cursor-pointer;
+    height: var(--control-item-height-sm);
+    padding: 0 8px;
+    gap: 6px;
+    border-radius: var(--radius-sm);
+    color: hsl(var(--interactive-icon-default));
+    font-family: var(--font-primary);
+    font-size: 16px;
+    font-weight: 500;
+    line-height: var(--channels-name-line-height);
+    transition: color 150ms ease, background-color 150ms ease;
   }
 
   .channel-item:hover {
-    background: hsl(var(--surface-hover) / 0.15);
+    background: hsl(var(--interactive-background-hover));
+    color: hsl(var(--interactive-text-hover));
   }
 
   .channel-item.active {
-    background: hsl(var(--surface-hover) / 0.4);
-    color: hsl(var(--foreground));
+    background: hsl(var(--interactive-background-selected));
+    color: hsl(var(--interactive-text-active));
   }
 
+  /*
+   * Survol d'un message (video de reference, mesure image par image) : la zone passe en UNE image de #313139 a
+   * #3c3c44 (voile blanc ~5,5 %), sans transition, sans filet ni ombre ; elle va d'un bord a l'autre du salon.
+   * Elle reste allumee tant que le menu du message est ouvert (marqueur pose par la barre d'actions).
+   */
   .message-hover {
-    @apply transition-all duration-150;
+    /* La zone s'arrete 12 px avant le bord droit du salon : 4 px avant la barre de defilement (video de reference).
+       Les marges negatives (-24 px) laissent deborder la barre d'actions au-dessus et a gauche. */
+    clip-path: inset(-24px var(--msg-zone-inset-right, 12px) -24px -24px);
   }
 
-  .message-hover:hover {
-    background: hsl(var(--surface-hover) / 0.25);
-    box-shadow: inset 0 0 0 1px hsl(var(--border) / 0.15);
+  .message-hover:hover,
+  .message-hover:not(.message-mentioned):has(> [data-menu-open]) {
+    background: rgba(255, 255, 255, 0.055);
   }
 
   /* Persistent highlight when a message mentions the current user */
   .message-mentioned {
-    background: rgba(250, 166, 26, 0.15);
-    box-shadow: inset 2px 0 0 0 #faa61a;
+    background: rgba(250, 166, 26, 0.08);
+    box-shadow: inset 3px 0 0 0 #fab629;
   }
 
   .message-mentioned:hover {
-    background: rgba(250, 166, 26, 0.10);
-    box-shadow: inset 2px 0 0 0 #faa61a;
+    background: rgba(250, 166, 26, 0.11);
+    box-shadow: inset 3px 0 0 0 #fab629;
   }
 
   /* === MATERIAL YOU SCROLLBAR === */
@@ -734,7 +762,10 @@
 
   /* Voice channel gradient background */
   .voice-gradient-bg {
-    background: radial-gradient(ellipse at 50% 30%, #1e3a8a 0%, #312e81 40%, #1e1b4b 70%, #0f0f23 100%);
+    /* Mesure sur la video de reference : noir en haut, halo violet-bleu monte depuis le bas centre. */
+    background:
+      radial-gradient(73% 100% at 50% 100%, #6552c9 0%, #6647b1 10%, #623b9b 20%, #4a2f85 35%, #231a5b 64%, #151344 80%, #080920 93%, #05051a 100%),
+      #000;
   }
 
   /* Voice speaking glow effect */
@@ -962,15 +993,18 @@
   }
 
   /* === DND OPTIMIZED UTILITIES === */
+  /* Pas de will-change ici : un calque GPU par salon (une centaine) coutait ~200 ms de composition
+     et ralentissait le defilement de la liste. */
   .dnd-item {
-    @apply will-change-transform;
     transition: transform 150ms ease;
   }
 
   .dnd-item-dragging {
-    opacity: 0 !important;
-    background: rgba(88, 101, 242, 0.08) !important;
-    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.08) !important;
+    border-radius: 8px;
+  }
+  .dnd-item-dragging > :not(.dnd-drop-indicator-line) {
+    visibility: hidden;
   }
 
   /* Drop indicator fade-in 80ms */
@@ -1554,3 +1588,123 @@ html.light .discord-theme-footer {
     padding-right: 13px;
   }
 }
+
+/* ===================================================================== */
+/* Parametres utilisateur (UserSettingsEffects)                          */
+/* ===================================================================== */
+.message-hover .markdown-content { font-size: var(--chat-font-size, 16px); }
+html.a11y-underline-links .markdown-content a { text-decoration: underline; }
+html.a11y-desaturate #root { filter: saturate(var(--app-saturation, 1)); }
+/* Les medias gardent leurs couleurs : S(a) puis S(1/a) = identite. */
+html.a11y-desaturate #root img,
+html.a11y-desaturate #root video { filter: saturate(calc(1 / max(var(--app-saturation, 1), 0.01))); }
+html.a11y-high-contrast.dark {
+  --muted-foreground: 0 0% 82%;
+  --foreground: 0 0% 100%;
+  --border: 0 0% 45%;
+  --frame-border: 0 0% 40%;
+}
+html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+html[data-density="compact"] .channel-item { height: 26px; }
+html[data-density="spacious"] .channel-item { height: 40px; }
+/* Espace entre deux groupes de messages : 2 px (+2 px d'interligne) au reglage par defaut (16) comme dans la video de reference, ou les zones
+   de survol de deux messages se suivent presque bord a bord. Le curseur "Espacement des groupes" garde son echelle. */
+.message-group-start { margin-top: max(0px, calc(var(--message-group-spacing, 16px) - 14px)); }
+/*
+ * Bas de la liste (video de reference, mesure a 1,2x) : pas de fondu. La zone de survol du DERNIER message s'arrete net au
+ * bas du defilement, 3 px sous son contenu, et le defilement s'arrete 24 px au-dessus de la barre de saisie : la bande vide
+ * entre la zone et le champ est donc TOUJOURS la meme, quel que soit le type du dernier message. Le conteneur n'a plus de
+ * remplissage bas ; la zone se prolonge de 3 px par une bordure transparente (le fond la peint) et le sentinelle `.msg-end`
+ * n'ajoute aucun espacement.
+ */
+.msg-end { margin-top: 0 !important; }
+.message-hover:has(+ .msg-end),
+:has(+ .msg-end) .message-hover { border-bottom: 3px solid transparent; }
+[data-poll-id]:has(+ .msg-end) .message-hover { border-bottom-width: 0; }
+html[data-spoilers="hover"] .spoiler:hover { background-color: rgba(79, 84, 92, 0.48); color: inherit; }
+html[data-spoilers="always"] .spoiler { background-color: rgba(79, 84, 92, 0.48); color: inherit; user-select: text; }
+html.hide-reactions .message-reactions { display: none !important; }
+/* Variantes du theme sombre : plus sombre / Onyx (noir) */
+html.dark[data-theme-variant="darker"] {
+  --background: 228 6% 15%;
+  --card: 228 6% 12%;
+  --surface-1: 228 6% 12%;
+  --sidebar-background: 228 6% 10%;
+  --search-background: 228 6% 11%;
+}
+html.dark[data-theme-variant="onyx"] {
+  --background: 240 3% 6%;
+  --card: 240 3% 4%;
+  --surface-1: 240 3% 4%;
+  --sidebar-background: 0 0% 0%;
+  --search-background: 240 3% 3%;
+  --surface-card: 240 3% 9%;
+}
+
+/* Application de bureau : la zone sous la barre de titre remplace la fenetre,
+   les hauteurs "plein ecran" s'y adaptent. */
+.desktop-content .h-screen,
+.desktop-content .min-h-screen,
+.desktop-content .h-\[100svh\] {
+  height: 100%;
+  min-height: 0;
+}
+.desktop-content .min-h-screen { min-height: 100%; }
+
+
+/*
+ * Liste des messages : un message hors ecran ne coute plus ni mise en page ni
+ * peinture (content-visibility). Les changements de taille de la fenetre
+ * (zoom de l'application, redimensionnement) ne recalculent que ce qui est
+ * visible. `auto` dans contain-intrinsic-size memorise la derniere hauteur
+ * reelle, donc la barre de defilement ne saute pas.
+ */
+.msg-timeline > div[data-poll-id],
+.msg-timeline > div:not([class]) {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 64px;
+  /*
+   * `content-visibility: auto` impose `contain: paint` : tout ce qui depasse du cadre de la rangee est rogne. La zone de
+   * survol d'un message (marges negatives) etait donc coupee 16 px avant chaque bord. La rangee elle-meme prend donc les
+   * marges negatives (bord gauche du salon -> 4 px avant la barre de defilement, comme dans la video) et les compense
+   * par un remplissage : le contenu ne bouge pas, la zone de survol n'est plus rognee.
+   */
+  margin-inline: -1rem -2px;
+  padding-inline: 1rem 2px;
+  /* la barre d'actions deborde de 16 px au-dessus de la zone : elle ne doit pas etre rognee non plus */
+  overflow-clip-margin: 20px;
+}
+
+/* Electron : zones de la barre de titre qui deplacent la fenetre (equivalent de data-tauri-drag-region). */
+[data-tauri-drag-region] { -webkit-app-region: drag; }
+[data-tauri-drag-region] button,
+[data-tauri-drag-region] a,
+[data-tauri-drag-region] input,
+[data-tauri-drag-region] [role="button"] { -webkit-app-region: no-drag; }
+
+@keyframes pe-shake {
+  0%, 100% { transform: translateX(-50%); }
+  20% { transform: translateX(calc(-50% - 8px)); }
+  40% { transform: translateX(calc(-50% + 8px)); }
+  60% { transform: translateX(calc(-50% - 5px)); }
+  80% { transform: translateX(calc(-50% + 5px)); }
+}
+
+/* Indicateur de saisie : les trois points s'allument a tour de role. */
+@keyframes typing-dot { 0%, 55%, 100% { opacity: 0.45; transform: scale(1); } 22% { opacity: 1; transform: scale(1.45); } }
+.typing-dot { animation: typing-dot 1.2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .typing-dot { animation: none; opacity: 0.6; } }
+
+/* Bandeau de reponse colle au champ de saisie : le champ perd ses coins hauts, le bandeau fait office de bord superieur. */
+.reply-banner { border-bottom: 1px solid #43434b !important; }
+.reply-banner ~ * .composer-box { border-top-left-radius: 0; border-top-right-radius: 0; border-top-width: 0; }
+/* Message auquel on repond : fond indigo et filet gauche. */
+.reply-target { background-color: rgba(88, 101, 242, 0.3); box-shadow: inset 2px 0 0 #5b63f3; }
+.reply-target:hover { background-color: rgba(88, 101, 242, 0.3); }
+.reply-target.message-mentioned,
+.reply-target.message-mentioned:hover { background-color: rgba(88, 101, 242, 0.3) !important; box-shadow: inset 2px 0 0 #5b63f3 !important; }

@@ -1,5 +1,6 @@
 import { motion, useMotionValue, useDragControls, PanInfo } from 'framer-motion';
-import { ChevronRight, Settings, Ear, Video, UserPlus, Wrench } from 'lucide-react';
+import { Ear } from 'lucide-react';
+import { ChevronRight, Settings, Video, UserPlus, Wrench } from '@/components/icons/discord/lucide';
 import { useState, useRef, useEffect } from 'react';
 
 interface Props {
@@ -94,7 +95,7 @@ export function MobileVoiceSettingsPanel({ channelName, onClose, onInvite }: Pro
 
       {/* Header */}
       <div className="px-6 pt-3 pb-2 flex items-center justify-center shrink-0">
-        <h2 className="text-xl font-bold text-foreground truncate">{channelName}</h2>
+        <h2 translate="no" className="text-xl font-bold text-foreground truncate">{channelName}</h2>
       </div>
 
       <div className="flex-1 px-3 pb-4 space-y-2">

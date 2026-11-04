@@ -7,7 +7,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { MarkdownTextarea } from '@/components/chat/MarkdownTextarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ImagePlus, X, Pin, Star, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
+import { ImagePlus, X, Pin, Star } from '@/components/icons/discord/lucide';
 import { cn } from '@/lib/utils';
 import { MarkdownText } from '@/lib/markdown';
 import { useCreateAnnouncement, useUpdateAnnouncement, useUploadAnnouncementBanner, type AnnouncementCategory, type Announcement } from '@/hooks/useAnnouncements';
@@ -200,7 +201,7 @@ export function CreateAnnouncementModal({ open, onOpenChange, channelId, categor
                         style={{ backgroundColor: cat.color }}
                       />
                       {cat.icon && <span>{cat.icon}</span>}
-                      <span>{cat.name}</span>
+                      <span translate="no">{cat.name}</span>
                     </div>
                   </SelectItem>
                 ))}

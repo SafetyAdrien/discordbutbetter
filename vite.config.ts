@@ -14,6 +14,26 @@ export default defineConfig(({ mode }) => ({
     // Strip console.log and console.debug in production to prevent data leakage
     drop: mode === 'production' ? ['console', 'debugger'] : [],
   },
+  build: {
+    // Electron (Chromium recent) et navigateurs actuels : pas de transpilation ni de polyfill inutiles.
+    target: "es2022",
+    modulePreload: { polyfill: false },
+    rollupOptions: {
+      output: {
+        // Bibliotheques lourdes dans des fichiers a part : meilleur cache, et celles qui ne
+        // servent que sur certains ecrans (appel vocal, graphiques) ne gonflent pas le demarrage.
+        manualChunks(id: string) {
+          if (!id.includes("node_modules")) return undefined;
+          if (id.includes("livekit")) return "vendor-livekit";
+          if (id.includes("recharts") || id.includes("d3-")) return "vendor-charts";
+          if (id.includes("framer-motion")) return "vendor-motion";
+          if (id.includes("@supabase")) return "vendor-supabase";
+          if (id.includes("date-fns")) return "vendor-date";
+          return undefined;
+        },
+      },
+    },
+  },
   plugins: [
     react(),
     // Dev-only tooling: these have no role in a production build and were

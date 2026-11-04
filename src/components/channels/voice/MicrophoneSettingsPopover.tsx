@@ -5,7 +5,8 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { ShieldCheck, AudioLines, SlidersHorizontal, Mic } from 'lucide-react';
+import { ShieldCheck, AudioLines } from 'lucide-react';
+import { SlidersHorizontal, Mic } from '@/components/icons/discord/lucide';
 import type { NoiseSuppressonMode, VADSensitivity } from '@/utils/webrtc/AudioProcessor';
 import { MicPermissionGate } from './MicPermissionGate';
 

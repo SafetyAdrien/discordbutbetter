@@ -1,12 +1,27 @@
+import { cn } from '@/lib/utils';
+import { NEW_THREAD_ID, OPEN_NEW_THREAD_EVENT } from '@/lib/threadEvents';
+import { NewThreadPanel } from '@/components/threads/NewThreadPanel';
+import { FavoritesSidebar, favKey } from '@/components/favorites/FavoritesSidebar';
+import { FavoritesEmpty } from '@/components/favorites/FavoritesEmpty';
+import { useFavorites } from '@/hooks/useFavorites';
+import type { FavoriteItem } from '@/lib/userSettings';
+import { OPEN_USER_SETTINGS_EVENT } from '@/lib/settingsEvents';
 import { useState, useEffect, useMemo, useRef, useCallback, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { OPEN_SERVER_EVENT, OPEN_FRIENDS_EVENT } from '@/lib/invites';
+import { LazyServerViewPage as ServerViewPage } from '@/components/lazy/LazyModals';
+import type { ServerView } from '@/components/server-views/ServerViews';
+import { MemberOnboardingGate } from '@/components/onboarding/MemberOnboarding';
 import { ServerList } from '@/components/layout/ServerList';
 import { ChannelList } from '@/components/layout/ChannelList';
 import { UserProfileCard } from '@/components/profile/UserProfileCard';
+import { DMCallStatusBadge } from '@/components/layout/DMCallStatusBadge';
+import { IncomingCallWatcher } from '@/components/dm/IncomingCallWatcher';
+import { useDMCallSession } from '@/lib/dmCallSession';
 import { VoiceStatusBadge } from '@/components/layout/VoiceStatusBadge';
 import { MemberList } from '@/components/layout/MemberList';
 import { ChatArea } from '@/components/chat/ChatArea';
-import { DMPage } from '@/components/dm/DMPage';
+import { DMPage, DMSidebar, type DMView } from '@/components/dm/DMPage';
 // The mobile tree is ~12k LOC (and carries most of the framer-motion usage).
 // It is statically imported at the top of this file, which meant every desktop
 // visitor downloaded the entire mobile UI — and its animation runtime — on first
@@ -34,16 +49,17 @@ import LoadingScreen from '@/components/LoadingScreen';
 import { usePreloader } from '@/hooks/usePreloader';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { Menu, Users } from 'lucide-react';
+import { Menu, Users } from '@/components/icons/discord/lucide';
 import type { Server, Message, User } from '@/types/app';
+import { setDesktopTitle } from '@/lib/desktop';
 
 // Lazily loaded: only rendered on explicit user action (open modal / switch to
 // this channel type), so they shouldn't bloat the initial bundle.
 const AccountSettingsModal = lazy(() =>
   import('@/components/account-settings/AccountSettingsModal').then((m) => ({ default: m.AccountSettingsModal }))
 );
-const DiscoverModal = lazy(() =>
-  import('@/components/modals/DiscoverModal').then((m) => ({ default: m.DiscoverModal }))
+const DiscoveryPage = lazy(() =>
+  import('@/components/discovery/DiscoveryPage').then((m) => ({ default: m.DiscoveryPage }))
 );
 const CreateServerModal = lazy(() =>
   import('@/components/modals/CreateServerModal').then((m) => ({ default: m.CreateServerModal }))
@@ -68,9 +84,6 @@ const TasksChannel = lazy(() =>
 );
 const CalendarChannel = lazy(() =>
   import('@/components/channels/CalendarChannel').then((m) => ({ default: m.CalendarChannel }))
-);
-const AnnouncementChannel = lazy(() =>
-  import('@/components/channels/AnnouncementChannel').then((m) => ({ default: m.AnnouncementChannel }))
 );
 const VoiceChannelView = lazy(() =>
   import('@/components/channels/VoiceChannelView').then((m) => ({ default: m.VoiceChannelView }))
@@ -108,9 +121,24 @@ const Index = () => {
   const [activeServerId, setActiveServerIdLocal] = useState<string | null>(persistedServerId);
   const [activeChannelId, setActiveChannelIdLocal] = useState<string | null>(persistedChannelId);
   const [activeDMId, setActiveDMIdLocal] = useState<string | null>(persistedDMId);
+  // Inbox panel of the home view. Lifted here (it used to live in DMPage)
+  // because DMSidebar and DMPage now mount in different columns.
+  const [dmShowInbox, setDmShowInbox] = useState(false);
   const [activeThreadId, setActiveThreadIdLocal] = useState<string | null>(persistedThreadId);
   const [threadChannelId, setThreadChannelIdLocal] = useState<string | null>(persistedThreadChannelId);
   const [showDiscover, setShowDiscover] = useState(false);
+  useEffect(() => {
+    const open = () => { setFavoritesMode(false); setShowDiscover(true); };
+    window.addEventListener('app:open-discover', open);
+    return () => window.removeEventListener('app:open-discover', open);
+  }, []);
+  // Vue "Favoris" : la colonne de gauche liste les favoris, le reste affiche l'element ouvert.
+  const [favoritesMode, setFavoritesMode] = useState(false);
+  const favorites = useFavorites();
+  useEffect(() => { if (!favorites.enabled) setFavoritesMode(false); }, [favorites.enabled]);
+  // Vue principale ouverte depuis les raccourcis de la liste des salons.
+  const [serverView, setServerView] = useState<ServerView | null>(null);
+  useEffect(() => setServerView(null), [activeServerId]);
   const [showCreate, setShowCreate] = useState(false);
   const [showServerSettings, setShowServerSettings] = useState(false);
   const [serverSettingsInitialTab, setServerSettingsInitialTab] = useState<string | undefined>(undefined);
@@ -148,6 +176,7 @@ const Index = () => {
     setPersistedThreadId(id);
   }, [setPersistedThreadId]);
 
+  const [newThreadMessageId, setNewThreadMessageId] = useState<string | null>(null);
   const setThreadChannelId = useCallback((id: string | null) => {
     setThreadChannelIdLocal(id);
     setPersistedThreadChannelId(id);
@@ -296,7 +325,26 @@ const Index = () => {
   // Voice state
   const { voiceState, toggleMute, toggleDeafen, leaveChannel, isConnected } = useVoice();
   const { speakingUsers } = useVoiceLevels();
-  const [showAccountSettingsGlobal, setShowAccountSettingsGlobal] = useState(false);
+  const dmCallSession = useDMCallSession();
+  const [showAccountSettingsGlobal, setShowAccountSettingsGlobal] = useState<false | string>(false);
+  useEffect(() => {
+    const on = (e: Event) => {
+      const { channelId, messageId } = (e as CustomEvent<{ channelId: string; messageId: string | null }>).detail ?? {};
+      if (!channelId) return;
+      setNewThreadMessageId(messageId ?? null);
+      setThreadChannelId(channelId);
+      setThreadFullscreen(false);
+      setActiveThreadId(NEW_THREAD_ID);
+    };
+    window.addEventListener(OPEN_NEW_THREAD_EVENT, on);
+    return () => window.removeEventListener(OPEN_NEW_THREAD_EVENT, on);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    const open = (e: Event) => setShowAccountSettingsGlobal((e as CustomEvent<{ tab: string }>).detail?.tab || 'account');
+    window.addEventListener(OPEN_USER_SETTINGS_EVENT, open);
+    return () => window.removeEventListener(OPEN_USER_SETTINGS_EVENT, open);
+  }, []);
 
   // Mutations
   const createServer = useCreateServer();
@@ -365,6 +413,9 @@ const Index = () => {
   }, [activeServerId, servers, serversLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const activeServer = servers.find((s) => s.id === activeServerId);
+  useEffect(() => {
+    setDesktopTitle({ name: activeServer?.name ?? null, iconUrl: activeServer?.icon_url ?? null });
+  }, [activeServer?.name, activeServer?.icon_url]);
   const resolvedCategories = channelsData?.categories ?? activeServer?.categories ?? [];
   const resolvedOrphanChannels = channelsData?.orphanChannels ?? activeServer?.orphanChannels ?? [];
   const activeChannel = resolvedCategories
@@ -442,8 +493,13 @@ const Index = () => {
   };
 
   const handleJoinServer = (serverId: string) => {
-    joinServer.mutate(serverId);
-    setShowDiscover(false);
+    joinServer.mutate(serverId, {
+      onSuccess: () => {
+        setShowDiscover(false);
+        setActiveServerId(serverId);
+        setActiveDMId(null);
+      },
+    });
   };
 
   const handleCreateServer = (name: string, iconFile: File | null, bannerFile: File | null, templateId?: string | null) => {
@@ -460,16 +516,24 @@ const Index = () => {
   };
 
   const handleOpenDM = (conversationId: string) => {
+    setDmShowInbox(false);
     setActiveDMId(conversationId);
     setActiveServerId(null);
     setActiveChannelId(null);
   };
 
   const handleShowFriends = () => {
+    setDmShowInbox(false);
     setActiveDMId(null);
   };
 
+  const handleShowInbox = () => {
+    setDmShowInbox(true);
+  };
+
   const handleServerSelect = (serverId: string | null) => {
+    setShowDiscover(false);
+    setFavoritesMode(false);
     if (serverId === null) {
       // Home button clicked - show DM page
       setActiveServerId(null);
@@ -479,6 +543,35 @@ const Index = () => {
       setActiveDMId(null);
     }
   };
+
+  // "Aller sur le serveur" depuis une carte d'invitation du chat.
+  useEffect(() => {
+    const onOpenServer = (e: Event) => {
+      const { serverId, channelId, conversationId } = (e as CustomEvent<{ serverId: string | null; channelId?: string; conversationId?: string }>).detail ?? {};
+      if (conversationId) {
+        setActiveServerId(null);
+        setActiveDMId(conversationId);
+        return;
+      }
+      if (!serverId) return;
+      setActiveServerId(serverId);
+      setActiveDMId(null);
+      if (channelId) setTimeout(() => setActiveChannelId(channelId), 50);
+    };
+    window.addEventListener(OPEN_SERVER_EVENT, onOpenServer);
+    return () => window.removeEventListener(OPEN_SERVER_EVENT, onOpenServer);
+  }, [setActiveServerId, setActiveDMId]);
+
+  // Boite de reception > "Voir les demandes d'amis".
+  useEffect(() => {
+    const onOpenFriends = () => {
+      setActiveServerId(null);
+      setActiveDMId(null);
+      setDmShowInbox(false);
+    };
+    window.addEventListener(OPEN_FRIENDS_EVENT, onOpenFriends);
+    return () => window.removeEventListener(OPEN_FRIENDS_EVENT, onOpenFriends);
+  }, [setActiveServerId, setActiveDMId]);
 
   const handleOpenServerSettings = (serverId?: string, initialTab?: string) => {
     if (serverId) {
@@ -535,6 +628,7 @@ const Index = () => {
     bannerUrl: activeServer.banner_url || undefined,
     description: activeServer.description || undefined,
     createdAt: activeServer.created_at || undefined,
+    isPublic: !!activeServer.is_public,
     categories: resolvedCategories.map(cat => ({
       id: cat.id,
       name: cat.name,
@@ -592,6 +686,17 @@ const Index = () => {
         status: m.author?.status || 'offline',
       },
       timestamp: new Date(m.created_at || Date.now()),
+      published: m.is_published_message && m.source_server_name
+        ? {
+            sourceChannelId: m.source_channel_id ?? null,
+            serverId: m.source_server_id ?? null,
+            serverName: m.source_server_name,
+            channelName: m.source_channel_name ?? null,
+            serverIcon: m.source_server_icon ?? null,
+          }
+        : null,
+      publishedAt: m.published_at ?? null,
+      publishDismissed: !!m.publish_dismissed,
       replyToId: (m as any).reply_to_id ?? null,
       repliedMessage: (m as any).repliedMessage
         ? {
@@ -667,12 +772,19 @@ const Index = () => {
       server={serverForChannelList}
       activeChannelId={activeChannelId}
       onChannelSelect={(channelId) => {
+        setServerView(null);
         setActiveChannelId(channelId);
         if (activeServerId) {
           setChannelForServer(activeServerId, channelId);
         }
         setActiveThreadId(null);
         setThreadChannelId(null);
+        if (isTablet) setTabletChannelsOpen(false);
+      }}
+      activeServerView={serverView}
+      onOpenServerView={(view) => {
+        setServerView(view);
+        setActiveThreadId(null);
         if (isTablet) setTabletChannelsOpen(false);
       }}
       onOpenServerSettings={(initialTab) => {
@@ -684,6 +796,8 @@ const Index = () => {
       onThreadSelect={(threadId) => {
         setActiveThreadId(threadId);
         setThreadChannelId(activeChannelId);
+        // Depuis la liste des salons, le fil s'ouvre comme vue principale (fil d'Ariane, liste des membres a droite).
+        setThreadFullscreen(true);
         if (isTablet) setTabletChannelsOpen(false);
       }}
       onOpenVoiceChat={(channelId) => {
@@ -709,8 +823,68 @@ const Index = () => {
    * in normal flow makes width and height follow the rail automatically, which
    * is what makes the two bottom bars line up.
    */
+  // --- Favoris ---
+  const favoriteActiveKeys = [
+    activeServerId === null && activeDMId ? `dm:${activeDMId}` : null,
+    activeThreadId && activeThreadId !== NEW_THREAD_ID ? `thread:${activeThreadId}` : null,
+    activeServerId && activeChannelId ? `channel:${activeChannelId}` : null,
+  ].filter((k): k is string => !!k);
+  const activeFavorite = favorites.items.find((i) => favoriteActiveKeys.includes(favKey(i))) ?? null;
+
+  const openFavorite = (item: FavoriteItem) => {
+    setShowDiscover(false);
+    setServerView(null);
+    if (item.kind === 'dm') {
+      handleOpenDM(item.ref_id);
+      setActiveThreadId(null);
+      return;
+    }
+    if (!item.server_id) return;
+    setActiveDMId(null);
+    setDmShowInbox(false);
+    setActiveServerId(item.server_id);
+    const channelId = item.kind === 'thread' ? item.channel_id : item.ref_id;
+    setTimeout(() => {
+      if (channelId) {
+        setActiveChannelId(channelId);
+        setChannelForServer(item.server_id!, channelId);
+      }
+      if (item.kind === 'thread') {
+        setThreadChannelId(channelId);
+        setActiveThreadId(item.ref_id);
+        setThreadFullscreen(true);
+      } else {
+        setActiveThreadId(null);
+        setThreadChannelId(null);
+      }
+    }, 60);
+  };
+
+  const goToFavoriteServer = (item: FavoriteItem) => {
+    setFavoritesMode(false);
+    openFavorite(item);
+    if (item.kind === 'thread') setTimeout(() => setThreadFullscreen(false), 80);
+  };
+
+  const favoritesSidebarEl = (
+    <FavoritesSidebar activeKey={activeFavorite ? favKey(activeFavorite) : null} onOpen={openFavorite} onGoToServer={goToFavoriteServer} />
+  );
+
+  // Ecran partage (chat + fil) : deux cartes aux angles arrondis separees par une gouttiere (video de reference).
+  const splitView = !!activeThreadId && !isTablet && !threadFullscreen && (channelForChat?.type === 'text' || channelForChat?.type === 'announcement');
+  const dmView: DMView = dmShowInbox ? 'inbox' : activeDMId ? 'conversation' : 'friends';
+  const dmSidebarEl = (
+    <DMSidebar
+      activeDMId={activeDMId}
+      currentView={dmView}
+      onConversationSelect={handleOpenDM}
+      onShowFriends={handleShowFriends}
+      onShowInbox={handleShowInbox}
+    />
+  );
+
   const userPanelEl = !isMobile && !isTablet ? (
-    <div className="shrink-0 w-full">
+    <div className="w-full rounded-lg overflow-hidden bg-[hsl(var(--user-panel))] border border-white/[0.03] shadow-[0_0_10px_rgba(0,0,0,0.25)]">
       {isConnected && voiceState.channelName && (
         <VoiceStatusBadge
           channelName={voiceState.channelName}
@@ -719,9 +893,11 @@ const Index = () => {
           connectedToProfile
         />
       )}
+      {!isConnected && dmCallSession.joined && <DMCallStatusBadge />}
       <UserProfileCard
-        onOpenSettings={() => setShowAccountSettingsGlobal(true)}
-        onOpenProfile={() => setShowAccountSettingsGlobal(true)}
+        inDMCall={!!dmCallSession.joined}
+        onOpenSettings={() => setShowAccountSettingsGlobal('account')}
+        onOpenProfile={() => setShowAccountSettingsGlobal('profile')}
         speakingUsers={speakingUsers}
         connectedToVoice={isConnected && !!voiceState.channelName}
       />
@@ -739,14 +915,15 @@ const Index = () => {
       <MessageSearchPanel
         key={`search-panel-${activeServer.id}`}
         serverId={activeServer.id}
+        serverName={activeServer.name}
         channels={searchChannels}
         members={searchMembers}
         onClose={closeSearch}
         onSubmittedChange={setSearchSubmitted}
         initialSubmit={searchInitialSubmit}
+        // Comme Discord : "Aller" ouvre le salon et laisse les resultats affiches.
         onNavigateToMessage={(channelId) => {
           setActiveChannelId(channelId);
-          closeSearch();
         }}
       />
     </Suspense>
@@ -758,6 +935,7 @@ const Index = () => {
       key={`search-popover-${activeServer.id}`}
       variant="popover"
       serverId={activeServer.id}
+      serverName={activeServer.name}
       channels={searchChannels}
       members={searchMembers}
       onClose={closeSearch}
@@ -798,7 +976,7 @@ const Index = () => {
     : showGlobalSearch && searchSubmitted
       ? messageSearchEl
       : (
-        <div className="relative w-full sm:w-60 h-full">
+        <div className="relative w-full sm:w-[264px] h-full">
           {memberListBase}
           {showGlobalSearch && !searchSubmitted && (
             <>
@@ -806,20 +984,16 @@ const Index = () => {
                 type="button"
                 aria-label="Fermer la recherche"
                 onClick={closeSearch}
-                className="absolute inset-0 bg-black/40 z-10 cursor-default"
+                className="fixed inset-0 z-10 cursor-default bg-transparent"
               />
               {/* Verrou pixel-perfect recherche MemberList :
-                  Le bandeau de recherche est maintenant un bandeau plein type
-                  header (h-12, padding responsive px-3/sm:px-4, contenu centré
-                  verticalement via items-center) plutôt qu'un simple padding-top.
-                  - top = (h-12 − h-8 de l'Input) / 2 = (48 − 32) / 2 = 8px = top-2.
-                  - left = border-left MemberList (1px, seulement à partir de sm:)
-                    + padding gauche (px-3=12px sous sm, sm:px-4=16px dès sm).
-                  - right = inbox button (32px) + gap (8px) + padding droit (12px
-                    sous sm, 16px dès sm).
-                  Recalculer ces valeurs à chaque changement de hauteur/padding du
-                  bandeau MemberList — elles ne se déduisent pas automatiquement. */}
-              <div className="absolute left-3 sm:left-[17px] right-[52px] sm:right-[56px] top-2 z-20">
+                  rangee de 48px, champ de 32px → top = (48 − 32) / 2 = 8px.
+                  left = padding gauche (12px, pas de filet sur cette rangee).
+                  right = padding (12px) + bouton boite de reception (24px)
+                  + gap (12px) = 48px.
+                  Recalculer ces valeurs a chaque changement de la rangee de
+                  recherche de MemberList. */}
+              <div className="absolute left-3 right-12 top-2 z-20">
                 {messageSearchPopoverEl}
               </div>
             </>
@@ -833,7 +1007,7 @@ const Index = () => {
     : showGlobalSearch && searchSubmitted
       ? messageSearchEl
       : (
-        <div className="relative w-full sm:w-60 h-full flex flex-col">
+        <div className="relative w-full sm:w-[264px] h-full flex flex-col">
           {memberListSheetBase}
           {showGlobalSearch && !searchSubmitted && (
             <>
@@ -841,7 +1015,7 @@ const Index = () => {
                 type="button"
                 aria-label="Fermer la recherche"
                 onClick={closeSearch}
-                className="absolute inset-0 bg-black/40 z-10 cursor-default"
+                className="fixed inset-0 z-10 cursor-default bg-transparent"
               />
               <div className="absolute left-3 sm:left-[17px] right-[52px] sm:right-[56px] top-2 z-20">
                 {messageSearchPopoverEl}
@@ -852,54 +1026,74 @@ const Index = () => {
       );
 
   return (
-    <div className="h-[100svh] flex bg-[hsl(var(--sidebar-background))] overflow-hidden gap-[2px]">
-      {/*
-       * Sidebar rail.
-       *
-       * The server rail and the channel list sit side by side and the user
-       * panel spans BOTH of them along the bottom, which is the layout in the
-       * reference design. The panel used to be a `position: fixed` box with a
-       * hard-coded `calc(80px + 2px + 240px)` width; every change to the rail
-       * (including the user's own resize handle, 240-340px) desynchronised it.
-       * In normal flow it simply measures whatever sits above it.
-       *
-       * The inner `gap-[2px]` reproduces the separator that the outer flex gap
-       * used to provide between the server rail and the channel list.
-       */}
-      <div className="flex flex-col shrink-0 h-full min-h-0">
-        <div className="flex flex-1 min-h-0 gap-[2px]">
-          {/* Server List - compact rail on tablet (64px) */}
-          <div className={isTablet ? 'w-[64px] shrink-0 [&>div]:!w-[64px]' : 'shrink-0'}>
-            <ServerList
-              servers={serverListData}
-              activeServerId={activeServerId}
-              onServerSelect={handleServerSelect}
-              onDiscoverClick={() => setShowDiscover(true)}
-              onCreateClick={() => setShowCreate(true)}
-              onOpenServerSettings={handleOpenServerSettings}
-            />
-          </div>
-
-          {/*
-           * No width class here: ChannelList owns its own width (it is
-           * user-resizable between 240 and 340px). Forcing a width on a wrapper
-           * fought that resize handle.
-           */}
-          {!isHomeView && activeServer && serverForChannelList && !isTablet && (
-            <div className="flex flex-col shrink-0 min-h-0">{channelListEl}</div>
-          )}
-        </div>
-
-        {userPanelEl}
+    <div className="h-[100svh] flex bg-[hsl(var(--sidebar-background))] overflow-hidden">
+      <IncomingCallWatcher activeConversationId={activeDMId} />
+      {/* Server List - compact rail on tablet (64px) */}
+      <div className={isTablet ? 'w-[64px] shrink-0 [&>div]:!w-[64px]' : 'shrink-0'}>
+        <ServerList
+          servers={serverListData}
+          activeServerId={activeServerId}
+          onServerSelect={handleServerSelect}
+          onDiscoverClick={() => { setFavoritesMode(false); setShowDiscover((v) => !v); }}
+          onCreateClick={() => setShowCreate(true)}
+          onOpenServerSettings={handleOpenServerSettings}
+          reserveUserPanel={!!userPanelEl}
+          discoverActive={showDiscover}
+          favoritesEnabled={favorites.enabled}
+          favoritesActive={favoritesMode && !showDiscover}
+          onFavoritesClick={() => { setShowDiscover(false); setFavoritesMode(true); }}
+        />
       </div>
 
+      {/*
+       * Main panel. Like the reference, the channel list, the chat and the
+       * member list sit in a single panel with a 1px border on its top and
+       * left edges and a rounded top-left corner, a few pixels below the top
+       * of the window. The rail and the channel list share the same grey, so
+       * this border is the only thing separating them.
+       */}
+      <div className="flex-1 flex min-w-0 min-h-0 mt-[5px] [.desktop-content_&]:mt-0 rounded-tl-[12px] border-l border-t border-[hsl(var(--frame-border))]">
+      {showDiscover ? (
+        <div className="relative flex-1 flex min-w-0 min-h-0 rounded-tl-[11px] overflow-hidden">
+          <Suspense fallback={<Spinner />}>
+            <DiscoveryPage
+              onJoinServer={handleJoinServer}
+              joining={joinServer.isPending}
+              onOpenServer={(id) => { setShowDiscover(false); setActiveServerId(id); setActiveDMId(null); }}
+            />
+          </Suspense>
+          {userPanelEl && <div className="absolute bottom-2 -left-[65px] w-[337px] z-30">{userPanelEl}</div>}
+        </div>
+      ) : (<>
+      {/*
+       * Sidebar column. No width class here: ChannelList owns its own width
+       * (it is user-resizable). The user panel floats over the bottom of the
+       * rail AND of this column, 8px from the window edges, so it is
+       * positioned against this column and pushed left over the rail
+       * (72px rail + 1px panel border - 8px margin = 65px).
+       */}
+      {!isTablet && (favoritesMode || isHomeView || (activeServer && serverForChannelList)) && (
+        <div className="relative flex flex-col shrink-0 min-h-0">
+          {favoritesMode ? favoritesSidebarEl : isHomeView ? dmSidebarEl : channelListEl}
+          {userPanelEl && (
+            <div className="absolute bottom-2 right-1.5 -left-[63px] z-30">{userPanelEl}</div>
+          )}
+        </div>
+      )}
+
       {/* Home/DM View */}
-      {isHomeView ? (
-        <DMPage
-          activeDMId={activeDMId}
-          onConversationSelect={handleOpenDM}
-          onShowFriends={handleShowFriends}
-        />
+      {favoritesMode && !activeFavorite ? (
+        <div className="flex-1 flex min-w-0 bg-background"><FavoritesEmpty /></div>
+      ) : isHomeView ? (
+        <>
+          {isTablet && dmSidebarEl}
+          <DMPage
+            activeDMId={activeDMId}
+            currentView={dmView}
+            onConversationSelect={handleOpenDM}
+            onShowFriends={handleShowFriends}
+          />
+        </>
       ) : activeServer && serverForChannelList ? (
         <>
 
@@ -931,9 +1125,25 @@ const Index = () => {
               </>
             )}
 
-            {channelForChat && (
+            {serverView && activeServerId && (
+              <ServerViewPage
+                view={serverView}
+                serverId={activeServerId}
+                onOpenChannel={(channelId) => {
+                  setServerView(null);
+                  setActiveChannelId(channelId);
+                  setChannelForServer(activeServerId, channelId);
+                }}
+                onOpenSettings={(tab) => {
+                  setServerSettingsInitialTab(tab);
+                  setShowServerSettings(true);
+                }}
+              />
+            )}
+
+            {channelForChat && !serverView && (
               <div
-                className={`${activeThreadId && (channelForChat.type === 'text' || channelForChat.type === 'announcement') ? (threadFullscreen ? 'hidden' : 'min-w-[300px]') : 'flex-1 min-w-0'} flex flex-col w-full overflow-hidden`}
+                className={`${activeThreadId && (channelForChat.type === 'text' || channelForChat.type === 'announcement') ? (threadFullscreen ? 'hidden' : 'min-w-[300px]') : 'flex-1 min-w-0'} flex flex-col w-full overflow-hidden ${splitView ? 'rounded-r-xl border border-l-0 border-[hsl(var(--frame-border))] mb-1 bg-background' : ''}`}
                 style={activeThreadId && (channelForChat.type === 'text' || channelForChat.type === 'announcement') && !threadFullscreen ? { flex: `${10 - threadPanelFlex} 1 0%` } : undefined}
               >
                 {channelForChat.type === 'voice' ? (
@@ -954,6 +1164,7 @@ const Index = () => {
                   <MediaChannel
                     key={channelForChat.id}
                     channel={channelForChat}
+                    serverId={activeServerId ?? undefined}
                     onToggleMembers={handleToggleMembers}
                     showMembers={showMembers}
                   />
@@ -985,21 +1196,6 @@ const Index = () => {
                     channel={channelForChat}
                     onToggleMembers={handleToggleMembers}
                     showMembers={showMembers}
-                  />
-                  </Suspense>
-                ) : channelForChat.type === 'announcement' ? (
-                  <Suspense fallback={<Spinner />}>
-                  <AnnouncementChannel
-                    key={channelForChat.id}
-                    channel={channelForChat}
-                    onToggleMembers={handleToggleMembers}
-                    showMembers={showMembers}
-                    onSelectThread={(threadId) => setActiveThreadId(threadId)}
-                    activeThreadId={activeThreadId}
-                    onCloseThread={() => {
-                      setActiveThreadId(null);
-                      setThreadChannelId(null);
-                    }}
                   />
                   </Suspense>
                 ) : channelForChat.type === 'stage' ? (
@@ -1037,6 +1233,8 @@ const Index = () => {
                     }}
                     onLoadOlder={loadOlderMessages}
                     hasMoreOlder={hasMoreOlder ?? false}
+                    messagesLoading={messagesQuery.isLoading}
+                    onOpenServerSettings={(tab) => handleOpenServerSettings(undefined, tab)}
                   />
                 )}
               </div>
@@ -1048,7 +1246,7 @@ const Index = () => {
               {/* Invisible resize handle (desktop only) */}
               {!isTablet && (
                 <div
-                  className="w-1 shrink-0 cursor-ew-resize bg-transparent z-10 relative"
+                  className="w-[11px] shrink-0 cursor-ew-resize bg-transparent z-10 relative"
                   onMouseDown={(e) => {
                     e.preventDefault();
                     threadResizing.current = true;
@@ -1074,10 +1272,20 @@ const Index = () => {
                 />
               )}
               <div
-                className="min-w-[300px]"
+                className={cn('min-w-[300px]', splitView && 'rounded-xl border border-[hsl(var(--frame-border))] mb-1 overflow-hidden bg-background [&>div]:!border-l-0')}
                 style={isTablet ? { flex: '1 1 0%' } : threadFullscreen ? { flex: '1 1 0%' } : { flex: `${threadPanelFlex} 1 0%` }}
               >
                 <Suspense fallback={<Spinner />}>
+                {activeThreadId === NEW_THREAD_ID ? (
+                  <NewThreadPanel
+                    channelId={threadChannelId || activeChannelId || ''}
+                    serverId={activeServerId}
+                    messageId={newThreadMessageId}
+                    forcePublic={channelForChat?.type === 'announcement'}
+                    onClose={() => { setActiveThreadId(null); setThreadChannelId(null); setNewThreadMessageId(null); }}
+                    onCreated={(id) => { setNewThreadMessageId(null); setActiveThreadId(id); }}
+                  />
+                ) : (
                 <ThreadView
                   threadId={activeThreadId}
                   channelId={threadChannelId || activeChannelId || undefined}
@@ -1090,7 +1298,12 @@ const Index = () => {
                   }}
                   isFullscreen={isTablet ? true : threadFullscreen}
                   onToggleFullscreen={() => setThreadFullscreen(!threadFullscreen)}
+                  onSwitchThread={(id) => setActiveThreadId(id)}
+                  onToggleMembers={() => setShowMembers(!showMembers)}
+                  membersOpen={showMembers}
+                  favoriteTrail={favoritesMode && activeServer ? { serverName: activeServer.name, serverIcon: (activeServer as { icon_url?: string | null }).icon_url ?? null, onGoToServer: () => { const it = favorites.items.find((i) => i.kind === 'thread' && i.ref_id === activeThreadId); if (it) goToFavoriteServer(it); } } : undefined}
                 />
+                )}
                 </Suspense>
               </div>
               </>
@@ -1098,9 +1311,11 @@ const Index = () => {
           </div>
 
           {/* Right Panel - Member List or Message Search inline (desktop only) */}
-          {channelForChat?.type !== 'voice' && !activeThreadId && (showMembers || showGlobalSearch) && !isTablet && memberListEl}
+          {!serverView && channelForChat?.type !== 'voice' && (!activeThreadId || (threadFullscreen && activeThreadId !== NEW_THREAD_ID)) && (showMembers || showGlobalSearch) && !isTablet && memberListEl}
         </>
       ) : null}
+      </>)}
+      </div>
 
       {/* Tablet drawers */}
       {isTablet && channelListEl && (
@@ -1119,17 +1334,10 @@ const Index = () => {
       )}
 
 
-      {/* Modals */}
-      {showDiscover && (
-        <Suspense fallback={<Spinner />}>
-          <DiscoverModal
-            servers={discoverableServers}
-            onClose={() => setShowDiscover(false)}
-            onJoinServer={handleJoinServer}
-          />
-        </Suspense>
-      )}
+      {/* Processus d'accueil du serveur ouvert (nouveau membre) */}
+      <MemberOnboardingGate serverId={activeServerId} />
 
+      {/* Modals */}
       {showCreate && (
         <Suspense fallback={<Spinner />}>
           <CreateServerModal
@@ -1159,7 +1367,7 @@ const Index = () => {
       {/* Global search is rendered inline as MessageSearchPanel below (replacing MemberList). */}
       {showAccountSettingsGlobal && (
         <Suspense fallback={<Spinner />}>
-          <AccountSettingsModal onClose={() => setShowAccountSettingsGlobal(false)} />
+          <AccountSettingsModal onClose={() => setShowAccountSettingsGlobal(false)} initialTab={showAccountSettingsGlobal || null} />
         </Suspense>
       )}
     </div>

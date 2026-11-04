@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { BellOff, Check, Image as ImageIcon, Mic, Paperclip, Trash2, Users } from 'lucide-react';
+import { Paperclip } from 'lucide-react';
+import { BellOff, Check, Image as ImageIcon, Mic, Trash2, Users } from '@/components/icons/discord/lucide';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/lib/haptics';
 import { useReducedMotion } from '@/hooks/useReducedMotion';

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { refreshSignedUrls } from '@/lib/storageUrls';
 import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -53,7 +54,7 @@ export function useMediaPosts(channelId: string) {
   const query = useQuery<MediaPost[]>({
     queryKey: ['media-posts', channelId],
     placeholderData: () => cacheGetSync(`media-posts:${channelId}`),
-    queryFn: async () => {
+    queryFn: async () => refreshSignedUrls(await (async () => {
       const { data, error } = await (supabase
         .from('media_posts') as any)
         .select('*, items:media_post_items(*)')
@@ -83,7 +84,7 @@ export function useMediaPosts(channelId: string) {
         return { ...r, items: fallbackItems } as MediaPost;
       });
       return normalized;
-    },
+    })()),
     enabled: !!channelId,
   });
 

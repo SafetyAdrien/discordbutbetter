@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, ArrowLeft, Compass } from 'lucide-react';
+import { X, ArrowLeft, Compass } from '@/components/icons/discord/lucide';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useJoinByInvite } from '@/hooks/useInvites';

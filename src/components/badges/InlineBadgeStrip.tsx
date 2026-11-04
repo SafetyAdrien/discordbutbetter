@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Award } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { badgeIconUrl } from '@/lib/badgeIcons';
 import { useBadges, type Badge } from '@/hooks/useBadges';
 import { useUserBadges } from '@/hooks/useUserBadges';
 import { useBirthdayGrantYears } from '@/hooks/useBirthdayGrants';
@@ -61,8 +62,8 @@ export function InlineBadgeStrip({ userId, max = 5, className, variant = 'plain'
                 className="inline-flex items-center justify-center rounded-md bg-background/40 border border-border/40 w-6 h-6"
                 style={{ color: b.color }}
               >
-                {b.icon_url ? (
-                  <img src={b.icon_url} alt={b.name} className="w-4 h-4 object-contain" />
+                {badgeIconUrl(b) ? (
+                  <img src={badgeIconUrl(b)!} alt={b.name} className="w-4 h-4 object-contain" />
                 ) : isBirthday ? (
                   <span className="text-[13px] leading-none">🎂</span>
                 ) : (

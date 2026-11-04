@@ -10,10 +10,11 @@ import { useChannels } from '@/hooks/useChannels';
 import { useServerRoles } from '@/hooks/useRoles';
 import { useMembers } from '@/hooks/useMembers';
 import { useAuth } from '@/contexts/AuthContext';
-import { X, Check } from 'lucide-react';
+import { X, Check, MessageCircle } from '@/components/icons/discord/lucide';
 import { format } from '@/lib/dateUtils';
 import { fr } from '@/lib/dateUtils';
 import { MessageInput } from '@/components/chat/MessageInput';
+import { TypingIndicator } from '@/components/typing/TypingIndicator';
 import { UniversalMessageContextMenu } from '@/components/chat/UniversalMessageContextMenu';
 import { UniversalMessageActions } from '@/components/chat/UniversalMessageActions';
 import { useMessageReactions, useAddReaction, useRemoveReaction, useClearMessageReactions, Reaction } from '@/hooks/useReactions';
@@ -26,7 +27,9 @@ import { MarkdownText } from '@/lib/markdown';
 import { usePendingAttachments } from '@/hooks/usePendingAttachments';
 import { UploadDropOverlay } from '@/components/chat/upload/UploadDropOverlay';
 import { cn } from '@/lib/utils';
+import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 
+import { appLocale } from '@/i18n/locale';
 function formatDate(date: Date): string {
   const today = new Date();
   const yesterday = new Date(today);
@@ -36,7 +39,7 @@ function formatDate(date: Date): string {
   } else if (date.toDateString() === yesterday.toDateString()) {
     return "Hier";
   }
-  return date.toLocaleDateString("fr-FR", {
+  return date.toLocaleDateString(appLocale(), {
     day: "numeric",
     month: "long",
     year: "numeric",
@@ -59,6 +62,7 @@ export function VoiceChannelChat({ channelId, channelName, serverId, onClose }: 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   const { user } = useAuth();
+  const { startTyping, stopTyping } = useTypingIndicator(channelId);
   const isShiftPressed = useShiftKey();
   const { data: messages = [] } = useMessages(channelId);
   const sendMessage = useSendMessage();
@@ -185,7 +189,7 @@ export function VoiceChannelChat({ channelId, channelName, serverId, onClose }: 
 
   return (
     <div 
-      className="w-80 border-l border-white/10 flex flex-col bg-[#2b2d31] relative"
+      className="w-[488px] max-w-[45%] shrink-0 animate-in slide-in-from-right-6 fade-in-0 duration-150 border-l border-[hsl(var(--border-subtle))] flex flex-col bg-background relative"
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
       onDragOver={handleDragOver}
@@ -195,19 +199,24 @@ export function VoiceChannelChat({ channelId, channelName, serverId, onClose }: 
         {isDragging && <UploadDropOverlay channelName={channelName} />}
       </AnimatePresence>
       
-      <div className="h-12 px-4 flex items-center justify-between bg-[hsl(var(--surface-2))]" style={{ borderBottom: "1px solid hsl(var(--border) / 0.5)", boxShadow: "var(--shadow-elevation-1)" }}>
-        <span className="text-sm font-semibold text-white">Chat textuel</span>
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-white" onClick={onClose}>
-          <X className="w-4 h-4" />
-        </Button>
+      {/* En-tete de la video de reference : bulle + nom du salon, croix a droite, filet fin. */}
+      <div className="h-12 px-4 flex items-center gap-2 shrink-0 border-b border-[hsl(var(--border-subtle))]">
+        <MessageCircle className="w-6 h-6 text-[hsl(var(--header-icon))] shrink-0" />
+        <span translate="no" className="flex-1 min-w-0 truncate text-base font-medium text-[#f2f3f5]">{channelName}</span>
+        <button type="button" aria-label="Fermer" title="Fermer" onClick={onClose} className="w-8 h-8 rounded-md flex items-center justify-center text-[hsl(var(--header-icon))] hover:text-white transition-colors">
+          <X className="w-5 h-5" />
+        </button>
       </div>
 
-      <ScrollArea className="flex-1 p-3">
-        <div className="space-y-0.5">
+      <ScrollArea className="flex-1 mb-6 px-3 pt-3 pb-0 [&>div>div]:!flex [&>div>div]:min-h-full [&>div>div]:flex-col">
+        <div className="space-y-0.5 flex flex-col flex-1 min-h-full">
           {messages.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-sm text-muted-foreground">Aucun message</p>
-              <p className="text-xs text-muted-foreground/70 mt-1">Commencez la conversation !</p>
+            <div className="mt-auto pt-24 px-1">
+              <div className="w-[68px] h-[68px] rounded-full bg-[hsl(var(--button-secondary))] flex items-center justify-center mb-2">
+                <MessageCircle className="w-8 h-8 text-white" />
+              </div>
+              <h1 translate="no" className="text-[32px] leading-10 font-bold text-white">Bienvenue dans {channelName} !</h1>
+              <p className="text-base text-foreground">C'est le début du salon {channelName}.</p>
             </div>
           ) : (
             messages.map((message, idx) => {
@@ -233,11 +242,7 @@ export function VoiceChannelChat({ channelId, channelName, serverId, onClose }: 
               return (
                 <div key={message.id}>
                   {showDateSeparator && (
-                    <div className="flex items-center gap-4 my-2">
-                      <div className="flex-1 h-px bg-border" />
-                      <span className="text-xs text-muted-foreground font-medium">{formatDate(currentDate)}</span>
-                      <div className="flex-1 h-px bg-border" />
-                    </div>
+                    <div className="flex items-center gap-2 my-4 mx-4"><div className="flex-1 h-px bg-white/[0.06]" /><span className="text-xs font-semibold text-[#949ba4] px-1">{formatDate(currentDate)}</span><div className="flex-1 h-px bg-white/[0.06]" /></div>
                   )}
                   <UniversalMessageContextMenu
                     messageId={message.id}
@@ -265,7 +270,7 @@ export function VoiceChannelChat({ channelId, channelName, serverId, onClose }: 
                     onDelete={isOwnMessage ? () => handleDelete(message.id) : undefined}
                   >
                     <div 
-                      className="relative group"
+                      className="relative group message-hover -mx-3 px-3 py-0.5"
                       onMouseEnter={() => setHoveredMessageId(message.id)}
                       onMouseLeave={() => { if (!openDropdownMessageId) setHoveredMessageId(null); }}
                     >
@@ -365,17 +370,20 @@ export function VoiceChannelChat({ channelId, channelName, serverId, onClose }: 
               );
             })
           )}
-          <div ref={messagesEndRef} />
+          <div ref={messagesEndRef} className="msg-end" />
         </div>
       </ScrollArea>
 
       <div>
+        <TypingIndicator channelId={channelId} />
         <MessageInput
           value={messageInput}
           onChange={setMessageInput}
+          onTypingStart={startTyping}
+          onTypingStop={stopTyping}
           onSend={handleSend}
           onSendExternalAttachment={handleSendExternalAttachment}
-          placeholder={`Envoyer un message dans #${channelName}`}
+          placeholder={`Envoyer un message dans ${channelName}`}
           disabled={sendMessage.isPending}
           isSending={sendMessage.isPending}
           compact

@@ -1,10 +1,12 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { useServerEmojis, useServerStickers } from '@/hooks/useServerAssets';
 import { EMOJI_CATEGORIES } from '@/data/emojis';
 import { getEmojiKeywords, preloadEmojiKeywords } from '@/data/emojiKeywords';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
+import { DiscordPickerPanel } from './emoji-picker/DiscordPickerPanel';
+import { useAllServerAssets } from '@/hooks/useAllServerAssets';
 import { EmojiPickerHeader, type PickerTab } from './emoji-picker/EmojiPickerHeader';
 import { EmojiCategoryNav, type CategoryEntry } from './emoji-picker/EmojiCategoryNav';
 import { EmojiGrid, type EmojiGridHandle, type EmojiSection } from './emoji-picker/EmojiGrid';
@@ -17,11 +19,19 @@ import { FavoritesRow } from './emoji-picker/FavoritesRow';
 
 interface EmojiStickerPickerProps {
   serverId: string | null;
-  onEmojiSelect: (emoji: string) => void;
+  /** `custom` est renseigne pour un emoji de serveur (nom + image) : de quoi ecrire son vrai jeton. */
+  onEmojiSelect: (emoji: string, custom?: { id: string; name: string; url: string }) => void;
   onStickerSelect?: (stickerUrl: string, stickerName: string) => void;
   onGifSelect?: (gifUrl: string, gifName: string) => void;
   trigger: React.ReactNode;
   defaultTab?: PickerTab;
+  /** Ouverture pilotee de l'exterieur (menu d'un message > "Voir plus"). */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  side?: 'top' | 'bottom' | 'left' | 'right';
+  align?: 'start' | 'center' | 'end';
+  /** Texte du champ de recherche de l'onglet emoji (ex. "Trouve la réaction parfaite"). */
+  searchPlaceholder?: string;
 }
 
 export function EmojiStickerPicker({
@@ -31,8 +41,16 @@ export function EmojiStickerPicker({
   onGifSelect,
   trigger,
   defaultTab = 'emoji',
+  open: openProp,
+  onOpenChange,
+  side = 'top',
+  align = 'end',
+  searchPlaceholder,
 }: EmojiStickerPickerProps) {
-  const [open, setOpen] = useState(false);
+  const [openState, setOpenState] = useState(false);
+  const open = openProp ?? openState;
+  const setOpen = useCallback((v: boolean) => { setOpenState(v); onOpenChange?.(v); }, [onOpenChange]);
+  useEffect(() => { if (open) void preloadEmojiKeywords(); }, [open]);
   const [tab, setTab] = useState<PickerTab>(defaultTab);
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('recent');
@@ -50,7 +68,7 @@ export function EmojiStickerPicker({
   const { data: serverStickers = [] } = useServerStickers(serverId);
   const { isMobile } = useBreakpoint();
   const { recent, push: pushRecent, clear: clearRecent } = useRecentEmojis();
-  const { isFavorite, toggle: toggleFavorite, byKind: favoritesByKind } = useFavorites();
+  const { favorites, isFavorite, toggle: toggleFavorite, byKind: favoritesByKind } = useFavorites();
 
   const {
     data: gifs = [],
@@ -66,7 +84,7 @@ export function EmojiStickerPicker({
     if (!q && recent.length > 0) {
       out.push({
         id: 'recent',
-        label: 'Récemment utilisés',
+        label: 'Fréquemment utilisés',
         items: recent.map((char) => ({ kind: 'unicode' as const, char })),
       });
     }
@@ -136,10 +154,10 @@ export function EmojiStickerPicker({
     return serverStickers.filter((s) => !q || s.name.toLowerCase().includes(q));
   }, [search, serverStickers]);
 
-  const handleEmojiPick = (insert: string) => {
+  const handleEmojiPick = (insert: string, custom?: { id: string; name: string; url: string }) => {
     // Only push unicode chars to recents (avoid :name: shortcodes).
     if (!insert.startsWith(':')) pushRecent(insert);
-    onEmojiSelect(insert);
+    onEmojiSelect(insert, custom);
     setOpen(false);
   };
 
@@ -155,7 +173,7 @@ export function EmojiStickerPicker({
 
   const handleFavoritePick = (item: FavoriteItem) => {
     if (item.kind === 'emoji-unicode') handleEmojiPick(item.char);
-    else if (item.kind === 'emoji-custom') handleEmojiPick(item.insertText);
+    else if (item.kind === 'emoji-custom') handleEmojiPick(item.insertText, { id: item.id, name: item.name, url: item.url });
     else if (item.kind === 'sticker') handleStickerPick(item.url, item.name);
     else if (item.kind === 'gif') handleGifPick(item.url, item.name);
   };
@@ -261,6 +279,50 @@ export function EmojiStickerPicker({
     </div>
   );
 
+  // Selecteur de bureau universel (video de reference) : voir DiscordPickerPanel.
+  const [wave] = useState(() => ['👏', '😀', '😎', '🎉', '👍', '🔥', '😂', '🤔'][Math.floor(Math.random() * 8)]);
+  const allAssets = useAllServerAssets(open && !isMobile);
+  // Le serveur courant reste disponible meme si la liste des serveurs n'est pas encore chargee.
+  const panelEmojis = useMemo(() => {
+    const ids = new Set(allAssets.emojis.map((e) => e.id));
+    return [...allAssets.emojis, ...serverEmojis.filter((e) => !ids.has(e.id))];
+  }, [allAssets.emojis, serverEmojis]);
+  const panelStickers = useMemo(() => {
+    const ids = new Set(allAssets.stickers.map((e) => e.id));
+    return [...allAssets.stickers, ...serverStickers.filter((e) => !ids.has(e.id))];
+  }, [allAssets.stickers, serverStickers]);
+  const panelServers = useMemo(() => {
+    const list = [...allAssets.servers];
+    if (serverId && !list.some((x) => x.id === serverId)) list.push({ id: serverId, name: 'Ce serveur', icon_url: null });
+    return list;
+  }, [allAssets.servers, serverId]);
+  const desktopContent = (
+    <DiscordPickerPanel
+      searchPlaceholder={searchPlaceholder}
+      tab={tab}
+      onTabChange={setTab}
+      showGif={!!onGifSelect}
+      showSticker={!!onStickerSelect}
+      search={search}
+      onSearch={handleSearchChange}
+      currentServerId={serverId}
+      servers={panelServers}
+      emojis={panelEmojis}
+      stickers={panelStickers}
+      recent={recent}
+      favorites={favorites}
+      isFavorite={isFavorite}
+      onToggleFavorite={toggleFavorite}
+      onPickEmoji={handleEmojiPick}
+      onPickSticker={handleStickerPick}
+      onPickGif={handleGifPick}
+      gifs={gifs}
+      gifsLoading={gifsLoading}
+      gifsFetching={gifsFetching}
+      wave={wave}
+    />
+  );
+
   if (isMobile) {
     return (
       <>
@@ -279,16 +341,16 @@ export function EmojiStickerPicker({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>
       <PopoverContent
-        side="top"
-        align="end"
+        side={side}
+        align={align}
         collisionPadding={12}
-        className="z-[110] w-[380px] p-0 bg-popover border-0 rounded-2xl overflow-hidden"
+        className="z-[110] w-[497px] max-w-[calc(100vw-24px)] p-0 bg-popover border border-white/[0.08] rounded-lg overflow-hidden animate-in fade-in-0 zoom-in-95 duration-100"
         style={{
           boxShadow: 'var(--shadow-elevation-3)',
           maxHeight: 'var(--radix-popover-content-available-height)',
         }}
       >
-        {pickerContent}
+        {desktopContent}
       </PopoverContent>
     </Popover>
   );

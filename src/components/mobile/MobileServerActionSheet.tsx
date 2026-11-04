@@ -1,4 +1,4 @@
-import { CheckCircle, UserPlus, Settings, Hash, LogOut } from 'lucide-react';
+import { CheckCircle, UserPlus, Settings, LogOut } from '@/components/icons/discord/lucide';
 import { AdaptiveSheet } from '@/components/ui/adaptive-sheet';
 import {
   AlertDialog,
@@ -20,6 +20,7 @@ import { uuidToSnowflake } from '@/lib/snowflake';
 import { toast } from 'sonner';
 import type { Server } from '@/types/app';
 
+import { ChannelSheetIcon } from '@/components/icons/ChannelSheetIcon';
 interface Props {
   server: Server | null;
   open: boolean;
@@ -85,24 +86,24 @@ export function MobileServerActionSheet({ server, open, onOpenChange, onOpenSett
     <>
       <AdaptiveSheet open={open} onOpenChange={onOpenChange} title={server.name}>
         <div className="p-2">
-          <button type="button" onClick={handleMarkAsRead} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
+          <button type="button" onClick={handleMarkAsRead} className="flex items-center gap-3 w-full px-2 py-[6px] rounded-[4px] text-[14px] leading-[18px] text-foreground hover:bg-[hsl(var(--surface-hover))] transition-colors">
             <CheckCircle className="w-4 h-4" />
             Marquer comme lu
           </button>
           {canCreateInvite && (
-            <button type="button" onClick={handleInvite} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
+            <button type="button" onClick={handleInvite} className="flex items-center gap-3 w-full px-2 py-[6px] rounded-[4px] text-[14px] leading-[18px] text-foreground hover:bg-[hsl(var(--surface-hover))] transition-colors">
               <UserPlus className="w-4 h-4" />
               Inviter des personnes
             </button>
           )}
           {canOpenSettings && (
-            <button type="button" onClick={handleOpenSettings} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
+            <button type="button" onClick={handleOpenSettings} className="flex items-center gap-3 w-full px-2 py-[6px] rounded-[4px] text-[14px] leading-[18px] text-foreground hover:bg-[hsl(var(--surface-hover))] transition-colors">
               <Settings className="w-4 h-4" />
               Paramètres du serveur
             </button>
           )}
-          <button type="button" onClick={handleCopyId} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
-            <Hash className="w-4 h-4" />
+          <button type="button" onClick={handleCopyId} className="flex items-center gap-3 w-full px-2 py-[6px] rounded-[4px] text-[14px] leading-[18px] text-foreground hover:bg-[hsl(var(--surface-hover))] transition-colors">
+            <ChannelSheetIcon name="id" className="w-4 h-4" />
             Copier l'ID
           </button>
           {!isGod && (

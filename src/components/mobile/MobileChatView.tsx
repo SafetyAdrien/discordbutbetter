@@ -1,5 +1,5 @@
 import { useState, ReactNode, useEffect } from 'react';
-import { Pin, Bell, Search, X, MoreVertical, Rss } from 'lucide-react';
+import { Pin, Bell, Search, X, MoreVertical, Rss } from '@/components/icons/discord/lucide';
 import { ChatArea } from '@/components/chat/ChatArea';
 import { Sheet, SheetContent, SheetClose } from '@/components/ui/sheet';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';

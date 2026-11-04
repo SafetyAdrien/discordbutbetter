@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, ArrowRight, Search } from 'lucide-react';
+import { X, ArrowRight, Search } from '@/components/icons/discord/lucide';
 import { Input } from '@/components/ui/input';
 import { useFriends } from '@/hooks/useFriends';
 import { useCreateDMConversation } from '@/hooks/useDMs';
@@ -80,7 +80,7 @@ export function NewDMSheet({ onClose, onOpenDM }: NewDMSheetProps) {
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{friend.profile.display_name}</p>
+                    <p translate="no" className="text-sm font-medium truncate">{friend.profile.display_name}</p>
                     <p className="text-xs text-muted-foreground truncate">@{friend.profile.username}</p>
                   </div>
                   <ArrowRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />

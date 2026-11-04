@@ -1,12 +1,17 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { withReplyMention } from '@/lib/replyMention';
+import React, { Fragment, useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { uuidToSnowflake } from '@/lib/snowflake';
 import { messageMentionsMe } from '@/lib/mention-detection';
-import { ArrowLeft, ArrowDown, Hash, BarChart2, Link, Pencil, Trash2, Bell, BellOff, MoreVertical, Check, X, StopCircle, Maximize2, Minimize2, Reply } from 'lucide-react';
+import { ArrowDown, BarChart2, StopCircle } from 'lucide-react';
+import { ArrowLeft, Link, Pencil, Trash2, Bell, BellOff, MoreVertical, Check, Maximize2, Minimize2, Reply } from '@/components/icons/discord/lucide';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { MarkdownTextarea } from '@/components/chat/MarkdownTextarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { UserProfilePopup } from '@/components/profile/UserProfilePopup';
+import { ServerTagBadge } from '@/components/server-tags/ServerTagBadge';
+import type { User } from '@/types/app';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   ContextMenu,
@@ -19,6 +24,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -31,11 +37,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { useThread, useDeleteThread, useUpdateThread } from '@/hooks/useThreads';
+import { useThread, useDeleteThread, useUpdateThread, useLockThread } from '@/hooks/useThreads';
+import { DeleteThreadDialog } from './DeleteThreadDialog';
+import { SpoilerGate } from './SpoilerGate';
+import { ThreadSettingsPage } from './ThreadSettingsPage';
+import { ThreadMenuItems, ThreadNotificationSubmenus } from './ThreadMenuItems';
 import { useThreadMessages, useSendThreadMessage, useEditThreadMessage, useDeleteThreadMessage } from '@/hooks/useThreadMessages';
 import { useMarkThreadAsRead } from '@/hooks/useThreadUnreadCounts';
 import { useThreadPolls, useDeletePoll, useEndPoll, Poll } from '@/hooks/usePolls';
-import { useIsFollowingThread, useFollowThread, useUnfollowThread } from '@/hooks/useThreadFollow';
+import { useIsFollowingThread, useFollowThread, useUnfollowThread, useThreadNotificationPrefs, isThreadMuted } from '@/hooks/useThreadFollow';
 import { useChannels } from '@/hooks/useChannels';
 import { useServerRoles } from '@/hooks/useRoles';
 import { useMembers } from '@/hooks/useMembers';
@@ -67,6 +77,25 @@ import { RepliedLine } from '@/components/chat/RepliedLine';
 import { ReplyBanner } from '@/components/chat/ReplyBanner';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 
+import { ChannelSheetIcon } from '@/components/icons/ChannelSheetIcon';
+import { StreamlineForum } from '@/components/icons/StreamlineForum';
+import { MessageAttachments } from '@/components/chat/MessageAttachments';
+import { ForwardedFrame } from '@/components/chat/ForwardedFrame';
+import { toast } from 'sonner';
+import { EditableAttachments } from '@/components/chat/EditableAttachments';
+import { AttachmentEditsPanel, useAttachmentEdits } from '@/components/chat/upload/AttachmentEditsPanel';
+import { useForwardedFrom } from '@/hooks/useForwardedFrom';
+import { openForwardMessage } from '@/lib/forwardMessage';
+import { useThreadStarterMessage } from '@/hooks/useThreadStarterMessage';
+import { jumpToChannelMessage } from '@/lib/threadEvents';
+import { usePendingAttachments } from '@/hooks/usePendingAttachments';
+import { EmojiStickerPicker } from '@/components/chat/EmojiStickerPicker';
+import { ForumTagChip } from '@/components/channels/forum/ForumTagChip';
+import type { ForumTag } from '@/hooks/useForumTags';
+import { MessageCircle, MoreHorizontal, X as CloseIcon, Smile, Pin as PinIcon, Users as UsersIcon } from '@/components/icons/discord/lucide';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import ThreadsPopover from '@/components/threads/ThreadsPopover';
+import { ForumEmoji } from '@/components/channels/forum/ForumEmoji';
 const MOBILE_BREAKPOINT = 768;
 interface ThreadViewProps {
   threadId: string;
@@ -76,11 +105,31 @@ interface ThreadViewProps {
   onBack: () => void;
   isFullscreen?: boolean;
   onToggleFullscreen?: () => void;
+  /** Vue principale : liste des fils du salon (ouvre un autre fil) et bascule de la liste des membres. */
+  onSwitchThread?: (threadId: string) => void;
+  onToggleMembers?: () => void;
+  membersOpen?: boolean;
+  /** Post de Forum / Multimedia : en-tete, introduction et barre du post. */
+  forumPost?: ForumPostPanelOptions;
+  /** Vue Favoris : fil d'Ariane "serveur > salon > fil" et bouton "Y aller" (video de reference). */
+  favoriteTrail?: { serverName: string; serverIcon?: string | null; onGoToServer: () => void };
 }
 
-const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelId, serverId, onBack, isFullscreen, onToggleFullscreen }) => {
+export interface ForumPostPanelOptions {
+  starterMessageId: string | null;
+  tags: ForumTag[];
+  defaultEmoji: string | null;
+  isFollowing: boolean;
+  onToggleFollow: () => void;
+  /** Contenu du menu "..." (DropdownMenuItem). */
+  menu: React.ReactNode;
+}
+
+const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelId, serverId, onBack, isFullscreen, onToggleFullscreen, onSwitchThread, onToggleMembers, membersOpen, forumPost, favoriteTrail }) => {
+  const pending = usePendingAttachments();
   const [messageContent, setMessageContent] = useState('');
   const [showNewMessagesBanner, setShowNewMessagesBanner] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [hoveredPollId, setHoveredPollId] = useState<string | null>(null);
   const [openDropdownPollId, setOpenDropdownPollId] = useState<string | null>(null);
@@ -90,6 +139,10 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
   const [isRenaming, setIsRenaming] = useState(false);
   const [newName, setNewName] = useState('');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const { data: notifPrefs } = useThreadNotificationPrefs(threadId);
+  const notifMuted = isThreadMuted(notifPrefs) || notifPrefs?.level === 'none';
+  const lockThread = useLockThread();
   const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
   const [openDropdownMessageId, setOpenDropdownMessageId] = useState<string | null>(null);
   const [reportingMessage, setReportingMessage] = useState<Message | null>(null);
@@ -101,9 +154,12 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
   const lastMessageCountRef = useRef(0);
   
   const { user } = useAuth();
+  const attachmentEdits = useAttachmentEdits();
   const isShiftPressed = useShiftKey();
   const { data: thread } = useThread(threadId);
+  const { data: starter } = useThreadStarterMessage((thread as { message_id?: string | null } | undefined)?.message_id);
   const { data: messages = [] } = useThreadMessages(threadId);
+  const forwardedMap = useForwardedFrom('thread', threadId, messages.map((m) => m.id));
   const { data: polls = [] } = useThreadPolls(threadId);
   const { data: isFollowing } = useIsFollowingThread(threadId);
   const followThread = useFollowThread();
@@ -151,6 +207,46 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
     }));
   }, [membersData]);
   
+  // Profil des auteurs comme dans le salon : nom d'affichage, avatar et banniere du serveur (profil de serveur, pseudo),
+  // sinon ceux du compte. Sert aux messages, a l'en-tete du fil et a la fiche utilisateur.
+  const memberUsers = useMemo(() => {
+    const map = new Map<string, { user: User; memberId: string }>();
+    for (const m of membersData) {
+      if (!m.user) continue;
+      map.set(m.user.id, {
+        memberId: m.id,
+        user: {
+          id: m.user.id,
+          username: m.user.username,
+          displayName: m.serverProfile?.display_name || m.nickname || m.user.display_name,
+          avatar: m.serverProfile?.avatar_url || m.user.avatar_url || undefined,
+          banner: m.serverProfile?.banner_url || m.user.banner_url || undefined,
+          status: m.user.status || 'offline',
+          customStatus: m.user.custom_status || undefined,
+          bio: m.serverProfile?.bio || m.user.bio || undefined,
+          pronouns: m.serverProfile?.pronouns || m.user.pronouns || undefined,
+        } as User,
+      });
+    }
+    return map;
+  }, [membersData]);
+  const authorOf = useCallback((a?: { id?: string; display_name?: string | null; username?: string | null; avatar_url?: string | null } | null) => {
+    const m = a?.id ? memberUsers.get(a.id) : undefined;
+    return {
+      displayName: m?.user.displayName || a?.display_name || a?.username || 'Inconnu',
+      avatar: m?.user.avatar || a?.avatar_url || undefined,
+    };
+  }, [memberUsers]);
+  const [profileUser, setProfileUser] = useState<{ user: User; memberId?: string } | null>(null);
+  const openProfile = (a?: { id?: string; display_name?: string | null; username?: string | null; avatar_url?: string | null } | null) => {
+    if (!a?.id) return;
+    const m = memberUsers.get(a.id);
+    setProfileUser({
+      memberId: m?.memberId,
+      user: m?.user ?? ({ id: a.id, username: a.username ?? 'unknown', displayName: a.display_name || a.username || 'Utilisateur', avatar: a.avatar_url || undefined, status: 'offline' } as User),
+    });
+  };
+
   // Build roles list for mentions
   const mentionRoles = useMemo(() => {
     return serverRoles.filter(r => !r.is_default).map(r => ({
@@ -247,23 +343,32 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
   const handleStartEdit = (message: ThreadMessage) => {
     setEditingMessageId(message.id);
     setEditingContent(getGifOnlyUrl(message) ?? message.content);
+    attachmentEdits.reset((message.attachments ?? []) as never);
   };
 
   const handleSaveEdit = async () => {
-    if (editingMessageId && editingContent.trim()) {
+    if (!editingMessageId || !user) return;
+    if (!editingContent.trim() && attachmentEdits.count === 0) return;
+    try {
+      const attachments = attachmentEdits.hasChanges ? await attachmentEdits.resolve(user.id) : undefined;
       await editMessage.mutateAsync({
         messageId: editingMessageId,
         threadId,
         content: editingContent.trim(),
+        attachments,
       });
       setEditingMessageId(null);
       setEditingContent('');
+      attachmentEdits.reset();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Erreur lors de la modification');
     }
   };
 
   const handleCancelEdit = () => {
     setEditingMessageId(null);
     setEditingContent('');
+    attachmentEdits.reset();
   };
 
   const handleDeleteMessage = (messageId: string) => {
@@ -389,15 +494,17 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
   }, [threadId, channelId, markAsRead]);
 
   const handleSend = async () => {
-    if (!messageContent.trim()) return;
+    if (!messageContent.trim() && pending.attachments.length === 0) return;
 
     try {
       await sendMessage.mutateAsync({
         threadId,
-        content: messageContent,
+        content: replyingTo ? withReplyMention(messageContent, replyingTo.author?.id, user?.id) : messageContent,
         replyToId: replyingTo?.id ?? null,
+        files: pending.attachments,
       });
       setMessageContent('');
+      pending.clearAttachments();
       setReplyingTo(null);
     } catch (error) {
       // Error handled by mutation
@@ -436,7 +543,8 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
   // Create unified timeline of messages and polls
   type TimelineItem = 
     | { type: 'message'; data: ThreadMessage; timestamp: Date }
-    | { type: 'poll'; data: Poll; timestamp: Date };
+    | { type: 'poll'; data: Poll; timestamp: Date }
+    | { type: 'starter'; data: NonNullable<typeof starter>; timestamp: Date };
     
   const timelineItems = useMemo<TimelineItem[]>(() => {
     const items: TimelineItem[] = [];
@@ -453,8 +561,10 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
       timestamp: new Date(poll.created_at) 
     }));
     
+    if (starter) items.push({ type: 'starter', data: starter, timestamp: new Date(starter.created_at) });
+
     return items.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
-  }, [messages, polls]);
+  }, [messages, polls, starter]);
   
   // Group timeline items by date
   const groupedTimelineItems = useMemo(() => {
@@ -491,146 +601,183 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
   };
 
   return (
-    <div className="h-full flex flex-col bg-[hsl(var(--surface-2)/0.3)] border-l-2 border-border/70 shadow-[-4px_0_12px_rgba(0,0,0,0.15)] min-w-0">
-      {/* Header */}
-      <div className="flex items-center gap-2 px-3 h-12 shrink-0 bg-[hsl(var(--surface-2))]" style={{ borderBottom: "1px solid hsl(var(--border) / 0.5)", boxShadow: "var(--shadow-elevation-1)" }}>
-        <Button
-          variant="ghost"
-          size="iconSm"
-          onClick={onBack}
-          className="shrink-0"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </Button>
-        
-        <div className="flex items-center gap-2 min-w-0 flex-1">
-          <StreamlineThreads className="w-5 h-5 text-muted-foreground shrink-0" />
-          {isRenaming ? (
-            <Input
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              onBlur={handleRename}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleRename();
-                if (e.key === 'Escape') setIsRenaming(false);
-              }}
-              className="h-7 text-sm font-semibold"
-              autoFocus
-            />
-          ) : (
-            <span className="font-semibold text-foreground truncate">
-              {thread?.name || 'Thread'}
-            </span>
-          )}
-        </div>
-        
-        {/* Actions groupées */}
-        <div className="flex items-center gap-0.5">
-          {/* Renommer */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="iconSm"
-                onClick={() => {
-                  setNewName(thread?.name || '');
-                  setIsRenaming(true);
-                }}
-              >
-                <Pencil className="w-4 h-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">Renommer</TooltipContent>
-          </Tooltip>
-          
-          {/* Suivre/Ne plus suivre */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="iconSm"
-                onClick={() => {
-                  if (isFollowing) {
-                    unfollowThread.mutate(threadId, {
-                      onSuccess: () => onBack()
-                    });
-                  } else {
-                    followThread.mutate(threadId);
-                  }
-                }}
-                className={cn(isFollowing && "text-primary")}
-                disabled={followThread.isPending || unfollowThread.isPending}
-              >
-                {isFollowing ? (
-                  <Bell className="w-4 h-4 fill-current" />
-                ) : (
-                  <BellOff className="w-4 h-4" />
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">
-              {isFollowing ? 'Ne plus suivre' : 'Suivre'}
-            </TooltipContent>
-          </Tooltip>
-          
-          {/* Menu 3 points */}
+    <div className="h-full flex flex-col bg-background border-l border-black/[0.2] min-w-0">
+      {forumPost && !isFullscreen ? (
+        /* En-tete d'un post en panneau (video de reference) : titre, "...", fermer. En pleine fenetre, l'en-tete unique ci-dessous. */
+        <div className="flex items-center gap-2 pl-4 pr-2 h-12 shrink-0 border-b border-[hsl(var(--border-subtle))]">
+          <span translate="no" className="flex-1 min-w-0 truncate text-base font-semibold text-white">{thread?.name}</span>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="iconSm">
-                <MoreVertical className="w-4 h-4" />
-              </Button>
+              <button type="button" aria-label="Plus d'options" className="p-1.5 rounded text-[hsl(var(--header-icon))] hover:text-white">
+                <MoreHorizontal className="w-5 h-5" />
+              </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              {onToggleFullscreen && (
-                <DropdownMenuItem onClick={onToggleFullscreen}>
-                  {isFullscreen ? (
-                    <>
-                      <Minimize2 className="w-4 h-4 mr-2" />
-                      Vue partagée
-                    </>
-                  ) : (
-                    <>
-                      <Maximize2 className="w-4 h-4 mr-2" />
-                      Plein écran
-                    </>
-                  )}
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuItem 
-                className="text-destructive focus:text-destructive"
-                onClick={() => setShowDeleteDialog(true)}
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Supprimer le thread
-              </DropdownMenuItem>
-            </DropdownMenuContent>
+            <DropdownMenuContent align="end" className="w-56">{forumPost.menu}</DropdownMenuContent>
           </DropdownMenu>
+          <button type="button" aria-label="Fermer" onClick={onBack} className="p-1.5 rounded text-[hsl(var(--header-icon))] hover:text-white">
+            <CloseIcon className="w-5 h-5" />
+          </button>
         </div>
-      </div>
+      ) : (
+      /* En-tete d'un fil (video de reference). Panneau : icone + nom, cloche (notifications), "..." et fermer.
+         Fenetre complete : fil d'Ariane "# salon > fil" puis icones et menu "...". */
+      <div className={cn("flex items-center h-[48px] shrink-0 border-b border-black/[0.2]", isFullscreen ? "gap-3 pl-4 pr-3" : "gap-2.5 pl-[15px] pr-[9px]")}>
+        {isFullscreen ? (
+          <div className="flex items-center gap-2 min-w-0 flex-1 text-base">
+            {favoriteTrail && (
+              <>
+                <span title={favoriteTrail.serverName} className="flex h-[19px] w-[19px] shrink-0 items-center justify-center overflow-hidden rounded-[5px] bg-[#4a4a54] text-[8px] font-semibold text-[#dbdee1]">
+                  {favoriteTrail.serverIcon ? <img src={favoriteTrail.serverIcon} alt="" className="h-full w-full object-cover" /> : favoriteTrail.serverName.slice(0, 2).toUpperCase()}
+                </span>
+                <span aria-hidden className="text-[#b5bac1]">›</span>
+              </>
+            )}
+            <button type="button" onClick={onBack} aria-label={`Retour au salon ${channelName}`} className="flex items-center gap-2 min-w-0 rounded text-[#dbdee1] hover:text-white transition-colors">
+              {forumPost ? <StreamlineForum className="w-6 h-6 text-[#b5bac1] shrink-0" size={24} /> : <ChannelSheetIcon name="text" className="w-6 h-6 text-[#b5bac1] shrink-0" />}
+              <span translate="no" className="truncate">{channelName}</span>
+            </button>
+            <span aria-hidden className="text-[#b5bac1]">›</span>
+            {!forumPost && <StreamlineThreads className="w-6 h-6 text-[#b5bac1] shrink-0" />}
+            <span translate="no" className="font-medium text-white truncate">{thread?.name || 'Fil'}</span>
+            {favoriteTrail && (
+              <button type="button" onClick={favoriteTrail.onGoToServer} className="ml-1 h-6 shrink-0 rounded-[4px] bg-[#4a4a54] px-2 text-sm font-medium text-white transition-colors hover:bg-[#53535e]">Y aller</button>
+            )}
+          </div>
+        ) : (
+          <>
+            <StreamlineThreads className="w-[19px] h-[19px] text-[#b5bac1] shrink-0" />
+            {isRenaming ? (
+              <Input
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                onBlur={handleRename}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleRename();
+                  if (e.key === 'Escape') setIsRenaming(false);
+                }}
+                className="h-7 text-base font-medium flex-1"
+                autoFocus
+              />
+            ) : (
+              <span translate="no" className="flex-1 min-w-0 truncate text-base font-medium text-white">{thread?.name || 'Fil'}</span>
+            )}
+          </>
+        )}
 
-      {/* Delete confirmation dialog */}
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Supprimer ce thread ?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Cette action est irréversible. Tous les messages de ce thread seront supprimés.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteThread}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Supprimer
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        {isFullscreen && onSwitchThread && (
+          <Popover>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <PopoverTrigger asChild>
+                  <button type="button" aria-label="Fils" className="w-8 h-8 flex items-center justify-center rounded text-[#b5bac1] hover:text-white data-[state=open]:text-white transition-colors"><StreamlineThreads className="w-6 h-6" /></button>
+                </PopoverTrigger>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Fils</TooltipContent>
+            </Tooltip>
+            <PopoverContent side="bottom" align="end" sideOffset={8} collisionPadding={12} className="w-[min(674px,calc(100vw-1rem))] p-0 rounded-lg bg-[#383840] border border-white/[0.06] shadow-[0_8px_24px_rgba(0,0,0,0.4)]">
+              <ThreadsPopover channelId={channelId ?? thread?.channel_id ?? ''} channelName={channelName} onSelectThread={(id) => onSwitchThread(id)} />
+            </PopoverContent>
+          </Popover>
+        )}
+
+        <DropdownMenu>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <DropdownMenuTrigger asChild>
+                <button type="button" aria-label="Paramètres de notification" className={cn('flex items-center justify-center rounded text-[#b5bac1] hover:text-white transition-colors', isFullscreen ? 'w-8 h-8' : 'w-7 h-7', notifMuted && 'text-[#80848e]')}>
+                  {notifMuted || forumPost ? <BellOff className={isFullscreen ? 'w-6 h-6' : 'w-[19px] h-[19px]'} /> : <Bell className={cn('fill-current', isFullscreen ? 'w-6 h-6' : 'w-[19px] h-[19px]')} />}
+                </button>
+              </DropdownMenuTrigger>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">Paramètres de notification</TooltipContent>
+          </Tooltip>
+          <DropdownMenuContent align="end" className="w-[260px] p-2 rounded-lg bg-[#3b3b45] border border-white/[0.08] shadow-[0_8px_16px_rgba(0,0,0,0.24)]">
+            <ThreadNotificationSubmenus threadId={threadId} />
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className="h-10 px-3 text-base font-medium" onSelect={() => (isFollowing ? unfollowThread.mutate(threadId, { onSuccess: () => onBack() }) : followThread.mutate(threadId))}>
+              {isFollowing ? 'Quitter le fil' : 'Rejoindre le fil'}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {isFullscreen && (
+          <>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button type="button" aria-label="Messages épinglés (bientôt disponible)" aria-disabled className="w-8 h-8 flex items-center justify-center rounded text-[#b5bac1] opacity-60 cursor-not-allowed"><PinIcon className="w-6 h-6" /></button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Messages épinglés — bientôt disponible</TooltipContent>
+            </Tooltip>
+            {onToggleMembers && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button type="button" aria-label="Liste des membres" onClick={onToggleMembers} className={cn('w-8 h-8 flex items-center justify-center rounded text-[#b5bac1] hover:text-white transition-colors', membersOpen && 'text-white')}><UsersIcon className="w-6 h-6" /></button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">{membersOpen ? 'Masquer la liste des membres' : 'Afficher la liste des membres'}</TooltipContent>
+              </Tooltip>
+            )}
+          </>
+        )}
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button type="button" aria-label="Plus d'options" className={cn('flex items-center justify-center rounded text-[#b5bac1] hover:text-white transition-colors data-[state=open]:text-white', isFullscreen ? 'w-8 h-8' : 'w-7 h-7')}>
+              <MoreHorizontal className={isFullscreen ? 'w-6 h-6' : 'w-4 h-4'} />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-[260px] p-2 rounded-lg bg-[#3b3b45] border border-white/[0.08] shadow-[0_8px_16px_rgba(0,0,0,0.24)]">
+            {forumPost ? forumPost.menu : thread && (
+              <ThreadMenuItems
+                thread={thread}
+                canManage={!!canManageThreads || thread.created_by === user?.id}
+                panel={isFullscreen ? undefined : { onOpenFullscreen: () => onToggleFullscreen?.() }}
+                full={isFullscreen ? { onScrollTop: () => scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' }), onSplit: () => onToggleFullscreen?.() } : undefined}
+                onEdit={() => setShowSettings(true)}
+                onDelete={() => setShowDeleteDialog(true)}
+                onLeave={() => unfollowThread.mutate(threadId, { onSuccess: () => onBack() })}
+              />
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {!isFullscreen && (
+          <button type="button" aria-label="Fermer" onClick={onBack} className="w-7 h-7 flex items-center justify-center rounded text-[#b5bac1] hover:text-white transition-colors">
+            <CloseIcon className="w-[11px] h-[11px]" />
+          </button>
+        )}
+      </div>
+      )}
+
+      <UserProfilePopup
+        user={profileUser?.user ?? null}
+        open={!!profileUser}
+        onOpenChange={(o) => !o && setProfileUser(null)}
+        roles={profileUser ? (memberRoles.get(profileUser.user.id) as never) : undefined}
+        serverId={serverId ?? undefined}
+        memberId={profileUser?.memberId}
+      />
+      <DeleteThreadDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog} name={thread?.name ?? ''} onConfirm={handleDeleteThread} />
+      {showSettings && thread && (
+        <ThreadSettingsPage
+          thread={thread}
+          channelName={channelName}
+          onClose={() => setShowSettings(false)}
+          onDelete={handleDeleteThread}
+        />
+      )}
+
+      {/* Bandeau "verrouille" (video de reference) */}
+      {thread?.locked && (
+        <div className="flex items-center gap-3 px-4 py-2.5 shrink-0 bg-[#2f2f37] border-b border-black/[0.2]">
+          <p className="flex-1 text-sm leading-[18px] text-[#dbdee1]">Ce {forumPost ? 'post' : 'fil'} a été verrouillé. Seuls les modérateurs peuvent y envoyer des messages.</p>
+          {(canManageThreads || thread.created_by === user?.id) && (
+            <button type="button" onClick={() => lockThread.mutate({ threadId, locked: false })} className="h-8 px-3 rounded-md bg-white/[0.1] hover:bg-white/[0.16] text-sm font-medium text-white shrink-0 transition-colors">Déverrouiller</button>
+          )}
+        </div>
+      )}
 
       {/* Messages */}
-      <div className="relative flex-1 overflow-hidden">
+      <div className="relative flex-1 overflow-hidden mb-6">
         {/* New messages banner */}
         {showNewMessagesBanner && (
           <button type="button"
@@ -644,16 +791,41 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
         
         <div 
           ref={scrollRef} 
+          data-thread-scroller
           onScroll={handleScroll}
-          className="h-full overflow-y-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent"
+          className="h-full overflow-y-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent [--msg-zone-inset-right:4px]"
         >
-          <div className="flex flex-col justify-end min-h-full p-4 space-y-4">
+          <div className="flex flex-col justify-end min-h-full px-4 pt-4 pb-0 space-y-4">
+          {forumPost && thread && (
+            <div className="pt-6">
+              <span className="h-12 w-12 rounded-full bg-[hsl(var(--button-secondary))] flex items-center justify-center text-white">
+                <MessageCircle className="w-6 h-6" />
+              </span>
+              <h1 translate="no" className="mt-3 text-[28px] leading-9 font-semibold text-white break-words">{thread.name}</h1>
+              {forumPost.tags.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {forumPost.tags.map((t) => <ForumTagChip key={t.id} tag={t} size="sm" />)}
+                </div>
+              )}
+            </div>
+          )}
+          {!forumPost && thread && (
+            <div className="pt-4 pb-1 -mb-[22px]">
+              <span className="w-16 h-16 rounded-full bg-[hsl(var(--button-secondary))] flex items-center justify-center text-white">
+                <StreamlineThreads className="w-7 h-7" />
+              </span>
+              <h1 translate="no" className="mt-2 text-[30px] leading-9 font-extrabold text-white break-words">{thread.name}</h1>
+              {(thread as { creator?: { display_name?: string } | null }).creator?.display_name && (
+                <p className="mt-2 text-base text-[#dbdee1]">Commencé par <span translate="no" className="font-semibold text-white">{authorOf((thread as { creator?: { id?: string; display_name?: string | null; username?: string | null; avatar_url?: string | null } }).creator).displayName}</span></p>
+              )}
+            </div>
+          )}
           {Object.entries(groupedTimelineItems).map(([date, items]) => (
             <div key={date}>
               {/* Date separator */}
-              <div className="flex items-center gap-2 my-4">
-                <div className="flex-1 h-px bg-border" />
-                <span className="text-xs text-muted-foreground px-2">
+              <div className="flex items-center gap-2 mt-4 mb-[9px]">
+                <div className="flex-1 h-px bg-white/[0.08]" />
+                <span className="text-xs font-semibold text-[#b5bac1] px-2">
                   {formatDate(items[0].timestamp.toISOString())}
                 </span>
                 <div className="flex-1 h-px bg-border" />
@@ -662,6 +834,41 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
               {/* Items for this date */}
               <div className="space-y-0.5">
                 {items.map((item, index) => {
+                  // Message d'origine du fil (message du salon) : "Y aller" le ramene dans le salon.
+                  if (item.type === 'starter') {
+                    const st = item.data;
+                    return (
+                      <div key={`starter-${st.id}`} className="group/message message-hover relative flex gap-3 -mx-4 pl-[21px] pr-8 pt-2 pb-px">
+                        <button
+                          type="button"
+                          onClick={() => { jumpToChannelMessage(st.channel_id, st.id); onBack(); }}
+                          className="absolute top-1 right-3 h-6 px-2 rounded bg-[#383840] border border-white/[0.06] text-xs font-medium text-[#dbdee1] hover:text-white hover:bg-[#464650] opacity-0 group-hover/message:opacity-100 focus-visible:opacity-100 transition-opacity"
+                        >
+                          Y aller
+                        </button>
+                        <Avatar className="w-8 h-8 mt-0.5 shrink-0">
+                          <AvatarImage src={st.author?.avatar_url || undefined} />
+                          <AvatarFallback className="text-xs">{st.author?.display_name?.[0] || '?'}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-baseline gap-2">
+                            <span translate="no" className="text-sm font-medium text-white">{st.author?.display_name || st.author?.username || 'Utilisateur'}</span>
+                            <span className="text-xs text-muted-foreground">{formatTime(st.created_at)}</span>
+                          </div>
+                          {st.content && (
+                            <div className="text-sm text-foreground break-words">
+                              <MarkdownText variant="chat" content={st.content} />
+                              {st.edited_at && <span className="ml-1 text-[.625rem] text-muted-foreground/60">(modifié)</span>}
+                            </div>
+                          )}
+                          {st.attachments.length > 0 && (
+                            <div className="mt-1"><MessageAttachments attachments={st.attachments as never} authorId={st.author?.id ?? null} /></div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  }
+
                   // Render Poll
                   if (item.type === 'poll') {
                     const poll = item.data as Poll;
@@ -679,7 +886,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                         <ContextMenuTrigger asChild>
                           <div 
                             className={cn(
-                              'group rounded-md px-2 hover:bg-muted/50 relative',
+                              'group message-hover -mx-4 px-6 relative',
                               showAuthor ? 'pt-2' : 'py-0'
                             )}
                             onMouseEnter={() => !isMobile && setHoveredPollId(poll.id)}
@@ -704,51 +911,18 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                               }
                             }}
                           >
-                            {!isMobile && (hoveredPollId === poll.id || openDropdownPollId === poll.id) && (
-                              <div className="absolute top-0 right-0 -translate-y-1/2 flex items-center gap-0.5 bg-toolbar border border-border rounded-md shadow-lg p-0.5 z-10 animate-fade-in">
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <button type="button" onClick={() => handleCopyPollLink(poll.id)} className="p-1.5 hover:bg-muted rounded transition-colors">
-                                      <Link className="w-4 h-4 text-muted-foreground" />
-                                    </button>
-                                  </TooltipTrigger>
-                                  <TooltipContent side="top">Copier le lien</TooltipContent>
-                                </Tooltip>
-                                {canModeratePoll && (
-                                  <>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <button type="button" onClick={() => setEditingPoll(poll)} className="p-1.5 hover:bg-muted rounded transition-colors">
-                                          <Pencil className="w-4 h-4 text-muted-foreground" />
-                                        </button>
-                                      </TooltipTrigger>
-                                      <TooltipContent side="top">Modifier</TooltipContent>
-                                    </Tooltip>
-                                    <DropdownMenu onOpenChange={(open) => {
-                                      setOpenDropdownPollId(open ? poll.id : null);
-                                      if (!open) setHoveredPollId(null);
-                                    }}>
-                                      <DropdownMenuTrigger asChild>
-                                        <button type="button" className="p-1.5 hover:bg-muted rounded transition-colors">
-                                          <MoreVertical className="w-4 h-4 text-muted-foreground" />
-                                        </button>
-                                      </DropdownMenuTrigger>
-                                      <DropdownMenuContent align="end">
-                                        {!isPollExpired && (
-                                          <DropdownMenuItem onClick={() => handleEndPoll(poll)}>
-                                            <StopCircle className="w-4 h-4 mr-2" />
-                                            Terminer
-                                          </DropdownMenuItem>
-                                        )}
-                                        <DropdownMenuItem onClick={() => handleDeletePoll(poll)} className="text-destructive focus:text-destructive">
-                                          <Trash2 className="w-4 h-4 mr-2" />
-                                          Supprimer
-                                        </DropdownMenuItem>
-                                      </DropdownMenuContent>
-                                    </DropdownMenu>
-                                  </>
-                                )}
-                              </div>
+                            {!isMobile && (
+                              <UniversalMessageActions
+                                isVisible={hoveredPollId === poll.id || openDropdownPollId === poll.id}
+                                isShiftPressed={isShiftPressed}
+                                isOwnMessage={isOwnPoll}
+                                canManageMessages={canManagePolls}
+                                canAddReactions={false}
+                                onCopyLink={() => handleCopyPollLink(poll.id)}
+                                onCopyId={() => handleCopyId(poll.id)}
+                                onEdit={isOwnPoll ? () => setEditingPoll(poll) : undefined}
+                                onDelete={canModeratePoll ? () => handleDeletePoll(poll) : undefined}
+                              />
                             )}
                             <MobilePollActions
                               open={mobilePollSheetId === poll.id}
@@ -811,7 +985,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                             Copier le lien
                           </ContextMenuItem>
                           <ContextMenuItem onClick={() => handleCopyId(poll.id)}>
-                            <Hash className="w-4 h-4 mr-2" />
+                            <ChannelSheetIcon name="id" className="w-4 h-4 mr-2" />
                             Copier l'ID
                           </ContextMenuItem>
                           {canModeratePoll && (
@@ -852,11 +1026,88 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
 
                   const isOwnMessage = user?.id === message.author_id;
 
+                  // Barre du post sous le message d'ouverture : filet pleine largeur, puis reagir / abonnement / lien.
+                  const postBar = forumPost && message.id === forumPost.starterMessageId ? (
+/* Barre du post : reagir, abonnement, lien (video de reference). */
+                            <div className="-mx-4 mt-3 pl-[18px] pr-4 pt-2 border-t border-[#3e3f45] flex items-center gap-2">
+                              {forumPost.defaultEmoji && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleAddReaction(message.id, forumPost.defaultEmoji!)}
+                                  className="h-8 px-2 rounded-lg bg-[hsl(var(--button-secondary))] text-base hover:brightness-110"
+                                  aria-label={`Réagir avec ${forumPost.defaultEmoji}`}
+                                >
+                                  <ForumEmoji emoji={forumPost.defaultEmoji} className="text-lg" />
+                                </button>
+                              )}
+                              <EmojiStickerPicker
+                                serverId={serverId || null}
+                                searchPlaceholder="Trouve la réaction parfaite"
+                                onEmojiSelect={(emoji) => handleAddReaction(message.id, emoji)}
+                                trigger={
+                                  <button type="button" className="h-8 px-2.5 rounded-lg bg-[hsl(var(--button-secondary))] text-sm font-medium text-white flex items-center gap-1.5 hover:brightness-110">
+                                    <Smile className="w-4 h-4" /> Réagir au post
+                                  </button>
+                                }
+                              />
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button
+                                    type="button"
+                                    onClick={forumPost.onToggleFollow}
+                                    className="ml-auto h-8 px-2.5 rounded-lg bg-[hsl(var(--button-secondary))] text-sm font-medium text-white flex items-center gap-1.5 hover:brightness-110"
+                                  >
+                                    {forumPost.isFollowing ? <><Check className="w-4 h-4" /> Abonné(e)</> : <><Bell className="w-4 h-4" /> Suivre</>}
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-[200px] text-center">Ajoute ce post à ta liste des salons et reçois les notifications les concernant.</TooltipContent>
+                              </Tooltip>
+                              {linkCopied ? (
+                                <span className="h-8 px-2.5 rounded-lg bg-[hsl(var(--button-secondary))] text-sm font-medium text-white flex items-center gap-1.5"><Check className="w-4 h-4" /> Copié</span>
+                              ) : (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <button
+                                      type="button"
+                                      aria-label="Copier le lien"
+                                      onClick={() => {
+                                        void copyToClipboard(`${window.location.origin}/channels/${channelId || thread?.channel_id}/${threadId}`).then((ok) => {
+                                          if (!ok) return;
+                                          setLinkCopied(true);
+                                          window.setTimeout(() => setLinkCopied(false), 2000);
+                                        });
+                                      }}
+                                      className="h-8 w-8 rounded-lg bg-[hsl(var(--button-secondary))] text-white flex items-center justify-center hover:brightness-110"
+                                    >
+                                      <Link className="w-4 h-4" />
+                                    </button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Copier le lien</TooltipContent>
+                                </Tooltip>
+                              )}
+                            </div>
+                  ) : null;
+
                   return (
+                    <Fragment key={message.id}>
                     <UniversalMessageContextMenu
-                      key={message.id}
                       isOwnMessage={isOwnMessage}
                       messageId={message.id}
+                      reminder={{
+                        source: 'channel',
+                        messageId: message.id,
+                        channelId: channelId ?? null,
+                        serverId: serverId ?? null,
+                        threadId,
+                        snapshot: {
+                          authorId: message.author?.id,
+                          authorName: message.author?.display_name || message.author?.username || 'Utilisateur',
+                          authorAvatar: message.author?.avatar_url ?? null,
+                          content: message.content,
+                          createdAt: new Date(message.created_at ?? Date.now()).toISOString(),
+                          channelName: thread?.name ?? channelName ?? null,
+                        },
+                      }}
                       previewAuthorName={message.author?.display_name || message.author?.username}
                       previewAuthorAvatar={message.author?.avatar_url || undefined}
                       previewContent={message.content}
@@ -865,6 +1116,12 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                       onCopyText={() => copyToClipboard(message.content, 'Message copié')}
                       onCopyLink={() => handleCopyMessageLink(message.id)}
                       onCopyId={() => handleCopyId(message.id)}
+                      onForward={() => openForwardMessage({
+                        content: message.content,
+                        attachments: (message.attachments ?? []) as never,
+                        edited: !!message.edited_at,
+                        from: { kind: 'thread', messageId: message.id, createdAt: message.created_at, threadId, threadName: thread?.name ?? null, channelId: channelId ?? null, channelName: channelName ?? null, serverId: serverId ?? null },
+                      })}
                       onEdit={isOwnMessage ? () => handleStartEdit(message) : undefined}
                       onDelete={isOwnMessage ? () => handleDeleteMessage(message.id) : undefined}
                       onReport={!isOwnMessage ? () => setReportingMessage({
@@ -881,6 +1138,8 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                         edited_at: message.edited_at || null,
                       }) : undefined}
                     >
+                      {/* Un seul enfant : le declencheur du menu contextuel (Radix Slot) n'en accepte pas plus. */}
+                      <div>
                       {(() => {
                         // Real reply snapshot only (reply_to_id resolved).
                         if (message.repliedMessage) {
@@ -919,8 +1178,10 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                         onDoubleTap={() => handleAddReaction(message.id, '❤️')}
                       >
                       <div 
+                        data-msg-id={message.id}
                         className={cn(
-                          'flex gap-3 -mx-4 pl-[21px] pr-8 py-px message-hover relative',
+                          'flex gap-4 -mx-4 pl-4 pr-4 pt-px pb-1 message-hover relative',
+                          replyingTo?.id === message.id && 'reply-target',
                           showAuthor ? 'pt-2' : '',
                           messageMentionsMe(message.content, user?.id, membersData.find(m => m.user?.id === user?.id)?.roles?.map((r: any) => r.id) ?? []) && 'message-mentioned',
                         )}
@@ -938,6 +1199,12 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                           onCopyLink={() => handleCopyMessageLink(message.id)}
                           onCopyId={() => handleCopyId(message.id)}
                           onCopyText={() => copyToClipboard(message.content, 'Message copié')}
+                          onForward={() => openForwardMessage({
+                            content: message.content,
+                            attachments: (message.attachments ?? []) as never,
+                            edited: !!message.edited_at,
+                            from: { kind: 'thread', messageId: message.id, createdAt: message.created_at, threadId, threadName: thread?.name ?? null, channelId: channelId ?? null, channelName: channelName ?? null, serverId: serverId ?? null },
+                      })}
                           onEdit={isOwnMessage ? () => handleStartEdit(message) : undefined}
                           onDelete={isOwnMessage ? () => handleDeleteMessage(message.id) : undefined}
                           onDropdownOpenChange={(open) => {
@@ -946,32 +1213,39 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                           }}
                         />
                         {showAuthor ? (
-                          <Avatar className="w-8 h-8 mt-0.5 shrink-0">
-                            <AvatarImage src={message.author?.avatar_url || undefined} />
-                            <AvatarFallback className="text-xs">
-                              {message.author?.display_name?.[0] || '?'}
-                            </AvatarFallback>
-                          </Avatar>
+                          <button type="button" onClick={() => openProfile(message.author)} className="shrink-0 !min-h-0 h-auto p-0 self-start">
+                            <Avatar className="w-10 h-10 mt-0.5 hover:opacity-80 transition-opacity">
+                              <AvatarImage src={authorOf(message.author).avatar} />
+                              <AvatarFallback className="text-sm">
+                                {authorOf(message.author).displayName.charAt(0).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                          </button>
                         ) : (
-                          <div className="w-8 shrink-0" />
+                          <div className="w-10 shrink-0" />
                         )}
                         <div className="flex-1 min-w-0">
                           {showAuthor && (
-                            <div className="flex items-baseline gap-2 mb-0.5">
-                              <span
-                                className="font-medium text-sm"
+                            <div className="flex items-center gap-1 mb-0.5">
+                              <button
+                                translate="no"
+                                type="button"
+                                onClick={() => openProfile(message.author)}
+                                className="font-semibold text-base leading-[1.375rem] hover:underline cursor-pointer truncate max-w-[200px] shrink-0 !min-h-0 h-auto p-0"
                                 style={{ color: (message.author?.id ? memberRoles.get(message.author.id)?.[0]?.color : undefined) || undefined }}
                               >
-                                {message.author?.display_name || 'Inconnu'}
-                              </span>
-                              <span className="text-xs text-muted-foreground">
+                                {authorOf(message.author).displayName}
+                              </button>
+                              <ServerTagBadge userId={message.author?.id} />
+                              {forumPost && message.author_id === thread?.created_by && (
+                                <span className="self-center h-4 px-1 rounded bg-primary text-[10px] font-bold leading-4 text-white" title="Auteur du post">OP</span>
+                              )}
+                              <span className="ml-1 text-xs text-muted-foreground">
                                 {formatTime(message.created_at)}
                               </span>
-                              {message.edited_at && (
-                                <span className="text-[.625rem] text-muted-foreground/40">(modifié)</span>
-                              )}
                             </div>
                           )}
+                          <ForwardedFrame from={forwardedMap.get(message.id)}>
                           {editingMessageId === message.id ? (
                             <div className="space-y-2">
                               <MarkdownTextarea
@@ -1002,6 +1276,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                                 className="min-h-[36px] max-h-[200px] resize-none text-sm"
                                 autoFocus
                               />
+                              <AttachmentEditsPanel edits={attachmentEdits} />
                               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                 <span>Échap pour annuler</span>
                                 <span>•</span>
@@ -1012,10 +1287,14 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                               </div>
                             </div>
                           ) : (
-                           <div className="text-sm text-foreground break-words">
-                             <MarkdownText variant="chat" content={message.content} />
-                           </div>
+                           <div className="flex flex-wrap items-baseline gap-x-1 text-base leading-[1.375rem] text-foreground break-words">{message.content && (thread?.spoiler ? <SpoilerGate><MarkdownText variant="chat" content={message.content} /></SpoilerGate> : <MarkdownText variant="chat" content={message.content} />)}{message.edited_at && !forwardedMap.get(message.id) && <span className="text-[11px] text-muted-foreground/60 select-none">(modifié)</span>}</div>
                           )}
+                          {(message.attachments?.length ?? 0) > 0 && !getGifOnlyUrl(message) && editingMessageId !== message.id && (
+                            <div className="mt-1">
+                              <EditableAttachments attachments={message.attachments as never} authorId={message.author_id} messageId={message.id} scope={{ kind: 'thread', scopeId: threadId }} editable={isOwnMessage} hasText={!!message.content?.trim()} />
+                            </div>
+                          )}
+                          </ForwardedFrame>
                           {(reactionsData[message.id]?.length ?? 0) > 0 && (
                             <div className="mt-1">
                               <ReactionBar
@@ -1029,7 +1308,10 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
                         </div>
                       </div>
                       </SwipeToReplyRow>
+                      </div>
                     </UniversalMessageContextMenu>
+                    {postBar}
+                    </Fragment>
                   );
                 })}
               </div>
@@ -1047,7 +1329,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
               </p>
             </div>
           )}
-          <div ref={messagesEndRef} />
+          <div ref={messagesEndRef} className="msg-end" />
           </div>
         </div>
       </div>
@@ -1059,6 +1341,8 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
       {replyingTo && (
         <ReplyBanner
           authorName={replyingTo.author?.display_name || 'Inconnu'}
+          authorId={replyingTo.author?.id}
+          onJump={() => { const el = document.querySelector<HTMLElement>(`[data-msg-id="${replyingTo.id}"]`); el?.scrollIntoView({ behavior: 'smooth', block: 'center' }); el?.classList.add('highlight-flash'); setTimeout(() => el?.classList.remove('highlight-flash'), 2000); }}
           authorAvatar={replyingTo.author?.avatar_url}
           content={replyingTo.content}
           onClear={() => setReplyingTo(null)}
@@ -1073,9 +1357,9 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
         onSend={handleSend}
         onSendExternalAttachment={handleSendExternalAttachment}
         placeholder={
-          replyingTo
-            ? `Répondre à ${replyingTo.author?.display_name || 'Inconnu'}`
-            : `Envoyer un message dans ${thread?.name || 'le thread'}`
+          forumPost
+              ? `Envoyer un message dans « ${thread?.name ?? ''} »`
+              : `Envoyer un message dans "${thread?.name || 'le fil'}"`
         }
         disabled={sendMessage.isPending || isThreadLocked || isThreadClosed}
         isSending={sendMessage.isPending}
@@ -1091,6 +1375,11 @@ const ThreadView: React.FC<ThreadViewProps> = ({ threadId, channelName, channelI
         canAttachFiles={canAttachFiles}
         canCreatePolls={canCreatePolls}
         canMentionEveryone={canMentionEveryone}
+        attachments={pending.attachments}
+        onAddFiles={pending.addFiles}
+        onRemoveAttachment={pending.removeAttachment}
+        onUpdateAttachment={pending.updateAttachment}
+        onToggleSpoiler={pending.toggleSpoiler}
       />
       </div>
       {/* Edit Poll Modal */}

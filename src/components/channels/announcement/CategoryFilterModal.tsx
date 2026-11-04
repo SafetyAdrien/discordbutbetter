@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Trash2, GripVertical } from 'lucide-react';
+import { GripVertical } from 'lucide-react';
+import { Trash2 } from '@/components/icons/discord/lucide';
 import {
   Dialog,
   DialogContent,

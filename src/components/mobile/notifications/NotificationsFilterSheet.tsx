@@ -1,22 +1,14 @@
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import {
-  AtSign,
-  MessageSquare,
-  AlertTriangle,
-  MessagesSquare,
-  Check,
-  ChevronDown,
-  Trash2,
-  Save,
-  X,
-} from 'lucide-react';
+import { AlertTriangle, MessagesSquare, Save } from 'lucide-react';
+import { AtSign, MessageSquare, Check, ChevronDown, Trash2, X } from '@/components/icons/discord/lucide';
 import { useServers } from '@/hooks/useServers';
 import { useFrequentDMContacts } from '@/hooks/useFrequentDMContacts';
 import { useFavoriteFriendIds } from '@/hooks/useFavoriteFriends';
 import { haptics } from '@/lib/haptics';
 import type { NotifKind } from '@/hooks/useUnifiedNotifications';
+import { userKey } from '@/lib/userScope';
 
 export type Period = 'today' | 'week' | 'month' | 'all';
 
@@ -42,7 +34,7 @@ const STORAGE_KEY = 'mobile.notifFilters.v1';
 
 export function loadSavedFilters(): NotifFilters {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(userKey(STORAGE_KEY));
     if (!raw) return { ...DEFAULT_FILTERS, kinds: new Set() };
     const parsed = JSON.parse(raw);
     return {
@@ -58,8 +50,7 @@ export function loadSavedFilters(): NotifFilters {
 
 function persistFilters(f: NotifFilters) {
   try {
-    localStorage.setItem(
-      STORAGE_KEY,
+    localStorage.setItem(userKey(STORAGE_KEY),
       JSON.stringify({
         kinds: Array.from(f.kinds),
         serverId: f.serverId,
@@ -122,7 +113,7 @@ export function NotificationsFilterSheet({ open, onOpenChange, filters, onChange
     haptics.medium();
     const cleared: NotifFilters = { ...DEFAULT_FILTERS, kinds: new Set() };
     onChange(cleared);
-    try { localStorage.removeItem(STORAGE_KEY); } catch {}
+    try { localStorage.removeItem(userKey(STORAGE_KEY)); } catch {}
   };
 
   const save = () => {

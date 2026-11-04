@@ -127,7 +127,7 @@ export function MarkdownHelpPage() {
                   {ex.source}
                 </pre>
                 <div className="text-sm leading-relaxed bg-background/60 rounded-xl p-3 border border-border/30">
-                  <MarkdownText content={ex.source} variant="chat" />
+                  <MarkdownText translatable content={ex.source} variant="chat" />
                 </div>
                 {ex.note && <p className="md:col-span-2 text-[11px] text-muted-foreground">{ex.note}</p>}
               </div>

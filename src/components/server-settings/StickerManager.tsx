@@ -2,7 +2,9 @@ import { useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useServerStickers, useUploadSticker, useDeleteSticker } from '@/hooks/useServerAssets';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Loader2, Sticker } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
+import { Trash2 } from '@/components/icons/discord/lucide';
+import { SettingsDivider, SettingsPage } from './SettingsUI';
 import { UploadingOverlay } from './UploadingOverlay';
 import { EmojiStickerEditor, type EditorResult } from './EmojiStickerEditor';
 import { supabase } from '@/integrations/supabase/client';
@@ -121,18 +123,12 @@ export function StickerManager({ serverId }: StickerManagerProps) {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h4 className="text-sm font-medium">Stickers personnalisés</h4>
-          <p className="text-sm text-muted-foreground">
-            {stickers.length} sticker{stickers.length > 1 ? 's' : ''} · 16 Mo max (HD)
-          </p>
-        </div>
-        <Button onClick={() => fileInputRef.current?.click()} className="w-full sm:w-auto min-h-11">
-          <Plus className="w-4 h-4 mr-2" />
-          Importer un sticker
-        </Button>
+    <SettingsPage
+      title="Autocollants"
+      description="Les autocollants peuvent être utilisés par tous les membres du serveur dans les salons et les fils. Formats PNG, APNG, GIF ou WEBP, 16 Mo maximum."
+    >
+      <div>
+        <Button onClick={() => fileInputRef.current?.click()}>Uploader un autocollant</Button>
         <input
           ref={fileInputRef}
           type="file"
@@ -144,22 +140,21 @@ export function StickerManager({ serverId }: StickerManagerProps) {
         />
       </div>
 
+      <SettingsDivider />
+
       {stickers.length === 0 ? (
-        <div className="text-center py-12">
-          <Sticker className="w-12 h-12 mx-auto mb-4 text-muted-foreground/30" />
-          <h3 className="text-lg font-medium">Aucun sticker</h3>
-          <p className="text-sm text-muted-foreground mt-1">
-            Importez vos stickers en haute définition
-          </p>
+        <div>
+          <p className="text-base font-semibold text-muted-foreground">Aucun autocollant</p>
+          <p className="mt-1 text-sm text-muted-foreground">Uploade ton premier autocollant pour que tout le serveur en profite.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {stickers.map((sticker) => {
             const up = sticker.creator_id ? uploaderProfiles.data?.[sticker.creator_id] : null;
             return (
               <div
                 key={sticker.id}
-                className="p-4 rounded-lg bg-muted/30 group relative"
+                className="p-3 rounded-lg bg-[hsl(var(--card))] group relative"
               >
                 <img
                   src={sticker.url}
@@ -167,16 +162,16 @@ export function StickerManager({ serverId }: StickerManagerProps) {
                   className="w-full aspect-square object-contain mb-2"
                   loading="lazy"
                 />
-                <p className="text-sm font-medium truncate">{sticker.name}</p>
+                <p translate="no" className="text-sm font-medium truncate">{sticker.name}</p>
                 {up && (
                   <p className="text-xs text-muted-foreground truncate">
-                    by {up.username || up.display_name}
+                    par {up.username || up.display_name}
                   </p>
                 )}
                 <button type="button"
                   onClick={() => deleteSticker.mutate({ stickerId: sticker.id, serverId })}
                   className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1.5 rounded-full bg-background/80 hover:text-destructive transition-all"
-                  aria-label="Delete sticker"
+                  aria-label="Supprimer l\'autocollant"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -197,6 +192,6 @@ export function StickerManager({ serverId }: StickerManagerProps) {
         onClose={handleEditorClose}
         onFinish={handleEditorFinish}
       />
-    </div>
+    </SettingsPage>
   );
 }

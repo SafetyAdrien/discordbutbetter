@@ -8,7 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { UserAvatarImage } from '@/components/ui/user-avatar-image';
-import { Camera, Loader2, RotateCcw, Pencil } from 'lucide-react';
+import { Camera, Loader2, RotateCcw } from 'lucide-react';
+import { Pencil } from '@/components/icons/discord/lucide';
 import { cn } from '@/lib/utils';
 import { InputMarkdownOverlay, hasOverlayMarkdown, OVERLAY_FONT_SIZE, OVERLAY_LINE_HEIGHT, INPUT_FONT_FAMILY } from '@/components/chat/InputMarkdownOverlay';
 import { useMemo } from 'react';
@@ -147,7 +148,7 @@ export function ServerProfileEditModal({ open, onOpenChange, initialServerId }: 
                         {server.name.charAt(0)}
                       </div>
                     )}
-                    <span>{server.name}</span>
+                    <span translate="no">{server.name}</span>
                   </div>
                 </SelectItem>
               ))}

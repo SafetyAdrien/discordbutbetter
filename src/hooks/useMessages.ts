@@ -1,26 +1,24 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { refreshSignedUrls } from '@/lib/storageUrls';
 import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { timeAsync } from '@/lib/perf';
 import { useCacheReady } from '@/hooks/useCacheReady';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { z } from 'zod';
+import { kindOfFile, contentTypeOf } from '@/lib/mediaTypes';
+import { parseMessageContent } from '@/lib/validation';
 import { PendingAttachment } from '@/hooks/usePendingAttachments';
+import { acquireSharedRealtimeEffect, subscribeWithDiagnostics } from '@/lib/realtimeDiagnostics';
+import { isTransientNetworkError } from '@/lib/networkErrors';
 
-// Message validation schema - allows empty content if there are attachments
-const messageSchema = z.object({
-  content: z.string()
-    .trim()
-    .max(2000, 'Message too long (max 2000 characters)'),
-});
 
 export interface StoredAttachment {
   id: string;
   url: string;
   name: string;
-  type: 'image' | 'video' | 'file' | 'sticker' | 'gif';
+  type: 'image' | 'video' | 'audio' | 'file' | 'sticker' | 'gif';
   size: number;
   description?: string;
   isSpoiler?: boolean;
@@ -30,6 +28,16 @@ export interface ExternalAttachment {
   url: string;
   name: string;
   type: 'sticker' | 'gif';
+}
+
+class AttachmentSendError extends Error {
+  readonly cause: unknown;
+
+  constructor(cause: unknown) {
+    super('Attachment transfer failed; it must be retried by the user.');
+    this.name = 'AttachmentSendError';
+    this.cause = cause;
+  }
 }
 
 export interface RepliedMessageSnapshot {
@@ -58,6 +66,8 @@ export interface MessageWithAuthor {
   source_channel_name?: string | null;
   is_published_message?: boolean | null;
   publish_dismissed?: boolean | null;
+  published_at?: string | null;
+  source_channel_id?: string | null;
   is_system?: boolean;
   reply_to_id?: string | null;
   repliedMessage?: RepliedMessageSnapshot | null;
@@ -70,11 +80,16 @@ export interface MessageWithAuthor {
     custom_status: string | null;
   } | null;
   isPending?: boolean;
+  isQueued?: boolean;
 }
 
 // Shared between useMessages' queryFn and the sidebar hover-prefetch so both
 // populate the exact same ['messages', channelId] cache entry identically.
 export function fetchChannelMessages(channelId: string): Promise<MessageWithAuthor[]> {
+  return fetchChannelMessagesRaw(channelId).then(refreshSignedUrls);
+}
+
+function fetchChannelMessagesRaw(channelId: string): Promise<MessageWithAuthor[]> {
   return timeAsync(`query:messages(${channelId})`, async (): Promise<MessageWithAuthor[]> => {
     const { data, error } = await supabase
       .from('messages')
@@ -92,6 +107,8 @@ export function fetchChannelMessages(channelId: string): Promise<MessageWithAuth
         source_channel_name,
         is_published_message,
         publish_dismissed,
+        published_at,
+        source_channel_id,
         is_system,
         author:profiles!messages_author_id_fkey (
           id,
@@ -177,7 +194,6 @@ export function fetchChannelMessages(channelId: string): Promise<MessageWithAuth
 export function useMessages(channelId: string | null) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   const query = useQuery({
     queryKey: ['messages', channelId],
@@ -197,11 +213,13 @@ export function useMessages(channelId: string | null) {
   }, [query.data, channelId, query.isPlaceholderData]);
 
   // Real-time subscription for new messages
+  const userId = user?.id;
   useEffect(() => {
-    if (!channelId || !user) return;
+    if (!channelId || !userId) return;
 
+    return acquireSharedRealtimeEffect(`channel-messages:${userId}:${channelId}`, () => {
     const channel = supabase
-      .channel(`messages:${channelId}-${instanceIdRef.current}`)
+      .channel(`messages:${channelId}`)
       .on(
         'postgres_changes',
         {
@@ -213,10 +231,25 @@ export function useMessages(channelId: string | null) {
         async (payload) => {
           // Don't add if this is our own message (already added optimistically)
           const newMsg = payload.new as any;
-          if (newMsg.author_id === user.id) return;
+          if (newMsg.author_id === userId && !newMsg.is_published_message && !newMsg.is_system) return;
 
-          // Fetch the complete message with author
-          const { data } = await supabase
+          const realtimeMessage: MessageWithAuthor = {
+            ...newMsg,
+            attachments: Array.isArray(newMsg.attachments) ? newMsg.attachments : [],
+            author: null,
+            repliedMessage: null,
+          };
+          queryClient.setQueryData<MessageWithAuthor[]>(
+            ['messages', channelId],
+            (old) => {
+              if (!old) return [realtimeMessage];
+              if (old.some((message) => message.id === realtimeMessage.id)) return old;
+              return [...old, realtimeMessage];
+            },
+          );
+
+          // Hydrate author and reply details without delaying message display.
+          const { data, error } = await supabase
             .from('messages')
             .select(`
               id,
@@ -227,6 +260,14 @@ export function useMessages(channelId: string | null) {
               channel_id,
               is_system,
               reply_to_id,
+              source_server_id,
+              source_server_name,
+              source_server_icon,
+              source_channel_name,
+              source_channel_id,
+              is_published_message,
+              publish_dismissed,
+              published_at,
               author:profiles!messages_author_id_fkey (
                 id,
                 username,
@@ -238,6 +279,11 @@ export function useMessages(channelId: string | null) {
             `)
             .eq('id', newMsg.id)
             .single();
+
+          if (error) {
+            console.error('Realtime message hydration failed:', error);
+            return;
+          }
 
           if (data) {
             // Resolve replied message snapshot if needed
@@ -284,11 +330,15 @@ export function useMessages(channelId: string | null) {
               attachments: Array.isArray((data as any).attachments) ? (data as any).attachments : [],
               repliedMessage,
             };
-            queryClient.setQueryData(
+            queryClient.setQueryData<MessageWithAuthor[]>(
               ['messages', channelId],
-              (old: MessageWithAuthor[] | undefined) => {
+              (old) => {
                 if (!old) return [parsedData];
-                if (old.some((m) => m.id === parsedData.id)) return old;
+                if (old.some((message) => message.id === parsedData.id)) {
+                  return old.map((message) =>
+                    message.id === parsedData.id ? { ...message, ...parsedData } : message,
+                  );
+                }
                 return [...old, parsedData];
               }
             );
@@ -311,7 +361,15 @@ export function useMessages(channelId: string | null) {
               if (!old) return old;
               return old.map((m) =>
                 m.id === updated.id
-                  ? { ...m, content: updated.content, edited_at: updated.edited_at }
+                  ? {
+                      ...m,
+                      content: updated.content,
+                      edited_at: updated.edited_at,
+                      // Copies publiees (modif. repercutee) et etat de publication
+                      ...(updated.attachments !== undefined ? { attachments: updated.attachments } : {}),
+                      ...(updated.published_at !== undefined ? { published_at: updated.published_at } : {}),
+                      ...(updated.publish_dismissed !== undefined ? { publish_dismissed: updated.publish_dismissed } : {}),
+                    }
                   : m
               );
             }
@@ -336,8 +394,8 @@ export function useMessages(channelId: string | null) {
             }
           );
         }
-      )
-      .subscribe((status) => {
+      );
+    const stopDiagnostics = subscribeWithDiagnostics(channel, `channel-messages-${channelId}`, (status) => {
         // Race recovery: once Realtime is live, refetch to catch any INSERT
         // that landed between the initial fetch and the subscription ack.
         if (status === 'SUBSCRIBED') {
@@ -346,9 +404,11 @@ export function useMessages(channelId: string | null) {
       });
 
     return () => {
+      stopDiagnostics();
       supabase.removeChannel(channel);
     };
-  }, [channelId, user, queryClient]);
+    });
+  }, [channelId, userId, queryClient]);
 
   // ── Infinite scroll: load older messages on demand ───────────────────────
   const [hasMoreOlder, setHasMoreOlder] = useState(true);
@@ -373,7 +433,7 @@ export function useMessages(channelId: string | null) {
         .select(`
           id, content, created_at, edited_at, attachments, channel_id,
           reply_to_id, source_server_id, source_server_name, source_server_icon,
-          source_channel_name, is_published_message, publish_dismissed, is_system,
+          source_channel_name, is_published_message, publish_dismissed, published_at, source_channel_id, is_system,
           author:profiles!messages_author_id_fkey (
             id, username, display_name, avatar_url, status, custom_status
           )
@@ -427,12 +487,13 @@ export function useMessages(channelId: string | null) {
       });
 
       if (resolved.length < 50) setHasMoreOlder(false);
+      const refreshed = await refreshSignedUrls(resolved);
 
-      if (resolved.length > 0) {
+      if (refreshed.length > 0) {
         queryClient.setQueryData<MessageWithAuthor[]>(['messages', channelId], (old) => {
           const existing = old || [];
           const existingIds = new Set(existing.map((m) => m.id));
-          const fresh = resolved.filter((m) => !existingIds.has(m.id));
+          const fresh = refreshed.filter((m) => !existingIds.has(m.id));
           return [...fresh, ...existing];
         });
       }
@@ -462,6 +523,7 @@ async function uploadOne(
     .upload(fileName, attachment.file, {
       cacheControl: '3600',
       upsert: false,
+      contentType: contentTypeOf(attachment.file),
     });
 
   if (error) {
@@ -483,9 +545,8 @@ async function uploadOne(
   }
 
   // Determine type based on MIME
-  let type: 'image' | 'video' | 'file' = 'file';
-  if (attachment.file.type.startsWith('image/')) type = 'image';
-  else if (attachment.file.type.startsWith('video/')) type = 'video';
+  const kind = kindOfFile(attachment.file);
+  const type: 'image' | 'video' | 'audio' | 'file' = kind === 'image' || kind === 'video' || kind === 'audio' ? kind : 'file';
 
   return {
     id: attachment.id,
@@ -512,7 +573,7 @@ const MAX_PARALLEL_UPLOADS = 3;
  * Original ordering is preserved, and the first failure rejects the whole batch
  * so the user is told rather than silently losing an attachment.
  */
-async function uploadAttachments(
+export async function uploadAttachments(
   userId: string,
   pendingAttachments: PendingAttachment[],
 ): Promise<StoredAttachment[]> {
@@ -555,17 +616,20 @@ export function useSendMessage() {
       attachments = [],
       replyToId,
       externalAttachment,
+      clientMessageId,
     }: {
       channelId: string;
       content: string;
       attachments?: PendingAttachment[];
       replyToId?: string | null;
       externalAttachment?: ExternalAttachment;
+      clientMessageId?: string;
     }) => {
       if (!user) throw new Error('Not authenticated');
+      if (!clientMessageId) throw new Error('Missing client message ID');
 
       // Validate - must have content or attachments
-      const validated = messageSchema.parse({ content });
+      const validated = parseMessageContent(content);
       if (!validated.content.trim() && attachments.length === 0 && !externalAttachment) {
         throw new Error('Message must have content or attachments');
       }
@@ -573,7 +637,11 @@ export function useSendMessage() {
       // Upload attachments first
       let uploadedAttachments: StoredAttachment[] = [];
       if (attachments.length > 0) {
-        uploadedAttachments = await uploadAttachments(user.id, attachments);
+        try {
+          uploadedAttachments = await uploadAttachments(user.id, attachments);
+        } catch (error) {
+          throw new AttachmentSendError(error);
+        }
       }
       if (externalAttachment) {
         uploadedAttachments = [
@@ -589,6 +657,7 @@ export function useSendMessage() {
       }
 
       const insertPayload: any = {
+        id: clientMessageId,
         channel_id: channelId,
         content: validated.content,
         author_id: user.id,
@@ -596,7 +665,7 @@ export function useSendMessage() {
       };
       if (replyToId) insertPayload.reply_to_id = replyToId;
 
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('messages')
         .insert(insertPayload)
         .select(`
@@ -618,6 +687,35 @@ export function useSendMessage() {
         `)
         .single();
 
+      if (error?.code === '23505') {
+        const { data: existingMessage, error: lookupError } = await supabase
+          .from('messages')
+          .select(`
+            id,
+            content,
+            created_at,
+            edited_at,
+            attachments,
+            channel_id,
+            reply_to_id,
+            author:profiles!messages_author_id_fkey (
+              id,
+              username,
+              display_name,
+              avatar_url,
+              status,
+              custom_status
+            )
+          `)
+          .eq('id', clientMessageId)
+          .eq('author_id', user.id)
+          .maybeSingle();
+        if (lookupError) throw lookupError;
+        if (existingMessage) {
+          data = existingMessage;
+          error = null;
+        }
+      }
       if (error) throw error;
 
       // Resolve replied snapshot for the inserted message
@@ -665,7 +763,24 @@ export function useSendMessage() {
         repliedMessage,
       } as MessageWithAuthor;
     },
-    onMutate: async ({ channelId, content, attachments = [], replyToId, externalAttachment }) => {
+    networkMode: 'online',
+    // Keep retrying transport failures; the stable id makes the insert idempotent.
+    retry: (_failureCount, error) =>
+      !(error instanceof AttachmentSendError) &&
+      isTransientNetworkError(error),
+    retryDelay: (failureCount) => Math.min(1000 * (2 ** failureCount), 8000),
+    onMutate: async (variables) => {
+      const { channelId, content, attachments = [], replyToId, externalAttachment } = variables;
+      variables.clientMessageId ??= crypto.randomUUID();
+      const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+      if (
+        isOffline &&
+        (attachments.length > 0 || externalAttachment)
+      ) {
+        throw new Error('OFFLINE_ATTACHMENTS_CANNOT_QUEUE');
+      }
+      if (isOffline) toast.info('Message texte mis en attente du retour du réseau.');
+
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['messages', channelId] });
 
@@ -684,8 +799,7 @@ export function useSendMessage() {
         id: a.id,
         url: a.previewUrl,
         name: a.name,
-        type: a.file.type.startsWith('image/') ? 'image' :
-              a.file.type.startsWith('video/') ? 'video' : 'file',
+        type: ((k) => (k === 'image' || k === 'video' || k === 'audio' ? k : 'file'))(kindOfFile(a.file)),
         size: a.file.size,
         description: a.description || undefined,
         isSpoiler: a.isSpoiler,
@@ -742,6 +856,7 @@ export function useSendMessage() {
             }
           : null,
         isPending: true,
+        isQueued: isOffline,
       };
 
       queryClient.setQueryData<MessageWithAuthor[]>(
@@ -771,7 +886,11 @@ export function useSendMessage() {
           context.previousMessages
         );
       }
-      toast.error("Erreur lors de l'envoi du message");
+      toast.error(
+        error instanceof Error && error.message === 'OFFLINE_ATTACHMENTS_CANNOT_QUEUE'
+          ? 'Les pièces jointes ne peuvent pas être mises en attente hors ligne. Réessaie après le retour du réseau.'
+          : serverRuleErrorMessage(error) ?? "Erreur lors de l'envoi du message"
+      );
       console.error('Send message error:', error);
     },
   });
@@ -785,15 +904,18 @@ export function useEditMessage() {
       messageId,
       channelId,
       content,
+      attachments,
     }: {
       messageId: string;
       channelId: string;
       content: string;
+      /** Liste finale des pieces jointes (remplacees / retirees / ajoutees) ; absent = inchangees. */
+      attachments?: StoredAttachment[];
     }) => {
-      const validated = messageSchema.parse({ content });
+      const validated = parseMessageContent(content);
       const { data, error } = await supabase
         .from('messages')
-        .update({ content: validated.content, edited_at: new Date().toISOString() })
+        .update({ content: validated.content, edited_at: new Date().toISOString(), ...(attachments ? { attachments: attachments as unknown as never } : {}) })
         .eq('id', messageId)
         .select()
         .single();
@@ -801,7 +923,7 @@ export function useEditMessage() {
       if (error) throw error;
       return data;
     },
-    onMutate: async ({ messageId, channelId, content }) => {
+    onMutate: async ({ messageId, channelId, content, attachments }) => {
       await queryClient.cancelQueries({ queryKey: ['messages', channelId] });
 
       const previousMessages = queryClient.getQueryData<MessageWithAuthor[]>([
@@ -815,7 +937,7 @@ export function useEditMessage() {
           if (!old) return old;
           return old.map((m) =>
             m.id === messageId
-              ? { ...m, content, edited_at: new Date().toISOString() }
+              ? { ...m, content, edited_at: new Date().toISOString(), ...(attachments ? { attachments } : {}) }
               : m
           );
         }
@@ -882,4 +1004,20 @@ export function useDeleteMessage() {
     onSuccess: () => {
     },
   });
+}
+
+
+/**
+ * Refus poses par le trigger enforce_server_message_rules (AutoMod, niveau
+ * de verification, regles du serveur), traduits pour l'utilisateur.
+ */
+function serverRuleErrorMessage(error: unknown): string | null {
+  const msg = error && typeof error === 'object' && 'message' in error ? String((error as { message: unknown }).message) : '';
+  if (msg.includes('AUTOMOD_KEYWORD_BLOCKED')) return "Message bloqué par AutoMod : il contient un mot interdit sur ce serveur.";
+  if (msg.includes('AUTOMOD_MENTION_SPAM')) return "Message bloqué par AutoMod : trop de mentions.";
+  if (msg.includes('SERVER_RULES_NOT_ACCEPTED')) return "Accepte d'abord les règles du serveur pour pouvoir écrire.";
+  if (msg.includes('VERIFICATION_EMAIL_REQUIRED')) return "Ce serveur exige une adresse e-mail vérifiée pour écrire.";
+  if (msg.includes('VERIFICATION_ACCOUNT_TOO_NEW')) return "Ton compte doit avoir plus de 5 minutes pour écrire sur ce serveur.";
+  if (msg.includes('VERIFICATION_MEMBER_TOO_NEW')) return "Tu dois être membre de ce serveur depuis plus de 10 minutes pour écrire.";
+  return null;
 }

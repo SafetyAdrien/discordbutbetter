@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { kindOfFile } from '@/lib/mediaTypes';
 
 export interface PendingAttachment {
   id: string;
@@ -9,26 +10,26 @@ export interface PendingAttachment {
   isSpoiler: boolean;
 }
 
+export type AttachmentMeta = Partial<Pick<PendingAttachment, 'name' | 'description' | 'isSpoiler'>>;
+
 export function usePendingAttachments() {
   const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
   const [dragCounter, setDragCounter] = useState(0);
   const isDragging = dragCounter > 0;
 
-  const addFiles = useCallback((files: FileList | File[]) => {
+  /** `meta[i]` (optionnel) pre-remplit le nom, la description et le spoiler du fichier i. */
+  const addFiles = useCallback((files: FileList | File[], meta?: AttachmentMeta[]) => {
     const fileArray = Array.from(files);
     const newAttachments: PendingAttachment[] = fileArray
-      .filter(file =>
-        file.type.startsWith('image/') ||
-        file.type.startsWith('video/') ||
-        file.type === 'application/pdf'
-      )
-      .map(file => ({
+      .map((file, i) => ({ file, m: meta?.[i] }))
+      .filter(({ file }) => kindOfFile(file) !== null)
+      .map(({ file, m }) => ({
         id: crypto.randomUUID(),
         file,
         previewUrl: URL.createObjectURL(file),
-        name: file.name,
-        description: '',
-        isSpoiler: false,
+        name: m?.name || file.name,
+        description: m?.description ?? '',
+        isSpoiler: m?.isSpoiler ?? false,
       }));
     
     setAttachments(prev => [...prev, ...newAttachments]);

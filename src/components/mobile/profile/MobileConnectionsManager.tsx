@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, Trash2, ChevronRight, Check } from 'lucide-react';
+import { Plus, Trash2, ChevronRight, Check } from '@/components/icons/discord/lucide';
 import { MobileProfileSubpage } from './MobileProfileSubpage';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUpdateProfile } from '@/hooks/useProfile';

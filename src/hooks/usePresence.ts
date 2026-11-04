@@ -29,7 +29,9 @@ export function usePresence() {
 
   const sendHeartbeat = useCallback((active: boolean) => {
     if (!userIdRef.current) return;
-    supabase.rpc('heartbeat_presence', { _active: active }).then(() => {}, () => {});
+    void supabase.rpc('heartbeat_presence', { _active: active }).then(({ error }) => {
+      if (error) console.error('Presence heartbeat failed:', error);
+    });
   }, []);
 
   useEffect(() => {

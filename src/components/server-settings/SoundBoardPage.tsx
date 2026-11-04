@@ -1,6 +1,8 @@
 import { useRef, useState, useCallback } from 'react';
+import { SettingsPage } from './SettingsUI';
 import { Button } from '@/components/ui/button';
-import { Volume2, Plus, Play, Pause, Trash2, Upload, Loader2 } from 'lucide-react';
+import { Play, Pause, Loader2 } from 'lucide-react';
+import { Volume2, Trash2 } from '@/components/icons/discord/lucide';
 import {
   useServerSounds,
   useUploadSound,
@@ -128,17 +130,14 @@ export function SoundBoardPage({ serverId }: SoundBoardPageProps) {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold mb-1">SoundBoard</h3>
-          <p className="text-sm text-muted-foreground">
-            Importez plusieurs sons (max 512 Ko) à utiliser dans les salons vocaux.
-          </p>
-        </div>
+    <SettingsPage
+      title="Soundboard"
+      description="Uploade des sons personnalisés que tout le monde peut jouer dans les salons vocaux de ce serveur. 512 Ko maximum par son."
+    >
+      <div className="space-y-6">
+      <div>
         <Button onClick={() => fileInputRef.current?.click()} disabled={isProcessing}>
-          <Plus className="w-4 h-4 mr-2" />
-          Importer
+          Uploader un son
         </Button>
         <input
           ref={fileInputRef}
@@ -168,32 +167,23 @@ export function SoundBoardPage({ serverId }: SoundBoardPageProps) {
           <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
         </div>
       ) : sounds.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-            <Volume2 className="w-8 h-8 text-muted-foreground" />
-          </div>
-          <h4 className="font-medium mb-2">Aucun son</h4>
-          <p className="text-sm text-muted-foreground max-w-sm mb-4">
-            Importez plusieurs sons à la fois pour vos salons vocaux.
-          </p>
-          <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
-            <Upload className="w-4 h-4 mr-2" />
-            Importer des sons
-          </Button>
+        <div className="pt-6 border-t border-border">
+          <p className="text-base font-semibold text-muted-foreground">Aucun son</p>
+          <p className="mt-1 text-sm text-muted-foreground">Tu peux sélectionner plusieurs fichiers audio d'un coup.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 pt-6 border-t border-border">
           {sounds.map((sound) => {
             const isPlaying = playingId === sound.id;
             return (
               <div
                 key={sound.id}
-                className="p-3 bg-surface-elevated rounded-lg border border-border group hover:border-primary/50 transition-colors"
+                className="p-3 bg-[hsl(var(--card))] rounded-lg border border-white/[0.06] group hover:border-primary/50 transition-colors"
               >
                 <div className="flex items-center justify-between mb-2 gap-2">
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="text-lg shrink-0">{sound.emoji || '🔊'}</span>
-                    <span className="text-sm font-medium truncate">{sound.name}</span>
+                    <span translate="no" className="text-sm font-medium truncate">{sound.name}</span>
                   </div>
                   <Button
                     variant="ghost"
@@ -227,6 +217,7 @@ export function SoundBoardPage({ serverId }: SoundBoardPageProps) {
           })}
         </div>
       )}
-    </div>
+      </div>
+    </SettingsPage>
   );
 }

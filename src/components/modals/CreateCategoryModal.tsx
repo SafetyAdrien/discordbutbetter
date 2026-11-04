@@ -9,7 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Smile } from 'lucide-react';
+import { Smile } from '@/components/icons/discord/lucide';
 import { EmojiStickerPicker } from '@/components/chat/EmojiStickerPicker';
 import { useCreateCategory } from '@/hooks/useChannels';
 

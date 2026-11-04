@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { X, RotateCcw, FlipHorizontal2, ZoomOut, ZoomIn, RotateCw, ArrowLeft, ArrowRight } from 'lucide-react';
+import { RotateCcw, FlipHorizontal2, ZoomOut, ZoomIn } from 'lucide-react';
+import { X, RotateCw, ArrowLeft, ArrowRight } from '@/components/icons/discord/lucide';
 import { useServers, type ServerWithDetails } from '@/hooks/useServers';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -190,13 +191,14 @@ export function EmojiStickerEditor({
     if (!imgEl) return MIN_SCALE;
     const sx = PREVIEW / imgEl.naturalWidth;
     const sy = PREVIEW / imgEl.naturalHeight;
-    if (fitMode === 'fit') return 1;
+    // Ajuster : l'image entiere est visible des l'import, et on peut encore la reduire dans le cadre.
+    if (fitMode === 'fit') return 0.2;
     return Math.max(MIN_SCALE, Math.min(sx, sy) / Math.max(sx, sy));
   }, [imgEl, PREVIEW, fitMode]);
 
   const maxScale = useMemo(() => {
     if (!imgEl) return MAX_SCALE_CAP;
-    return Math.max(1, Math.min(MAX_SCALE_CAP, 1 / fitScale));
+    return MAX_SCALE_CAP;
   }, [imgEl, fitScale]);
 
   // Keep scale within dynamic image bounds when limits change.
@@ -494,7 +496,7 @@ export function EmojiStickerEditor({
               >
                 <div
                   className={cn(
-                    'absolute inset-0 overflow-hidden rounded-full bg-[conic-gradient(at_50%_50%,_#0000_25%,_#ffffff10_0_50%,_#0000_0_75%,_#ffffff10_0)] bg-[length:16px_16px] ring-1 ring-inset ring-border/60'
+                    'absolute inset-0 overflow-hidden rounded-md bg-[conic-gradient(at_50%_50%,_#0000_25%,_#ffffff10_0_50%,_#0000_0_75%,_#ffffff10_0)] bg-[length:16px_16px] ring-1 ring-inset ring-border/60'
                   )}
                 >
                   {src && imgEl && (

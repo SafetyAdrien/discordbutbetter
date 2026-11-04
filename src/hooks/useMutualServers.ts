@@ -7,6 +7,8 @@ export interface MutualServer {
   id: string;
   name: string;
   icon_url: string | null;
+  /** Pseudo de l'autre utilisateur dans ce serveur. */
+  nickname?: string | null;
 }
 
 const mutualServersCacheKey = (me: string, other: string) =>
@@ -37,6 +39,7 @@ export function useMutualServers(otherUserId: string | null) {
       const { data: mutualServers, error: mutualError } = await supabase
         .from('server_members')
         .select(`
+          nickname,
           server:servers (
             id,
             name,
@@ -48,7 +51,7 @@ export function useMutualServers(otherUserId: string | null) {
 
       if (mutualError) throw mutualError;
 
-      const result = (mutualServers?.map((s) => s.server) || []).filter(
+      const result = (mutualServers?.map((s) => (s.server ? { ...s.server, nickname: s.nickname } : null)) || []).filter(
         Boolean,
       ) as MutualServer[];
       cacheSetAsync(mutualServersCacheKey(user.id, otherUserId), result);

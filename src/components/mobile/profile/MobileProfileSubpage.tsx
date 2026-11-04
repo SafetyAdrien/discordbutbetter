@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft } from '@/components/icons/discord/lucide';
 import { motion } from 'framer-motion';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useSwipeBack } from '@/hooks/useSwipeBack';

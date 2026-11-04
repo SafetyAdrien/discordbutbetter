@@ -1,18 +1,9 @@
 import { useState, lazy, Suspense } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserAvatarImage } from '@/components/ui/user-avatar-image';
-import {
-  Settings,
-  Pencil,
-  Bell,
-  // ChevronRight removed (no longer used)
-  Copy,
-  Check,
-  X,
-  Link2,
-  Plus,
-  BadgeCheck,
-} from 'lucide-react';
+import { // ChevronRight removed (no longer used)
+  Copy, BadgeCheck } from 'lucide-react';
+import { Settings, Pencil, Bell, Check, X, Link2, Plus } from '@/components/icons/discord/lucide';
 import { MentionBadge } from '@/components/ui/MentionBadge';
 import { Spinner } from '@/components/ui/spinner';
 import { MobileStatusSheet } from './profile/MobileStatusSheet';

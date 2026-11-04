@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { refreshSignedUrls } from '@/lib/storageUrls';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
@@ -43,7 +44,7 @@ export function useChannelCalendarEvents(channelId: string | null) {
   const query = useQuery({
     queryKey: queryKey(channelId ?? ''),
     enabled: !!channelId,
-    queryFn: async () => {
+    queryFn: async () => refreshSignedUrls(await (async () => {
       const { data, error } = await supabase
         .from('channel_calendar_events')
         .select('*')
@@ -51,7 +52,7 @@ export function useChannelCalendarEvents(channelId: string | null) {
         .order('starts_at', { ascending: true });
       if (error) throw error;
       return (data ?? []) as ChannelCalendarEvent[];
-    },
+    })()),
   });
 
   useEffect(() => {

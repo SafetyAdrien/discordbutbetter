@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Video, VideoOff, PhoneOff, Maximize2 } from 'lucide-react';
+import { Video, VideoOff, PhoneOff, Maximize2 } from '@/components/icons/discord/lucide';
 import { DiscordMic as Mic } from '@/components/icons/DiscordMic';
 import { DiscordMicOff as MicOff } from '@/components/icons/DiscordMicOff';
 import { DMCall } from '@/hooks/useDMCalls';
@@ -29,6 +29,7 @@ export function DMCallView({ call, participant, onEndCall, isInitiator }: DMCall
   const {
     isConnected,
     isConnecting,
+    isReconnecting,
     isMuted,
     isVideoOff,
     audioLevel,
@@ -109,16 +110,17 @@ export function DMCallView({ call, participant, onEndCall, isInitiator }: DMCall
             </AvatarFallback>
           </Avatar>
           <div>
-            <p className="font-medium text-sm">{displayName}</p>
+            <p translate="no" className="font-medium text-sm">{displayName}</p>
             <p className="text-xs text-muted-foreground">
               {isConnecting && 'Connexion...'}
+              {isReconnecting && 'Rétablissement de la connexion…'}
               {isConnected && call.status === 'active' && formatDuration(duration)}
               {!isConnected && !isConnecting && call.status === 'ringing' && 'Appel en cours...'}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <VoiceConnectionIndicator stats={connectionStats} connected={isConnected} />
+          <VoiceConnectionIndicator stats={connectionStats} connected={isConnected} reconnecting={isReconnecting} />
           <Button variant="ghost" size="icon">
             <Maximize2 className="w-4 h-4" />
           </Button>
@@ -170,7 +172,7 @@ export function DMCallView({ call, participant, onEndCall, isInitiator }: DMCall
                 </div>
               )}
             </div>
-            <h2 className="text-xl font-semibold mb-2">{displayName}</h2>
+            <h2 translate="no" className="text-xl font-semibold mb-2">{displayName}</h2>
             <p className="text-muted-foreground">
               {isConnecting && 'Connexion en cours...'}
               {isConnected && call.status === 'active' && formatDuration(duration)}

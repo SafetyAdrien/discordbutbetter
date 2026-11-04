@@ -1,7 +1,8 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { QRCodeSVG } from 'qrcode.react';
-import { Copy, Share2, Check, Camera } from 'lucide-react';
+import { Camera } from 'lucide-react';
+import { Copy, Share2, Check } from '@/components/icons/discord/lucide';
 import { MobileProfileSubpage } from './MobileProfileSubpage';
 import { uuidToSnowflake } from '@/lib/snowflake';
 import { haptics } from '@/lib/haptics';
@@ -62,7 +63,7 @@ export function MobileQRCodeView({ onBack }: Props) {
                 {initial}
               </AvatarFallback>
             </Avatar>
-            <h2 className="mt-3 font-bold text-lg text-white">{profile?.display_name}</h2>
+            <h2 translate="no" className="mt-3 font-bold text-lg text-white">{profile?.display_name}</h2>
             <p className="text-sm text-white/80">@{profile?.username}</p>
           </div>
 

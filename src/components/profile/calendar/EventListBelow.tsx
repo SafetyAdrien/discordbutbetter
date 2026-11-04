@@ -1,13 +1,15 @@
 import { useState } from 'react';
 import { useCalendarEvents, CalendarEvent } from '@/hooks/useCalendarEvents';
 import { Button } from '@/components/ui/button';
-import { Calendar, Globe, Lock, Pencil, Trash2 } from 'lucide-react';
+import { Globe } from 'lucide-react';
+import { Calendar, Lock, Pencil, Trash2 } from '@/components/icons/discord/lucide';
 import { CreateEventModal } from './CreateEventModal';
 
+import { appLocale } from '@/i18n/locale';
 function fmtDateTime(date: string, time: string): string {
   try {
     const d = new Date(`${date}T${time}`);
-    return d.toLocaleString('fr-FR', {
+    return d.toLocaleString(appLocale(), {
       weekday: 'short', day: 'numeric', month: 'short',
       hour: '2-digit', minute: '2-digit',
     });

@@ -1,14 +1,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { AdaptiveSheet } from '@/components/ui/adaptive-sheet';
-import {
-  MessageCircle,
-  Star,
-  StarOff,
-  UserMinus,
-  UserX,
-  User,
-  Phone,
-} from 'lucide-react';
+import { StarOff, UserMinus, UserX } from 'lucide-react';
+import { MessageCircle, Star, User, Phone } from '@/components/icons/discord/lucide';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/lib/haptics';
 import type { MobileFriendCardData } from './MobileFriendCard';
@@ -128,7 +121,7 @@ export function MobileFriendActionSheet({
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <p className="text-base font-semibold truncate">{friend.displayName}</p>
+            <p translate="no" className="text-base font-semibold truncate">{friend.displayName}</p>
             <p className="text-xs text-muted-foreground truncate">@{friend.username}</p>
           </div>
         </div>

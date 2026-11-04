@@ -1,132 +1,128 @@
 import { useState } from 'react';
+import { CheckCircle2, XCircle } from '@/components/icons/serverSettingsIcons';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileCode, Copy, Check, Loader2 } from 'lucide-react';
+import { useChannels } from '@/hooks/useChannels';
+import { useServerRoles } from '@/hooks/useRoles';
+import { useServers } from '@/hooks/useServers';
+import { copyToClipboard } from '@/lib/clipboard';
+import { encodeServerTemplate } from '@/lib/serverTemplateCode';
+import { SettingsPage } from './SettingsUI';
+import { settingsInputCls, settingsLabelCls, settingsTextareaCls } from './settingsStyles';
 
-interface ServerTemplatePageProps {
-  serverId: string;
-}
+/*
+ * "Modele de serveur" (video de reference). Le modele est un code
+ * autonome (voir serverTemplateCode) : categories, salons de tous types et
+ * roles. On colle le code dans "Creer un serveur > Importer" pour recreer
+ * la meme structure.
+ */
 
-export function ServerTemplatePage({ serverId }: ServerTemplatePageProps) {
-  const [templateName, setTemplateName] = useState('');
-  const [templateDescription, setTemplateDescription] = useState('');
-  const [isCreating, setIsCreating] = useState(false);
-  const [templateCode, setTemplateCode] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+const COPIED = ['Salons et sujets de salons', 'Rôles et couleurs', 'Tous les types de salons, y compris ceux de l\'app'];
+const NOT_COPIED = ['Messages ou tout autre contenu', 'Membres ou bots', "L'icône de ton serveur, tes boosts et autres avantages"];
 
-  const handleCreateTemplate = async () => {
-    if (!templateName.trim()) return;
-    
-    setIsCreating(true);
-    // Placeholder - would create template in database
-    setTimeout(() => {
-      setTemplateCode(`template_${Date.now()}`);
-      setIsCreating(false);
-    }, 1000);
+export function ServerTemplatePage({ serverId }: { serverId: string }) {
+  const { data: servers = [] } = useServers();
+  const server = servers.find((s) => s.id === serverId);
+  const { data: channels } = useChannels(serverId);
+  const { data: roles = [] } = useServerRoles(serverId);
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [code, setCode] = useState<string | null>(null);
+
+  const generate = () => {
+    if (!channels || !title.trim()) return;
+    const byPos = <T extends { position: number | null }>(a: T, b: T) => (a.position ?? 0) - (b.position ?? 0);
+    setCode(
+      encodeServerTemplate({
+        name: title.trim(),
+        description: description.trim() || null,
+        serverName: server?.name ?? title.trim(),
+        categories: [...channels.categories].sort(byPos).map((c) => ({
+          name: c.name,
+          channels: [...c.channels].sort(byPos).map((ch, i) => ({ name: ch.name, type: ch.type, position: i })),
+        })),
+        orphanChannels: [...channels.orphanChannels].sort(byPos).map((ch, i) => ({ name: ch.name, type: ch.type, position: i })),
+        roles: roles
+          .filter((r) => !r.is_default)
+          .sort((a, b) => (b.position ?? 0) - (a.position ?? 0))
+          .map((r) => ({ name: r.name, color: r.color, hoist: !!r.hoist })),
+      }),
+    );
   };
 
-  const handleCopyCode = () => {
-    if (templateCode) {
-      navigator.clipboard.writeText(templateCode);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold mb-1">Template de serveur</h3>
-        <p className="text-sm text-muted-foreground">
-          Créez un template à partir de la structure de ce serveur pour le partager
-        </p>
+    <SettingsPage
+      title="Modèle de serveur"
+      description={
+        <>
+          <p>Un modèle de serveur te permet de partager ta configuration de serveur facilement, et d'aider quelqu'un d'autre à créer un serveur instantanément.</p>
+          <p className="mt-3">Lorsqu'une personne utilise ton modèle, elle crée un nouveau serveur prérempli avec les mêmes salons et rôles que le tien.</p>
+        </>
+      }
+    >
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 p-4 rounded-lg bg-[hsl(var(--card))]">
+        <div>
+          <p className="mb-3 text-sm font-semibold text-white">Les modèles copieront :</p>
+          <ul className="space-y-3">
+            {COPIED.map((t) => (
+              <li key={t} className="flex items-start gap-2 text-sm text-foreground">
+                <CheckCircle2 className="w-5 h-5 shrink-0 text-[hsl(var(--online))]" />
+                {t}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div>
+          <p className="mb-3 text-sm font-semibold text-white">Les modèles ne copieront pas :</p>
+          <ul className="space-y-3">
+            {NOT_COPIED.map((t) => (
+              <li key={t} className="flex items-start gap-2 text-sm text-foreground">
+                <XCircle className="w-5 h-5 shrink-0 text-destructive" />
+                {t}
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
 
-      {templateCode ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <FileCode className="w-5 h-5 text-primary" />
-              Template créé
-            </CardTitle>
-            <CardDescription>
-              Partagez ce code pour que d'autres puissent créer un serveur similaire
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Input value={templateCode} readOnly className="font-mono" />
-              <Button variant="outline" size="icon" onClick={handleCopyCode}>
-                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-              </Button>
-            </div>
-            <Button variant="outline" onClick={() => setTemplateCode(null)}>
-              Créer un nouveau template
-            </Button>
-          </CardContent>
-        </Card>
+      <label htmlFor="template-title" className={`${settingsLabelCls} mt-8`}>
+        Titre du modèle <span className="text-destructive">*</span>
+      </label>
+      <input
+        id="template-title"
+        value={title}
+        maxLength={100}
+        onChange={(e) => setTitle(e.target.value)}
+        placeholder="Pour qui est ce serveur ? Ex. : club scolaire, communauté d'artistes"
+        className={settingsInputCls}
+      />
+      <label htmlFor="template-desc" className={`${settingsLabelCls} mt-5`}>Description du modèle</label>
+      <textarea
+        id="template-desc"
+        value={description}
+        maxLength={120}
+        onChange={(e) => setDescription(e.target.value)}
+        placeholder="Que font les membres dans ce serveur ?"
+        className={settingsTextareaCls}
+      />
+
+      {code ? (
+        <div className="mt-6">
+          <p className={settingsLabelCls}>Code du modèle</p>
+          <div className="flex items-center gap-2 p-1 pl-3 rounded-lg bg-[hsl(var(--search-background))] border border-white/[0.06]">
+            <input readOnly value={code} className="flex-1 min-w-0 bg-transparent font-mono text-sm text-foreground outline-none" />
+            <Button size="sm" onClick={() => copyToClipboard(code, 'Code du modèle copié !')}>Copier</Button>
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Colle ce code dans « Créer un serveur › Importer » pour recréer cette structure. Régénère-le après avoir modifié tes salons ou tes rôles.
+          </p>
+          <Button variant="secondary" className="mt-4" onClick={generate}>Régénérer le modèle</Button>
+        </div>
       ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Créer un template</CardTitle>
-            <CardDescription>
-              Le template inclura les canaux, catégories et rôles du serveur
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="template-name">Nom du template</Label>
-              <Input
-                id="template-name"
-                value={templateName}
-                onChange={(e) => setTemplateName(e.target.value)}
-                placeholder="Mon template de serveur"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="template-desc">Description (optionnel)</Label>
-              <Textarea
-                id="template-desc"
-                value={templateDescription}
-                onChange={(e) => setTemplateDescription(e.target.value)}
-                placeholder="Décrivez votre template..."
-                rows={3}
-              />
-            </div>
-            <Button 
-              onClick={handleCreateTemplate} 
-              disabled={!templateName.trim() || isCreating}
-            >
-              {isCreating ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Création...
-                </>
-              ) : (
-                <>
-                  <FileCode className="w-4 h-4 mr-2" />
-                  Créer le template
-                </>
-              )}
-            </Button>
-          </CardContent>
-        </Card>
+        <Button className="mt-6" onClick={generate} disabled={!title.trim() || !channels}>
+          Générer un modèle
+        </Button>
       )}
-
-      <div className="p-4 bg-muted/50 rounded-lg">
-        <h4 className="font-medium mb-2">Ce qui sera inclus</h4>
-        <ul className="text-sm text-muted-foreground space-y-1">
-          <li>• Structure des catégories et canaux</li>
-          <li>• Rôles et leurs permissions</li>
-          <li>• Paramètres du serveur</li>
-        </ul>
-        <p className="text-sm text-muted-foreground mt-3">
-          <strong>Non inclus :</strong> Messages, membres, emojis personnalisés
-        </p>
-      </div>
-    </div>
+    </SettingsPage>
   );
 }

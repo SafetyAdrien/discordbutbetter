@@ -1,141 +1,161 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { acquireSharedRealtimeEffect, subscribeWithDiagnostics } from '@/lib/realtimeDiagnostics';
+import { isTypingUserFresh, type TypingUser } from '@/lib/typingIndicator';
 
-interface TypingUser {
-  id: string;
-  user_id: string;
-  profile: {
-    id: string;
-    username: string;
-    display_name: string;
-    avatar_url: string | null;
-  } | null;
+type TypingContext = {
+  channel_id?: string;
+  conversation_id?: string;
+  thread_id?: string;
+};
+
+const HEARTBEAT_INTERVAL_MS = 2000;
+const TYPING_IDLE_MS = 5000;
+const TYPING_EXPIRY_MS = 10_000;
+
+function getTypingContext(
+  channelId?: string | null,
+  conversationId?: string | null,
+  threadId?: string | null,
+): TypingContext | null {
+  if (threadId) return { thread_id: threadId };
+  if (channelId) return { channel_id: channelId };
+  if (conversationId) return { conversation_id: conversationId };
+  return null;
 }
 
-export function useTypingIndicator(channelId?: string | null, conversationId?: string | null, threadId?: string | null) {
+function getContextKey(context: TypingContext | null): string | null {
+  if (context?.thread_id) return `thread:${context.thread_id}`;
+  if (context?.channel_id) return `channel:${context.channel_id}`;
+  if (context?.conversation_id) return `conversation:${context.conversation_id}`;
+  return null;
+}
+
+export function useTypingIndicator(
+  channelId?: string | null,
+  conversationId?: string | null,
+  threadId?: string | null,
+) {
   const { user } = useAuth();
-  const queryClient = useQueryClient();
-  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const lastTypingRef = useRef<number>(0);
-  const TYPING_DEBOUNCE = 2000; // Send typing update every 2 seconds
-  const TYPING_EXPIRY = 5000; // Consider typing expired after 5 seconds
+  const context = useMemo(
+    () => getTypingContext(channelId, conversationId, threadId),
+    [channelId, conversationId, threadId],
+  );
+  const contextKey = getContextKey(context);
+  const userId = user?.id;
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastHeartbeatRef = useRef(0);
+  const activeRef = useRef(false);
+  const operationQueueRef = useRef<Promise<void>>(Promise.resolve());
 
-  // Cleanup typing indicator on unmount
-  useEffect(() => {
-    return () => {
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
-      // Clean up typing indicator when leaving
-      if (user?.id && (channelId || conversationId || threadId)) {
-        supabase
-          .from('typing_indicators')
-          .delete()
-          .eq('user_id', user.id)
-          .then(() => {});
-      }
-    };
-  }, [user?.id, channelId, conversationId, threadId]);
+  const enqueue = useCallback((operation: () => Promise<void>, label: string) => {
+    const next = operationQueueRef.current.then(operation);
+    operationQueueRef.current = next.catch((error: unknown) => {
+      console.error(label, error);
+    });
+  }, []);
 
-  // Start typing mutation
-  const startTypingMutation = useMutation({
-    mutationFn: async () => {
-      if (!user?.id) throw new Error('Not authenticated');
-      
-      const data: { user_id: string; channel_id?: string; conversation_id?: string; thread_id?: string } = {
-        user_id: user.id,
-      };
-      
-      if (threadId) {
-        data.thread_id = threadId;
-      } else if (channelId) {
-        data.channel_id = channelId;
-      } else if (conversationId) {
-        data.conversation_id = conversationId;
-      } else {
-        throw new Error('No channel, conversation, or thread specified');
-      }
+  const writeTyping = useCallback(async () => {
+    if (!userId || !context) return;
 
-      // Upsert typing indicator
-      const { error } = await supabase
+    const { data: existing, error: updateError } = await supabase
+      .from('typing_indicators')
+      .update({ started_at: new Date().toISOString() })
+      .eq('user_id', userId)
+      .match(context)
+      .select('id')
+      .limit(1)
+      .maybeSingle();
+
+    if (updateError) throw updateError;
+    if (existing) return;
+
+    const { error: insertError } = await supabase
+      .from('typing_indicators')
+      .insert({ user_id: userId, ...context });
+
+    if (insertError?.code === '23505') {
+      const { error: retryUpdateError } = await supabase
         .from('typing_indicators')
-        .upsert(data, { 
-          onConflict: 'user_id',
-          ignoreDuplicates: false 
-        });
-
-      if (error) throw error;
-    },
-  });
-
-  // Stop typing mutation
-  const stopTypingMutation = useMutation({
-    mutationFn: async () => {
-      if (!user?.id) return;
-      
-      const { error } = await supabase
-        .from('typing_indicators')
-        .delete()
-        .eq('user_id', user.id);
-
-      if (error) throw error;
-    },
-  });
-
-  // Start typing with debounce
-  const startTyping = useCallback(() => {
-    const now = Date.now();
-    if (now - lastTypingRef.current < TYPING_DEBOUNCE) return;
-    
-    lastTypingRef.current = now;
-    startTypingMutation.mutate();
-
-    // Clear existing timeout
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
+        .update({ started_at: new Date().toISOString() })
+        .eq('user_id', userId)
+        .match(context);
+      if (retryUpdateError) throw retryUpdateError;
+      return;
     }
+    if (insertError) throw insertError;
+  }, [context, userId]);
 
-    // Set timeout to stop typing after inactivity
-    typingTimeoutRef.current = setTimeout(() => {
-      stopTypingMutation.mutate();
-      lastTypingRef.current = 0;
-    }, TYPING_EXPIRY);
-  }, [startTypingMutation, stopTypingMutation]);
+  const clearTyping = useCallback(async () => {
+    if (!userId || !context) return;
+    const { error } = await supabase
+      .from('typing_indicators')
+      .delete()
+      .eq('user_id', userId)
+      .match(context);
+    if (error) throw error;
+  }, [context, userId]);
 
-  // Stop typing
   const stopTyping = useCallback(() => {
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
     }
-    stopTypingMutation.mutate();
-    lastTypingRef.current = 0;
-  }, [stopTypingMutation]);
 
-  return {
-    startTyping,
-    stopTyping,
-  };
+    const wasActive = activeRef.current;
+    activeRef.current = false;
+    lastHeartbeatRef.current = 0;
+    if (wasActive) enqueue(clearTyping, 'Failed to stop typing indicator:');
+  }, [clearTyping, enqueue]);
+
+  const startTyping = useCallback(() => {
+    if (!userId || !contextKey) return;
+
+    activeRef.current = true;
+    const now = Date.now();
+    if (now - lastHeartbeatRef.current >= HEARTBEAT_INTERVAL_MS) {
+      lastHeartbeatRef.current = now;
+      enqueue(writeTyping, 'Failed to update typing indicator:');
+    }
+
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(stopTyping, TYPING_IDLE_MS);
+  }, [contextKey, enqueue, stopTyping, userId, writeTyping]);
+
+  useEffect(() => () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    if (!activeRef.current) return;
+    activeRef.current = false;
+    enqueue(clearTyping, 'Failed to clear typing indicator:');
+  }, [clearTyping, enqueue]);
+
+  return { startTyping, stopTyping };
 }
 
-export function useTypingUsers(channelId?: string | null, conversationId?: string | null, threadId?: string | null) {
+export function useTypingUsers(
+  channelId?: string | null,
+  conversationId?: string | null,
+  threadId?: string | null,
+) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
-
-  const queryKey = threadId
-    ? ['typing-users', 'thread', threadId]
-    : channelId 
-      ? ['typing-users', 'channel', channelId]
-      : conversationId 
-        ? ['typing-users', 'conversation', conversationId]
-        : ['typing-users', 'none'];
+  const context = useMemo(
+    () => getTypingContext(channelId, conversationId, threadId),
+    [channelId, conversationId, threadId],
+  );
+  const contextKey = getContextKey(context);
+  const queryKey = useMemo(
+    () => ['typing-users', contextKey ?? 'none'],
+    [contextKey],
+  );
+  const userId = user?.id;
 
   const query = useQuery({
     queryKey,
-    queryFn: async () => {
-      if (!channelId && !conversationId && !threadId) return [];
+    queryFn: async (): Promise<TypingUser[]> => {
+      if (!context) return [];
 
       let queryBuilder = supabase
         .from('typing_indicators')
@@ -151,63 +171,67 @@ export function useTypingUsers(channelId?: string | null, conversationId?: strin
           )
         `);
 
-      if (threadId) {
-        queryBuilder = queryBuilder.eq('thread_id', threadId);
-      } else if (channelId) {
-        queryBuilder = queryBuilder.eq('channel_id', channelId);
-      } else if (conversationId) {
-        queryBuilder = queryBuilder.eq('conversation_id', conversationId);
+      if (context.thread_id) {
+        queryBuilder = queryBuilder.eq('thread_id', context.thread_id);
+      } else if (context.channel_id) {
+        queryBuilder = queryBuilder.eq('channel_id', context.channel_id);
+      } else if (context.conversation_id) {
+        queryBuilder = queryBuilder.eq('conversation_id', context.conversation_id);
       }
 
       const { data, error } = await queryBuilder;
-      
       if (error) throw error;
 
-      // Filter out current user and expired indicators
-      const now = Date.now();
-      return (data || [])
-        .filter((indicator: any) => {
-          if (indicator.user_id === user?.id) return false;
-          const startedAt = new Date(indicator.started_at).getTime();
-          return now - startedAt < 10000; // 10 second expiry
-        })
-        .map((indicator: any) => ({
-          id: indicator.id,
-          user_id: indicator.user_id,
-          profile: indicator.profile,
-        })) as TypingUser[];
+      return (data ?? [])
+        .filter((indicator) =>
+          indicator.user_id !== userId &&
+          isTypingUserFresh(indicator, Date.now(), TYPING_EXPIRY_MS)
+        ) as TypingUser[];
     },
-    enabled: !!(channelId || conversationId || threadId),
-    refetchInterval: 3000, // Refresh every 3 seconds
+    enabled: !!contextKey,
+    refetchInterval: TYPING_EXPIRY_MS / 2,
   });
 
-  // Subscribe to realtime changes
   useEffect(() => {
-    if (!channelId && !conversationId && !threadId) return;
+    if (!contextKey || !context) return;
 
-    const filterColumn = threadId ? 'thread_id' : channelId ? 'channel_id' : 'conversation_id';
-    const filterValue = threadId || channelId || conversationId;
-
-    const channel = supabase
-      .channel(`typing-${filterValue}-${instanceIdRef.current}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'typing_indicators',
-          filter: `${filterColumn}=eq.${filterValue}`,
+    return acquireSharedRealtimeEffect(`typing-users:${contextKey}`, () => {
+      const filterColumn = context.thread_id
+        ? 'thread_id'
+        : context.channel_id
+          ? 'channel_id'
+          : 'conversation_id';
+      const filterValue = context.thread_id ?? context.channel_id ?? context.conversation_id;
+      const channel = supabase
+        .channel(`typing-${contextKey}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'typing_indicators',
+            filter: `${filterColumn}=eq.${filterValue}`,
+          },
+          () => {
+            void queryClient.invalidateQueries({ queryKey });
+          },
+        );
+      const stopDiagnostics = subscribeWithDiagnostics(
+        channel,
+        `typing-users-${contextKey}`,
+        (status) => {
+          if (status === 'SUBSCRIBED') {
+            void queryClient.invalidateQueries({ queryKey });
+          }
         },
-        () => {
-          queryClient.invalidateQueries({ queryKey });
-        }
-      )
-      .subscribe();
+      );
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [channelId, conversationId, threadId, queryClient, queryKey]);
+      return () => {
+        stopDiagnostics();
+        void supabase.removeChannel(channel);
+      };
+    });
+  }, [context, contextKey, queryClient, queryKey]);
 
   return query;
 }

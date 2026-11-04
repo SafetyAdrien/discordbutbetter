@@ -1,316 +1,272 @@
-import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useEffect, useMemo, useState } from 'react';
+import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Circle, MinusCircle, EyeOff, Smile, X, Check, ChevronDown, Gamepad2, Headphones, Eye, Trophy } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, X } from '@/components/icons/discord/lucide';
 import { useUpdateProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/contexts/AuthContext';
-import { useQueryClient } from '@tanstack/react-query';
+import { EmojiStickerPicker } from '@/components/chat/EmojiStickerPicker';
+import { ProfileCardHeader } from './ProfileCardHeader';
+import { StatusEmoji } from './StatusEmoji';
+import {
+  CLEAR_AFTER_OPTIONS,
+  expiryFor,
+  formatClearTime,
+  joinCustomStatus,
+  splitCustomStatus,
+  type ClearAfter,
+} from '@/lib/customStatus';
 import { cn } from '@/lib/utils';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { UserAvatarImage } from '@/components/ui/user-avatar-image';
+
+/*
+ * "Définir ton statut" (video de reference) : un apercu du profil avec la bulle en
+ * direct, le champ "Statut" precede d'un bouton emoji (gris au repos, emoji colore et
+ * change au survol) qui ouvre le selecteur universel, puis "Effacer ..." (menu de duree
+ * aligne sur l'option choisie) et "Enregistrer". Enregistrer un champ vide efface le statut.
+ */
 
 interface CustomStatusModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-const STATUS_OPTIONS = [
-  { value: 'online', label: 'En ligne', icon: Circle, color: 'text-[hsl(var(--online))]', dot: 'bg-[hsl(var(--online))]' },
-  { value: 'idle', label: 'Inactif', icon: Circle, color: 'text-[hsl(var(--idle))]', dot: 'bg-[hsl(var(--idle))]' },
-  { value: 'dnd', label: 'Ne pas déranger', icon: MinusCircle, color: 'text-[hsl(var(--dnd))]', dot: 'bg-[hsl(var(--dnd))]' },
-  { value: 'offline', label: 'Invisible', icon: EyeOff, color: 'text-[hsl(var(--offline))]', dot: 'bg-[hsl(var(--offline))]' },
-] as const;
+const HOVER_EMOJIS = ['😀', '😎', '🤣', '😝', '😍', '🥳', '🤔', '😜', '😴', '🤩'];
+const ITEM_H = 40;
+const HEADER_H = 40;
+const TRIGGER_H = 40;
 
-const DURATION_OPTIONS = [
-  { value: 'never', label: 'Aujourd\'hui' },
-  { value: '30m', label: '30 minutes' },
-  { value: '1h', label: '1 heure' },
-  { value: '4h', label: '4 heures' },
-  { value: 'permanent', label: 'Ne pas effacer' },
-] as const;
-
-const ACTIVITY_TYPES = [
-  { value: 'playing', label: 'Joue à', icon: Gamepad2, color: 'text-violet-400' },
-  { value: 'listening', label: 'Écoute', icon: Headphones, color: 'text-green-400' },
-  { value: 'watching', label: 'Regarde', icon: Eye, color: 'text-red-400' },
-  { value: 'competing', label: 'En compétition', icon: Trophy, color: 'text-yellow-400' },
-];
-
-const COMMON_EMOJIS = ['😀', '😎', '🎮', '🎧', '📺', '🏆', '💤', '🔥', '💻', '📚', '🎬', '🎵', '⚡', '🌙', '☕', '🍕', '✨', '❤️', '👋', '🚀', '🌴', '🍿', '🎯', '💡'];
+/** Duree choisie : une option ou "keep" (l'echeance deja enregistree sur le profil). */
+type Choice = ClearAfter | 'keep';
 
 export function CustomStatusModal({ open, onOpenChange }: CustomStatusModalProps) {
-  const { profile, user } = useAuth();
+  const { profile } = useAuth();
   const { mutate: updateProfile, isPending } = useUpdateProfile();
-  const queryClient = useQueryClient();
 
-  const [statusEmoji, setStatusEmoji] = useState('');
-  const [statusText, setStatusText] = useState('');
-  const [activityType, setActivityType] = useState<string>('');
-  const [activityText, setActivityText] = useState('');
-  const [duration, setDuration] = useState<string>('never');
-  const [emojiOpen, setEmojiOpen] = useState(false);
+  const [emoji, setEmoji] = useState('');
+  const [text, setText] = useState('');
+  const [choice, setChoice] = useState<Choice>('never');
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [now, setNow] = useState(() => new Date());
+  const [hoverEmoji, setHoverEmoji] = useState(HOVER_EMOJIS[3]);
+  const [emojiHover, setEmojiHover] = useState(false);
 
-  // Load current status on open
+  const savedExpiry = profile?.custom_status_expires_at ?? null;
+
   useEffect(() => {
-    if (open && profile) {
-      const existingStatus = profile.custom_status || '';
-      const emojiMatch = existingStatus.match(/^(\p{Emoji}\uFE0F?)\s*/u);
-      if (emojiMatch) {
-        setStatusEmoji(emojiMatch[1]);
-        setStatusText(existingStatus.slice(emojiMatch[0].length));
-      } else {
-        setStatusEmoji('');
-        setStatusText(existingStatus);
-      }
-      setActivityType(profile.activity_type || '');
-      setActivityText(profile.activity_text || '');
-    }
-  }, [open, profile]);
+    if (!open) return;
+    const parts = splitCustomStatus(profile?.custom_status);
+    setEmoji(parts.emoji);
+    setText(parts.text);
+    setNow(new Date());
+    setMenuOpen(false);
+    if (!profile?.custom_status) setChoice('never');
+    else setChoice(savedExpiry && new Date(savedExpiry).getTime() > Date.now() ? 'keep' : 'never');
+    // Seule l'ouverture recharge le formulaire : une mise a jour du profil pendant la saisie ne l'ecrase pas.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
-  const handleSetStatus = (status: 'online' | 'idle' | 'dnd' | 'offline') => {
-    if (!user) return;
-    updateProfile(
-      { status, manual_status: status },
-      {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: ['profile'] });
-          queryClient.invalidateQueries({ queryKey: ['members'] });
-        },
-      }
-    );
+  const expiryDate = useMemo(
+    () => (choice === 'keep' ? (savedExpiry ? new Date(savedExpiry) : null) : expiryFor(choice, now)),
+    [choice, savedExpiry, now],
+  );
+  const triggerLabel = choice === 'never' || !expiryDate ? 'Ne pas supprimer' : `Effacer ${formatClearTime(expiryDate, now)}`;
+  const selectedIndex = Math.max(0, CLEAR_AFTER_OPTIONS.findIndex((o) => o.value === choice));
+
+  const statusValue = joinCustomStatus({ emoji, text });
+  const hasValue = !!(emoji || text);
+
+  const save = () => {
+    if (isPending) return;
+    updateProfile({
+      custom_status: statusValue,
+      custom_status_expires_at: statusValue && expiryDate ? expiryDate.toISOString() : null,
+    });
+    // La fenetre se ferme tout de suite : le profil est deja mis a jour de facon optimiste.
+    onOpenChange(false);
   };
 
-  const handleSave = () => {
-    const customStatus = statusEmoji && statusText
-      ? `${statusEmoji} ${statusText}`
-      : statusEmoji || statusText || null;
-
-    updateProfile({
-      custom_status: customStatus,
-      activity_type: activityType || null,
-      activity_text: activityText || null,
-    }, {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['profile'] });
-        queryClient.invalidateQueries({ queryKey: ['members'] });
-        onOpenChange(false);
-      },
+  const cycleHoverEmoji = () => {
+    setEmojiHover(true);
+    setHoverEmoji((cur) => {
+      let next = cur;
+      while (next === cur) next = HOVER_EMOJIS[Math.floor(Math.random() * HOVER_EMOJIS.length)];
+      return next;
     });
   };
 
-  const handleClear = () => {
-    setStatusEmoji('');
-    setStatusText('');
-    setActivityType('');
-    setActivityText('');
-
-    updateProfile({
-      custom_status: null,
-      activity_type: null,
-      activity_text: null,
-    }, {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['profile'] });
-        queryClient.invalidateQueries({ queryKey: ['members'] });
-        onOpenChange(false);
-      },
-    });
-  };
-
-  const hasStatus = statusEmoji || statusText;
-  const selectedActivity = ACTIVITY_TYPES.find(a => a.value === activityType);
-  const initial = (profile?.display_name || '?').charAt(0).toUpperCase();
+  const bannerStyle: React.CSSProperties = profile?.banner_url
+    ? { backgroundImage: `url(${profile.banner_url})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+    : profile?.theme_gradient
+      ? { background: `linear-gradient(135deg, ${profile.theme_gradient.split(',')[0]}, ${profile.theme_gradient.split(',')[1] ?? profile.theme_gradient.split(',')[0]})` }
+      : { background: profile?.theme_color || 'hsl(var(--primary))' };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md bg-background p-0 overflow-hidden border-none">
-        <DialogHeader className="px-4 pb-3 pt-4">
-          <DialogTitle className="text-base font-semibold">Définir mon statut</DialogTitle>
-        </DialogHeader>
+    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay className="fixed inset-0 z-[90] bg-black/85 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:duration-75 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:duration-100" />
+        <DialogPrimitive.Content
+          aria-describedby={undefined}
+          onOpenAutoFocus={(e) => {
+            // Le curseur arrive directement dans le champ de saisie.
+            e.preventDefault();
+            document.getElementById('custom-status-input')?.focus();
+          }}
+          className="fixed left-1/2 top-1/2 z-[100] w-[540px] max-w-[calc(100vw-32px)] -translate-x-1/2 -translate-y-1/2 rounded-xl bg-[#383840] border border-white/[0.08] p-3 shadow-[0_8px_16px_rgba(0,0,0,0.24)] data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-[0.97] data-[state=open]:duration-100 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-[0.92] data-[state=closed]:duration-150 outline-none"
+        >
+          <DialogPrimitive.Title className="text-xl leading-6 font-semibold text-white pt-1 pl-1">Définir ton statut</DialogPrimitive.Title>
+          <DialogPrimitive.Close aria-label="Fermer" className="absolute top-4 right-4 w-6 h-6 flex items-center justify-center text-[hsl(var(--icon-default))] hover:text-white transition-colors">
+            <X className="w-5 h-5" />
+          </DialogPrimitive.Close>
 
-        <div className="flex-1 overflow-y-auto pb-6" style={{ overscrollBehavior: 'contain' }}>
-          {/* User card */}
-          <div className="mx-4 rounded-2xl bg-card border border-border/50 p-4 flex items-center gap-3">
-            <UserAvatarImage
-              src={profile?.avatar_url || undefined}
-              fallback={initial}
-              fallbackClassName="font-semibold"
-              className="w-12 h-12"
-            />
-            <div className="flex-1 min-w-0">
-              <p className="font-semibold text-sm truncate">{profile?.display_name}</p>
-              <p className="text-xs text-muted-foreground truncate">@{profile?.username}</p>
+          {/* Apercu du profil (meme carte que partout) */}
+          <div className="mt-5 flex justify-center">
+            <div className="relative w-[362px] max-w-full rounded-lg bg-[#383840] shadow-[0_8px_16px_rgba(0,0,0,0.35)] pb-4" aria-hidden>
+              <ProfileCardHeader
+                size="sm"
+                preview
+                isOwn
+                bubblePlaceholder="À quoi tu penses, en ce moment ?"
+                user={{
+                  id: profile?.id ?? '',
+                  display_name: profile?.display_name ?? '',
+                  username: profile?.username ?? '',
+                  avatar_url: profile?.avatar_url ?? null,
+                  banner_url: profile?.banner_url ?? null,
+                  bio: null,
+                  status: profile?.status || 'online',
+                  pronouns: (profile as any)?.pronouns ?? null,
+                  custom_status: statusValue,
+                }}
+                bannerStyle={bannerStyle}
+              />
             </div>
           </div>
 
-          {/* Custom status section */}
-          <SectionHeader>Statut personnalisé</SectionHeader>
-          <div className="mx-4 rounded-2xl bg-card border border-border/50 p-3 space-y-3">
-            {/* Status input row */}
-            <div className="flex items-center gap-2 bg-muted/40 rounded-xl px-1 py-1">
-              <Popover open={emojiOpen} onOpenChange={setEmojiOpen}>
-                <PopoverTrigger asChild>
-                  <button type="button"
-                    className="w-9 h-9 rounded-lg flex items-center justify-center hover:bg-muted/60 shrink-0"
-                    aria-label="Choisir un émoji"
-                  >
-                    {statusEmoji ? (
-                      <span className="text-lg">{statusEmoji}</span>
-                    ) : (
-                      <Smile className="w-5 h-5 text-muted-foreground" />
-                    )}
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[320px] p-2" align="start">
-                  <div className="grid grid-cols-8 gap-1">
-                    {COMMON_EMOJIS.map((emoji) => (
-                      <button type="button"
-                        key={emoji}
-                        onClick={() => {
-                          setStatusEmoji(emoji);
-                          setEmojiOpen(false);
-                        }}
-                        className="text-xl p-1 hover:bg-muted rounded transition-colors"
-                      >
-                        {emoji}
-                      </button>
-                    ))}
-                  </div>
-                </PopoverContent>
-              </Popover>
-
-              <Input
-                value={statusText}
-                onChange={(e) => setStatusText(e.target.value)}
-                placeholder="Quel est ton statut ?"
-                maxLength={128}
-                className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 h-9 px-2"
-              />
-
-              {hasStatus && (
-                <button type="button"
-                  onClick={() => {
-                    setStatusEmoji('');
-                    setStatusText('');
-                  }}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-muted/60 shrink-0"
+          {/* Champ de saisie */}
+          <label htmlFor="custom-status-input" className="block mt-5 mb-2 text-sm font-semibold text-white">Statut</label>
+          <div className="group/field relative flex items-center h-10 rounded-lg bg-[hsl(var(--background))]/60 border border-black/10 transition-colors focus-within:border-primary">
+            <EmojiStickerPicker
+              serverId={null}
+              onEmojiSelect={(e) => setEmoji(e)}
+              trigger={
+                <button
+                  type="button"
+                  aria-label="Choisir un émoji"
+                  onMouseEnter={cycleHoverEmoji}
+                  onMouseLeave={() => setEmojiHover(false)}
+                  className="ml-2 w-6 h-6 shrink-0 flex items-center justify-center rounded-md"
                 >
-                  <X className="w-4 h-4 text-muted-foreground" />
-                </button>
-              )}
-            </div>
-
-            {/* Activity Type */}
-            <Select
-              value={activityType || "none"}
-              onValueChange={(value) => setActivityType(value === "none" ? "" : value)}
-            >
-              <SelectTrigger className="bg-muted/40 border-0 rounded-xl h-10 focus:ring-0 focus:ring-offset-0">
-                <SelectValue placeholder="Type d'activité">
-                  {selectedActivity ? (
-                    <div className="flex items-center gap-2">
-                      <selectedActivity.icon className={cn("w-4 h-4", selectedActivity.color)} />
-                      <span>{selectedActivity.label}</span>
-                    </div>
+                  {emoji ? (
+                    <StatusEmoji emoji={emoji} className="w-6 h-6 text-[20px]" />
                   ) : (
-                    <span className="text-muted-foreground">Type d'activité</span>
+                    <span
+                      aria-hidden
+                      className={cn('text-[20px] leading-none transition-[filter,opacity] duration-100', emojiHover ? 'grayscale-0 opacity-100' : 'grayscale opacity-70')}
+                      style={{ fontFamily: '"Twemoji Mozilla","Noto Color Emoji","Apple Color Emoji","Segoe UI Emoji",sans-serif' }}
+                    >
+                      {emojiHover ? hoverEmoji : '😀'}
+                    </span>
                   )}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">
-                  <span className="text-muted-foreground">Aucune activité</span>
-                </SelectItem>
-                {ACTIVITY_TYPES.map((activity) => (
-                  <SelectItem key={activity.value} value={activity.value}>
-                    <div className="flex items-center gap-2">
-                      <activity.icon className={cn("w-4 h-4", activity.color)} />
-                      <span>{activity.label}</span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {activityType && (
-              <Input
-                value={activityText}
-                onChange={(e) => setActivityText(e.target.value)}
-                placeholder={
-                  activityType === 'playing' ? 'Nom du jeu...' :
-                  activityType === 'listening' ? 'Nom de la musique/artiste...' :
-                  activityType === 'watching' ? 'Nom du film/série...' :
-                  activityType === 'competing' ? 'Nom de la compétition...' :
-                  'Détails...'
-                }
-                className="bg-muted/40 rounded-xl border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
-                maxLength={128}
-              />
+                </button>
+              }
+            />
+            <input
+              id="custom-status-input"
+              value={text}
+              maxLength={128}
+              spellCheck={false}
+              autoComplete="off"
+              placeholder="À quoi tu penses, en ce moment ?"
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && save()}
+              className="flex-1 min-w-0 h-full px-3 bg-transparent outline-none text-base text-foreground placeholder:text-[hsl(var(--text-placeholder))]"
+            />
+            {hasValue && (
+              <button
+                type="button"
+                aria-label="Effacer le statut"
+                onClick={() => {
+                  setEmoji('');
+                  setText('');
+                  document.getElementById('custom-status-input')?.focus();
+                }}
+                className="mr-2 w-5 h-5 shrink-0 rounded-full flex items-center justify-center bg-[hsl(var(--icon-default))]/70 text-[hsl(var(--input))] hover:bg-white transition-colors"
+              >
+                <X className="w-3 h-3" strokeWidth={3} />
+              </button>
             )}
+          </div>
 
-            {/* Duration */}
-            <Popover>
+          {/* Pied : duree + enregistrer */}
+          <div className="mt-7 flex items-center justify-between">
+            <Popover open={menuOpen} onOpenChange={setMenuOpen}>
               <PopoverTrigger asChild>
-                <button type="button" className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-muted/40 hover:bg-muted/60 text-sm transition-colors">
-                  <span className="text-muted-foreground">Effacer après</span>
-                  <span className="flex items-center gap-1 font-medium">
-                    {DURATION_OPTIONS.find((o) => o.value === duration)?.label}
-                    <ChevronDown className="w-3.5 h-3.5" />
-                  </span>
+                <button
+                  type="button"
+                  aria-haspopup="menu"
+                  aria-expanded={menuOpen}
+                  className="h-10 pl-1 pr-2 flex items-center gap-2 rounded-md text-sm font-medium text-white hover:text-white/80 transition-colors"
+                >
+                  {triggerLabel}
+                  {menuOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                 </button>
               </PopoverTrigger>
-              <PopoverContent className="w-56 p-1" align="end">
-                {DURATION_OPTIONS.map((opt) => (
-                  <button type="button"
-                    key={opt.value}
-                    onClick={() => setDuration(opt.value)}
-                    className={cn(
-                      'w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center justify-between hover:bg-muted/60',
-                      duration === opt.value && 'bg-muted/40'
-                    )}
-                  >
-                    {opt.label}
-                    {duration === opt.value && <Check className="w-4 h-4 text-primary" />}
-                  </button>
-                ))}
+              <PopoverContent
+                side="right"
+                align="start"
+                sideOffset={14}
+                alignOffset={TRIGGER_H / 2 - ITEM_H / 2 - HEADER_H - selectedIndex * ITEM_H}
+                className="z-[120] w-[236px] p-0 overflow-hidden rounded-lg bg-[hsl(var(--popover))] border border-white/[0.06]"
+              >
+                <div role="menu">
+                  <div className="px-3 flex items-center text-sm text-[hsl(var(--text-muted,var(--muted-foreground)))]" style={{ height: HEADER_H }}>
+                    Supprimer ultérieurement
+                  </div>
+                  {CLEAR_AFTER_OPTIONS.map((opt) => {
+                    const at = expiryFor(opt.value, now);
+                    const selected = choice === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        role="menuitemradio"
+                        aria-checked={selected}
+                        onClick={() => {
+                          setChoice(opt.value);
+                          setMenuOpen(false);
+                        }}
+                        className={cn(
+                          'w-full px-3 flex items-center justify-between text-left text-sm text-white transition-colors',
+                          selected ? 'bg-white/[0.08]' : 'hover:bg-white/[0.06]',
+                        )}
+                        style={{ height: ITEM_H }}
+                      >
+                        <span className="truncate">
+                          {opt.label}
+                          {at && <span> ({formatClearTime(at, now)})</span>}
+                        </span>
+                        {selected && (
+                          <span className="ml-2 w-[18px] h-[18px] shrink-0 rounded-full bg-primary flex items-center justify-center">
+                            <Check className="w-3 h-3 text-white" strokeWidth={3} />
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
               </PopoverContent>
             </Popover>
 
-            {/* Actions */}
-            <div className="flex items-center gap-2 pt-1">
-              {profile?.custom_status && (
-                <Button
-                  variant="ghost"
-                  onClick={handleClear}
-                  disabled={isPending}
-                  className="flex-1 h-10 text-destructive hover:text-destructive hover:bg-destructive/10"
-                >
-                  Effacer
-                </Button>
-              )}
-              <Button
-                onClick={handleSave}
-                disabled={isPending || !hasStatus}
-                className="flex-1 h-10 rounded-xl"
-              >
-                {isPending ? 'Enregistrement...' : 'Définir'}
-              </Button>
-            </div>
+            <button
+              type="button"
+              onClick={save}
+              disabled={isPending}
+              className="h-10 px-5 rounded-lg bg-primary hover:bg-primary/90 active:bg-primary/80 text-sm font-medium text-white transition-colors disabled:opacity-60"
+            >
+              Enregistrer
+            </button>
           </div>
-
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function SectionHeader({ children }: { children: React.ReactNode }) {
-  return (
-    <h3 className="px-6 pt-5 pb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-      {children}
-    </h3>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   );
 }

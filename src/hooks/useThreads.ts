@@ -262,7 +262,15 @@ export const useCreateThread = () => {
   const { user, profile } = useAuth();
   
   return useMutation({
-    mutationFn: async ({ channelId, name, messageId, isPrivate = false }: { channelId: string; name: string; messageId?: string; isPrivate?: boolean }) => {
+    mutationFn: async ({ channelId, name, messageId, isPrivate = false, accessRoleIds = [], accessUserIds = [] }: {
+      channelId: string;
+      name: string;
+      messageId?: string;
+      isPrivate?: boolean;
+      /** Fil prive : roles et membres autorises (en plus du createur et des moderateurs). */
+      accessRoleIds?: string[];
+      accessUserIds?: string[];
+    }) => {
       const { data: { user: authUser } } = await supabase.auth.getUser();
       if (!authUser) throw new Error('Not authenticated');
       
@@ -279,7 +287,22 @@ export const useCreateThread = () => {
         .single();
 
       if (error) throw error;
-      
+
+      // Fil prive : liste d'acces (roles / membres choisis). Sans elle, seuls le createur et les moderateurs le voient.
+      if (isPrivate) {
+        const rows = [
+          ...accessRoleIds.map((role_id) => ({ thread_id: data.id, role_id })),
+          ...accessUserIds.filter((id) => id !== authUser.id).map((user_id) => ({ thread_id: data.id, user_id })),
+        ];
+        if (rows.length > 0) {
+          const { error: accessError } = await (supabase as unknown as { from: (t: string) => any }).from('thread_access').insert(rows);
+          if (accessError) {
+            await supabase.from('threads').delete().eq('id', data.id);
+            throw accessError;
+          }
+        }
+      }
+
       // Auto-follow the thread after creation
       await supabase
         .from('thread_followers')
@@ -494,10 +517,10 @@ export const useUpdateThread = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ threadId, name }: { threadId: string; name: string }) => {
+    mutationFn: async ({ threadId, ...patch }: { threadId: string; name?: string; slowmode_seconds?: number; auto_archive_minutes?: number; spoiler?: boolean }) => {
       const { data, error } = await supabase
         .from('threads')
-        .update({ name })
+        .update(patch)
         .eq('id', threadId)
         .select()
         .single();
@@ -505,12 +528,12 @@ export const useUpdateThread = () => {
       if (error) throw error;
       return data;
     },
-    onMutate: async ({ threadId, name }) => {
+    onMutate: async ({ threadId, ...patch }) => {
       await queryClient.cancelQueries({ queryKey: ['thread', threadId] });
       const previousThread = queryClient.getQueryData(['thread', threadId]);
       
       queryClient.setQueryData(['thread', threadId], (old: Thread | undefined) =>
-        old ? { ...old, name } : old
+        old ? { ...old, ...patch } : old
       );
       
       return { previousThread, threadId };

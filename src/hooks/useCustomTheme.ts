@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { buildPalette, type ThemeMode } from '@/lib/customTheme/palette';
+import { onScopeUserChange, userKey } from '@/lib/userScope';
 
 const LOCAL_KEY = 'nexuschat:ui:customTheme';
 const HTML_CLASS = 'custom-theme';
@@ -43,7 +44,7 @@ type Snapshot = {
 
 function readLocal(): CustomThemeState {
   try {
-    const raw = localStorage.getItem(LOCAL_KEY);
+    const raw = localStorage.getItem(userKey(LOCAL_KEY));
     if (!raw) return DEFAULT_CUSTOM_THEME;
     const parsed = JSON.parse(raw);
     return { ...DEFAULT_CUSTOM_THEME, ...parsed };
@@ -70,8 +71,15 @@ let snap: Snapshot = (() => {
 const listeners = new Set<() => void>();
 function emit() { listeners.forEach((l) => l()); }
 
+onScopeUserChange(() => {
+  const c = readLocal();
+  snap = { committed: c, draft: c, isDirty: false };
+  emit();
+  scheduleApply();
+});
+
 function persist() {
-  try { localStorage.setItem(LOCAL_KEY, JSON.stringify(snap.committed)); } catch { /* noop */ }
+  try { localStorage.setItem(userKey(LOCAL_KEY), JSON.stringify(snap.committed)); } catch { /* noop */ }
 }
 
 /** rAF-throttled writer for the CSS custom properties. */

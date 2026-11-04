@@ -13,5 +13,15 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     storage: localStorage,
     persistSession: true,
     autoRefreshToken: true,
-  }
+  },
+  realtime: {
+    heartbeatCallback: (status, latency) => {
+      if (status === 'ok' || status === 'sent') return;
+      console.warn('[Realtime socket] heartbeat', {
+        timestamp: new Date().toISOString(),
+        status,
+        latencyMs: latency,
+      });
+    },
+  },
 });

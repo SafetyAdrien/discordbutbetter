@@ -4,7 +4,7 @@
  * which closes right before the sheet opens — see CustomThemeBanner).
  */
 import { useSyncExternalStore } from 'react';
-import { CustomThemeSheet } from './CustomThemeSheet';
+import { LazyCustomThemeSheet as CustomThemeSheet } from '@/components/lazy/LazyModals';
 
 let isOpen = false;
 const listeners = new Set<() => void>();

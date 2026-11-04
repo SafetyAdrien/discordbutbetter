@@ -271,6 +271,40 @@ export function useEndStageSession() {
   });
 }
 
+// Update the topic ("Modifier la conférence")
+export function useUpdateStageTopic() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ sessionId, channelId, title }: { sessionId: string; channelId: string; title: string }) => {
+      const { error } = await supabase
+        .from('stage_sessions')
+        .update({ title })
+        .eq('id', sessionId);
+
+      if (error) throw error;
+      return { sessionId, channelId, title };
+    },
+    onMutate: async ({ channelId, title }) => {
+      await queryClient.cancelQueries({ queryKey: ['stage-session', channelId] });
+      const previousSession = queryClient.getQueryData<StageSession | null>(['stage-session', channelId]);
+      if (previousSession) {
+        queryClient.setQueryData(['stage-session', channelId], { ...previousSession, title });
+      }
+      return { previousSession, channelId };
+    },
+    onError: (_, { channelId }, context) => {
+      if (context?.previousSession !== undefined) {
+        queryClient.setQueryData(['stage-session', channelId], context.previousSession);
+      }
+      toast.error('Impossible de modifier le sujet');
+    },
+    onSettled: (_, __, { channelId }) => {
+      queryClient.invalidateQueries({ queryKey: ['stage-session', channelId] });
+    },
+  });
+}
+
 // Join stage as audience
 export function useJoinStage() {
   const queryClient = useQueryClient();

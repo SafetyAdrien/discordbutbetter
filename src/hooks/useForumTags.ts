@@ -25,6 +25,14 @@ export interface ForumChannelConfig {
   default_auto_archive_duration: number;
   default_reaction_emoji_id: string | null;
   default_reaction_emoji_name: string | null;
+  /** "Guide des posts" (Markdown, 4096 caracteres max). */
+  guidelines: string | null;
+  /** Mode lent pour la creation de posts, en secondes. */
+  post_slowmode_seconds: number;
+  /** Mode lent par defaut des messages dans les posts, en secondes. */
+  message_slowmode_seconds: number;
+  /** Visibilite du contenu : par defaut, salon de spoiler, limite d'age. */
+  content_visibility: 'default' | 'spoiler' | 'age_restricted';
 }
 
 /** Mirrors Fluxer's ForumSortOrderTypes. */
@@ -44,8 +52,8 @@ export const FORUM_LAYOUTS = {
 export const MAX_FORUM_TAGS_PER_CHANNEL = 20;
 /** Mirrors Fluxer's MAX_APPLIED_TAGS_PER_THREAD. */
 export const MAX_APPLIED_TAGS_PER_POST = 5;
-/** Mirrors Fluxer's FORUM_TAG_NAME_MAX_LENGTH. */
-export const FORUM_TAG_NAME_MAX_LENGTH = 50;
+/** Discord : "20 caracteres maximum" dans la fenetre Creer un tag. */
+export const FORUM_TAG_NAME_MAX_LENGTH = 20;
 
 export const DEFAULT_FORUM_CONFIG: Omit<ForumChannelConfig, 'channel_id'> = {
   default_sort_order: FORUM_SORT_ORDERS.LATEST_ACTIVITY,
@@ -56,6 +64,10 @@ export const DEFAULT_FORUM_CONFIG: Omit<ForumChannelConfig, 'channel_id'> = {
   default_auto_archive_duration: 4320,
   default_reaction_emoji_id: null,
   default_reaction_emoji_name: null,
+  guidelines: null,
+  post_slowmode_seconds: 0,
+  message_slowmode_seconds: 0,
+  content_visibility: 'default',
 };
 
 /**
@@ -113,7 +125,7 @@ export function useForumChannelConfig(channelId: string) {
         .maybeSingle();
       if (error) throw error;
       // No row yet => fall back to Fluxer's defaults.
-      return (data ?? { channel_id: channelId, ...DEFAULT_FORUM_CONFIG }) as ForumChannelConfig;
+      return { channel_id: channelId, ...DEFAULT_FORUM_CONFIG, ...(data ?? {}) } as ForumChannelConfig;
     },
   });
 }
@@ -121,7 +133,7 @@ export function useForumChannelConfig(channelId: string) {
 export function useCreateForumTag(channelId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { name: string; emoji_name?: string | null; moderated?: boolean }) => {
+    mutationFn: async (input: { name: string; emoji_name?: string | null; emoji_id?: string | null; moderated?: boolean }) => {
       const name = input.name.trim();
       if (!name) throw new Error('Le nom du tag est requis');
       if (name.length > FORUM_TAG_NAME_MAX_LENGTH) {
@@ -141,6 +153,7 @@ export function useCreateForumTag(channelId: string) {
           channel_id: channelId,
           name,
           emoji_name: input.emoji_name ?? null,
+          emoji_id: input.emoji_id ?? null,
           moderated: input.moderated ?? false,
           position,
         })
@@ -159,7 +172,7 @@ export function useCreateForumTag(channelId: string) {
 export function useUpdateForumTag(channelId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, ...patch }: { id: string; name?: string; emoji_name?: string | null; moderated?: boolean }) => {
+    mutationFn: async ({ id, ...patch }: { id: string; name?: string; emoji_name?: string | null; emoji_id?: string | null; moderated?: boolean; position?: number }) => {
       if (patch.name !== undefined) {
         const name = patch.name.trim();
         if (!name) throw new Error('Le nom du tag est requis');
@@ -239,14 +252,13 @@ export function useUpdateForumChannelConfig(channelId: string) {
         .maybeSingle();
 
       if (existing) {
-        const { error } = await supabase
-          .from('forum_channel_config')
+        // Colonnes ajoutees apres la generation des types Supabase.
+        const { error } = await (supabase.from('forum_channel_config') as any)
           .update(patch)
           .eq('channel_id', channelId);
         if (error) throw error;
       } else {
-        const { error } = await supabase
-          .from('forum_channel_config')
+        const { error } = await (supabase.from('forum_channel_config') as any)
           .insert({ channel_id: channelId, ...DEFAULT_FORUM_CONFIG, ...patch });
         if (error) throw error;
       }

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { userKey } from '@/lib/userScope';
 
 const STORAGE_KEY = 'recent-emojis';
 const MAX_RECENT = 24;
@@ -11,7 +12,7 @@ export function useRecentEmojis() {
   const [recent, setRecent] = useState<string[]>(() => {
     if (typeof window === 'undefined') return [];
     try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
+      const raw = window.localStorage.getItem(userKey(STORAGE_KEY));
       if (!raw) return [];
       const parsed = JSON.parse(raw);
       return Array.isArray(parsed) ? parsed.filter((e) => typeof e === 'string').slice(0, MAX_RECENT) : [];
@@ -40,7 +41,7 @@ export function useRecentEmojis() {
     setRecent((prev) => {
       const next = [emoji, ...prev.filter((e) => e !== emoji)].slice(0, MAX_RECENT);
       try {
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+        window.localStorage.setItem(userKey(STORAGE_KEY), JSON.stringify(next));
       } catch {
         /* quota exceeded — silent */
       }
@@ -51,7 +52,7 @@ export function useRecentEmojis() {
   const clear = useCallback(() => {
     setRecent([]);
     try {
-      window.localStorage.removeItem(STORAGE_KEY);
+      window.localStorage.removeItem(userKey(STORAGE_KEY));
     } catch {
       /* noop */
     }

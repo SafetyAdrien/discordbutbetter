@@ -14,7 +14,25 @@
 
 type Tokens = string;
 
-const LOCALE = 'fr';
+import { appLocale, appLocaleVersion } from '@/i18n/locale';
+
+const isFrench = () => appLocale().startsWith('fr');
+
+// Noms de mois / jours dans la langue active (le francais garde les tables
+// ci-dessous, identiques a date-fns).
+const nameCache = new Map<string, string[]>();
+function intlNames(kind: 'month' | 'weekday', width: 'long' | 'short'): string[] {
+  const key = `${appLocaleVersion()}:${kind}:${width}`;
+  let v = nameCache.get(key);
+  if (!v) {
+    const f = new Intl.DateTimeFormat(appLocale(), kind === 'month' ? { month: width } : { weekday: width });
+    v = kind === 'month'
+      ? Array.from({ length: 12 }, (_, i) => f.format(new Date(2024, i, 1)))
+      : Array.from({ length: 7 }, (_, i) => f.format(new Date(2024, 0, 7 + i)));
+    nameCache.set(key, v);
+  }
+  return v;
+}
 
 const MONTHS_SHORT = [
   'janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin',
@@ -61,12 +79,12 @@ export function format(
   const replacements: Array<[RegExp, string]> = [
     [/\bYYYY\b|\byyyy\b/g, String(d.getFullYear())],
     [/\byy\b/g, pad2(d.getFullYear() % 100)],
-    [/\bMMMM\b/g, MONTHS_LONG[d.getMonth()]],
-    [/\bMMM\b/g, MONTHS_SHORT[d.getMonth()]],
+    [/\bMMMM\b/g, (isFrench() ? MONTHS_LONG : intlNames('month', 'long'))[d.getMonth()]],
+    [/\bMMM\b/g, (isFrench() ? MONTHS_SHORT : intlNames('month', 'short'))[d.getMonth()]],
     [/\bMM\b/g, pad2(d.getMonth() + 1)],
     [/\bM\b/g, String(d.getMonth() + 1)],
-    [/\bEEEE\b/g, DAYS_LONG[d.getDay()]],
-    [/\bEEE\b/g, DAYS_SHORT[d.getDay()]],
+    [/\bEEEE\b/g, (isFrench() ? DAYS_LONG : intlNames('weekday', 'long'))[d.getDay()]],
+    [/\bEEE\b/g, (isFrench() ? DAYS_SHORT : intlNames('weekday', 'short'))[d.getDay()]],
     [/\bdd\b/g, pad2(d.getDate())],
     [/\bd\b/g, String(d.getDate())],
     [/\bHH\b/g, pad2(H)],
@@ -77,13 +95,18 @@ export function format(
     [/\bs\b/g, String(s)],
   ];
 
-  let out = pattern;
+  // Texte entre apostrophes ('à') : recopie tel quel, hors des jetons.
+  const literals: string[] = [];
+  let out = pattern.replace(/'([^']*)'/g, (_, lit: string) => {
+    literals.push(lit === 'à' && !isFrench() ? 'at' : lit);
+    return `\u0000${literals.length - 1}\u0000`;
+  });
   // PPP is localized and not derivable from the token table.
   if (out.includes('PPP')) {
     out = out.replace(/\bPPP\b/g, formatLongDate(d));
   }
   for (const [re, value] of replacements) out = out.replace(re, value);
-  return out;
+  return literals.length ? out.replace(/\u0000(\d+)\u0000/g, (_, i) => literals[Number(i)]) : out;
 }
 
 /** True when both dates fall on the same calendar day. */
@@ -133,14 +156,16 @@ const RELATIVE_UNITS: Array<[Intl.RelativeTimeFormatUnit, number]> = [
 ];
 
 let longDateFormatter: Intl.DateTimeFormat | null = null;
+let longDateVersion = -1;
 
 /**
  * `PPP` is date-fns' "long localized date" (e.g. "1er janvier 2024").
  * Handled as its own token before the generic replacements run.
  */
 function formatLongDate(d: Date): string {
-  if (!longDateFormatter) {
-    longDateFormatter = new Intl.DateTimeFormat(LOCALE, {
+  if (!longDateFormatter || longDateVersion !== appLocaleVersion()) {
+    longDateVersion = appLocaleVersion();
+    longDateFormatter = new Intl.DateTimeFormat(appLocale(), {
       day: 'numeric',
       month: 'long',
       year: 'numeric',
@@ -150,10 +175,12 @@ function formatLongDate(d: Date): string {
 }
 
 let relativeFormatter: Intl.RelativeTimeFormat | null = null;
+let relativeVersion = -1;
 
 function getRelativeFormatter(): Intl.RelativeTimeFormat {
-  if (!relativeFormatter) {
-    relativeFormatter = new Intl.RelativeTimeFormat(LOCALE, { numeric: 'auto' });
+  if (!relativeFormatter || relativeVersion !== appLocaleVersion()) {
+    relativeVersion = appLocaleVersion();
+    relativeFormatter = new Intl.RelativeTimeFormat(appLocale(), { numeric: 'auto' });
   }
   return relativeFormatter;
 }
@@ -174,7 +201,7 @@ export function formatDistanceToNow(
   // ("il y a ..." in a fixed label), so we return the bare unit.
   const bare = options?.addSuffix === false;
 
-  if (abs < 45_000) return bare ? 'moins d’une minute' : 'moins d’une minute';
+  if (abs < 45_000) return isFrench() ? 'moins d’une minute' : getRelativeFormatter().format(0, 'minute');
 
   for (const [unit, ms] of RELATIVE_UNITS) {
     if (abs >= ms) {
@@ -188,7 +215,7 @@ export function formatDistanceToNow(
 }
 
 export const fr = {
-  locale: LOCALE,
+  locale: 'fr',
   format,
 };
 

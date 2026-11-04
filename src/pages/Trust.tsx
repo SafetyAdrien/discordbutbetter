@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
-import { Shield, Lock, Database, Users, Mail, FileText, ArrowLeft } from "lucide-react";
+import { Database } from "lucide-react";
+import { Shield, Lock, Users, Mail, FileText, ArrowLeft } from "@/components/icons/discord/lucide";
 
 export default function Trust() {
   return (

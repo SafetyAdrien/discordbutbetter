@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react';
+import { Pause, Play } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight } from '@/components/icons/discord/lucide';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import type { MediaPost } from '@/hooks/useMediaPosts';
 
+import { appLocale } from '@/i18n/locale';
 interface Props {
   posts: MediaPost[];
   startIndex: number;
@@ -107,7 +109,7 @@ export function MediaStoryViewer({ posts, startIndex, onClose, onSeen }: Props) 
           </Avatar>
           <span className="text-sm font-semibold text-white">{author?.display_name ?? '…'}</span>
           <span className="text-xs text-white/60">
-            {new Date(post.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+            {new Date(post.created_at).toLocaleTimeString(appLocale(), { hour: '2-digit', minute: '2-digit' })}
           </span>
           <div className="flex-1" />
           <button type="button" onClick={() => setPaused((p) => !p)} className="text-white/80 hover:text-white p-1.5">

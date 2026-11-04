@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useVoice } from '@/contexts/VoiceContext';
 import { cn } from '@/lib/utils';
-import { PhoneOff, Maximize2 } from 'lucide-react';
+import { PhoneOff, Maximize2 } from '@/components/icons/discord/lucide';
 import { DiscordMic } from '@/components/icons/DiscordMic';
 import { DiscordMicOff } from '@/components/icons/DiscordMicOff';
 import { DiscordHeadphones } from '@/components/icons/DiscordHeadphones';

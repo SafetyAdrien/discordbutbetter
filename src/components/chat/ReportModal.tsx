@@ -73,10 +73,10 @@ export function ReportModal({ isOpen, onClose, message, onSubmit }: ReportModalP
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
-                <span className="font-medium text-sm text-foreground">
+                <span translate="no" className="font-medium text-sm text-foreground">
                   {message.author.displayName}
                 </span>
-                <p className="text-sm text-muted-foreground line-clamp-2 mt-0.5">
+                <p translate="no" className="text-sm text-muted-foreground line-clamp-2 mt-0.5">
                   {message.content}
                 </p>
               </div>

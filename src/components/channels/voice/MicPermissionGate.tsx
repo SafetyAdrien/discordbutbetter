@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Mic, MicOff } from 'lucide-react';
+import { Mic, MicOff } from '@/components/icons/discord/lucide';
 
 interface MicPermissionGateProps {
   denied: boolean;

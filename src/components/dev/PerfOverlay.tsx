@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { togglePerfRecording } from '@/lib/perfRecorder';
 import { clearPerf, getPerfReport, subscribePerf, type PerfEntry } from '@/lib/perf';
 
 /**
@@ -30,6 +31,11 @@ export function PerfOverlay() {
   // Keyboard shortcut
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      if (e.altKey && e.shiftKey && (e.key === 'r' || e.key === 'R')) {
+        e.preventDefault();
+        void togglePerfRecording();
+        return;
+      }
       if (e.altKey && e.shiftKey && (e.key === 'p' || e.key === 'P')) {
         e.preventDefault();
         setOpen((v) => !v);

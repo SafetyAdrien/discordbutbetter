@@ -3,7 +3,8 @@ import { useSendFriendRequest } from '@/hooks/useFriends';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { X, UserPlus, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
+import { X, UserPlus } from '@/components/icons/discord/lucide';
 
 interface AddFriendModalProps {
   onClose: () => void;

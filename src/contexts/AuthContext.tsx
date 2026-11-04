@@ -11,11 +11,13 @@
  *   5. Toute mutation du profil passe par `updateProfile` / `updateStatus`.
  * ============================================================================
  */
+import { setScopeUser } from '@/lib/userScope';
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { User, Session, AuthError } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
+import { notifyProfileChanged, applyLocalProfilePatch } from '@/lib/presencePing';
 import { cacheGetSync, cacheSetAsync, cacheDelete, purgeAllCaches } from '@/lib/cache';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
@@ -32,14 +34,35 @@ interface AuthContextType {
   updateStatus: (status: Database['public']['Enums']['user_status']) => Promise<void>;
 }
 
+export type { AuthContextType };
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+/**
+ * Fournit une valeur d'authentification arbitraire. Reserve au harnais de
+ * design (/design), qui y injecte un utilisateur fictif ; le reste de l'app
+ * passe par AuthProvider / useAuth.
+ */
+export function AuthContextOverride({ value, children }: { value: AuthContextType; children: React.ReactNode }) {
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  // Fixe tout de suite le compte courant : les donnees locales (emojis recents, favoris...) en dependent a la premiere lecture.
+  setScopeUser(user?.id ?? null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const queryClient = useQueryClient();
+  // Changement de compte sans deconnexion explicite : rien du compte precedent ne doit rester en memoire.
+  const lastUserIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    const id = user?.id ?? null;
+    if (lastUserIdRef.current && id && lastUserIdRef.current !== id) queryClient.clear();
+    lastUserIdRef.current = id;
+  }, [user?.id, queryClient]);
+  const profileRef = useRef<Profile | null>(null);
+  profileRef.current = profile;
   const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   const fetchProfile = useCallback(async (userId: string) => {
@@ -223,39 +246,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(null);
   }, [user, queryClient]);
 
-  const updateProfile = useCallback(async (data: Partial<Profile>) => {
+  // Mise a jour optimiste : l'ecran change tout de suite, la base confirme ensuite (retour en
+  // arriere si elle refuse). Puis un signal instantane previent les autres clients.
+  const applyOptimistic = useCallback(async (patch: Partial<Profile>) => {
     if (!user) return;
-
-    const { error } = await supabase
-      .from('profiles')
-      .update(data)
-      .eq('id', user.id);
-
-    if (error) throw error;
-
-    setProfile(prev => {
-      const next = prev ? { ...prev, ...data } : null;
+    const previous = profileRef.current;
+    applyLocalProfilePatch(user.id, patch as Record<string, unknown>);
+    setProfile((prev) => {
+      const next = prev ? { ...prev, ...patch } : null;
       if (next) cacheSetAsync(`profile:${user.id}`, next);
       return next;
     });
+    const { error } = await supabase.from('profiles').update(patch).eq('id', user.id);
+    if (error) {
+      if (previous) {
+        setProfile(previous);
+        cacheSetAsync(`profile:${user.id}`, previous);
+        const back: Record<string, unknown> = {};
+        for (const k of Object.keys(patch)) back[k] = (previous as Record<string, unknown>)[k];
+        applyLocalProfilePatch(user.id, back);
+      }
+      throw error;
+    }
+    notifyProfileChanged(user.id, patch as Record<string, unknown>);
   }, [user]);
 
-  const updateStatus = useCallback(async (status: Database['public']['Enums']['user_status']) => {
-    if (!user) return;
+  const updateProfile = useCallback((data: Partial<Profile>) => applyOptimistic(data), [applyOptimistic]);
 
-    const { error } = await supabase
-      .from('profiles')
-      .update({ status, manual_status: status })
-      .eq('id', user.id);
-
-    if (error) throw error;
-
-    setProfile(prev => {
-      const next = prev ? { ...prev, status, manual_status: status } : null;
-      if (next) cacheSetAsync(`profile:${user.id}`, next);
-      return next;
-    });
-  }, [user]);
+  const updateStatus = useCallback(
+    (status: Database['public']['Enums']['user_status']) => applyOptimistic({ status, manual_status: status } as Partial<Profile>),
+    [applyOptimistic],
+  );
 
   // Memoized: an inline literal here would invalidate the context for all 151
   // consumers on every auth state change, re-rendering the entire app.

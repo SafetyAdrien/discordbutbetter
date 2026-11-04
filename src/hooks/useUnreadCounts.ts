@@ -1,9 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { markReadGuard, isBeforeReadGuard, recordReadAt, getLastReadAt } from '@/lib/readStateGuard';
 import { useAuth } from '@/contexts/AuthContext';
+import { acquireSharedRealtimeEffect, subscribeWithDiagnostics } from '@/lib/realtimeDiagnostics';
 
 export interface UnreadCount {
   conversationId: string;
@@ -13,7 +14,6 @@ export interface UnreadCount {
 export function useUnreadCounts() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   const query = useQuery({
     queryKey: ['unread-counts', user?.id],
@@ -83,6 +83,7 @@ export function useUnreadCounts() {
   useEffect(() => {
     if (!user) return;
 
+    return acquireSharedRealtimeEffect(`dm-unread-counts:${user.id}`, () => {
     const patchUnread = (conversationId: string, delta: number) => {
       queryClient.setQueryData<Record<string, number>>(['unread-counts', user.id], (old = {}) => {
         const nextCount = Math.max(0, (old[conversationId] || 0) + delta);
@@ -103,7 +104,7 @@ export function useUnreadCounts() {
     const everSubscribedReadsRef = { current: false };
 
     const messagesChannel = supabase
-      .channel(`unread-counts-dm-messages-${user.id}-${instanceIdRef.current}`)
+      .channel(`unread-counts-dm-messages-${user.id}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'dm_messages' }, (payload) => {
         const msg = payload.new as { conversation_id?: string; author_id?: string; created_at?: string };
         if (!msg.conversation_id || msg.author_id === user.id) return;
@@ -111,8 +112,11 @@ export function useUnreadCounts() {
         if (isBeforeReadGuard(msg.conversation_id, msg.created_at)) return;
         patchUnread(msg.conversation_id, 1);
         // No invalidate — patch is authoritative; refetch races against replication lag.
-      })
-      .subscribe((status) => {
+      });
+    const stopMessagesDiagnostics = subscribeWithDiagnostics(
+      messagesChannel,
+      `dm-unread-messages-${user.id}`,
+      (status) => {
         if (status === 'SUBSCRIBED') {
           if (everSubscribedMessagesRef.current && !wasSubscribedMessagesRef.current) {
             // Reconnect after a drop — rebuild counts from server.
@@ -123,10 +127,11 @@ export function useUnreadCounts() {
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
           wasSubscribedMessagesRef.current = false;
         }
-      });
+      },
+    );
 
     const readsChannel = supabase
-      .channel(`unread-counts-dm-reads-${user.id}-${instanceIdRef.current}`)
+      .channel(`unread-counts-dm-reads-${user.id}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'dm_read_states', filter: `user_id=eq.${user.id}` },
@@ -148,8 +153,11 @@ export function useUnreadCounts() {
           });
           // Optimistic patch above is authoritative; intentionally no invalidate.
         },
-      )
-      .subscribe((status) => {
+      );
+    const stopReadsDiagnostics = subscribeWithDiagnostics(
+      readsChannel,
+      `dm-unread-reads-${user.id}`,
+      (status) => {
         if (status === 'SUBSCRIBED') {
           if (everSubscribedReadsRef.current && !wasSubscribedReadsRef.current) {
             queryClient.invalidateQueries({ queryKey: ['unread-counts', user.id] });
@@ -159,12 +167,16 @@ export function useUnreadCounts() {
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
           wasSubscribedReadsRef.current = false;
         }
-      });
+      },
+    );
 
     return () => {
+      stopMessagesDiagnostics();
+      stopReadsDiagnostics();
       supabase.removeChannel(messagesChannel);
       supabase.removeChannel(readsChannel);
     };
+    });
   }, [user, queryClient]);
 
   const markAsRead = useMutation({

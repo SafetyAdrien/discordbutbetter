@@ -1,7 +1,8 @@
 import { ReactNode } from 'react';
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
-import { Pin, Bell, BellOff, BellRing, AtSign, Hash } from 'lucide-react';
+import { BellRing } from 'lucide-react';
+import { Pin, Bell, BellOff, AtSign, Hash } from '@/components/icons/discord/lucide';
 import StreamlineThreads from '@/components/icons/StreamlineThreads';
 import StreamlineSummaries from '@/components/icons/StreamlineSummaries';
 import { MarkdownText } from '@/lib/markdown';
@@ -52,7 +53,7 @@ export function MobileChannelDetailSheet({
               <ChannelIcon className="w-6 h-6 text-primary" />
             </div>
             <div className="min-w-0">
-              <h3 className="font-semibold text-base truncate">{channelName}</h3>
+              <h3 translate="no" className="font-semibold text-base truncate">{channelName}</h3>
               <p className="text-xs text-muted-foreground capitalize">{channelType}</p>
             </div>
           </div>

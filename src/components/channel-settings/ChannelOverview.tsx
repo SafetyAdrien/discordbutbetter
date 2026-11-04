@@ -6,8 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
-import { Loader2, Clock, Trash2 } from 'lucide-react';
-import { ChannelDangerZone } from './ChannelDangerZone';
+import { Loader2 } from 'lucide-react';
+import { Clock, Trash2 } from '@/components/icons/discord/lucide';
 import { StreamlineHash } from '@/components/icons/StreamlineHash';
 import { StreamlineStage } from '@/components/icons/StreamlineStage';
 import { StreamlineLink } from '@/components/icons/StreamlineLink';
@@ -18,12 +18,17 @@ import { StreamlineMedia } from '@/components/icons/StreamlineMedia';
 import { StreamlineCalendar } from '@/components/icons/StreamlineCalendar';
 import { StreamlineTasks } from '@/components/icons/StreamlineTasks';
 import { useUpdateChannel, type ChannelDetails } from '@/hooks/useChannelSettings';
+import { useThreadFirstMessageRequired, useSetThreadFirstMessageRequired } from '@/hooks/useThreadFirstMessageRequired';
 import { useServerSettings } from '@/hooks/useServerSettings';
 import { ImageCropper } from '@/components/ui/image-cropper';
 import { compressImage } from '@/utils/wasm/ImageCompressor';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { EmojiStickerPicker } from '@/components/chat/EmojiStickerPicker';
+import { Smile } from '@/components/icons/discord/lucide';
+import { resolveShortcodes } from '@/lib/customEmoji';
+import { useAllServerAssets } from '@/hooks/useAllServerAssets';
 
 function formatStrictChannelName(name: string): string {
   return name
@@ -65,9 +70,12 @@ const channelTypeLabels: Record<string, { label: string; icon: React.ElementType
   link: { label: 'Lien', icon: StreamlineLink },
 };
 
-export function ChannelOverview({ channel, channelId, channelName, serverId, onDeleted }: ChannelOverviewProps) {
+export function ChannelOverview({ channel, serverId }: ChannelOverviewProps) {
   const [name, setName] = useState(channel.name);
   const [description, setDescription] = useState(channel.description || '');
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
+  // Charge les emojis des serveurs : les `:nom:` ecrits a la main sont convertis a l'enregistrement.
+  useAllServerAssets(true);
   const [channelType, setChannelType] = useState<'text' | 'announcement'>(
     channel.type === 'announcement' ? 'announcement' : 'text'
   );
@@ -81,6 +89,8 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
   const blobPreviewUrlRef = useRef<string | null>(null);
   const isSavingRef = useRef(false);
   const updateChannel = useUpdateChannel();
+  const { data: firstMessageRequired } = useThreadFirstMessageRequired(channel.id);
+  const setFirstMessageRequired = useSetThreadFirstMessageRequired(channel.id);
   const { data: serverSettings } = useServerSettings(channel.server_id);
 
   const isFlexible = serverSettings?.flexible_channel_names ?? true;
@@ -125,7 +135,9 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
   const typeInfo = channelTypeLabels[channel.type] ?? channelTypeLabels.text;
   const TypeIcon = typeInfo.icon;
 
-  const canToggleType = channel.type === 'text' || channel.type === 'announcement';
+  // Le salon d'annonces demande le mode communaute ; un salon deja en
+  // annonce peut toujours redevenir textuel.
+  const canToggleType = channel.type === 'announcement' || (channel.type === 'text' && !!serverSettings?.community_enabled);
   const supportsSlowmode = channel.type === 'text' || channel.type === 'voice' || channel.type === 'forum';
   const canHaveCustomIcon = channel.type === 'text' || channel.type === 'announcement';
 
@@ -236,7 +248,7 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
         channelId: channel.id,
         serverId: channel.server_id,
         name: finalName,
-        description: description.trim() || null,
+        description: resolveShortcodes(description.trim()) || null,
         type: canToggleType && channelType !== channel.type ? channelType : undefined,
         slowmode_seconds: supportsSlowmode ? currentSlowmodeSeconds : undefined,
         icon_url: finalIconUrl,
@@ -319,8 +331,31 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="channel-description">Description</Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="channel-description">Description</Label>
+          <EmojiStickerPicker
+            serverId={serverId}
+            onEmojiSelect={(emoji) => {
+              const ta = descriptionRef.current;
+              const at = ta?.selectionStart ?? description.length;
+              const end = ta?.selectionEnd ?? description.length;
+              setDescription((d) => (d.slice(0, at) + emoji + d.slice(end)).slice(0, 1024));
+              requestAnimationFrame(() => {
+                ta?.focus();
+                ta?.setSelectionRange(at + emoji.length, at + emoji.length);
+              });
+            }}
+            side="bottom"
+            align="end"
+            trigger={
+              <button type="button" aria-label="Insérer un emoji" className="flex h-7 w-7 items-center justify-center rounded-md text-[hsl(var(--icon-default))] transition-colors hover:text-white">
+                <Smile className="h-[22px] w-[22px]" />
+              </button>
+            }
+          />
+        </div>
         <MarkdownTextarea
+          ref={descriptionRef}
           id="channel-description"
           value={description}
           onChange={(v) => setDescription(v)}
@@ -379,10 +414,27 @@ export function ChannelOverview({ channel, channelId, channelName, serverId, onD
         </div>
       )}
 
-      <div className="sticky bottom-0 bg-background pt-3 pb-1 border-t border-border flex justify-between items-center">
-        {channelId && channelName && serverId && onDeleted ? (
-          <ChannelDangerZone channelId={channelId} channelName={channelName} serverId={serverId} onDeleted={onDeleted} />
-        ) : <div />}
+      {(channel.type === 'text' || channel.type === 'announcement') && (
+        <div className="rounded-lg border border-border p-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="space-y-1 flex-1">
+              <span className="font-medium">Premier message obligatoire dans les fils</span>
+              <p className="text-sm text-muted-foreground">
+                Quand cette option est active, on ne peut créer un fil dans ce salon qu'en écrivant un premier message. Sinon, le premier message reste facultatif.
+              </p>
+            </div>
+            <Switch
+              checked={!!firstMessageRequired}
+              onCheckedChange={(v) => setFirstMessageRequired.mutate(v)}
+              disabled={setFirstMessageRequired.isPending}
+              aria-label="Premier message obligatoire dans les fils"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* "Supprimer le salon" est dans la navigation des parametres. */}
+      <div className="sticky bottom-0 bg-background pt-3 pb-1 border-t border-border flex justify-end items-center">
         <Button onClick={handleSave} disabled={updateChannel.isPending || isUploadingIcon || !hasChanges}>
           {(updateChannel.isPending || isUploadingIcon) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
           Enregistrer

@@ -1,121 +1,81 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Search,
-  X,
-  User as UserIcon,
-  Hash,
-  Loader2,
-  AtSign,
-  Paperclip,
-  SlidersHorizontal,
-  Trash2,
-  Image as ImageIcon,
-  Video,
-  Link2,
-  File as FileIcon,
-  LayoutTemplate,
-  Music,
-  BarChart3,
-  Sticker,
-  Forward,
-} from 'lucide-react';
-
+import { ArrowUpDown, Loader2, Paperclip } from 'lucide-react';
+import { Check, Hash, Search, SlidersHorizontal, Trash2, X, AtSign, User as UserIcon, CalendarDays, Pin } from '@/components/icons/discord/lucide';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
-import {
-  useGlobalSearch,
-  SearchFilters as SearchFiltersType,
-} from '@/hooks/useGlobalSearch';
-import { MarkdownText, MarkdownProvider } from '@/lib/markdown';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { UserAvatarImage } from '@/components/ui/user-avatar-image';
-import { format } from '@/lib/dateUtils';
-import { fr } from '@/lib/dateUtils';
+import { cn } from '@/lib/utils';
+import { useGlobalSearch, type SearchFilters as SearchFiltersType, type SearchResult } from '@/hooks/useGlobalSearch';
+import { MarkdownText, MarkdownProvider } from '@/lib/markdown';
 import {
-  SearchFiltersModal,
-  emptySearchFilters,
-  type SearchFiltersValue,
-} from './SearchFiltersModal';
+  AUTHOR_OPTIONS,
+  HAS_OPTIONS,
+  activeToken,
+  completeToken,
+  countFilters,
+  parseSearch,
+  serializeSearch,
+  type ParsedSearch,
+  type SearchPrefix,
+} from '@/lib/searchQuery';
+import { SearchFiltersModal } from './SearchFiltersModal';
+import { AUTHOR_ICONS, HAS_ICONS, channelTypeIcon } from './searchIcons';
 import { StreamlineHash } from '@/components/icons/StreamlineHash';
-import { StreamlineVoice } from '@/components/icons/StreamlineVoice';
-import { StreamlineForum } from '@/components/icons/StreamlineForum';
-import { StreamlineMegaphone } from '@/components/icons/StreamlineMegaphone';
-import { StreamlineMedia } from '@/components/icons/StreamlineMedia';
-import { StreamlineCalendar } from '@/components/icons/StreamlineCalendar';
-import { StreamlineTasks } from '@/components/icons/StreamlineTasks';
-import { StreamlineStage } from '@/components/icons/StreamlineStage';
-import { StreamlineLink } from '@/components/icons/StreamlineLink';
+
+import { appLocale } from '@/i18n/locale';
+import { userKey } from '@/lib/userScope';
+/*
+ * Recherche de messages du serveur, retro-ingenieree depuis la video de
+ * reference (Discord 2025) :
+ *  - barre "Rechercher <serveur>" dont les jetons (de:, dans:, contient:...)
+ *    s'affichent en pastilles ; une croix remplace la loupe des qu'il y a
+ *    du texte ;
+ *  - menu sous la barre (fondu + legere mise a l'echelle) : "Filtres",
+ *    "Historique", puis les sous-menus contextuels quand on tape un prefixe
+ *    ("De l'utilisateur", "Dans le salon", "Message contenant"...) ; navigation
+ *    aux fleches et a Entree ;
+ *  - panneau de resultats a la place de la liste des membres : statut,
+ *    "Filtres (N)", "Trier", resultats groupes par salon ;
+ *  - fenetre "Filtres" (SearchFiltersModal) qui relit et reecrit la barre.
+ *
+ * Le texte de la barre est la seule source de verite (voir lib/searchQuery).
+ */
+
+interface MemberLite {
+  id: string;
+  username: string;
+  displayName: string;
+  avatar?: string;
+}
+
+interface ChannelLite {
+  id: string;
+  name: string;
+  type: string;
+}
 
 interface MessageSearchPanelProps {
   serverId: string | null;
-  channels: { id: string; name: string; type: string }[];
-  members: { id: string; username: string; displayName: string; avatar?: string }[];
+  serverName?: string;
+  channels: ChannelLite[];
+  members: MemberLite[];
   onClose: () => void;
   onNavigateToMessage?: (channelId: string, messageId: string) => void;
   variant?: 'popover' | 'panel';
-  onSubmittedChange?: (submitted: string | null) => void;
+  onSubmittedChange?: (label: string | null) => void;
   initialQuery?: string;
-  /** Triggered by popover variant so parent can rehydrate panel with same submit. */
+  /** Recherche lancee depuis le menu : le parent remonte le panneau avec. */
   onPopoverSubmit?: (s: { label: string; filters: SearchFiltersType }) => void;
-  /** Used by panel variant on mount to re-run a search submitted from the popover. */
   initialSubmit?: { label: string; filters: SearchFiltersType } | null;
 }
 
-type SubmenuMode = 'from' | 'in' | 'has' | 'mentions';
-
-const PREFIX_MAP: Record<SubmenuMode, string> = {
-  from: 'from:',
-  in: 'in:',
-  has: 'has:',
-  mentions: 'mentions:',
-};
-
-const SUBMENU_HEADER: Record<SubmenuMode, string> = {
-  from: 'From User',
-  in: 'In Channel',
-  has: 'Message Contains',
-  mentions: 'Mentions User',
-};
-
-const channelTypeIcon: Record<string, React.ElementType> = {
-  text: StreamlineHash,
-  voice: StreamlineVoice,
-  forum: StreamlineForum,
-  announcement: StreamlineMegaphone,
-  media: StreamlineMedia,
-  calendar: StreamlineCalendar,
-  tasks: StreamlineTasks,
-  stage: StreamlineStage,
-  link: StreamlineLink,
-};
-
-const HAS_TYPES: { value: string; label: string; Icon: React.ElementType }[] = [
-  { value: 'image', label: 'Image', Icon: ImageIcon },
-  { value: 'video', label: 'Video', Icon: Video },
-  { value: 'link', label: 'Link', Icon: Link2 },
-  { value: 'file', label: 'File', Icon: FileIcon },
-  { value: 'embed', label: 'Embed', Icon: LayoutTemplate },
-  { value: 'sound', label: 'Sound', Icon: Music },
-  { value: 'poll', label: 'Poll', Icon: BarChart3 },
-  { value: 'sticker', label: 'Sticker', Icon: Sticker },
-  { value: 'forward', label: 'Forward', Icon: Forward },
-];
-
 const HISTORY_MAX = 8;
-const historyKey = (serverId: string | null) =>
-  `msg-search-history:${serverId ?? 'global'}`;
+const historyKey = (serverId: string | null) => `msg-search-history:${serverId ?? 'global'}`;
 
 function loadHistory(serverId: string | null): string[] {
   try {
-    const raw = localStorage.getItem(historyKey(serverId));
-    if (!raw) return [];
-    const arr = JSON.parse(raw);
-    return Array.isArray(arr)
-      ? arr.filter((s) => typeof s === 'string').slice(0, HISTORY_MAX)
-      : [];
+    const arr = JSON.parse(localStorage.getItem(userKey(historyKey(serverId))) ?? '[]');
+    return Array.isArray(arr) ? arr.filter((s) => typeof s === 'string').slice(0, HISTORY_MAX) : [];
   } catch {
     return [];
   }
@@ -123,17 +83,54 @@ function loadHistory(serverId: string | null): string[] {
 
 function saveHistory(serverId: string | null, items: string[]) {
   try {
-    localStorage.setItem(
-      historyKey(serverId),
-      JSON.stringify(items.slice(0, HISTORY_MAX)),
-    );
+    localStorage.setItem(userKey(historyKey(serverId)), JSON.stringify(items));
   } catch {
-    // ignore
+    /* stockage indisponible */
   }
+}
+
+const FILTER_ROWS: { prefix: SearchPrefix; icon: React.ElementType; label: string; hint: string }[] = [
+  { prefix: 'de', icon: UserIcon, label: "D'un utilisateur spécifique", hint: 'utilisateur' },
+  { prefix: 'dans', icon: Hash, label: 'Envoyé dans un salon spécifique', hint: 'salon' },
+  { prefix: 'contient', icon: Paperclip, label: 'Comprend un type de données spécifique', hint: 'lien, intégration ou fichier' },
+  { prefix: 'mentions', icon: AtSign, label: 'Mentionne un utilisateur spécifique', hint: 'utilisateur' },
+];
+
+const SUBMENU_TITLE: Partial<Record<SearchPrefix, string>> = {
+  de: "De l'utilisateur",
+  mentions: "Mentionne l'utilisateur",
+  dans: 'Dans le salon',
+  contient: 'Message contenant',
+  auteur: "Type d'auteur",
+  'épinglé': 'Épinglé',
+  avant: 'Date',
+  'après': 'Date',
+  pendant: 'Date',
+};
+
+const TOKEN_SPLIT_RE = /((?:^|\s)[a-zéè]+:\s?(?:"[^"]*"|[^\s"]+)?)/gi;
+const KNOWN_PREFIX_RE = /^\s?(de|dans|contient|mentions|avant|pendant|après|apres|auteur|épinglé|epingle|from|in|has|before|after|during|author|pinned):/i;
+
+interface MenuItem {
+  key: string;
+  onSelect: () => void;
+  node: React.ReactNode;
+}
+
+function MemberAvatar({ m, size = 5 }: { m: MemberLite; size?: 4 | 5 | 6 }) {
+  const cls = size === 4 ? 'w-4 h-4' : size === 6 ? 'w-6 h-6' : 'w-5 h-5';
+  return m.avatar ? (
+    <UserAvatarImage src={m.avatar} alt={m.displayName} ownerId={m.id} className={cn(cls, 'rounded-full')} />
+  ) : (
+    <Avatar className={cls}>
+      <AvatarFallback className="text-[8px]">{m.displayName.slice(0, 2).toUpperCase()}</AvatarFallback>
+    </Avatar>
+  );
 }
 
 export function MessageSearchPanel({
   serverId,
+  serverName,
   channels,
   members,
   onClose,
@@ -145,756 +142,618 @@ export function MessageSearchPanel({
   initialSubmit = null,
 }: MessageSearchPanelProps) {
   const [query, setQuery] = useState(initialSubmit?.label ?? initialQuery);
-  const [submitted, setSubmitted] = useState<string | null>(
-    initialSubmit?.label ?? null,
-  );
-  const [showSuggestions, setShowSuggestions] = useState(variant === 'popover');
-  const [history, setHistory] = useState<string[]>(() => loadHistory(serverId));
+  const [submitted, setSubmitted] = useState<string | null>(initialSubmit?.label ?? null);
+  const [menuOpen, setMenuOpen] = useState(variant === 'popover');
+  const [activeIdx, setActiveIdx] = useState(0);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [filtersValue, setFiltersValue] = useState<SearchFiltersValue>(
-    emptySearchFilters(),
-  );
-  const [submenu, setSubmenu] = useState<SubmenuMode | null>(null);
+  const [sort, setSort] = useState<'newest' | 'oldest'>('newest');
+  const [history, setHistory] = useState<string[]>(() => loadHistory(serverId));
   const inputRef = useRef<HTMLInputElement>(null);
-
+  const mirrorRef = useRef<HTMLDivElement>(null);
   const search = useGlobalSearch(serverId);
-  const didMountRef = useRef(false);
-  const didRehydrateRef = useRef(false);
 
-  // Re-run search submitted from popover when the panel mounts.
-  useEffect(() => {
-    if (didRehydrateRef.current) return;
-    if (!initialSubmit) return;
-    didRehydrateRef.current = true;
-    onSubmittedChange?.(initialSubmit.label);
-    search.mutate({
-      query: initialSubmit.filters.contains ?? '',
-      filters: initialSubmit.filters,
+  const memberByName = useMemo(() => {
+    const m = new Map<string, MemberLite>();
+    members.forEach((u) => m.set(u.username.toLowerCase(), u));
+    return m;
+  }, [members]);
+  const channelByName = useMemo(() => {
+    const m = new Map<string, ChannelLite>();
+    channels.forEach((c) => m.set(c.name.toLowerCase(), c));
+    return m;
+  }, [channels]);
+  const channelMap = useMemo(() => new Map(channels.map((c) => [c.id, c])), [channels]);
+
+  /** Traduit la barre en filtres du moteur (noms -> identifiants). */
+  const toEngine = (q: string, order: 'newest' | 'oldest'): { query: string; filters: SearchFiltersType } => {
+    const p = parseSearch(q);
+    const resolve = <T,>(names: string[], map: Map<string, T>) => names.map((n) => map.get(n.toLowerCase())).filter(Boolean) as T[];
+    const fromM = resolve(p.from, memberByName);
+    const inC = resolve(p.in, channelByName);
+    const menM = resolve(p.mentions, memberByName);
+    const filters: SearchFiltersType = {
+      contains: p.text || undefined,
+      fromIds: fromM.length ? fromM.map((m) => m.id) : undefined,
+      // Nom inconnu : on garde le filtre texte du moteur plutot que de l'ignorer.
+      from: !fromM.length && p.from[0] ? p.from[0] : undefined,
+      channelIds: inC.length ? inC.map((c) => c.id) : undefined,
+      channel: !inC.length && p.in[0] ? p.in[0] : undefined,
+      mentionIds: menM.length ? menM.map((m) => m.id) : undefined,
+      has: p.has.length ? p.has : undefined,
+      authorTypes: p.authors.length ? p.authors : undefined,
+      pinned: p.pinned ?? undefined,
+      sort: order,
+    };
+    for (const d of p.dates) {
+      if (d.mode === 'before') filters.before = d.date;
+      else if (d.mode === 'after') filters.after = d.date;
+      else filters.during = d.date;
+    }
+    return { query: p.text, filters };
+  };
+
+  const submit = (raw: string, order = sort) => {
+    const q = raw.trim();
+    if (!q) return;
+    const engine = toEngine(q, order);
+    setQuery(`${q} `);
+    setSubmitted(q);
+    setMenuOpen(false);
+    onSubmittedChange?.(q);
+    search.mutate(engine);
+    setHistory((prev) => {
+      const next = [q, ...prev.filter((h) => h !== q)].slice(0, HISTORY_MAX);
+      saveHistory(serverId, next);
+      return next;
     });
+    if (variant === 'popover') onPopoverSubmit?.({ label: q, filters: engine.filters });
+  };
+
+  // Panneau remonte avec une recherche lancee depuis le menu.
+  const didRehydrate = useRef(false);
+  useEffect(() => {
+    if (didRehydrate.current || !initialSubmit) return;
+    didRehydrate.current = true;
+    search.mutate(toEngine(initialSubmit.label, sort));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    // Skip first run so initialSubmit/initialQuery aren't wiped on mount.
-    if (!didMountRef.current) {
-      didMountRef.current = true;
-      return;
-    }
-    setHistory(loadHistory(serverId));
-    setQuery('');
-    setSubmitted(null);
-    setSubmenu(null);
-    onSubmittedChange?.(null);
-    search.reset();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [serverId]);
-
-  const runSearch = (q: string) => {
-    const trimmed = q.trim();
-    if (!trimmed) return;
-    setSubmitted(trimmed);
-    onSubmittedChange?.(trimmed);
-    setShowSuggestions(false);
-    setSubmenu(null);
-
-    const filters: SearchFiltersType = {};
-    let rest = trimmed;
-    const fromMatch = rest.match(/(?:^|\s)de:(\S+)/i);
-    if (fromMatch) {
-      filters.from = fromMatch[1];
-      rest = rest.replace(fromMatch[0], '').trim();
-    }
-    const inMatch = rest.match(/(?:^|\s)dans:(\S+)/i);
-    if (inMatch) {
-      filters.channel = inMatch[1];
-      rest = rest.replace(inMatch[0], '').trim();
-    }
-    if (rest) filters.contains = rest;
-
-    search.mutate({ query: rest, filters });
-
-    setHistory((prev) => {
-      const next = [trimmed, ...prev.filter((h) => h !== trimmed)].slice(
-        0,
-        HISTORY_MAX,
-      );
-      saveHistory(serverId, next);
-      return next;
+  const focusEnd = () =>
+    requestAnimationFrame(() => {
+      const el = inputRef.current;
+      if (!el) return;
+      el.focus();
+      el.setSelectionRange(el.value.length, el.value.length);
     });
+
+  const insertPrefix = (prefix: SearchPrefix) => {
+    setQuery((q) => `${q && !q.endsWith(' ') ? `${q} ` : q}${prefix}: `);
+    setMenuOpen(true);
+    focusEnd();
   };
 
-  const submitStructured = (label: string, filters: SearchFiltersType) => {
-    setSubmitted(label);
-    onSubmittedChange?.(label);
-    setShowSuggestions(false);
-    setSubmenu(null);
-    setQuery('');
-    search.mutate({ query: filters.contains ?? '', filters });
-    setHistory((prev) => {
-      const next = [label, ...prev.filter((h) => h !== label)].slice(
-        0,
-        HISTORY_MAX,
-      );
-      saveHistory(serverId, next);
-      return next;
-    });
-    if (variant === 'popover') {
-      onPopoverSubmit?.({ label, filters });
-    }
-  };
+  const token = activeToken(query);
+  const parsed = parseSearch(query);
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Backspace' && submenu && query === '') {
-      e.preventDefault();
-      setSubmenu(null);
-      return;
+  // ---- Elements du menu (navigation clavier sur une liste a plat) ----
+  const items: MenuItem[] = [];
+  let menuTitle: string | null = null;
+  if (token && SUBMENU_TITLE[token.prefix]) {
+    menuTitle = SUBMENU_TITLE[token.prefix]!;
+    const f = token.partial.toLowerCase();
+    const pick = (value: string) => {
+      const next = completeToken(query, token.prefix, value);
+      // Comme Discord, choisir une suggestion lance la recherche.
+      submit(next);
+    };
+    if (token.prefix === 'de' || token.prefix === 'mentions') {
+      members
+        .filter((m) => !f || m.username.toLowerCase().includes(f) || m.displayName.toLowerCase().includes(f))
+        .slice(0, 25)
+        .forEach((m) =>
+          items.push({
+            key: m.id,
+            onSelect: () => pick(m.username),
+            node: (
+              <>
+                <MemberAvatar m={m} />
+                <span translate="no" className="text-sm font-semibold text-white truncate">{m.displayName}</span>
+                <span translate="no" className="text-sm text-muted-foreground truncate">{m.username}</span>
+              </>
+            ),
+          }),
+        );
+    } else if (token.prefix === 'dans') {
+      channels
+        .filter((c) => !f || c.name.toLowerCase().includes(f))
+        .forEach((c) => {
+          const Icon = channelTypeIcon[c.type] ?? StreamlineHash;
+          items.push({
+            key: c.id,
+            onSelect: () => pick(c.name),
+            node: (
+              <>
+                <Icon className="w-4 h-4 shrink-0 text-[hsl(var(--icon-default))]" />
+                <span translate="no" className="text-sm font-medium text-white truncate">{c.name}</span>
+              </>
+            ),
+          });
+        });
+    } else if (token.prefix === 'contient') {
+      HAS_OPTIONS.filter((o) => !f || o.label.includes(f)).forEach((o) => {
+        const Icon = HAS_ICONS[o.value];
+        items.push({
+          key: o.value,
+          onSelect: () => pick(o.label),
+          node: (
+            <>
+              <Icon className="w-4 h-4 shrink-0 text-[hsl(var(--icon-default))]" />
+              <span className="text-sm font-medium text-white">{o.label}</span>
+            </>
+          ),
+        });
+      });
+    } else if (token.prefix === 'auteur') {
+      AUTHOR_OPTIONS.filter((o) => !f || o.label.includes(f)).forEach((o) => {
+        const Icon = AUTHOR_ICONS[o.value];
+        items.push({
+          key: o.value,
+          onSelect: () => pick(o.label),
+          node: (
+            <>
+              <Icon className="w-4 h-4 shrink-0 text-[hsl(var(--icon-default))]" />
+              <span className="text-sm font-medium text-white">{o.label}</span>
+            </>
+          ),
+        });
+      });
+    } else if (token.prefix === 'épinglé') {
+      ['true', 'false'].forEach((v) =>
+        items.push({
+          key: v,
+          onSelect: () => pick(v),
+          node: (
+            <>
+              <Pin className="w-4 h-4 shrink-0 text-[hsl(var(--icon-default))]" />
+              <span className="text-sm font-medium text-white">{v}</span>
+            </>
+          ),
+        }),
+      );
+    } else {
+      const day = (offset: number) => new Date(Date.now() - offset * 86_400_000).toISOString().slice(0, 10);
+      [
+        { label: "Aujourd'hui", value: day(0) },
+        { label: 'Hier', value: day(1) },
+        { label: 'Il y a une semaine', value: day(7) },
+      ].forEach((d) =>
+        items.push({
+          key: d.value,
+          onSelect: () => pick(d.value),
+          node: (
+            <>
+              <CalendarDays className="w-4 h-4 shrink-0 text-[hsl(var(--icon-default))]" />
+              <span className="text-sm font-medium text-white">{d.label}</span>
+              <span className="text-sm text-muted-foreground">{d.value}</span>
+            </>
+          ),
+        }),
+      );
     }
-    if (e.key === 'Enter') {
+  } else {
+    if (query.trim()) {
+      items.push({
+        key: '__search',
+        onSelect: () => submit(query),
+        node: (
+          <>
+            <Search className="w-5 h-5 shrink-0 text-[hsl(var(--icon-default))]" />
+            <span className="text-sm text-muted-foreground shrink-0">Rechercher :</span>
+            <span className="min-w-0 truncate"><QueryPills text={query.trim()} members={memberByName} /></span>
+          </>
+        ),
+      });
+    }
+    FILTER_ROWS.forEach((r) =>
+      items.push({
+        key: r.prefix,
+        onSelect: () => insertPrefix(r.prefix),
+        node: <FilterRow icon={r.icon} label={r.label} prefix={`${r.prefix}:`} hint={r.hint} />,
+      }),
+    );
+    items.push({
+      key: '__more',
+      onSelect: () => setFiltersOpen(true),
+      node: <FilterRow icon={SlidersHorizontal} label="Plus de filtres" hint="dates, type d'auteur et plus" />,
+    });
+    if (!query.trim()) {
+      history.forEach((h) =>
+        items.push({
+          key: `h:${h}`,
+          onSelect: () => submit(h),
+          node: (
+            <>
+              <Search className="w-4 h-4 shrink-0 text-[hsl(var(--icon-default))]" />
+              <span className="flex-1 min-w-0 truncate"><QueryPills text={h} members={memberByName} /></span>
+              <button
+                type="button"
+                aria-label="Retirer de l'historique"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const next = history.filter((x) => x !== h);
+                  setHistory(next);
+                  saveHistory(serverId, next);
+                }}
+                className="opacity-0 group-hover:opacity-100 text-[hsl(var(--icon-default))] hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </>
+          ),
+        }),
+      );
+    }
+  }
+
+  useEffect(() => setActiveIdx(0), [menuTitle, query]);
+
+  const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
-      if (submenu) return; // selection happens via click on submenu item
-      runSearch(query);
+      setMenuOpen(true);
+      if (!items.length) return;
+      setActiveIdx((i) => (e.key === 'ArrowDown' ? (i + 1) % items.length : (i - 1 + items.length) % items.length));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const item = menuOpen ? items[activeIdx] : undefined;
+      if (item && item.key !== '__search') item.onSelect();
+      else submit(query);
     } else if (e.key === 'Escape') {
-      if (submenu) setSubmenu(null);
-      else if (showSuggestions) setShowSuggestions(false);
+      e.stopPropagation();
+      if (menuOpen && variant === 'panel') setMenuOpen(false);
       else onClose();
     }
   };
 
-  const openSubmenu = (mode: SubmenuMode) => {
-    setSubmenu(mode);
+  const syncScroll = () => {
+    if (mirrorRef.current && inputRef.current) mirrorRef.current.scrollLeft = inputRef.current.scrollLeft;
+  };
+
+  const clear = () => {
     setQuery('');
-    setShowSuggestions(true);
-    requestAnimationFrame(() => inputRef.current?.focus());
+    if (variant === 'popover' || submitted) onClose();
+    else focusEnd();
   };
 
-  const removeHistoryItem = (item: string) => {
-    setHistory((prev) => {
-      const next = prev.filter((h) => h !== item);
-      saveHistory(serverId, next);
-      return next;
-    });
-  };
-
-  const clearHistory = () => {
-    setHistory([]);
-    saveHistory(serverId, []);
-  };
-
-  const results = search.data ?? [];
-  const isLoading = search.isPending;
-
-  const channelMap = useMemo(() => {
-    const m = new Map<string, { id: string; name: string; type: string }>();
-    channels.forEach((c) => m.set(c.id, c));
-    return m;
-  }, [channels]);
-
-  const memberByUsername = useMemo(() => {
-    const m = new Map<
-      string,
-      { id: string; username: string; displayName: string; avatar?: string }
-    >();
-    members.forEach((u) => m.set(u.username.toLowerCase(), u));
-    return m;
-  }, [members]);
-
-  const applyFilters = (v: SearchFiltersValue) => {
-    setFiltersValue(v);
-    const filters: SearchFiltersType = {};
-    const firstFrom = v.from[0]
-      ? members.find((m) => m.id === v.from[0])
-      : null;
-    if (firstFrom) filters.from = firstFrom.username;
-    const firstChan = v.in[0]
-      ? channels.find((c) => c.id === v.in[0])
-      : null;
-    if (firstChan) filters.channel = firstChan.name;
-    const firstMention = v.mentions[0]
-      ? members.find((m) => m.id === v.mentions[0])
-      : null;
-    if (firstMention) filters.mentions = firstMention.username;
-    if (v.authorType) filters.authorType = v.authorType;
-    if (v.pinned !== null) filters.pinned = v.pinned;
-    const firstDate = v.dates.find((d) => d.date);
-    if (firstDate?.date) {
-      const iso = format(firstDate.date, 'yyyy-MM-dd');
-      if (firstDate.mode === 'before') filters.before = iso;
-      else if (firstDate.mode === 'after') filters.after = iso;
-      else filters.during = iso;
-    }
-    if (query.trim()) filters.contains = query.trim();
-    const label = query.trim() || '(filters)';
-    submitStructured(label, filters);
-  };
-
-  const selectFromUser = (mode: 'from' | 'mentions', userId: string) => {
-    const user = members.find((m) => m.id === userId);
-    if (!user) return;
-    const label = `${PREFIX_MAP[mode]} ${user.username}`;
-    const filters: SearchFiltersType = {};
-    if (mode === 'from') filters.from = user.username;
-    else filters.mentions = user.username;
-    setQuery(label);
-    submitStructured(label, filters);
-  };
-
-  const selectChannel = (channelId: string) => {
-    const ch = channels.find((c) => c.id === channelId);
-    if (!ch) return;
-    const label = `${PREFIX_MAP.in} ${ch.name}`;
-    setQuery(label);
-    submitStructured(label, { channel: ch.name });
-  };
-
-  const selectHasType = (value: string) => {
-    const label = `${PREFIX_MAP.has} ${value}`;
-    setQuery(label);
-    // useGlobalSearch n'a pas encore `has`; on soumet le label, l'étape 4
-    // branche le filtre côté backend. Pas de filtre serveur appliqué ici.
-    submitStructured(label, {});
-  };
-
-  const filterRows = [
-    {
-      key: 'from' as const,
-      icon: <UserIcon className="w-4 h-4 text-muted-foreground" />,
-      label: 'From a specific user',
-      prefix: 'from:',
-      hint: 'user',
-    },
-    {
-      key: 'in' as const,
-      icon: <Hash className="w-4 h-4 text-muted-foreground" />,
-      label: 'Sent in a specific channel',
-      prefix: 'in:',
-      hint: 'channel',
-    },
-    {
-      key: 'has' as const,
-      icon: <Paperclip className="w-4 h-4 text-muted-foreground" />,
-      label: 'Includes a specific type of data',
-      prefix: 'has:',
-      hint: 'link, embed or file',
-    },
-    {
-      key: 'mentions' as const,
-      icon: <AtSign className="w-4 h-4 text-muted-foreground" />,
-      label: 'Mentions a specific user',
-      prefix: 'mentions:',
-      hint: 'user',
-    },
-  ];
-
-  // History pill rendering
-  const parseHistoryItem = (raw: string) => {
-    const tokenRe = /(\b(?:has|in|from|mentions|de|dans):\S+)/gi;
-    const parts: Array<
-      | { kind: 'text'; value: string }
-      | { kind: 'token'; prefix: string; value: string }
-    > = [];
-    let last = 0;
-    let m: RegExpExecArray | null;
-    while ((m = tokenRe.exec(raw)) !== null) {
-      if (m.index > last)
-        parts.push({ kind: 'text', value: raw.slice(last, m.index) });
-      const [prefix, value] = m[0].split(/:(.+)/);
-      parts.push({ kind: 'token', prefix: `${prefix}:`, value: value ?? '' });
-      last = m.index + m[0].length;
-    }
-    if (last < raw.length) parts.push({ kind: 'text', value: raw.slice(last) });
-    return parts;
-  };
-
-  const renderHistoryContent = (raw: string) => {
-    const parts = parseHistoryItem(raw);
-    if (parts.length === 0 || (parts.length === 1 && parts[0].kind === 'text')) {
-      return <span className="truncate">{raw}</span>;
-    }
-    return (
-      <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-        {parts.map((p, i) => {
-          if (p.kind === 'text') {
-            const t = p.value.trim();
-            if (!t) return null;
-            return (
-              <span key={i} className="text-sm">
-                {t}
-              </span>
-            );
-          }
-          const lower = p.prefix.toLowerCase();
-          const isChannel = lower === 'in:' || lower === 'dans:';
-          const isUser =
-            lower === 'from:' || lower === 'de:' || lower === 'mentions:';
-          const ch = isChannel
-            ? channels.find(
-                (c) =>
-                  c.name.toLowerCase() ===
-                  p.value.toLowerCase().replace(/^#/, ''),
-              )
-            : null;
-          const member = isUser
-            ? memberByUsername.get(p.value.toLowerCase())
-            : null;
-          return (
-            <span
-              key={i}
-              className="inline-flex items-center gap-1 rounded bg-surface-2 px-1.5 py-0.5 text-xs"
-            >
-              <span className="text-muted-foreground">{p.prefix}</span>
-              {isChannel && <Hash className="w-3 h-3 text-muted-foreground" />}
-              {isUser && member?.avatar && (
-                <UserAvatarImage
-                  src={member.avatar}
-                  alt={member.displayName}
-                  ownerId={member.id}
-                  className="w-4 h-4 rounded-full"
-                />
-              )}
-              {isUser && !member?.avatar && (
-                <Avatar className="w-4 h-4">
-                  <AvatarFallback className="text-[8px]">
-                    {p.value.slice(0, 2).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-              )}
-              <span className="truncate">{ch ? ch.name : p.value}</span>
-            </span>
-          );
-        })}
+  // ---- Barre de recherche ----
+  const bar = (
+    <div className="relative flex-1 min-w-0 h-8 rounded-lg bg-[hsl(var(--search-background))] border border-white/[0.06] focus-within:border-white/[0.12]">
+      <div
+        ref={mirrorRef}
+        aria-hidden
+        className="absolute inset-y-0 left-0 right-8 pl-2.5 flex items-center overflow-hidden whitespace-pre text-sm text-foreground pointer-events-none"
+      >
+        <QueryPills text={query} raw />
       </div>
-    );
-  };
-
-  // Inline submenu (rendered in lieu of Filters/History when a submenu is open).
-  // Filtering is driven by the single top input (`query`), no embedded input.
-  const renderSubmenu = (mode: SubmenuMode) => {
-    const f = query.toLowerCase().trim();
-    const header = (
-      <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground px-2 pt-1 pb-1.5">
-        {SUBMENU_HEADER[mode]}
-      </div>
-    );
-
-
-    let body: React.ReactNode;
-    if (mode === 'has') {
-      const items = HAS_TYPES.filter((t) =>
-        !f ? true : t.label.toLowerCase().includes(f),
-      );
-      body = (
-        <div className="flex flex-col">
-          {items.length === 0 && (
-            <div className="text-xs text-muted-foreground px-2 py-3 text-center">
-              No matches
-            </div>
-          )}
-          {items.map((t) => {
-            const Icon = t.Icon;
-            return (
-              <button type="button"
-                key={t.value}
-                onClick={() => selectHasType(t.value)}
-                className="w-full flex items-center gap-3 px-2 py-1.5 rounded text-sm hover:bg-surface-hover text-left"
-              >
-                <Icon className="w-4 h-4 text-muted-foreground shrink-0" />
-                <span className="flex-1 min-w-0 truncate">{t.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      );
-    } else if (mode === 'in') {
-      const items = channels.filter((c) =>
-        !f ? true : c.name.toLowerCase().includes(f),
-      );
-      body = (
-        <div className="flex flex-col">
-          {items.length === 0 && (
-            <div className="text-xs text-muted-foreground px-2 py-3 text-center">
-              No matches
-            </div>
-          )}
-          {items.map((c) => {
-            const Icon = channelTypeIcon[c.type] ?? StreamlineHash;
-            return (
-              <button type="button"
-                key={c.id}
-                onClick={() => selectChannel(c.id)}
-                className="w-full flex items-center gap-3 px-2 py-1.5 rounded text-sm hover:bg-surface-hover text-left"
-              >
-                <Icon className="w-4 h-4 text-muted-foreground shrink-0" />
-                <span className="flex-1 min-w-0 truncate">{c.name}</span>
-              </button>
-            );
-          })}
-        </div>
-      );
-    } else {
-      const items = members.filter((m) =>
-        !f
-          ? true
-          : m.username.toLowerCase().includes(f) ||
-            m.displayName.toLowerCase().includes(f),
-      );
-      body = (
-        <div className="flex flex-col">
-          {items.length === 0 && (
-            <div className="text-xs text-muted-foreground px-2 py-3 text-center">
-              No matches
-            </div>
-          )}
-          {items.map((m) => (
-            <button type="button"
-              key={m.id}
-              onClick={() => selectFromUser(mode, m.id)}
-              className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-surface-hover text-left"
-            >
-              {m.avatar ? (
-                <UserAvatarImage
-                  src={m.avatar}
-                  alt={m.displayName}
-                  ownerId={m.id}
-                  className="w-6 h-6 rounded-full"
-                />
-              ) : (
-                <Avatar className="w-6 h-6">
-                  <AvatarFallback className="text-[10px]">
-                    {m.displayName.slice(0, 2).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-              )}
-              <span className="flex-1 min-w-0 truncate font-medium">
-                {m.displayName}
-              </span>
-              <span className="text-xs text-muted-foreground truncate">
-                @{m.username}
-              </span>
-            </button>
-          ))}
-        </div>
-      );
-    }
-
-    return (
-      <>
-        {header}
-        
-        <ScrollArea className="max-h-[260px]">{body}</ScrollArea>
-      </>
-    );
-  };
-
-  const filtersAndHistory = (
-    <>
-      <div className="text-[11px] font-semibold text-muted-foreground px-2 pt-1 pb-1.5">
-        Filters
-      </div>
-      <div className="flex flex-col">
-        {filterRows.map((row) => (
-          <button type="button"
-            key={row.key}
-            onClick={() => openSubmenu(row.key)}
-            className="w-full flex items-center gap-3 px-2 py-1.5 rounded text-sm hover:bg-surface-hover text-left"
-          >
-            <span className="shrink-0">{row.icon}</span>
-            <span className="flex-1 min-w-0">
-              <span className="block text-sm text-foreground truncate">
-                {row.label}
-              </span>
-              <span className="block text-xs text-muted-foreground truncate">
-                <span className="text-primary">{row.prefix} </span>
-                {row.hint}
-              </span>
-            </span>
-          </button>
-        ))}
-        <button type="button"
-          key="more"
-          onClick={() => setFiltersOpen(true)}
-          className="w-full flex items-center gap-3 px-2 py-1.5 rounded text-sm hover:bg-surface-hover text-left"
-        >
-          <span className="shrink-0">
-            <SlidersHorizontal className="w-4 h-4 text-muted-foreground" />
-          </span>
-          <span className="flex-1 min-w-0">
-            <span className="block text-sm text-foreground truncate">
-              More filters
-            </span>
-            <span className="block text-xs text-muted-foreground truncate">
-              dates, author type, and more
-            </span>
-          </span>
+      <input
+        ref={inputRef}
+        autoFocus={variant === 'popover'}
+        value={query}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setMenuOpen(true);
+          requestAnimationFrame(syncScroll);
+        }}
+        onFocus={() => setMenuOpen(true)}
+        // Panneau : un clic hors de la barre et du menu ferme le menu (le menu
+        // empeche la perte de focus sur mousedown). En superposition, c'est
+        // le parent qui ferme tout au clic exterieur.
+        onBlur={() => variant === 'panel' && setMenuOpen(false)}
+        onKeyDown={onKeyDown}
+        onScroll={syncScroll}
+        onKeyUp={syncScroll}
+        placeholder={serverName ? `Rechercher ${serverName}` : 'Rechercher'}
+        aria-label="Rechercher des messages"
+        className="absolute inset-0 w-full pl-2.5 pr-8 bg-transparent text-sm text-transparent caret-white placeholder:text-[hsl(var(--header-icon))] outline-none selection:bg-primary/60 selection:text-white"
+      />
+      {query ? (
+        <button type="button" aria-label="Effacer la recherche" onClick={clear} className="absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 text-[hsl(var(--icon-default))] hover:text-white">
+          <X className="w-5 h-5" />
         </button>
-      </div>
-
-      {history.length > 0 && (
-        <>
-          <Separator className="my-2" />
-          <div className="flex items-center justify-between px-2 pb-1.5">
-            <span className="text-[11px] font-semibold text-muted-foreground">
-              History
-            </span>
-            <button type="button"
-              onClick={clearHistory}
-              className="text-muted-foreground hover:text-foreground"
-              aria-label="Clear history"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
-          </div>
-          <div className="flex flex-col">
-            {history.map((item) => (
-              <div
-                key={item}
-                className="group flex items-center gap-2 px-2 py-1.5 rounded hover:bg-surface-hover"
-              >
-                <Search className="w-4 h-4 text-muted-foreground shrink-0" />
-                <button type="button"
-                  onClick={() => {
-                    setQuery(item);
-                    runSearch(item);
-                  }}
-                  className="flex-1 min-w-0 text-left"
-                >
-                  {renderHistoryContent(item)}
-                </button>
-                <button type="button"
-                  onClick={() => removeHistoryItem(item)}
-                  className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground"
-                  aria-label="Remove from history"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-    </>
-  );
-
-  const filtersModalEl = (
-    <SearchFiltersModal
-      open={filtersOpen}
-      onOpenChange={setFiltersOpen}
-      initial={filtersValue}
-      members={members}
-      channels={channels}
-      onApply={applyFilters}
-    />
-  );
-
-  const sharedInputHandlers = {
-    value: query,
-    onChange: (e: React.ChangeEvent<HTMLInputElement>) => setQuery(e.target.value),
-    onKeyDown: handleKeyDown,
-    onFocus: () => setShowSuggestions(true),
-  };
-
-  // Shared input bar: chip + editable input.
-  // ⚠️ VERROUS ANTI-RÉGRESSION :
-  // - Hauteur EXACTE 32px (h-8) sur le conteneur ET l'input : jamais de padding
-  //   vertical additionnel, jamais de shadow qui augmenterait la hauteur.
-  // - Sans préfixe actif, utiliser le VRAI composant Input, pas un div+input
-  //   reconstruit : le placeholder doit garder la même baseline native que
-  //   MemberList. C'est le verrou définitif contre le micro-décalage au clic.
-  // - La loupe reste une icône ABSOLUE à right-2.5, comme l'Input MemberList
-  //   au repos. Ne pas la remettre dans le flux flex : cela décale/upscale
-  //   visuellement l'icône au clic et recrée la régression vidéo.
-  // - Ne pas ajouter l'icône Inbox ici : le vrai bouton Inbox reste hors de la
-  //   barre, à droite, dans MemberList/Index. Le dupliquer dans l'input crée un
-  //   chevauchement et un mouvement apparent des icônes.
-  const searchInputBar = (
-    <div className="relative flex-1 min-w-0">
-      {!submenu ? (
-        <>
-          {/* Pixel-identique à MemberList: même Input, même classes, même loupe.
-              Ne pas remplacer par un wrapper flex : les baselines natives de
-              placeholder diffèrent et recréent le micro-décalage vidéo. */}
-          <Input
-            ref={inputRef}
-            autoFocus
-            placeholder="Rechercher"
-            {...sharedInputHandlers}
-            className="h-8 pr-8 pl-3 text-sm bg-input"
-          />
-          <Search className="w-4 h-4 absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground z-10 pointer-events-none" />
-        </>
       ) : (
-        <div
-          className={cn(
-            'relative flex items-center gap-1.5 h-8 min-h-8 max-h-8 pl-3 pr-8 rounded-xl bg-input box-border overflow-hidden border border-border',
-          )}
-          onClick={() => inputRef.current?.focus()}
-        >
-          <span className="inline-flex items-center h-5 px-1.5 rounded bg-surface-2 text-xs font-medium text-foreground shrink-0 select-none">
-            {PREFIX_MAP[submenu]}
-          </span>
-          <input
-            ref={inputRef}
-            autoFocus
-            placeholder=""
-            {...sharedInputHandlers}
-            className="flex-1 min-w-0 h-8 leading-8 bg-transparent border-0 outline-none text-sm placeholder:text-muted-foreground p-0 m-0"
-          />
-          <Search className="absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-        </div>
+        <Search className="absolute right-2 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-[hsl(var(--icon-default))] pointer-events-none" />
       )}
     </div>
   );
 
+  // ---- Menu ----
+  const historyStart = items.findIndex((i) => i.key.startsWith('h:'));
+  const filtersStart = items.findIndex((i) => FILTER_ROWS.some((r) => r.prefix === i.key));
+  const menu = menuOpen && (items.length > 0 || menuTitle) && (
+    <div
+      role="listbox"
+      onMouseDown={(e) => e.preventDefault()}
+      className="absolute right-0 top-[calc(100%+12px)] z-50 w-[400px] max-w-[calc(100vw-24px)] max-h-[70vh] overflow-y-auto scrollbar-thin p-2 rounded-lg bg-[hsl(var(--input))] border border-white/[0.06] shadow-[0_8px_24px_rgba(0,0,0,0.4)] origin-top-right animate-in fade-in-0 zoom-in-95 slide-in-from-top-1 duration-100"
+    >
+      {menuTitle && <p className="px-2 pt-1 pb-1.5 text-xs font-semibold text-muted-foreground">{menuTitle}</p>}
+      {menuTitle && items.length === 0 && <p className="px-2 py-3 text-sm text-muted-foreground">Aucun résultat</p>}
+      {items.map((item, i) => (
+        <div key={item.key}>
+          {i === filtersStart && <p className="px-2 pt-1 pb-1.5 text-xs font-semibold text-muted-foreground">Filtres</p>}
+          {i === historyStart && (
+            <div className="mt-2 pt-2 border-t border-border flex items-center justify-between px-2 pb-1.5">
+              <span className="text-xs font-semibold text-muted-foreground">Historique</span>
+              <button
+                type="button"
+                aria-label="Effacer l'historique"
+                onClick={() => {
+                  setHistory([]);
+                  saveHistory(serverId, []);
+                }}
+                className="text-[hsl(var(--icon-default))] hover:text-white"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+          <div
+            role="option"
+            aria-selected={i === activeIdx}
+            onMouseEnter={() => setActiveIdx(i)}
+            onClick={item.onSelect}
+            className={cn(
+              'group flex items-center gap-2.5 px-2 rounded cursor-pointer min-h-8',
+              item.key === '__more' || FILTER_ROWS.some((r) => r.prefix === item.key) ? 'py-1.5' : 'py-1',
+              i === activeIdx ? 'bg-[hsl(var(--interactive-background-selected))]' : '',
+            )}
+          >
+            {item.node}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 
-  // Popover variant: input bar + dropdown (overlays MemberList input).
+  const filtersModal = (
+    <SearchFiltersModal
+      open={filtersOpen}
+      onOpenChange={setFiltersOpen}
+      initial={parseSearch(submitted ?? query)}
+      members={members}
+      channels={channels}
+      onApply={(v: ParsedSearch) => submit(serializeSearch(v))}
+    />
+  );
+
   if (variant === 'popover') {
     return (
       <>
-        <div
-          className="relative w-full"
-          onKeyDown={(e) => {
-            if (e.key === 'Escape') {
-              e.stopPropagation();
-              if (submenu) setSubmenu(null);
-              else onClose();
-            }
-          }}
-        >
-          {/* Search bar — hauteur VERROUILLÉE à h-8 (32px) pour matcher
-              exactement l'Input MemberList en repos. Ne pas ajouter de
-              padding/border/shadow ici : cela rendrait la barre plus haute
-              que l'état au repos (régression connue). */}
-          <div className="relative z-10 h-8">
-            {searchInputBar}
-          </div>
-          {/* Floating panel — separate element below the search bar.
-              Largeur volontairement indépendante de la barre de recherche —
-              NE PAS passer en w-full/left-0, voir historique des fixes sur ce
-              composant (3e régression corrigée ici). */}
-          <div
-            className="absolute right-0 top-[calc(100%+0.5rem)] z-20 min-w-[340px] max-w-[90vw] bg-popover text-popover-foreground rounded-xl shadow-lg max-h-[70vh] overflow-y-auto p-2"
-          >
-            {submenu ? renderSubmenu(submenu) : filtersAndHistory}
-          </div>
+        <div className="relative w-full h-8 flex">
+          {bar}
+          {menu}
         </div>
-        {filtersModalEl}
+        {filtersModal}
       </>
     );
   }
 
+  // ---- Panneau de resultats ----
+  const results = (search.data ?? []) as (SearchResult & { channel: { id: string; name: string; type: string | null } | null })[];
+  const loading = search.isPending;
+  const activeFilters = countFilters(parseSearch(submitted ?? ''));
+  const term = parseSearch(submitted ?? '').text;
+
   return (
-    <div className="w-full sm:w-60 bg-surface-1 flex flex-col sm:border-l sm:border-border/30 h-full">
-      <div
-        className="h-12 px-3 sm:px-4 flex items-center gap-2 flex-shrink-0 bg-surface-1 w-full"
-        style={{
-          borderBottom: "1px solid hsl(var(--border) / 0.5)",
-        }}
-      >
-        {searchInputBar}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 shrink-0"
-          onClick={onClose}
-          aria-label="Fermer la recherche"
-        >
-          <X className="w-4 h-4" />
-        </Button>
+    <div className="w-full sm:w-[420px] bg-background flex flex-col h-full animate-in fade-in-0 duration-150">
+      <div className="h-12 px-3 flex items-center gap-3 shrink-0 border-b border-border">
+        <div className="relative flex-1 min-w-0 h-8 flex">
+          {bar}
+          {menu}
+        </div>
       </div>
 
-
-      {showSuggestions && !submitted && (
-        <div className="px-2 pt-2">
-          {submenu ? renderSubmenu(submenu) : filtersAndHistory}
-        </div>
-      )}
-
-
-      {submitted && (
-        <ScrollArea className="flex-1">
-          <div className="p-2 space-y-1">
-            {isLoading && (
-              <div className="flex items-center justify-center py-8 text-muted-foreground">
-                <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                <span className="text-xs">Recherche...</span>
-              </div>
+      <div className="flex-1 min-h-0 flex flex-col sm:border-l sm:border-border">
+        <div className="h-14 px-4 flex items-center gap-2 shrink-0">
+          <p className="flex items-center gap-2 text-base font-medium text-white truncate">
+            {loading ? (
+              <>
+                Recherche en cours…
+                <Loader2 className="w-4 h-4 animate-spin text-[hsl(var(--icon-default))]" />
+              </>
+            ) : results.length > 0 ? (
+              `${results.length} résultat${results.length > 1 ? 's' : ''}`
+            ) : (
+              'Aucun résultat'
             )}
-            {!isLoading && results.length === 0 && (
-              <div className="flex flex-col items-center justify-center text-center py-10 px-4 text-muted-foreground">
-                <Search className="w-10 h-10 mb-3 opacity-50" />
-                <p className="text-xs leading-relaxed">
-                  Nous avons cherché partout. Malheureusement, aucun résultat
-                  n'a été trouvé.
-                </p>
-              </div>
-            )}
-            {!isLoading &&
-              results.map((r) => {
-                const ch = r.channel_id ? channelMap.get(r.channel_id) : null;
-                return (
-                  <button type="button"
-                    key={r.id}
-                    onClick={() =>
-                      r.channel_id &&
-                      onNavigateToMessage?.(r.channel_id, r.id)
-                    }
-                    className={cn(
-                      'w-full text-left rounded-md p-2 hover:bg-surface-hover transition-colors',
-                      'flex gap-2',
-                    )}
+          </p>
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setFiltersOpen(true)}
+              className="h-8 px-2.5 flex items-center gap-1.5 rounded-lg bg-[hsl(var(--button-secondary))] text-sm font-medium text-white hover:bg-[hsl(var(--interactive-background-selected))] transition-colors"
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+              Filtres{activeFilters > 0 ? ` (${activeFilters})` : ''}
+            </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="h-8 px-2.5 flex items-center gap-1.5 rounded-lg bg-[hsl(var(--button-secondary))] text-sm font-medium text-white hover:bg-[hsl(var(--interactive-background-selected))] transition-colors"
+                >
+                  <ArrowUpDown className="w-4 h-4" />
+                  Trier
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {(
+                  [
+                    { v: 'newest', l: 'Plus récents' },
+                    { v: 'oldest', l: 'Plus anciens' },
+                  ] as const
+                ).map((o) => (
+                  <DropdownMenuItem
+                    key={o.v}
+                    onClick={() => {
+                      setSort(o.v);
+                      if (submitted) submit(submitted, o.v);
+                    }}
                   >
-                    <Avatar className="w-8 h-8 shrink-0">
+                    <span className="flex-1">{o.l}</span>
+                    {sort === o.v && <Check className="w-4 h-4" />}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+
+        <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin px-4 pb-4">
+          {!loading && results.length === 0 && submitted && (
+            <div className="flex flex-col items-center text-center pt-16 px-6">
+              <span className="w-24 h-24 rounded-full bg-[hsl(var(--card))] flex items-center justify-center">
+                <Search className="w-11 h-11 text-[hsl(var(--header-icon))]" />
+              </span>
+              <p className="mt-5 text-sm text-muted-foreground">
+                Nous avons cherché partout. Malheureusement, aucun résultat n'a été trouvé.
+              </p>
+            </div>
+          )}
+          {!loading &&
+            results.map((r, i) => {
+              const prev = results[i - 1];
+              const ch = r.channel ?? (r.channel_id ? channelMap.get(r.channel_id) : null);
+              const showChannel = !prev || prev.channel_id !== r.channel_id;
+              const Icon = channelTypeIcon[ch?.type ?? 'text'] ?? StreamlineHash;
+              return (
+                <div key={`${r.kind ?? 'message'}:${r.id}`}>
+                  {showChannel && (
+                    <p className={cn('flex items-center gap-1 pb-2 text-sm font-semibold text-muted-foreground', i > 0 && 'pt-4')}>
+                      <Icon className="w-4 h-4" />
+                      {ch?.name ?? 'salon'}
+                    </p>
+                  )}
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => r.channel_id && onNavigateToMessage?.(r.channel_id, r.id)}
+                    onKeyDown={(e) => e.key === 'Enter' && r.channel_id && onNavigateToMessage?.(r.channel_id, r.id)}
+                    className="group relative mb-2 flex gap-3 p-3 pr-16 rounded-lg bg-[hsl(var(--card))] border border-white/[0.04] hover:bg-[hsl(var(--interactive-background-hover))] cursor-pointer transition-colors"
+                  >
+                    <Avatar className="w-10 h-10 shrink-0">
                       {r.author?.avatar_url ? (
-                        <UserAvatarImage
-                          src={r.author.avatar_url}
-                          alt={r.author.display_name || r.author.username}
-                          ownerId={r.author.id}
-                          className="w-8 h-8"
-                        />
+                        <UserAvatarImage src={r.author.avatar_url} alt={r.author.display_name} ownerId={r.author.id} className="w-10 h-10" />
                       ) : (
-                        <AvatarFallback className="text-[10px]">
-                          {(r.author?.display_name || r.author?.username || '?')
-                            .slice(0, 2)
-                            .toUpperCase()}
-                        </AvatarFallback>
+                        <AvatarFallback>{(r.author?.display_name ?? '?').slice(0, 2).toUpperCase()}</AvatarFallback>
                       )}
                     </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 text-xs">
-                        <span className="font-medium truncate">
-                          {r.author?.display_name ||
-                            r.author?.username ||
-                            'Inconnu'}
-                        </span>
-                        {ch && (
-                          <span className="flex items-center gap-0.5 text-muted-foreground truncate">
-                            <Hash className="w-3 h-3 shrink-0" />
-                            <span className="truncate">{ch.name}</span>
-                          </span>
-                        )}
+                    <div className="min-w-0 flex-1">
+                      <p className="flex items-baseline gap-2">
+                        <span className="text-base font-semibold text-white truncate">{r.author?.display_name ?? 'Webhook'}</span>
                         {r.created_at && (
-                          <span className="text-muted-foreground shrink-0">
-                            ·{' '}
-                            {format(new Date(r.created_at), 'd MMM', {
-                              locale: fr,
-                            })}
+                          <span className="text-xs text-muted-foreground shrink-0">
+                            {new Date(r.created_at).toLocaleString(appLocale(), { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                           </span>
                         )}
-                      </div>
-                      <div className="text-xs text-foreground/80 line-clamp-2 mt-0.5">
-                        <MarkdownProvider value={{}}>
-                          <MarkdownText content={r.content || ''} />
-                        </MarkdownProvider>
+                      </p>
+                      <div className="mt-0.5 text-base text-foreground break-words line-clamp-5 [&_.markdown-content]:inline">
+                        {r.kind === 'poll' || !term ? (
+                          <MarkdownProvider value={{}}>
+                            <MarkdownText content={r.content || ''} />
+                          </MarkdownProvider>
+                        ) : (
+                          <Highlighted text={r.content || ''} term={term} />
+                        )}
                       </div>
                     </div>
-                  </button>
-                );
-              })}
-          </div>
-        </ScrollArea>
-      )}
-
-      {!submitted && !showSuggestions && <div className="flex-1" />}
-      {filtersModalEl}
+                    <span className="absolute top-2 right-2 h-6 px-2 rounded bg-[hsl(var(--button-secondary))] text-xs font-semibold text-white flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      Aller
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+        </div>
+      </div>
+      {filtersModal}
     </div>
   );
+}
+
+function FilterRow({ icon: Icon, label, prefix, hint }: { icon: React.ElementType; label: string; prefix?: string; hint: string }) {
+  return (
+    <>
+      <Icon className="w-5 h-5 shrink-0 text-[hsl(var(--icon-default))]" />
+      <span className="min-w-0 leading-tight">
+        <span className="block text-sm font-medium text-white truncate">{label}</span>
+        <span className="block text-xs text-muted-foreground truncate">
+          {prefix && <strong className="font-semibold text-white">{prefix} </strong>}
+          {hint}
+        </span>
+      </span>
+    </>
+  );
+}
+
+/**
+ * Affiche une requete avec ses jetons en pastilles. `raw` : rendu miroir de
+ * la barre, qui doit garder exactement la largeur du texte saisi (pas de
+ * padding, pas de graisse differente : la pastille est dessinee par une
+ * ombre de meme couleur).
+ */
+function QueryPills({
+  text,
+  raw = false,
+  members,
+}: {
+  text: string;
+  raw?: boolean;
+  /** Hors barre : avatar dans les pastilles de: / mentions: (comme l'historique Discord). */
+  members?: Map<string, MemberLite>;
+}) {
+  const parts = text.split(TOKEN_SPLIT_RE).filter((p) => p !== '');
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (!KNOWN_PREFIX_RE.test(part)) return <span key={i}>{part}</span>;
+        const lead = part.startsWith(' ') ? ' ' : '';
+        const body = part.trimStart();
+        const [prefix, ...rest] = body.split(':');
+        const value = rest.join(':');
+        const isUser = /^(de|from|mentions)$/i.test(prefix);
+        const member = !raw && isUser ? members?.get(value.trim().replace(/^"|"$/g, '').toLowerCase()) : undefined;
+        return (
+          <span key={i}>
+            {lead}
+            <span
+              className={cn(
+                'rounded-sm bg-[#4a4b53] shadow-[0_0_0_2px_#4a4b53]',
+                !raw && 'inline-flex items-center gap-1 mx-0.5 px-1 shadow-none',
+              )}
+            >
+              <span className={cn('text-white', !raw && 'font-semibold')}>{prefix}:</span>
+              {member && <MemberAvatar m={member} size={4} />}
+              <span className="text-foreground">{member ? value.trim() : value}</span>
+            </span>
+          </span>
+        );
+      })}
+    </>
+  );
+}
+
+function Highlighted({ text, term }: { text: string; term: string }) {
+  const lower = text.toLowerCase();
+  const t = term.toLowerCase();
+  const out: React.ReactNode[] = [];
+  let i = 0;
+  while (t && i < text.length) {
+    const at = lower.indexOf(t, i);
+    if (at < 0) break;
+    if (at > i) out.push(text.slice(i, at));
+    out.push(<mark key={at} className="rounded-sm bg-[#f0b232]/30 text-white">{text.slice(at, at + t.length)}</mark>);
+    i = at + t.length;
+  }
+  out.push(text.slice(i));
+  return <>{out}</>;
 }

@@ -22,15 +22,8 @@ import { MobileProfileSubpage } from './MobileProfileSubpage';
 import { MobileFriendCard, type MobileFriendCardData } from './MobileFriendCard';
 import { MobileFriendActionSheet } from './MobileFriendActionSheet';
 import { AddFriendModal } from '@/components/friends/AddFriendModal';
-import {
-  UserPlus,
-  Search,
-  X,
-  Users,
-  Check,
-  Loader2,
-  ChevronDown,
-} from 'lucide-react';
+import { Loader2 } from 'lucide-react';
+import { UserPlus, Search, X, Users, Check, ChevronDown } from '@/components/icons/discord/lucide';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/lib/haptics';
 

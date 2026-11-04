@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus } from '@/components/icons/discord/lucide';
 import { Button } from '@/components/ui/button';
 import { useCalendarEvents, CalendarEvent } from '@/hooks/useCalendarEvents';
 import { CreateEventModal } from './CreateEventModal';
 import { cn } from '@/lib/utils';
 
+import { appLocale } from '@/i18n/locale';
 const HOURS = Array.from({ length: 16 }, (_, i) => i + 7); // 7h..22h
 const DAY_NAMES = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 
@@ -83,7 +84,7 @@ export function ProfileCalendar({ userId, readOnly = false }: ProfileCalendarPro
     setModalOpen(true);
   };
 
-  const monthLabel = weekStart.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  const monthLabel = weekStart.toLocaleDateString(appLocale(), { month: 'long', year: 'numeric' });
   const today = fmtDate(new Date());
 
   return (
@@ -93,7 +94,7 @@ export function ProfileCalendar({ userId, readOnly = false }: ProfileCalendarPro
         <div>
           <h3 className="text-sm font-bold capitalize">{monthLabel}</h3>
           <p className="text-[11px] text-muted-foreground">
-            Semaine du {weekStart.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+            Semaine du {weekStart.toLocaleDateString(appLocale(), { day: 'numeric', month: 'short' })}
           </p>
         </div>
         <div className="flex items-center gap-1">

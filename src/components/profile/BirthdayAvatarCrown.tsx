@@ -1,4 +1,4 @@
-import { Gift } from 'lucide-react';
+import { Gift } from '@/components/icons/discord/lucide';
 import { cn } from '@/lib/utils';
 
 interface BirthdayAvatarCrownProps {

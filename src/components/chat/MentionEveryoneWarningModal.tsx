@@ -8,7 +8,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { AtSign } from 'lucide-react';
+import { AtSign } from '@/components/icons/discord/lucide';
 
 export type EveryoneMentionType = 'everyone' | 'here' | 'both';
 

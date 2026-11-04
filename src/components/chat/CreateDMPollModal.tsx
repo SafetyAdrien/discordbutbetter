@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { EmojiStickerPicker } from './EmojiStickerPicker';
 import { useCreateDMPoll, useUpdateDMPoll, DMPoll } from '@/hooks/useDMPolls';
-import { Plus, Trash2, Smile } from 'lucide-react';
+import { Plus, Trash2, Smile } from '@/components/icons/discord/lucide';
 
 interface CreateDMPollModalProps {
   conversationId: string;

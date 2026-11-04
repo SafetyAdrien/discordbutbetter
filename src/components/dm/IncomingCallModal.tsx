@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Phone, PhoneOff, Video } from 'lucide-react';
+import { Phone, PhoneOff, Video } from '@/components/icons/discord/lucide';
 import { DMCall } from '@/hooks/useDMCalls';
 
 interface IncomingCallModalProps {

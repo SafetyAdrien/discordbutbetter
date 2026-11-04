@@ -44,16 +44,16 @@ export function PollVotersModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[720px] w-[95vw] h-[600px] max-h-[85vh] p-0 bg-[hsl(var(--surface-2))] border-none gap-0 overflow-hidden flex flex-col">
-        <DialogHeader className="px-4 py-3 border-b border-border/30 text-left">
-          <DialogTitle className="font-semibold text-foreground">{question}</DialogTitle>
-          <p className="text-xs text-muted-foreground">
+      <DialogContent className="sm:max-w-[680px] w-[95vw] h-[640px] max-h-[85vh] p-0 gap-0 overflow-hidden flex flex-col">
+        <DialogHeader className="px-6 pt-6 pb-4 text-left space-y-1">
+          <DialogTitle className="text-xl font-semibold text-white pr-8 break-words">{question}</DialogTitle>
+          <p className="text-sm text-muted-foreground">
             {totalVotes} vote{totalVotes !== 1 ? 's' : ''}
           </p>
         </DialogHeader>
 
         <div className="flex flex-1 min-h-0">
-          <div className="w-[220px] shrink-0 border-r border-border/30 overflow-y-auto py-2">
+          <div className="w-[230px] shrink-0 border-r border-white/[0.06] overflow-y-auto px-3 pb-4 space-y-0.5">
             {options.map((option) => {
               const count = votesByOption[option.id]?.length ?? 0;
               const active = option.id === selectedOptionId;
@@ -63,11 +63,11 @@ export function PollVotersModal({
                   type="button"
                   onClick={() => setSelectedOptionId(option.id)}
                   className={cn(
-                    'w-full text-left px-3 py-2.5 text-sm flex items-center gap-1.5 truncate transition-colors',
-                    active ? 'bg-primary/10 text-primary font-medium' : 'text-muted-foreground hover:bg-muted/60',
+                    'w-full text-left px-2 h-9 rounded-lg text-sm font-semibold flex items-center gap-2 truncate transition-colors text-white',
+                    active ? 'bg-[hsl(var(--interactive-background-selected))]' : 'hover:bg-[hsl(var(--interactive-background-hover))]',
                   )}
                 >
-                  {option.emoji && <span className="flex-shrink-0">{option.emoji}</span>}
+                  {option.emoji && <span className="flex-shrink-0 text-lg leading-none">{option.emoji}</span>}
                   <span className="truncate">
                     {option.text} ({count})
                   </span>
@@ -76,7 +76,7 @@ export function PollVotersModal({
             })}
           </div>
 
-          <div className="flex-1 p-3 space-y-1 overflow-y-auto">
+          <div className="flex-1 px-4 pb-4 space-y-1 overflow-y-auto">
             {selectedVotes.length === 0 && (
               <div className="h-full flex flex-col items-center justify-center gap-2 text-center px-6">
                 <Ghost className="w-14 h-14 text-muted-foreground/50" />
@@ -85,8 +85,8 @@ export function PollVotersModal({
               </div>
             )}
             {selectedVotes.map((vote) => (
-              <div key={vote.id} className="flex items-center gap-3 px-2 py-2 rounded-md hover:bg-muted/40">
-                <Avatar className="w-10 h-10">
+              <div key={vote.id} className="flex items-center gap-3 px-2 py-1.5 rounded-lg hover:bg-[hsl(var(--interactive-background-hover))]">
+                <Avatar className="w-8 h-8">
                   <AvatarImage src={vote.user?.avatar_url || undefined} />
                   <AvatarFallback className="text-sm bg-muted">
                     {vote.user?.display_name?.charAt(0).toUpperCase() || '?'}

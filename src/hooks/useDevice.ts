@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 
 /**
  * Universal device detection — covers all modern smartphones (2018→2026)
@@ -129,7 +129,7 @@ function snapshot(): DeviceState {
   const vv = window.visualViewport;
   const width = Math.round(vv?.width ?? window.innerWidth);
   const height = Math.round(vv?.height ?? window.innerHeight);
-  const safeArea = readSafeArea();
+  const safeArea = (safeAreaCache ??= readSafeArea());
   const tier = computeTier(width);
   const isMobile = width <= 480;
   const isTablet = width > 480 && width <= 1023;
@@ -161,45 +161,76 @@ function snapshot(): DeviceState {
   };
 }
 
+/*
+ * Etat partage : UN seul jeu d'ecouteurs et UN seul calcul par image, quel que soit le nombre de
+ * composants qui lisent l'appareil (une vingtaine). Avant, chacun recalculait tout (dont la zone
+ * de securite, qui force une mise en page) a chaque redimensionnement : un changement de zoom
+ * figeait l'ecran plusieurs secondes. L'objet n'est republie que si une valeur change vraiment.
+ */
+let current: DeviceState | null = null;
+let refreshRate: 'standard' | 'high' = 'standard';
+let safeAreaCache: SafeArea | null = null;
+let installed = false;
+let raf = 0;
+const subs = new Set<() => void>();
+
+function sameDevice(a: DeviceState, b: DeviceState): boolean {
+  for (const k of Object.keys(a) as Array<keyof DeviceState>) {
+    if (k === 'safeArea') continue;
+    if (a[k] !== b[k]) return false;
+  }
+  const x = a.safeArea, y = b.safeArea;
+  return x.top === y.top && x.right === y.right && x.bottom === y.bottom && x.left === y.left;
+}
+
+function recompute(resetSafeArea = false) {
+  if (resetSafeArea) safeAreaCache = null;
+  const next = { ...snapshot(), refreshRate };
+  if (!current || !sameDevice(current, next)) {
+    current = next;
+    subs.forEach((fn) => fn());
+  }
+}
+
+function schedule(resetSafeArea = false) {
+  if (resetSafeArea) safeAreaCache = null;
+  cancelAnimationFrame(raf);
+  raf = requestAnimationFrame(() => recompute());
+}
+
+function install() {
+  if (installed || typeof window === 'undefined') return;
+  installed = true;
+  const vv = window.visualViewport;
+  const onResize = () => schedule();
+  window.addEventListener('resize', onResize);
+  window.addEventListener('orientationchange', () => schedule(true));
+  vv?.addEventListener('resize', onResize);
+  [
+    '(display-mode: standalone)',
+    '(hover: hover)',
+    '(pointer: coarse)',
+    '(prefers-reduced-motion: reduce)',
+    '(spanning: single-fold-vertical)',
+    '(horizontal-viewport-segments: 2)',
+  ].forEach((q) => window.matchMedia(q).addEventListener?.('change', () => schedule()));
+  void estimateRefreshRate().then((rr) => {
+    refreshRate = rr;
+    recompute();
+  });
+}
+
+function getDevice(): DeviceState {
+  if (!current) current = { ...snapshot(), refreshRate };
+  return current;
+}
+
+function subscribe(fn: () => void) {
+  install();
+  subs.add(fn);
+  return () => { subs.delete(fn); };
+}
+
 export function useDevice(): DeviceState {
-  const [state, setState] = useState<DeviceState>(() => snapshot());
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    let raf = 0;
-    const update = () => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => setState(snapshot()));
-    };
-    const vv = window.visualViewport;
-    window.addEventListener('resize', update);
-    window.addEventListener('orientationchange', update);
-    vv?.addEventListener('resize', update);
-    vv?.addEventListener('scroll', update);
-    const mqls = [
-      '(display-mode: standalone)',
-      '(hover: hover)',
-      '(pointer: coarse)',
-      '(prefers-reduced-motion: reduce)',
-      '(spanning: single-fold-vertical)',
-      '(horizontal-viewport-segments: 2)',
-    ].map((q) => {
-      const m = window.matchMedia(q);
-      m.addEventListener?.('change', update);
-      return m;
-    });
-
-    estimateRefreshRate().then((rr) => setState((s) => (s.refreshRate === rr ? s : { ...s, refreshRate: rr })));
-
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener('resize', update);
-      window.removeEventListener('orientationchange', update);
-      vv?.removeEventListener('resize', update);
-      vv?.removeEventListener('scroll', update);
-      mqls.forEach((m) => m.removeEventListener?.('change', update));
-    };
-  }, []);
-
-  return state;
+  return useSyncExternalStore(subscribe, getDevice, getDevice);
 }

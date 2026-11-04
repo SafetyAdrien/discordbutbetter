@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, ChevronLeft, ChevronRight, Clock, MapPin, Users, CalendarDays, List as ListIcon, Pencil, Trash2, Copy } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, Clock, Users, CalendarDays, List as ListIcon, Pencil, Trash2 } from '@/components/icons/discord/lucide';
 import { StreamlineCalendar } from '@/components/icons/StreamlineCalendar';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -18,6 +18,7 @@ import { canvasHasTransparentPixels, findOpaqueBounds, sourceMayHaveTransparency
 import { supabase } from '@/integrations/supabase/client';
 import { copyToClipboard } from '@/lib/clipboard';
 
+import { ChannelSheetIcon } from '@/components/icons/ChannelSheetIcon';
 interface Channel {
   id: string;
   name: string;
@@ -128,7 +129,7 @@ export function CalendarChannel({ channel, onToggleMembers, showMembers, hideHea
       <div className="h-12 px-2 sm:px-4 flex items-center gap-2 sm:gap-4 flex-shrink-0 bg-[hsl(var(--surface-2))] w-full" style={{ borderBottom: "1px solid hsl(var(--border) / 0.5)", boxShadow: "var(--shadow-elevation-1)" }}>
         <div className="flex items-center gap-2 min-w-0 flex-shrink">
           <StreamlineCalendar className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-          <h2 className="font-semibold text-foreground truncate">{channel.name}</h2>
+          <h2 translate="no" className="font-semibold text-foreground truncate">{channel.name}</h2>
         </div>
 
         <div className="flex items-center gap-1 sm:gap-2 ml-auto flex-shrink-0">
@@ -161,7 +162,7 @@ export function CalendarChannel({ channel, onToggleMembers, showMembers, hideHea
                   <Users className="w-5 h-5" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>{showMembers ? "Masquer les membres" : "Afficher les membres"}</TooltipContent>
+              <TooltipContent>{showMembers ? "Masquer la liste des membres" : "Afficher la liste des membres"}</TooltipContent>
             </Tooltip>
           )}
         </div>
@@ -506,7 +507,7 @@ function EventAgendaCard({
           </ContextMenuItem>
         )}
         <ContextMenuItem onClick={() => { copyToClipboard(event.id); }}>
-          <Copy className="w-4 h-4 mr-2" /> Copier l'ID
+          <ChannelSheetIcon name="id" className="w-4 h-4 mr-2" /> Copier l'ID
         </ContextMenuItem>
         {canManage && (
           <>

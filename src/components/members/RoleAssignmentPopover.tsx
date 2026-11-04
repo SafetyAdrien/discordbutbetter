@@ -3,7 +3,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Shield } from 'lucide-react';
+import { Shield } from '@/components/icons/discord/lucide';
 import { useServerRoles } from '@/hooks/useRoles';
 import { usePermissions } from '@/hooks/usePermissions';
 import { MemberWithProfile } from '@/hooks/useMembers';
@@ -81,7 +81,7 @@ export function RoleAssignmentPopover({
         <DialogContent className="w-72 p-0 gap-0" onClick={e => e.stopPropagation()}>
           <DialogHeader className="p-3 border-b border-border">
             <DialogTitle className="text-sm font-semibold">Gérer les rôles</DialogTitle>
-            <p className="text-xs text-muted-foreground mt-1">
+            <p translate="no" className="text-xs text-muted-foreground mt-1">
               {member.user.display_name}
             </p>
           </DialogHeader>
@@ -105,7 +105,7 @@ export function RoleAssignmentPopover({
       <PopoverContent className="w-72 p-0" align="end" onClick={e => e.stopPropagation()}>
         <div className="p-3 border-b border-border">
           <h4 className="font-semibold text-sm">Gérer les rôles</h4>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p translate="no" className="text-xs text-muted-foreground mt-1">
             {member.user.display_name}
           </p>
         </div>

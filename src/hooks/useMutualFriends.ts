@@ -9,6 +9,7 @@ export interface MutualFriend {
   display_name: string;
   avatar_url: string | null;
   status: string | null;
+  custom_status?: string | null;
 }
 
 const mutualFriendsCacheKey = (me: string, other: string) =>
@@ -60,7 +61,7 @@ export function useMutualFriends(otherUserId: string | null) {
 
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, username, display_name, avatar_url, status')
+        .select('id, username, display_name, avatar_url, status, custom_status')
         .in('id', mutualFriendIds);
 
       if (profilesError) throw profilesError;

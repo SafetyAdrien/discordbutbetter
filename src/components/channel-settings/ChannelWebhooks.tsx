@@ -13,7 +13,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Copy, Trash2, Loader2, Webhook } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
+import { Plus, Copy, Trash2, Webhook } from '@/components/icons/discord/lucide';
 import { useChannelWebhooks, useCreateWebhook, useDeleteWebhook } from '@/hooks/useWebhooks';
 import { toast } from 'sonner';
 
@@ -125,7 +126,7 @@ export function ChannelWebhooks({ channelId }: ChannelWebhooksProps) {
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
-                <p className="font-medium truncate">{webhook.name}</p>
+                <p translate="no" className="font-medium truncate">{webhook.name}</p>
                 <p className="text-xs text-muted-foreground">
                   ID: {webhook.id.slice(0, 8)}...
                 </p>

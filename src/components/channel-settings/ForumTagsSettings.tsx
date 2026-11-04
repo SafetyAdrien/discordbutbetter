@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Plus, X, Lock, LockOpen, Tag as TagIcon } from 'lucide-react';
+import { LockOpen } from 'lucide-react';
+import { Plus, X, Lock, Tag as TagIcon } from '@/components/icons/discord/lucide';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +11,7 @@ import {
 } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { ForumEmoji } from '@/components/channels/forum/ForumEmoji';
 import {
   useForumTags, useForumChannelConfig, useCreateForumTag, useUpdateForumTag,
   useDeleteForumTag, useUpdateForumChannelConfig,
@@ -79,9 +81,9 @@ export function ForumTagsSettings({ channelId, channelType }: { channelId: strin
                 className="flex items-center gap-2 rounded-lg border border-border/60 px-2.5 py-1.5"
               >
                 {tag.emoji_name
-                  ? <span className="text-base leading-none w-5 text-center">{tag.emoji_name}</span>
+                  ? <ForumEmoji emoji={tag.emoji_name} className="text-base w-5" />
                   : <TagIcon className="w-4 h-4 text-muted-foreground flex-shrink-0" />}
-                <span className="text-sm truncate flex-1">{tag.name}</span>
+                <span translate="no" className="text-sm truncate flex-1">{tag.name}</span>
 
                 <Tooltip>
                   <TooltipTrigger asChild>

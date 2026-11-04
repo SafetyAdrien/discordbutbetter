@@ -1,5 +1,6 @@
 import { ReactNode, useMemo, useState } from 'react';
-import { Copy, Filter, Shield, Users } from 'lucide-react';
+import { Filter } from 'lucide-react';
+import { Shield, Users } from '@/components/icons/discord/lucide';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { UserAvatarImage } from '@/components/ui/user-avatar-image';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -13,6 +14,7 @@ import { copyToClipboard } from '@/lib/clipboard';
 import { requestMemberRoleFilter } from '@/hooks/useMemberRoleFilter';
 import { cn } from '@/lib/utils';
 
+import { ChannelSheetIcon } from '@/components/icons/ChannelSheetIcon';
 interface RoleInfoPopupProps {
   roleId: string;
   serverId: string;
@@ -133,7 +135,7 @@ export function RoleInfoPopup({ roleId, serverId, children }: RoleInfoPopupProps
                   onClick={handleCopyId}
                   aria-label="Copier l'ID du rôle"
                 >
-                  <Copy className="w-3.5 h-3.5" />
+                  <ChannelSheetIcon name="id" className="w-3.5 h-3.5" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="top">Copier l'ID</TooltipContent>
@@ -231,7 +233,7 @@ export function RoleInfoPopup({ roleId, serverId, children }: RoleInfoPopupProps
                       )}
                     />
                   </div>
-                  <span className="text-sm text-foreground truncate">{m.displayName}</span>
+                  <span translate="no" className="text-sm text-foreground truncate">{m.displayName}</span>
                 </div>
               ))
             )}

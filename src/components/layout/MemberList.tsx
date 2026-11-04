@@ -1,26 +1,17 @@
+import { useServerVoiceParticipants } from '@/hooks/useServerVoiceParticipants';
 import { forwardRef, useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { User } from "@/types/app";
+import { usePermissions } from "@/hooks/usePermissions";
 import { MemberRow } from "./MemberRow";
+import { KickBanDialog } from "./KickBanDialog";
 import { cn } from "@/lib/utils";
 import { uuidToSnowflake } from "@/lib/snowflake";
-import {
-  MessageCircle,
-  UserPlus,
-  Hash,
-  VolumeX,
-  LogOut,
-  Ban,
-  User as UserIcon,
-  Search,
-  Gamepad2,
-  Headphones,
-  Eye,
-  Trophy,
-  Inbox,
-} from "lucide-react";
+import { VolumeX, Ban } from "lucide-react";
+import { MessageCircle, UserPlus, Hash, LogOut, User as UserIcon, Search, Gamepad2, Headphones, Eye, Trophy, Inbox } from "@/components/icons/discord/lucide";
 import { StreamlineCrown } from "@/components/icons/StreamlineCrown";
 import { StatusIndicator } from "@/components/ui/StatusIndicator";
-import { InboxPanel } from "@/components/inbox/InboxPanel";
+import { InboxButton } from "@/components/inbox/InboxButton";
+import { isDesktopApp } from "@/lib/desktop";
 import { DiscordInbox } from '@/components/icons/DiscordInbox';
 import { useNotifications } from "@/hooks/useNotifications";
 import { useTotalMentionCount } from "@/hooks/useTotalMentionCount";
@@ -48,7 +39,6 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { copyToClipboard } from "@/lib/clipboard";
-import { Input } from "@/components/ui/input";
 
 import { useServerRoles, RoleWithPermissions } from "@/hooks/useRoles";
 import { Shield, Pencil } from "lucide-react";
@@ -131,44 +121,6 @@ const activityColors: Record<string, string> = {
   competing: "text-yellow-400",
 };
 
-
-// Inbox Button Component
-function InboxButton() {
-  const { data: notifications = [] } = useNotifications();
-  const mentionCount = useTotalMentionCount();
-  const unreadCount = notifications.filter(n => n.status === 'pending').length;
-  const hasUnread = unreadCount > 0 || mentionCount > 0;
-
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button type="button" className="relative p-1.5 rounded hover:bg-surface-hover transition-colors text-muted-foreground hover:text-foreground">
-          <DiscordInbox className="w-5 h-5" />
-          {mentionCount > 0 ? (
-            <MentionBadge
-              count={mentionCount}
-              size="xs"
-              className="absolute -top-1 -right-1"
-            />
-          ) : hasUnread ? (
-            <span
-              aria-label="Notifications non lues"
-              className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-foreground"
-            />
-          ) : null}
-        </button>
-      </PopoverTrigger>
-      <PopoverContent
-        side="left"
-        align="start"
-        className="w-96 max-h-[500px] p-0 overflow-hidden"
-        sideOffset={8}
-      >
-        <InboxPanel />
-      </PopoverContent>
-    </Popover>
-  );
-}
 
 export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function MemberList(
   { members, ownerId, serverId, onOpenDM, onOpenGlobalSearch, serverRoles = [], fillHeight = false, className },
@@ -314,6 +266,8 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
 
   // Membership row id, required by the role-management menu. Memoized because
   // it is called once per rendered row.
+  const { data: voiceParticipants } = useServerVoiceParticipants(serverId ?? null);
+  const voiceUserIds = useMemo(() => new Set((voiceParticipants ?? []).map((p) => p.user_id)), [voiceParticipants]);
   const memberIdByUserId = useMemo(() => {
     const map = new Map<string, string>();
     for (const m of membersData) map.set(m.user.id, m.id);
@@ -331,6 +285,12 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
   const handleSendMessageCb = useCallback((_member: MemberWithRoles) => {}, []);
   const handleAddFriendCb = useCallback((_member: MemberWithRoles) => {}, []);
   const handleEditServerProfileCb = useCallback(() => setServerProfileEditOpen(true), []);
+  const { isGod, hasPermission } = usePermissions(serverId);
+  const canKick = isGod || hasPermission('kick_members');
+  const canBan = isGod || hasPermission('ban_members');
+  const [moderation, setModeration] = useState<{ mode: 'kick' | 'ban'; target: { id: string; name: string } } | null>(null);
+  const handleKickCb = useCallback((target: { id: string; name: string }) => setModeration({ mode: 'kick', target }), []);
+  const handleBanCb = useCallback((target: { id: string; name: string }) => setModeration({ mode: 'ban', target }), []);
   const handleSetSecondOwnerCb = useCallback(
     (target: { id: string; name: string }) => setAddSecondOwnerTarget(target),
     [],
@@ -349,30 +309,31 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
       <div
         ref={ref}
         className={cn(
-          "w-full sm:w-60 bg-surface-1 flex flex-col sm:border-l sm:border-border/30",
+          // 264px et meme fond que le chat, comme sur la capture. Le filet
+          // gauche ne commence que SOUS la rangee de recherche : celle-ci
+          // prolonge l'en-tete du salon sur toute la largeur.
+          "w-full sm:w-[264px] bg-background flex flex-col",
           fillHeight && "h-full",
           className
         )}
       >
-        {/* Search input and Inbox — même style de barre "collée" que le header de salon : hauteur h-12, pleine largeur, pas d'arrondi sur la barre elle-même. */}
-        <div
-          className="h-12 px-3 sm:px-4 flex items-center gap-2 flex-shrink-0 bg-surface-1 w-full"
-          style={{
-            borderBottom: "1px solid hsl(var(--border) / 0.5)",
-          }}
-        >
-          <div className="relative flex-1">
-            <Input
-              readOnly
-              placeholder="Rechercher"
-              onFocus={() => onOpenGlobalSearch?.()}
-              onClick={() => onOpenGlobalSearch?.()}
-              className="h-8 pr-8 pl-3 text-sm bg-input cursor-pointer"
-            />
-            <Search className="w-4 h-4 absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground z-10 pointer-events-none" />
-          </div>
-          <InboxButton />
+        {/* Rangee de recherche : 48px, filet bas aligne sur celui de
+            l'en-tete du salon. Champ de 32px, fond #2e2f35, bordure 1px,
+            rayon 8px, "Rechercher <serveur>", loupe a droite. */}
+        <div className="h-12 px-3 flex items-center gap-3 flex-shrink-0 w-full border-b border-border">
+          <button
+            type="button"
+            onClick={() => onOpenGlobalSearch?.()}
+            className="flex-1 min-w-0 h-8 pl-2.5 pr-2 flex items-center gap-2 rounded-lg bg-[hsl(var(--search-background))] border border-white/[0.06] text-left cursor-text"
+          >
+            <span className="flex-1 truncate text-sm text-[hsl(var(--header-icon))]">
+              {server?.name ? `Rechercher ${server.name}` : "Rechercher"}
+            </span>
+            <Search className="w-[18px] h-[18px] shrink-0 text-[hsl(var(--icon-default))]" />
+          </button>
+          {!isDesktopApp && <InboxButton variant="header" />}
         </div>
+        <div className="flex-1 min-h-0 flex flex-col sm:border-l sm:border-border">
         {selectedRoleFilters.length > 0 && (
           <div className="px-2 pt-2 flex flex-wrap items-center gap-1.5">
             <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Filtré par</span>
@@ -399,16 +360,21 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
             </button>
           </div>
         )}
-        <div className="flex-1 overflow-y-auto scrollbar-thin p-2">
+        <div className="flex-1 overflow-y-auto scrollbar-thin px-2 pb-2">
           {groupedMembers.map((group, index) => (
-            <div key={group.role?.id || (group.isOffline ? "offline" : "online")} className="mb-2">
-              <h3 className="px-3 py-1.5 text-xs font-semibold capitalize tracking-wider flex items-center gap-1.5 text-muted-foreground">
+            <div key={group.role?.id || (group.isOffline ? "offline" : "online")}>
+              <h3 className="px-2 pt-[21px] pb-1.5 text-sm font-medium leading-4 flex items-center gap-1.5 text-muted-foreground">
                 {group.role?.icon_url && (
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <span className="cursor-default">
                         {group.role.icon_url.startsWith("http") ? (
-                          <img src={group.role.icon_url} alt="" className="w-4 h-4 object-contain" />
+                          <img
+                            src={group.role.icon_url}
+                            alt=""
+                            className="w-4 h-4 object-contain"
+                            onError={(e) => { e.currentTarget.style.display = "none"; }}
+                          />
                         ) : (
                           <span className="text-base">{group.role.icon_url}</span>
                         )}
@@ -419,7 +385,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
                     </TooltipContent>
                   </Tooltip>
                 )}
-                <span className="text-xs font-semibold text-muted-foreground capitalize tracking-wide">
+                <span>
                   {group.isOffline ? "Hors ligne" : group.role?.name || "En ligne"}
                 </span>
                 <span> — {group.members.length}</span>
@@ -436,6 +402,7 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
                     serverId={serverId}
                     currentUserId={currentUser?.id}
                     ownerId={ownerId}
+                    inVoice={voiceUserIds.has(member.id)}
                     canManageRoles={canManageRoles}
                     onOpenProfile={handleOpenProfile}
                     onSendMessage={handleSendMessageCb}
@@ -444,14 +411,20 @@ export const MemberList = forwardRef<HTMLDivElement, MemberListProps>(function M
                     onEditServerProfile={handleEditServerProfileCb}
                     onSetSecondOwner={handleSetSecondOwnerCb}
                     onRemoveSecondOwner={handleRemoveSecondOwnerCb}
+                    canKick={canKick}
+                    canBan={canBan}
+                    onKick={handleKickCb}
+                    onBan={handleBanCb}
                   />
                 ))}
               </div>
             </div>
           ))}
         </div>
+        </div>
       </div>
 
+      {serverId && <KickBanDialog target={moderation?.target ?? null} mode={moderation?.mode ?? 'kick'} serverId={serverId} onClose={() => setModeration(null)} />}
       <UserProfilePopup
         user={selectedMember}
         open={!!selectedMember}

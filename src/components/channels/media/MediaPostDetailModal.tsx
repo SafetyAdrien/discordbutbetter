@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { ChevronLeft, ChevronRight, X, Trash2, EyeOff } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Trash2, EyeOff } from '@/components/icons/discord/lucide';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -14,6 +14,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import type { MediaPost } from '@/hooks/useMediaPosts';
 
+import { appLocale } from '@/i18n/locale';
 interface MediaPostDetailModalProps {
   post: MediaPost;
   channelId: string;
@@ -186,7 +187,7 @@ export function MediaPostDetailModal({
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-sm truncate">{authorName || 'Utilisateur'}</p>
                 <p className="text-xs text-muted-foreground">
-                  {new Date(post.created_at).toLocaleString('fr-FR')}
+                  {new Date(post.created_at).toLocaleString(appLocale())}
                 </p>
               </div>
               {isAuthor && (

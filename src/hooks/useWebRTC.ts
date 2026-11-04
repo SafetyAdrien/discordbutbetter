@@ -15,8 +15,7 @@ interface PeerInfo {
 }
 
 // Reconnection configuration
-const RECONNECT_MAX_ATTEMPTS = 3;
-const RECONNECT_BASE_DELAY_MS = 1000;
+const ICE_RESTART_COOLDOWN_MS = 8000;
 
 export interface UseWebRTCReturn {
   isConnected: boolean;
@@ -99,6 +98,7 @@ export function useWebRTC(): UseWebRTCReturn {
   const participantsSubscriptionRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const statsIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const iceRestartAtRef = useRef<Map<string, number>>(new Map());
   
   // Adaptive VAD state (persists across renders)
   const vadStateRef = useRef<Map<string, AdaptiveVADState>>(new Map());
@@ -113,26 +113,39 @@ export function useWebRTC(): UseWebRTCReturn {
 
   // Refactored health check (Fix M) — usable by interval + visibilitychange
   const checkPeersHealth = useCallback(async () => {
-    const firstPeer = peersRef.current.values().next().value;
-    if (!firstPeer) return;
-    try {
-      const stats = await firstPeer.getStats();
-      setConnectionStats(stats);
-      if (stats.iceState === 'failed' || stats.iceState === 'disconnected') {
-        console.log('[useWebRTC] Detected connection issue, attempting ICE restart');
-        for (const [peerId, pc] of peersRef.current.entries()) {
-          try {
-            await pc.restartIce();
-            console.log('[useWebRTC] ICE restart initiated for peer:', peerId);
-          } catch (e) {
-            console.error('[useWebRTC] ICE restart failed for peer:', peerId, e);
-          }
+    let hasConnectionIssue = false;
+    for (const [peerId, pc] of peersRef.current.entries()) {
+      try {
+        const stats = await pc.getStats();
+        setConnectionStats(stats);
+        if (stats.iceState === 'connected' || stats.iceState === 'completed') {
+          iceRestartAtRef.current.delete(peerId);
+          continue;
         }
+        if (stats.iceState !== 'failed' && stats.iceState !== 'disconnected') continue;
+
+        hasConnectionIssue = true;
+        // The lower user ID is the sole offerer for a peer pair, which avoids
+        // glare when both clients notice the same network handoff.
+        if (!user?.id || user.id >= peerId) continue;
+        const now = Date.now();
+        const lastRestartAt = iceRestartAtRef.current.get(peerId) ?? 0;
+        if (now - lastRestartAt < ICE_RESTART_COOLDOWN_MS) continue;
+
+        iceRestartAtRef.current.set(peerId, now);
+        setIsReconnecting(true);
+        setReconnectAttempts((attempts) => attempts + 1);
+        console.info('[useWebRTC] ICE connection interrupted; restarting for peer:', peerId);
+        await pc.restartIce();
+      } catch (error) {
+        console.error('[useWebRTC] Peer health check failed:', peerId, error);
       }
-    } catch {
-      // ignore
     }
-  }, []);
+    if (!hasConnectionIssue) {
+      setIsReconnecting(false);
+      setReconnectAttempts(0);
+    }
+  }, [user?.id]);
 
   // Fix M — on tab visibility restore, ensure signaling channel is alive + peers healthy
   useEffect(() => {
@@ -141,14 +154,36 @@ export function useWebRTC(): UseWebRTCReturn {
       if (!channelIdRef.current) return; // only when in a voice session
       const sig = signalingServiceRef.current;
       if (sig && !sig.isConnected) {
-        console.warn('[useWebRTC] Signaling channel stale, reconnecting');
-        await sig.stop();
-        await sig.start();
+        console.info('[useWebRTC] Signaling channel stale after visibility restore, reconnecting');
+        await sig.reconnect();
       }
       await checkPeersHealth();
     };
+
+    const handleOffline = () => {
+      if (channelIdRef.current) setIsReconnecting(true);
+    };
+    const handleOnline = () => {
+      if (!channelIdRef.current) return;
+      if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = setTimeout(async () => {
+        reconnectTimeoutRef.current = null;
+        if (!navigator.onLine || !channelIdRef.current) return;
+        const sig = signalingServiceRef.current;
+        if (sig && !sig.isConnected) await sig.reconnect();
+        await checkPeersHealth();
+      }, 1200);
+    };
+
     document.addEventListener('visibilitychange', handleVisibility);
-    return () => document.removeEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('online', handleOnline);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('online', handleOnline);
+      if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
+    };
   }, [checkPeersHealth]);
 
 
@@ -567,7 +602,7 @@ export function useWebRTC(): UseWebRTCReturn {
 
     operationPromiseRef.current = op.catch(() => {}); // swallow to keep chain alive
     return op;
-  }, [user?.id, handleSignalReceived, connectToParticipants, disconnectInternal]);
+  }, [user?.id, handleSignalReceived, connectToParticipants, disconnectInternal, checkPeersHealth]);
 
   // Disconnect — uses mutex
   const disconnect = useCallback(async () => {

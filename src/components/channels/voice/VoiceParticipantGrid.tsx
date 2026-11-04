@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ChevronDown, ChevronRight, Monitor, X, Maximize2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Monitor, X, Maximize2, MoreHorizontal } from '@/components/icons/discord/lucide';
 import { DiscordMicOff as MicOff } from '@/components/icons/DiscordMicOff';
 import { DiscordHeadphonesOff as HeadphoneOff } from '@/components/icons/DiscordHeadphonesOff';
 import { VoiceVideoTile } from './VoiceVideoTile';
 // VoiceParticipantPopover replaced by VoiceParticipantContextMenu (Fix L)
 import { VoiceParticipantContextMenu } from './VoiceParticipantContextMenu';
 import { AudioLevelIndicator } from './AudioLevelIndicator';
+import { useVoiceViewPrefs } from '@/hooks/useVoiceViewPrefs';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVoiceUserSettings } from '@/hooks/useVoiceUserSettings';
 import { useVoice } from '@/contexts/VoiceContext';
@@ -53,6 +54,8 @@ interface VoiceParticipantGridProps {
   remoteScreenStreams: Map<string, MediaStream>;
   channelId: string;
   canModerate?: boolean;
+  /** Tuile affichee sous la grille (illustration quand on est seul dans le salon). */
+  footer?: React.ReactNode;
 }
 
 type FocusTarget = 
@@ -70,8 +73,10 @@ export function VoiceParticipantGrid({
   remoteScreenStreams,
   channelId,
   canModerate = false,
+  footer,
 }: VoiceParticipantGridProps) {
   const { user } = useAuth();
+  const prefs = useVoiceViewPrefs();
   const { serverMuteUser, serverDeafenUser } = useVoiceUserSettings();
   
   const [screensOpen, setScreensOpen] = useState(true);
@@ -129,6 +134,15 @@ export function VoiceParticipantGrid({
 
   const hasScreenShares = screenShares.length > 0;
 
+  // Options du menu "Plus d'options" : ma camera / participants sans video.
+  const hasVideo = (p: Participant) => (p.user_id === user?.id ? !!localCameraStream : remoteVideoStreams.has(p.user_id));
+  const anyVideo = participants.some(hasVideo);
+  const shown = participants.filter((p) => {
+    if (p.user_id === user?.id && !prefs.showSelf && participants.length > 1) return false;
+    if (!prefs.showNoVideo && anyVideo && !hasVideo(p)) return false;
+    return true;
+  });
+
   // Grid class for participants when screen shares are present (compact row)
   const getParticipantGridClass = () => {
     const count = participants.length;
@@ -154,45 +168,49 @@ export function VoiceParticipantGrid({
     });
   };
 
+  // Un partage d'ecran prend tout de suite la place principale (comme Discord) ; un clic sur une
+  // tuile choisit autre chose.
+  const fx: FocusTarget = focusTarget ?? (hasScreenShares ? { type: 'screen', userId: screenShares[0].userId } : null);
+
   // Render focused view
-  if (focusTarget) {
-    const isScreenFocus = focusTarget.type === 'screen';
-    const participant = participants.find(p => p.user_id === focusTarget.userId);
+  if (fx) {
+    const isScreenFocus = fx.type === 'screen';
+    const participant = participants.find(p => p.user_id === fx.userId);
 
     let focusStream: MediaStream | null = null;
     let focusName = '';
     let isLocal = false;
 
     if (isScreenFocus) {
-      const share = screenShares.find(s => s.userId === focusTarget.userId);
+      const share = screenShares.find(s => s.userId === fx.userId);
       focusStream = share?.stream || null;
       focusName = share?.ownerName || '';
       isLocal = share?.isLocal || false;
     } else {
-      isLocal = focusTarget.userId === user?.id;
-      const cameraStream = isLocal ? localCameraStream : remoteVideoStreams.get(focusTarget.userId);
+      isLocal = fx.userId === user?.id;
+      const cameraStream = isLocal ? localCameraStream : remoteVideoStreams.get(fx.userId);
       focusStream = cameraStream || null;
       focusName = participant?.profile.display_name || '';
     }
 
     return (
-      <div className="flex-1 flex flex-col gap-2 p-3 overflow-hidden">
+      <div className="flex-1 flex flex-col gap-3 px-6 pb-3 pt-1 overflow-hidden">
         {/* Focused content */}
-        <div className="flex-1 min-h-0 relative rounded-xl overflow-hidden bg-[hsl(var(--surface-elevated))]">
+        <div className="flex-1 min-h-0 relative rounded-lg overflow-hidden bg-black">
           {/* Close button */}
-          <button type="button"
+          {focusTarget && <button type="button"
             onClick={() => setFocusTarget(null)}
             className="absolute top-3 right-3 z-20 p-2 rounded-lg bg-black/60 hover:bg-black/80 text-white transition-colors"
           >
             <X className="w-5 h-5" />
-          </button>
+          </button>}
 
           {isScreenFocus && focusStream ? (
             <VoiceVideoTile
               stream={focusStream}
               type="screen"
               participantName={focusName}
-              isSpeaking={speakingUsers.has(focusTarget.userId)}
+              isSpeaking={speakingUsers.has(fx.userId)}
               isMuted={participant?.muted || false}
               isLocal={isLocal}
               className="w-full h-full"
@@ -202,7 +220,7 @@ export function VoiceParticipantGrid({
               stream={focusStream}
               type="camera"
               participantName={focusName}
-              isSpeaking={speakingUsers.has(focusTarget.userId)}
+              isSpeaking={speakingUsers.has(fx.userId)}
               isMuted={participant?.muted || false}
               isLocal={isLocal}
               className="w-full h-full"
@@ -220,14 +238,14 @@ export function VoiceParticipantGrid({
         </div>
 
         {/* Bottom strip: other participants */}
-        <div className="flex gap-2 overflow-x-auto pb-1 flex-shrink-0">
+        <div className="flex gap-2 overflow-x-auto pb-1 flex-shrink-0 justify-center">
           {screenShares.map(share => (
             <button type="button"
               key={`screen-${share.userId}`}
               onClick={() => handleFocus({ type: 'screen', userId: share.userId })}
               className={cn(
                 'flex-shrink-0 w-28 sm:w-36 rounded-lg overflow-hidden border-2 transition-all',
-                focusTarget.type === 'screen' && focusTarget.userId === share.userId
+                fx.type === 'screen' && fx.userId === share.userId
                   ? 'border-primary'
                   : 'border-transparent hover:border-white/20'
               )}
@@ -254,7 +272,7 @@ export function VoiceParticipantGrid({
                 onClick={() => handleFocus({ type: 'participant', userId: participant.user_id })}
                 className={cn(
                   'flex-shrink-0 w-28 sm:w-36 rounded-lg overflow-hidden border-2 transition-all',
-                  focusTarget.type === 'participant' && focusTarget.userId === participant.user_id
+                  fx.type === 'participant' && fx.userId === participant.user_id
                     ? 'border-primary'
                     : 'border-transparent hover:border-white/20'
                 )}
@@ -292,7 +310,7 @@ export function VoiceParticipantGrid({
       {/* Screen Shares Section */}
       {hasScreenShares && (
         <Collapsible open={screensOpen} onOpenChange={setScreensOpen}>
-          <CollapsibleTrigger className="flex items-center gap-2 px-2 py-1.5 w-full text-left hover:bg-white/5 rounded-md transition-colors group">
+          <CollapsibleTrigger className="flex items-center gap-2 w-full px-2 py-[6px] rounded-[4px] text-[14px] leading-[18px] text-foreground hover:bg-[hsl(var(--surface-hover))] transition-colors group">
             {screensOpen ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
             <Monitor className="w-4 h-4 text-muted-foreground" />
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -330,20 +348,14 @@ export function VoiceParticipantGrid({
         </Collapsible>
       )}
 
-      {/* Participants Section */}
-      <Collapsible open={participantsOpen} onOpenChange={setParticipantsOpen} className="flex-1 flex flex-col">
-        <CollapsibleTrigger className="flex items-center gap-2 px-2 py-1.5 w-full text-left hover:bg-white/5 rounded-md transition-colors group">
-          {participantsOpen ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
-          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Participants — {participants.length}
-          </span>
-        </CollapsibleTrigger>
+      {/* Participants : pas d'intitule "Participants" dans la video de reference, les tuiles seules. */}
+      <Collapsible open className="flex-1 flex flex-col">
         <CollapsibleContent className="flex-1">
           <div className={cn(
             'grid gap-3 mt-2 mx-auto',
-            hasScreenShares ? getParticipantGridClass() : getFullGridClass(participants.length)
+            hasScreenShares ? getParticipantGridClass() : prefs.grid ? getFullGridClass(shown.length) : 'grid-cols-1 max-w-[624px] w-full mx-auto'
           )}>
-            {participants.map((participant, index) => {
+            {shown.map((participant, index) => {
               const isLocal = participant.user_id === user?.id;
               const hasCameraStream = isLocal 
                 ? !!localCameraStream 
@@ -403,14 +415,16 @@ export function VoiceParticipantGrid({
                       gradientIndex={index % PARTICIPANT_GRADIENTS.length}
                       compact={hasScreenShares}
                     />
-                    <div className="absolute inset-0 rounded-2xl bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                    <div className="absolute inset-0 rounded-lg bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
                       <Maximize2 className="w-6 h-6 text-white drop-shadow-lg" />
                     </div>
+                    <TileMenuButton />
                   </div>
                 </VoiceParticipantContextMenu>
               );
             })}
           </div>
+          {footer && <div className="mx-auto mt-2 w-full max-w-[624px]">{footer}</div>}
         </CollapsibleContent>
       </Collapsible>
 
@@ -426,9 +440,27 @@ export function VoiceParticipantGrid({
   );
 }
 
+/* "..." en bas a droite d'une tuile au survol : ouvre le menu du participant (meme menu que le clic droit). */
+function TileMenuButton() {
+  return (
+    <button
+      type="button"
+      aria-label="Plus d'options"
+      onClick={(e) => {
+        e.stopPropagation();
+        const r = e.currentTarget.getBoundingClientRect();
+        e.currentTarget.parentElement?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: r.left, clientY: r.bottom, button: 2 }));
+      }}
+      className="absolute right-2 bottom-2 w-8 h-8 rounded-md flex items-center justify-center text-white bg-black/50 hover:bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+    >
+      <MoreHorizontal className="w-5 h-5" />
+    </button>
+  );
+}
+
 // Full grid class when no screen shares
 function getFullGridClass(count: number) {
-  if (count === 1) return 'grid-cols-1 max-w-lg mx-auto';
+  if (count === 1) return 'grid-cols-1 max-w-[624px] w-full mx-auto';
   if (count === 2) return 'grid-cols-2 max-w-3xl mx-auto';
   if (count <= 4) return 'grid-cols-2 max-w-4xl mx-auto';
   if (count <= 6) return 'grid-cols-3 max-w-5xl mx-auto';
@@ -445,28 +477,26 @@ interface VoiceParticipantCardProps {
 }
 
 function VoiceParticipantCard({ participant, isSpeaking, audioLevel = 0, gradientIndex, compact }: VoiceParticipantCardProps) {
-  const gradient = PARTICIPANT_GRADIENTS[gradientIndex];
 
   return (
     <div 
       className={cn(
-        'relative aspect-video rounded-2xl overflow-hidden bg-gradient-to-br border-2',
+        'relative aspect-video rounded-lg overflow-hidden border-2',
         // No transition on the speaking border: a 150 ms colour fade on a 2px
         // edge was the last visible step of the detection latency — the state
         // changed, but the ring crawled into place.
-        gradient,
+        // Tuile de la video de reference : bleu nuit a peine degrade, sans voile ni anneau.
+        'bg-gradient-to-b from-[#0b1a47] to-[#0a1334]',
         isSpeaking ? 'border-[hsl(var(--online))]' : 'border-transparent',
-        compact && 'rounded-xl'
+        compact && 'rounded-lg'
       )}
     >
       {/* Subtle inner glow */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
       
       {/* Avatar centered */}
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="relative">
           <Avatar className={cn(
-            'border-4 border-white/20',
             compact ? 'w-12 h-12' : 'w-20 h-20'
           )}>
             <AvatarImage src={participant.profile.avatar_url || undefined} />
@@ -495,9 +525,9 @@ function VoiceParticipantCard({ participant, isSpeaking, audioLevel = 0, gradien
       </div>
 
       {/* Name badge with audio level indicator */}
-      <div className={cn('absolute left-2 right-2', compact ? 'bottom-1.5' : 'bottom-3')}>
+      <div className={cn('absolute left-2 right-2 transition-opacity duration-300 [[data-idle=true]_&]:opacity-0', compact ? 'bottom-1.5' : 'bottom-3')}>
         <div className={cn(
-          'inline-flex items-center gap-1.5 bg-black/50 backdrop-blur-sm rounded-md',
+          'inline-flex items-center gap-1.5 bg-black/70 rounded-lg',
           compact ? 'px-1.5 py-0.5' : 'px-2.5 py-1.5'
         )}>
           {/* Audio level indicator */}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Download, Share, MoreVertical, CheckCircle2, Smartphone } from "lucide-react";
+import { Download, Share, MoreVertical, CheckCircle2, Smartphone } from "@/components/icons/discord/lucide";
 import { Button } from "@/components/ui/button";
 
 interface BeforeInstallPromptEvent extends Event {

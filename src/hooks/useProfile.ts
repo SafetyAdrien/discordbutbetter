@@ -8,14 +8,15 @@ interface ProfileData {
   bio?: string;
   pronouns?: string | null;
   custom_status?: string | null;
+  custom_status_expires_at?: string | null;
   status?: 'online' | 'idle' | 'dnd' | 'offline';
   manual_status?: 'online' | 'idle' | 'dnd' | 'offline' | null;
   activity_type?: string | null;
   activity_text?: string | null;
   theme_color?: string | null;
   theme_gradient?: string | null;
-  avatar_url?: string;
-  banner_url?: string;
+  avatar_url?: string | null;
+  banner_url?: string | null;
   connections?: Array<{ provider: string; value: string }>;
 }
 
@@ -27,10 +28,16 @@ export function useUpdateProfile() {
     mutationFn: async (data: ProfileData) => {
       if (!user) throw new Error('Not authenticated');
 
-      const { error } = await supabase
+      let { error } = await supabase
         .from('profiles')
         .update(data)
         .eq('id', user.id);
+
+      // Migration de l'echeance du statut pas encore appliquee : on enregistre le reste.
+      if (error && 'custom_status_expires_at' in data && /custom_status_expires_at/.test(error.message ?? '')) {
+        const { custom_status_expires_at: _omit, ...rest } = data;
+        ({ error } = await supabase.from('profiles').update(rest).eq('id', user.id));
+      }
 
       if (error) throw error;
       return data;
@@ -185,6 +192,34 @@ export function useUploadBanner() {
           banner_url: bannerUrl,
         }));
       }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+    },
+  });
+}
+
+/** Retire l'avatar ou la banniere du profil (la colonne repasse a NULL). */
+export function useRemoveProfileImage(kind: 'avatar' | 'banner') {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const column = kind === 'avatar' ? 'avatar_url' : 'banner_url';
+
+  return useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error('Not authenticated');
+      const { error } = await supabase.from('profiles').update(kind === 'avatar' ? { avatar_url: null } : { banner_url: null }).eq('id', user.id);
+      if (error) throw error;
+    },
+    onMutate: () => {
+      if (!user) return;
+      const previous = queryClient.getQueryData(['profile', user.id]);
+      queryClient.setQueryData(['profile', user.id], (old: ProfileData | undefined) => ({ ...old, [column]: null }));
+      return { previous };
+    },
+    onError: (_e, _v, context) => {
+      if (user && context?.previous) queryClient.setQueryData(['profile', user.id], context.previous);
+      toast.error(kind === 'avatar' ? "Erreur lors de la suppression de l'avatar" : 'Erreur lors de la suppression de la bannière');
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['profile'] });

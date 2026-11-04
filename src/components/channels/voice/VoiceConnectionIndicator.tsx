@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import { Signal, SignalHigh, SignalLow, SignalMedium, SignalZero } from 'lucide-react';
+import { Loader2, SignalHigh, SignalLow, SignalMedium, SignalZero } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export interface ConnectionStats {
@@ -15,6 +15,7 @@ interface VoiceConnectionIndicatorProps {
   stats: ConnectionStats | null;
   className?: string;
   connected?: boolean;
+  reconnecting?: boolean;
 }
 
 export type QualityLevel = 'excellent' | 'good' | 'poor' | 'critical';
@@ -49,11 +50,11 @@ function getQuality(stats: ConnectionStats): QualityLevel {
   return 'critical';
 }
 
-export function VoiceConnectionIndicator({ stats, className, connected = false }: VoiceConnectionIndicatorProps) {
+export function VoiceConnectionIndicator({ stats, className, connected = false, reconnecting = false }: VoiceConnectionIndicatorProps) {
   // When connected but no stats yet (e.g. alone in channel), default to excellent
   const quality: QualityLevel = stats ? getQuality(stats) : (connected ? 'excellent' : 'excellent');
   const config = qualityConfig[quality];
-  const Icon = config.icon;
+  const Icon = reconnecting ? Loader2 : config.icon;
 
   const connectionTypeLabels: Record<string, string> = {
     host: 'Direct',
@@ -68,11 +69,12 @@ export function VoiceConnectionIndicator({ stats, className, connected = false }
       <Tooltip>
         <TooltipTrigger asChild>
           <div className={cn('flex items-center cursor-help', className)}>
-            <Icon className={cn('w-4 h-4', config.color)} />
+            <Icon className={cn('w-4 h-4', config.color, reconnecting && 'animate-spin')} />
           </div>
         </TooltipTrigger>
         <TooltipContent side="top" className="p-3">
           <div className="space-y-2 text-xs">
+            {reconnecting && <p className="font-medium text-yellow-500">Rétablissement de la connexion…</p>}
             <div className="flex items-center justify-between gap-4">
               <span className="text-muted-foreground">Qualité</span>
               <span className={cn('font-medium', config.color)}>{config.label}</span>

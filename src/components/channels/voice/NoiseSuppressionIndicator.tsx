@@ -1,7 +1,8 @@
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { ShieldCheck, ShieldOff, Shield } from 'lucide-react';
+import { ShieldCheck, ShieldOff } from 'lucide-react';
+import { Shield } from '@/components/icons/discord/lucide';
 import type { NoiseSuppressonMode } from '@/utils/webrtc/AudioProcessor';
 
 interface NoiseSuppressionIndicatorProps {

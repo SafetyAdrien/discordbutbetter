@@ -416,23 +416,31 @@ export function useUpdateServerInfo() {
       name,
       description,
       is_public,
+      discovery_category,
     }: {
       serverId: string;
       name?: string;
       description?: string;
       is_public?: boolean;
+      /** Categorie de la Decouverte ; null la retire. */
+      discovery_category?: string | null;
     }) => {
       const updateData: any = {};
       if (name !== undefined) updateData.name = name;
       if (description !== undefined) updateData.description = description;
       if (is_public !== undefined) updateData.is_public = is_public;
+      if (discovery_category !== undefined) updateData.discovery_category = discovery_category;
 
-      const { error } = await supabase
+      // RLS filtre silencieusement une mise a jour non autorisee (aucune
+      // erreur, 0 ligne) : on le detecte pour ne pas annoncer un faux succes.
+      const { data, error } = await supabase
         .from('servers')
         .update(updateData)
-        .eq('id', serverId);
+        .eq('id', serverId)
+        .select('id');
 
       if (error) throw error;
+      if (!data || data.length === 0) throw new Error('SERVER_UPDATE_FORBIDDEN');
       return { serverId, name, description, is_public };
     },
     onMutate: async ({ serverId, name, description, is_public }) => {
@@ -453,13 +461,18 @@ export function useUpdateServerInfo() {
       
       return { previousServers };
     },
-    onError: (_, __, context) => {
+    onError: (error, __, context) => {
       if (context?.previousServers) {
         queryClient.setQueryData(['servers'], context.previousServers);
       }
-      toast.error('Erreur lors de la mise à jour du serveur');
+      toast.error(
+        error instanceof Error && error.message === 'SERVER_UPDATE_FORBIDDEN'
+          ? "Tu n'as pas la permission de modifier ce serveur"
+          : 'Erreur lors de la mise à jour du serveur',
+      );
     },
-    onSuccess: () => {
+    onSuccess: (_d, { name }) => {
+      if (name !== undefined) toast.success('Modifications enregistrées');
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['servers'] });

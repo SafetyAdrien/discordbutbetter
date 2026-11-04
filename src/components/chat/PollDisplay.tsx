@@ -4,74 +4,10 @@ import { Poll, PollVote, useVotePoll, useRemoveVote, useEndPoll, closePollAndNot
 import { useAuth } from '@/contexts/AuthContext';
 import { useHasChannelPermission } from '@/hooks/useUserChannelPermissions';
 import { isPast } from '@/lib/dateUtils';
-import { Check, Lock } from 'lucide-react';
+import { Check, Lock } from '@/components/icons/discord/lucide';
 import { cn } from '@/lib/utils';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipPortal } from '@/components/ui/tooltip';
 import { ClosePollConfirmDialog } from './ClosePollConfirmDialog';
 import { PollVotersModal } from './PollVotersModal';
-import { computePollWinner } from '@/lib/pollWinner';
-interface VoterAvatarsProps {
-  votes: PollVote[];
-  onOpenVoters?: () => void;
-}
-
-function VoterAvatars({ votes, onOpenVoters }: VoterAvatarsProps) {
-  const maxVisible = 3;
-  const visibleVotes = votes.slice(0, maxVisible);
-  const remainingCount = votes.length - maxVisible;
-
-  if (votes.length === 0) return null;
-
-  return (
-    <div
-      className="flex items-center -space-x-1.5 transition-all duration-300 ease-out"
-      onClick={(e) => { e.stopPropagation(); onOpenVoters?.(); }}
-      onMouseDown={(e) => e.stopPropagation()}
-    >
-      {visibleVotes.map((vote, index) => (
-        <Tooltip key={vote.id}>
-          <TooltipTrigger asChild>
-            <Avatar 
-              className="w-5 h-5 border-2 border-card transition-transform duration-300 cursor-pointer animate-vote-pop hover:scale-110"
-              style={{ 
-                zIndex: maxVisible - index,
-                animationDelay: `${index * 50}ms`
-              }}
-            >
-              <AvatarImage src={vote.user?.avatar_url || undefined} />
-              <AvatarFallback className="text-[8px] bg-muted">
-                {vote.user?.display_name?.charAt(0).toUpperCase() || '?'}
-              </AvatarFallback>
-            </Avatar>
-          </TooltipTrigger>
-          <TooltipPortal>
-            <TooltipContent side="top" sideOffset={20} className="text-xs">
-              {vote.user?.display_name || 'Utilisateur inconnu'}
-            </TooltipContent>
-          </TooltipPortal>
-        </Tooltip>
-      ))}
-      {remainingCount > 0 && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div 
-              className="w-5 h-5 rounded-full bg-primary border-2 border-card flex items-center justify-center text-[9px] font-medium text-primary-foreground cursor-pointer"
-              style={{ zIndex: 0 }}
-            >
-              +{remainingCount}
-            </div>
-          </TooltipTrigger>
-          <TooltipPortal>
-            <TooltipContent side="top" sideOffset={20} className="text-xs max-w-[200px]">
-              {votes.slice(maxVisible).map(v => v.user?.display_name || 'Inconnu').join(', ')}
-            </TooltipContent>
-          </TooltipPortal>
-        </Tooltip>
-      )}
-    </div>
-  );
-}
 
 interface PollDisplayProps {
   poll: Poll;
@@ -87,7 +23,6 @@ export function PollDisplay({
   const { user } = useAuth();
   const [showResults, setShowResults] = useState(false);
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
-  const [isEditing, setIsEditing] = useState(false);
   const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
   const [votersModalOpen, setVotersModalOpen] = useState(false);
   const [votersModalOptionId, setVotersModalOptionId] = useState<string | undefined>(undefined);
@@ -148,37 +83,6 @@ export function PollDisplay({
     return () => clearInterval(interval);
   }, [poll.expires_at, isExpired, poll.id, poll.closed_notified]);
 
-  // Progress percentage calculation
-  const progressPercentage = useMemo(() => {
-    if (!poll.expires_at || !poll.created_at) return 0;
-    
-    const start = new Date(poll.created_at).getTime();
-    const end = new Date(poll.expires_at).getTime();
-    const now = Date.now();
-    
-    if (now >= end) return 100;
-    if (now <= start) return 0;
-    
-    return Math.round(((now - start) / (end - start)) * 100);
-  }, [poll.created_at, poll.expires_at, timeLeft]);
-
-  const formatTimeLeft = () => {
-    if (!timeLeft) return null;
-    
-    const { days, hours, minutes, seconds } = timeLeft;
-    
-    if (days > 0) {
-      return `${days}j ${hours}h`;
-    }
-    if (hours > 0) {
-      return `${hours}h ${minutes}m`;
-    }
-    if (minutes > 0) {
-      return `${minutes}m ${seconds}s`;
-    }
-    return `${seconds}s`;
-  };
-
   const voteCountByOption = useMemo(() => {
     const counts: Record<string, number> = {};
     poll.options.forEach(opt => {
@@ -200,78 +104,20 @@ export function PollDisplay({
     return map;
   }, [poll.votes, poll.options]);
 
-  // Winning option is only highlighted (in green) once the poll is closed.
-  const winnerOptionId = useMemo(() => {
-    if (!isExpired) return null;
-    return computePollWinner({ options: poll.options, votes: poll.votes }).winnerOptionId;
-  }, [isExpired, poll.options, poll.votes]);
+  const shouldShowResults = showResults || hasVoted || isExpired;
 
-  const shouldShowResults = (showResults || hasVoted || isExpired) && !isEditing;
-
+  // Comme Discord : on choisit, puis "Voter". Pour changer d'avis, "Supprimer le vote".
   const handleOptionClick = (optionId: string) => {
-    if (!canVote) return;
-
-    // Editing mode: build selection like first-time voting (no DB mutation yet).
-    if (isEditing) {
-      if (poll.allow_multiple) {
-        setSelectedOptions(prev =>
-          prev.includes(optionId) ? prev.filter(id => id !== optionId) : [...prev, optionId]
-        );
-      } else {
-        setSelectedOptions(prev => (prev.includes(optionId) ? [] : [optionId]));
-      }
-      return;
-    }
-
-    // Once the user has voted, the only way to change vote is via the "Modifier" button.
-    if (hasVoted) return;
-    if (showResults) return;
-
+    if (!canVote || hasVoted || showResults) return;
     if (poll.allow_multiple) {
-      setSelectedOptions(prev =>
-        prev.includes(optionId)
-          ? prev.filter(id => id !== optionId)
-          : [...prev, optionId]
-      );
+      setSelectedOptions((prev) => (prev.includes(optionId) ? prev.filter((id) => id !== optionId) : [...prev, optionId]));
     } else {
-      setSelectedOptions(prev => (prev.includes(optionId) ? [] : [optionId]));
+      setSelectedOptions((prev) => (prev.includes(optionId) ? [] : [optionId]));
     }
   };
 
   const handleVote = () => {
-    if (isEditing) {
-      const toAdd = selectedOptions.filter(id => !userVotes.includes(id));
-      const toRemove = userVotes.filter(id => !selectedOptions.includes(id));
-      toRemove.forEach(optionId => {
-        removeVote.mutate({ pollId: poll.id, optionId, channelId, threadId });
-      });
-      toAdd.forEach(optionId => {
-        votePoll.mutate({ pollId: poll.id, optionId, channelId, threadId });
-      });
-      setSelectedOptions([]);
-      setIsEditing(false);
-      return;
-    }
-
-    selectedOptions.forEach(optionId => {
-      votePoll.mutate({
-        pollId: poll.id,
-        optionId,
-        channelId,
-        threadId
-      });
-    });
-    setSelectedOptions([]);
-  };
-
-  const handleStartEdit = () => {
-    // Pre-fill selection with current votes; do NOT remove votes from DB.
-    setSelectedOptions([...userVotes]);
-    setIsEditing(true);
-  };
-
-  const handleCancelEdit = () => {
-    setIsEditing(false);
+    selectedOptions.forEach((optionId) => votePoll.mutate({ pollId: poll.id, optionId, channelId, threadId }));
     setSelectedOptions([]);
   };
 
@@ -286,273 +132,142 @@ export function PollDisplay({
     return Math.round(voteCountByOption[optionId] / totalVotes * 100);
   };
 
+  // Comme Discord : une fois clos, toutes les reponses a egalite en tete sont en vert.
+  const maxVotes = Math.max(0, ...Object.values(voteCountByOption));
+  const isWinner = (optionId: string) => isExpired && maxVotes > 0 && voteCountByOption[optionId] === maxVotes;
+  const remainingLabel = (() => {
+    if (!timeLeft) return null;
+    const { days, hours, minutes } = timeLeft;
+    if (days > 0) return `${days} j restant${days > 1 ? 's' : ''}`;
+    if (hours > 0) return `${hours} h restante${hours > 1 ? 's' : ''}`;
+    return `${Math.max(1, minutes)} min restante${minutes > 1 ? 's' : ''}`;
+  })();
+
   return (
-    <div className="bg-poll rounded-xl overflow-hidden w-full max-w-[500px] shadow-elevation-1">
+    <div className="w-full max-w-[472px] rounded-lg bg-[#383840] border border-[#43434b] px-4 pt-3.5 pb-4">
+      <p translate="no" className="text-base font-medium text-white break-words">{poll.question}</p>
+      {!isExpired && !shouldShowResults && (
+        <p className="text-sm text-muted-foreground">
+          {canVote ? (poll.allow_multiple ? 'Sélectionne une ou plusieurs réponses' : 'Sélectionne une réponse') : (
+            <span className="inline-flex items-center gap-1"><Lock className="w-3 h-3" /> Tu n'as pas la permission de voter</span>
+          )}
+        </p>
+      )}
 
-      <div className="px-4 pb-4 space-y-3">
-        <p className="text-foreground font-medium text-base my-3">{poll.question}</p>
-        
-        {!hasVoted && !canVote && !isExpired && (
-          <p className="text-muted-foreground py-0 text-xs font-thin flex items-center gap-1">
-            <Lock className="w-3 h-3" />
-            Vous n'avez pas la permission de voter
-          </p>
-        )}
-        
-        {!hasVoted && canVote && !showResults && (
-          <p className="text-muted-foreground py-0 text-xs font-thin">
-            {poll.allow_multiple ? 'Sélectionnez une ou plusieurs réponses' : 'Sélectionnez une réponse'}
-          </p>
-        )}
+      <div className="mt-3 space-y-2">
+        {poll.options.map((option) => {
+          const isSelected = selectedOptions.includes(option.id);
+          const isVoted = userVotes.includes(option.id);
+          const percentage = getPercentage(option.id);
+          const voteCount = voteCountByOption[option.id];
+          const winner = isWinner(option.id);
+          const optionDisabled = shouldShowResults || !canVote;
+          const highlighted = shouldShowResults ? (winner || (!isExpired && isVoted)) : isSelected;
 
-        <div className="space-y-2">
-          {poll.options.map(option => {
-            const isSelected = selectedOptions.includes(option.id);
-            const isVoted = userVotes.includes(option.id);
-            const percentage = getPercentage(option.id);
-            const voteCount = voteCountByOption[option.id];
-            const optionVotes = votesByOption[option.id];
-            const isWinningOption = winnerOptionId === option.id;
-
-            const optionDisabled = isEditing ? false : ((!canVote && !hasVoted) || (showResults && !hasVoted));
-
-            return (
-              <div
-                key={option.id}
-                role="button"
-                tabIndex={optionDisabled ? -1 : 0}
-                aria-disabled={optionDisabled}
-                onClick={() => !optionDisabled && handleOptionClick(option.id)}
-                onKeyDown={(e) => {
-                  if (!optionDisabled && (e.key === 'Enter' || e.key === ' ')) {
-                    e.preventDefault();
-                    handleOptionClick(option.id);
-                  }
-                }}
-                className={cn(
-                  "w-full relative rounded-md border transition-all duration-300 text-left overflow-hidden",
-                  optionDisabled ? "cursor-default" : "cursor-pointer",
-                  isWinningOption
-                    ? "border-emerald-500 bg-emerald-500/10"
-                    : isSelected || isVoted
-                      ? "border-primary bg-primary/10"
-                      : "border-transparent hover:bg-[hsl(var(--surface-3))] bg-[hsl(var(--surface-elevated))]"
-                )}
-              >
-                {/* Progress bar background with animation */}
+          return (
+            <div
+              key={option.id}
+              role={optionDisabled ? undefined : poll.allow_multiple ? 'checkbox' : 'radio'}
+              aria-checked={optionDisabled ? undefined : isSelected}
+              tabIndex={optionDisabled ? -1 : 0}
+              onClick={() => !optionDisabled && handleOptionClick(option.id)}
+              onKeyDown={(e) => {
+                if (!optionDisabled && (e.key === 'Enter' || e.key === ' ')) {
+                  e.preventDefault();
+                  handleOptionClick(option.id);
+                }
+              }}
+              className={cn(
+                'relative min-h-12 rounded-lg border overflow-hidden transition-colors bg-[#404048]',
+                optionDisabled ? 'cursor-default' : 'cursor-pointer hover:bg-[hsl(var(--interactive-background-hover))]',
+                highlighted ? (winner ? 'border-[hsl(var(--online))]' : 'border-primary') : 'border-transparent',
+              )}
+            >
+              {shouldShowResults && (
                 <div
-                  className={cn(
-                    "absolute inset-0 transition-all duration-500 delay-150 ease-out",
-                    isWinningOption ? "bg-emerald-500/20" : "bg-primary/20"
-                  )}
-                  style={{ width: shouldShowResults ? `${percentage}%` : '0%' }}
+                  className={cn('absolute inset-y-0 left-0 transition-[width] duration-500 ease-out', winner ? 'bg-[hsl(var(--online))]/25' : 'bg-primary/25')}
+                  style={{ width: `${percentage}%` }}
                 />
-
-                <div className="relative flex items-center gap-3 px-3.5 py-3.5">
-                  {option.emoji && (
-                    <span className="text-lg flex-shrink-0">{option.emoji}</span>
-                  )}
-
-                  <span className="flex-1 text-sm text-foreground">{option.text}</span>
-
-                  {/* Vote indicator or radio/checkbox with transition */}
-                  <div className={cn(
-                    "flex items-center gap-2 flex-shrink-0 transition-all duration-300",
-                    shouldShowResults ? "opacity-100 translate-x-0" : "opacity-0 translate-x-2"
-                  )}>
-                    {shouldShowResults && (
-                      <>
-                        <VoterAvatars
-                          votes={optionVotes}
-                          onOpenVoters={() => {
-                            setVotersModalOptionId(option.id);
-                            setVotersModalOpen(true);
-                          }}
-                        />
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setVotersModalOptionId(option.id);
-                                setVotersModalOpen(true);
-                              }}
-                              className={cn(
-                                "text-xs whitespace-nowrap hover:underline",
-                                isWinningOption ? "text-emerald-500 font-semibold" : "text-muted-foreground hover:text-foreground"
-                              )}
-                            >
-                              {voteCount} vote{voteCount !== 1 ? 's' : ''} ({percentage}%)
-                            </button>
-                          </TooltipTrigger>
-                          {optionVotes.length > 0 && (
-                            <TooltipPortal>
-                              <TooltipContent side="top" sideOffset={20} className="text-xs max-w-[200px]">
-                                {optionVotes.map((v) => v.user?.display_name || 'Inconnu').join(', ')}
-                              </TooltipContent>
-                            </TooltipPortal>
-                          )}
-                        </Tooltip>
-                        {isVoted && (
-                          <div className={cn(
-                            "w-5 h-5 rounded-full flex items-center justify-center",
-                            isWinningOption ? "bg-emerald-500" : "bg-primary"
-                          )}>
-                            <Check className="w-3 h-3 text-primary-foreground" />
-                          </div>
-                        )}
-                      </>
+              )}
+              <div className="relative flex items-center gap-3 px-4 py-2.5 min-h-12">
+                {option.emoji && <span className="text-2xl leading-none shrink-0">{option.emoji}</span>}
+                <span translate="no" className="flex-1 min-w-0 text-sm font-semibold text-white break-words">{option.text}</span>
+                {shouldShowResults ? (
+                  <span className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setVotersModalOptionId(option.id);
+                        setVotersModalOpen(true);
+                      }}
+                      className="text-[11px] font-bold text-white hover:underline"
+                    >
+                      {voteCount} vote{voteCount > 1 ? 's' : ''}
+                    </button>
+                    <span className="w-10 text-right text-[15px] font-bold text-white">{percentage}%</span>
+                    {(isVoted || winner) && (
+                      <span className={cn('w-5 h-5 rounded-full flex items-center justify-center', winner ? 'bg-[hsl(var(--online))]' : 'bg-primary')}>
+                        <Check className="w-3 h-3 text-white" strokeWidth={3.5} />
+                      </span>
                     )}
-                  </div>
-
-                  {/* Checkbox/radio when not showing results */}
-                  <div className={cn(
-                    "transition-all duration-300",
-                    shouldShowResults ? "opacity-0 scale-75 w-0" : "opacity-100 scale-100"
-                  )}>
-                    {!shouldShowResults && (
-                      <div className={cn(
-                        "w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0",
-                        isSelected ? "border-primary bg-primary" : "border-muted-foreground/50"
-                      )}>
-                        {isSelected && <Check className="w-3 h-3 text-primary-foreground" />}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="flex items-center justify-between gap-2 flex-wrap pt-1">
-          <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap min-w-0">
-
-            {totalVotes > 0 ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setVotersModalOptionId(undefined);
-                  setVotersModalOpen(true);
-                }}
-                className="my-0 px-0 py-0 hover:underline hover:text-foreground"
-              >
-                {totalVotes} vote{totalVotes !== 1 ? 's' : ''}
-              </button>
-            ) : (
-              <span className="my-0 px-0 py-0">{totalVotes} vote{totalVotes !== 1 ? 's' : ''}</span>
-            )}
-            {poll.expires_at && (
-              <div className="flex items-center gap-2">
-                {isExpired ? (
-                  <span className="text-muted-foreground">Terminé</span>
+                  </span>
+                ) : poll.allow_multiple ? (
+                  <span className={cn('w-6 h-6 rounded-md border-2 flex items-center justify-center shrink-0', isSelected ? 'bg-primary border-primary' : 'border-[hsl(var(--header-icon))]')}>
+                    {isSelected && <Check className="w-4 h-4 text-white" strokeWidth={3} />}
+                  </span>
                 ) : (
-                  <>
-                    <div className="relative w-16 h-1.5 bg-muted rounded-full overflow-hidden">
-                      <div 
-                        className={cn(
-                          "absolute inset-y-0 left-0 rounded-full transition-all duration-1000",
-                          progressPercentage > 80 ? "bg-destructive" : progressPercentage > 50 ? "bg-yellow-500" : "bg-primary"
-                        )}
-                        style={{ width: `${progressPercentage}%` }}
-                      />
-                    </div>
-                    <span className={cn(
-                      "font-mono text-xs tabular-nums",
-                      progressPercentage > 80 ? "text-destructive" : "text-muted-foreground"
-                    )}>
-                      {formatTimeLeft()}
-                    </span>
-                  </>
+                  <span className={cn('w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0', isSelected ? 'border-primary bg-white' : 'border-[hsl(var(--header-icon))]')}>
+                    {isSelected && <span className="w-3 h-3 rounded-full bg-primary" />}
+                  </span>
                 )}
               </div>
-            )}
-          </div>
+            </div>
+          );
+        })}
+      </div>
 
-          <div className="flex items-center gap-2 flex-wrap ml-auto">
-
-            {/* Modify / remove vote buttons — only while poll is open and user has voted */}
-            {!isExpired && hasVoted && !isEditing && canVote && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleStartEdit}
-                className="text-xs h-8"
-              >
-                Modifier
-              </Button>
-            )}
-
-            {!isExpired && hasVoted && !isEditing && canVote && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleRemoveVote}
-                disabled={removeVote.isPending}
-                className="text-xs h-8"
-              >
-                Supprimer le vote
-              </Button>
-            )}
-
-            {/* End poll button for author */}
-            {!isExpired && poll.author_id === user?.id && !isEditing && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setConfirmCloseOpen(true)}
-                disabled={endPoll.isPending}
-                className="text-xs h-8 text-destructive hover:text-destructive"
-              >
-                Terminer
-              </Button>
-            )}
-
-            {isEditing && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleCancelEdit}
-                className="text-xs h-8"
-              >
-                Annuler
-              </Button>
-            )}
-
-            {!shouldShowResults && !hasVoted && !isEditing && canVote && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowResults(true)}
-                className="text-xs h-8"
-              >
+      <div className="mt-4 min-h-10 flex items-center gap-2 flex-wrap">
+        <p className="text-sm text-muted-foreground">
+          <button
+            type="button"
+            disabled={totalVotes === 0}
+            onClick={() => {
+              setVotersModalOptionId(undefined);
+              setVotersModalOpen(true);
+            }}
+            className="font-medium text-foreground enabled:hover:underline"
+          >
+            {totalVotes} vote{totalVotes > 1 ? 's' : ''}
+          </button>
+          {poll.expires_at && (
+            <>
+              <span className="mx-1.5">·</span>
+              {isExpired ? 'Sondage terminé' : remainingLabel}
+            </>
+          )}
+        </p>
+        <div className="ml-auto flex items-center gap-2">
+          {!isExpired && hasVoted && canVote && (
+            <Button variant="secondary" size="sm" className="h-8" onClick={handleRemoveVote} disabled={removeVote.isPending}>
+              Supprimer le vote
+            </Button>
+          )}
+          {!isExpired && !hasVoted && canVote && !showResults && (
+            <>
+              <button type="button" onClick={() => setShowResults(true)} className="h-8 px-2 text-sm font-medium text-white hover:underline">
                 Afficher les résultats
+              </button>
+              <Button size="sm" className="h-8 px-4" onClick={handleVote} disabled={selectedOptions.length === 0 || votePoll.isPending}>
+                Voter
               </Button>
-            )}
-
-            {showResults && !hasVoted && !isEditing && canVote && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowResults(false)}
-                className="text-xs h-8"
-              >
-                Revenir au vote
-              </Button>
-            )}
-
-            {(!hasVoted || isEditing) && canVote && selectedOptions.length > 0 && (
-              <Button
-                onClick={handleVote}
-                disabled={votePoll.isPending}
-                size="sm"
-                className="bg-primary hover:bg-primary/80 text-primary-foreground text-xs h-8"
-              >
-                {isEditing ? 'Confirmer' : 'Voter'}
-              </Button>
-            )}
-          </div>
+            </>
+          )}
+          {!isExpired && !hasVoted && canVote && showResults && (
+            <button type="button" onClick={() => setShowResults(false)} className="h-8 px-2 text-sm font-medium text-white hover:underline">
+              Revenir au vote
+            </button>
+          )}
         </div>
       </div>
 

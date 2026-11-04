@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
-import { Star } from 'lucide-react';
+import { Star, ChevronDown, Clock } from '@/components/icons/discord/lucide';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/lib/haptics';
 
@@ -24,6 +24,9 @@ interface Props {
   isFavorite?: (id: string) => boolean;
   onToggleFavoriteUnicode?: (char: string) => void;
   onToggleFavoriteCustom?: (item: { id: string; name: string; url: string; insertText: string }) => void;
+  /** Disposition du selecteur de bureau : 9 colonnes de 40px, intitules de section en casse normale. */
+  wide?: boolean;
+  onHoverItem?: (item: EmojiSection['items'][number]) => void;
 }
 
 export interface EmojiGridHandle {
@@ -31,7 +34,7 @@ export interface EmojiGridHandle {
 }
 
 export const EmojiGrid = forwardRef<EmojiGridHandle, Props>(function EmojiGrid(
-  { sections, onPick, onClearRecent, height, isMobile, onActiveSectionChange, isFavorite, onToggleFavoriteUnicode, onToggleFavoriteCustom },
+  { sections, onPick, onClearRecent, height, isMobile, onActiveSectionChange, isFavorite, onToggleFavoriteUnicode, onToggleFavoriteCustom, wide, onHoverItem },
   ref,
 ) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -119,10 +122,18 @@ export const EmojiGrid = forwardRef<EmojiGridHandle, Props>(function EmojiGrid(
               sectionRefs.current[section.id] = el;
             }}
           >
-            <div className="flex items-center justify-between px-1 mb-1.5 sticky top-0 bg-popover/95 backdrop-blur-sm py-1 z-[1]">
+            <div className={cn('flex items-center justify-between px-1 sticky top-0 z-[1]', wide ? 'mb-0.5 py-2 bg-popover' : 'mb-1.5 bg-popover/95 backdrop-blur-sm py-1')}>
+              {wide ? (
+                <h4 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  {section.id === 'recent' && <Clock className="w-4 h-4" />}
+                  {section.label}
+                  <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                </h4>
+              ) : (
               <h4 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
                 {section.label}
               </h4>
+              )}
               {section.id === 'recent' && onClearRecent && (
                 <button
                   type="button"
@@ -136,7 +147,7 @@ export const EmojiGrid = forwardRef<EmojiGridHandle, Props>(function EmojiGrid(
             <div
               className={cn(
                 'grid gap-0.5',
-                isMobile ? 'grid-cols-7' : 'grid-cols-8',
+                wide ? 'grid-cols-9 gap-0' : isMobile ? 'grid-cols-7' : 'grid-cols-8',
               )}
             >
               {section.items.map((item, idx) =>
@@ -145,10 +156,11 @@ export const EmojiGrid = forwardRef<EmojiGridHandle, Props>(function EmojiGrid(
                     <button
                       type="button"
                       onClick={() => handlePick(item.char)}
-                      title={item.name ?? item.char}
+                      onMouseEnter={() => onHoverItem?.(item)}
+                      title={wide ? undefined : item.name ?? item.char}
                       className={cn(
                         'flex items-center justify-center rounded-xl transition-transform duration-150 hover:bg-muted active:scale-90',
-                        isMobile ? 'w-9 h-9 text-2xl' : 'w-9 h-9 text-xl hover:scale-110',
+                        wide ? 'w-10 h-10 text-[28px] leading-none rounded-lg hover:bg-white/[0.09] active:scale-95' : isMobile ? 'w-9 h-9 text-2xl' : 'w-9 h-9 text-xl hover:scale-110',
                       )}
                     >
                       {item.char}
@@ -175,17 +187,18 @@ export const EmojiGrid = forwardRef<EmojiGridHandle, Props>(function EmojiGrid(
                     <button
                       type="button"
                       onClick={() => handlePick(item.insertText)}
-                      title={`:${item.name}:`}
+                      onMouseEnter={() => onHoverItem?.(item)}
+                      title={wide ? undefined : `:${item.name}:`}
                       className={cn(
                         'flex items-center justify-center rounded-xl transition-transform duration-150 hover:bg-muted active:scale-90',
-                        isMobile ? 'w-9 h-9' : 'w-9 h-9 hover:scale-110',
+                        wide ? 'w-10 h-10 rounded-lg hover:bg-white/[0.09] active:scale-95' : isMobile ? 'w-9 h-9' : 'w-9 h-9 hover:scale-110',
                       )}
                     >
                       <img
                         src={item.url}
                         alt={item.name}
                         loading="lazy"
-                        className="w-6 h-6 object-contain"
+                        className={wide ? 'w-8 h-8 object-contain' : 'w-6 h-6 object-contain'}
                       />
                     </button>
                     {onToggleFavoriteCustom && (

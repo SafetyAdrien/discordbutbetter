@@ -1,5 +1,5 @@
 import { ReactNode, forwardRef, useCallback } from 'react';
-import { Reply } from 'lucide-react';
+import { Reply } from '@/components/icons/discord/lucide';
 import { cn } from '@/lib/utils';
 import { useSwipeToReply } from '@/hooks/useSwipeToReply';
 import { useDoubleTap } from '@/hooks/useDoubleTap';

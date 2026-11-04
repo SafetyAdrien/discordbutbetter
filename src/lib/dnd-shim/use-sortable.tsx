@@ -10,6 +10,8 @@ export interface UseSortableOptions {
   data?: any;
   disabled?: boolean;
   transition?: any;
+  /** Le noeud ne sert que de cible de depot : on ne glisse que par `setActivatorNodeRef`. */
+  handleOnly?: boolean;
 }
 
 export interface SortableResult {
@@ -33,7 +35,7 @@ function snapshotDelta(monitor: any) {
 }
 
 export function useSortable(opts: UseSortableOptions): SortableResult {
-  const { id, data, disabled } = opts;
+  const { id, data, disabled, handleOnly } = opts;
   const ctx = useDndShim();
   const domRef = useRef<HTMLElement | null>(null);
 
@@ -167,11 +169,11 @@ export function useSortable(opts: UseSortableOptions): SortableResult {
       domRef.current = el;
       dropRef(el);
       // Also wire drag here so consumers without setActivatorNodeRef still drag.
-      dragRef(el);
+      if (!handleOnly) dragRef(el);
       if (el) ctx.state.nodes.set(id, el);
       else ctx.state.nodes.delete(id);
     },
-    [dragRef, dropRef, id, ctx.state.nodes],
+    [dragRef, dropRef, id, ctx.state.nodes, handleOnly],
   );
 
   const attributes = useMemo(

@@ -5,7 +5,7 @@ import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { Headphones, Info } from 'lucide-react';
+import { Headphones, Info } from '@/components/icons/discord/lucide';
 import { DiscordHeadphones } from '@/components/icons/DiscordHeadphones';
 import { DiscordHeadphonesOff } from '@/components/icons/DiscordHeadphonesOff';
 import { MicPermissionGate } from './MicPermissionGate';

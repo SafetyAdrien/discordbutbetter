@@ -8,7 +8,8 @@
  * `ThemeCardEmbed` which renders a card with an "Appliquer" button.
  */
 import { useEffect, useMemo, useState } from 'react';
-import { Loader2, Send } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
+import { Send } from '@/components/icons/discord/lucide';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -198,7 +199,7 @@ export function ShareCustomThemeDialog({ open, onOpenChange, theme }: ShareCusto
                       >
                         <Checkbox checked={selected.has(c.id)} onCheckedChange={() => toggle(c.id)} />
                         <span className="text-sm text-muted-foreground">#</span>
-                        <span className="text-sm truncate">{c.name}</span>
+                        <span translate="no" className="text-sm truncate">{c.name}</span>
                       </label>
                     ))}
                   </div>

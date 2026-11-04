@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { sanitizeSvg, svgBlobUrl, isSvgMarkup } from '@/lib/svg';
 import { useImageGuardProps, useCanDownload } from '@/hooks/useDownloadPermissions';
-import { Download } from 'lucide-react';
+import { Download } from '@/components/icons/discord/lucide';
 
 interface SvgAttachmentProps {
   url: string;

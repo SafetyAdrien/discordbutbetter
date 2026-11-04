@@ -1,17 +1,24 @@
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { EmojiStickerPicker } from './EmojiStickerPicker';
 import { useCreatePoll, useUpdatePoll, Poll } from '@/hooks/usePolls';
-import { Plus, Trash2, Smile } from 'lucide-react';
+import { Plus, Trash2, Smile } from '@/components/icons/discord/lucide';
+
+/** Sondage prepare avant la creation d'un fil : enregistre une fois le fil cree. */
+export interface PollDraft {
+  question: string;
+  options: { text: string; emoji: string | null }[];
+  allowMultiple: boolean;
+  expiresAt: Date;
+}
 
 interface CreatePollModalProps {
+  /** Si fourni, le sondage n'est pas envoye : il est remis a l'appelant (creation d'un fil). */
+  onDraft?: (draft: PollDraft) => void;
   channelId: string;
   serverId: string | null;
   threadId?: string | null;
@@ -42,7 +49,8 @@ export function CreatePollModal({
   threadId,
   open = false,
   onOpenChange,
-  editPoll
+  editPoll,
+  onDraft,
 }: CreatePollModalProps) {
   const [question, setQuestion] = useState('');
   const [options, setOptions] = useState<PollOptionInput[]>([
@@ -121,6 +129,15 @@ export function CreatePollModal({
           resetForm();
         }
       });
+    } else if (onDraft) {
+      onDraft({
+        question: question.trim(),
+        options: validOptions.map(opt => ({ text: opt.text.trim(), emoji: opt.emoji })),
+        allowMultiple,
+        expiresAt: getExpiresAt(),
+      });
+      setOpen(false);
+      resetForm();
     } else {
       createPoll.mutate({
         channelId,
@@ -151,136 +168,127 @@ export function CreatePollModal({
   const isValid = question.trim() && options.some(opt => opt.text.trim());
   const isPending = createPoll.isPending || updatePoll.isPending;
 
+  const fieldCls = 'w-full h-11 px-3 rounded-lg bg-[hsl(var(--search-background))] border border-white/[0.08] focus:border-primary text-base text-foreground placeholder:text-[hsl(var(--text-placeholder))] outline-none transition-colors';
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="sm:max-w-[450px] p-0 bg-[hsl(var(--surface-2))] border-none gap-0">
-        <DialogHeader className="px-4 py-3 border-b border-border/30">
-          <DialogTitle className="font-semibold text-foreground">
-            {isEditMode ? 'Modifier le sondage' : 'Créer un sondage'}
+      <DialogContent className="sm:max-w-[480px] p-0 gap-0 overflow-hidden max-h-[90vh] flex flex-col">
+        <DialogHeader className="px-6 pt-6 pb-4 shrink-0 text-left">
+          <DialogTitle className="text-xl font-semibold text-white">
+            {isEditMode ? 'Modifier le sondage' : 'Crée un sondage'}
           </DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[400px]">
-          <div className="p-4 space-y-4">
-            {/* Question */}
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase text-muted-foreground">
-                Question
-              </Label>
-              <Textarea
-                value={question}
-                onChange={(e) => setQuestion(e.target.value.slice(0, 300))}
-                placeholder="Quelle question voulez-vous poser ?"
-                className="bg-[hsl(var(--surface-1))] border-none resize-none min-h-[80px]"
-              />
-              <div className="text-xs text-muted-foreground text-right">
-                {question.length} / 300
-              </div>
-            </div>
+        <div className="px-6 pb-2 overflow-y-auto scrollbar-thin flex-1 min-h-0">
+          <label className="block mb-2 text-base font-medium text-foreground">Question</label>
+          <input
+            autoFocus
+            value={question}
+            onChange={(e) => setQuestion(e.target.value.slice(0, 300))}
+            placeholder="Quelle question veux-tu poser ?"
+            className={fieldCls}
+          />
+          <p className="mt-1 text-right text-xs text-muted-foreground">{question.length} / 300</p>
 
-            {/* Options */}
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase text-muted-foreground">
-                Réponses
-              </Label>
-              <div className="space-y-2">
-                {options.map((option, index) => (
-                  <div key={option.id} className="flex items-center gap-2">
-                    <EmojiStickerPicker
-                      serverId={serverId}
-                      onEmojiSelect={(emoji) => updateOption(option.id, { emoji })}
-                      trigger={
-                        <button type="button" 
-                          className="w-10 h-10 flex items-center justify-center rounded bg-[hsl(var(--surface-1))] hover:bg-[hsl(var(--surface-2))] transition-colors text-lg"
-                        >
-                          {option.emoji || <Smile className="w-4 h-4 text-muted-foreground" />}
-                        </button>
-                      }
-                    />
-                    <Input
-                      value={option.text}
-                      onChange={(e) => updateOption(option.id, { text: e.target.value.slice(0, 100) })}
-                      placeholder={`Réponse ${index + 1}`}
-                      className="flex-1 bg-[hsl(var(--surface-1))] border-none"
-                    />
-                    {options.length > 1 && (
-                      <button type="button"
-                        onClick={() => removeOption(option.id)}
-                        className="p-2 text-muted-foreground hover:text-destructive transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
+          <label className="block mt-4 mb-2 text-base font-medium text-foreground">Réponses</label>
+          <div className="space-y-2">
+            {options.map((option) => (
+              <div key={option.id} className="flex items-center gap-2 h-11 pl-3 pr-2 rounded-lg bg-[hsl(var(--search-background))] border border-white/[0.08] focus-within:border-primary transition-colors">
+                {option.emoji ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button type="button" aria-label="Émoji de la réponse" className="w-6 h-6 shrink-0 flex items-center justify-center text-lg leading-none">
+                        {option.emoji}
                       </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              {options.length < 10 && (
-                <button type="button"
-                  onClick={addOption}
-                  className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
-                >
-                  <Plus className="w-4 h-4" />
-                  Ajouter une autre réponse
-                </button>
-              )}
-
-              <div className="text-xs text-muted-foreground">
-                {options.length} / 10 réponses
-              </div>
-            </div>
-
-            {/* Duration - Only show in create mode */}
-            {!isEditMode && (
-              <div className="space-y-2">
-                <Label className="text-xs font-semibold uppercase text-muted-foreground">
-                  Durée
-                </Label>
-                <Select value={duration} onValueChange={setDuration}>
-                  <SelectTrigger className="bg-[hsl(var(--surface-1))] border-none">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="z-[110]">
-                    {DURATION_OPTIONS.map(opt => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {/* Multiple Answers - Only show in create mode */}
-            {!isEditMode && (
-              <div className="flex items-center gap-3">
-                <Checkbox
-                  id="allow-multiple"
-                  checked={allowMultiple}
-                  onCheckedChange={(checked) => setAllowMultiple(checked === true)}
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-44">
+                      <EmojiStickerPicker
+                        serverId={serverId}
+                        onEmojiSelect={(emoji) => updateOption(option.id, { emoji })}
+                        trigger={<button type="button" className="w-full px-2 py-1.5 text-left text-sm rounded hover:bg-[hsl(var(--interactive-background-hover))]">Remplacer l'émoji</button>}
+                      />
+                      <DropdownMenuItem className="text-[#f57976]" onSelect={() => updateOption(option.id, { emoji: null })}>
+                        Supprimer l'émoji
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : (
+                  <EmojiStickerPicker
+                    serverId={serverId}
+                    onEmojiSelect={(emoji) => updateOption(option.id, { emoji })}
+                    trigger={
+                      <button type="button" aria-label="Ajouter un émoji" className="w-6 h-6 shrink-0 flex items-center justify-center text-[hsl(var(--icon-default))] hover:text-white">
+                        <Smile className="w-5 h-5" />
+                      </button>
+                    }
+                  />
+                )}
+                <input
+                  value={option.text}
+                  onChange={(e) => updateOption(option.id, { text: e.target.value.slice(0, 55) })}
+                  placeholder="Entre ta réponse"
+                  className="flex-1 min-w-0 bg-transparent text-base text-foreground placeholder:text-[hsl(var(--text-placeholder))] outline-none"
                 />
-                <Label htmlFor="allow-multiple" className="text-sm cursor-pointer">
-                  Autoriser les réponses multiples
-                </Label>
+                <button
+                  type="button"
+                  onClick={() => removeOption(option.id)}
+                  disabled={options.length <= 1}
+                  aria-label="Supprimer la réponse"
+                  className="p-1 text-[hsl(var(--icon-default))] hover:text-white disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </div>
-            )}
+            ))}
           </div>
-        </ScrollArea>
+          {options.length < 10 && (
+            <div className="mt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={addOption}
+                className="inline-flex items-center gap-2 h-10 px-4 rounded-lg bg-[hsl(var(--button-secondary))] hover:bg-[hsl(var(--interactive-background-selected))] text-base font-medium text-white"
+              >
+                <Plus className="w-4 h-4" />
+                Ajouter une autre réponse
+              </button>
+            </div>
+          )}
 
-        <div className="flex justify-end gap-2 px-4 py-3 border-t border-border/30">
-          <Button 
-            variant="ghost" 
-            onClick={() => setOpen(false)}
-            className="text-sm"
-          >
-            Annuler
-          </Button>
+          {!isEditMode && (
+            <>
+              <label className="block mt-4 mb-2 text-base font-medium text-foreground">Durée</label>
+              <Select value={duration} onValueChange={setDuration}>
+                <SelectTrigger className="h-11 bg-[hsl(var(--search-background))] border-white/[0.08] text-base">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="z-[110]">
+                  {DURATION_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </>
+          )}
+        </div>
+
+        <div className="flex items-center gap-3 px-6 py-5 shrink-0">
+          {!isEditMode && (
+            <label className="flex items-center gap-3 text-base text-foreground cursor-pointer">
+              <Checkbox
+                id="allow-multiple"
+                checked={allowMultiple}
+                onCheckedChange={(checked) => setAllowMultiple(checked === true)}
+                className="w-6 h-6 rounded-md border-[hsl(var(--header-icon))] data-[state=checked]:border-primary"
+              />
+              Autoriser plusieurs réponses
+            </label>
+          )}
           <Button
             onClick={handleSubmit}
             disabled={!isValid || isPending}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground text-sm"
+            className="ml-auto h-11 px-8 text-base"
           >
-            {isEditMode ? 'Sauvegarder' : 'Publier'}
+            {isEditMode ? 'Enregistrer' : 'Post'}
           </Button>
         </div>
       </DialogContent>

@@ -16,6 +16,40 @@ export const ICON_SIZE_PX: Record<IconSize, number> = {
   xl: 28,
 };
 
+/**
+ * Taille canonique des icones "style Discord" (encre de la planche Discord,
+ * mesuree sur les references : 20px dans la liste des salons). C'est la taille
+ * reelle par defaut que toutes les icones du systeme doivent respecter.
+ */
+export const DISCORD_ICON_SIZE_PX = ICON_SIZE_PX.md;
+
+/** Taille par defaut des icones (token `md` = 20px). */
+export const DEFAULT_ICON_SIZE: IconSize = 'md';
+
+/**
+ * Resout une taille d'icone vers des pixels.
+ * Priorite : taille explicite (nombre brut en px) > token ('xs'..'xl') >
+ * taille par defaut (canonique Discord-style `md` = 20px).
+ */
+export function resolveIconSize(size?: IconSize | number | string | null): number {
+  if (typeof size === 'number') return size;
+  if (typeof size === 'string') {
+    const n = Number(size);
+    if (size.trim() !== '' && Number.isFinite(n)) return n;
+    if (size in ICON_SIZE_PX) return ICON_SIZE_PX[size as IconSize];
+  }
+  return ICON_SIZE_PX[DEFAULT_ICON_SIZE];
+}
+
+/**
+ * Une classe de taille explicite (`w-*`, `h-*`, `size-*`) a ete donnee : elle
+ * fixe la taille mesuree pour ce contexte (en-tete 24px, menus 16px...), et
+ * la taille canonique ne doit pas l'ecraser.
+ */
+export function hasSizeClass(className?: string | null): boolean {
+  return !!className && /(^|\s|:)(w|h|size)-(\d|\[|px|full)/.test(className);
+}
+
 export const ICON_STROKE_WIDTH = 2.25;
 
 /** Tailwind classes for icon buttons (round pill containers). */

@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo, KeyboardEvent } from 'react';
-import { Play, Eye } from 'lucide-react';
+import { Play } from 'lucide-react';
+import { Eye } from '@/components/icons/discord/lucide';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { TwitchParsed } from './providers';

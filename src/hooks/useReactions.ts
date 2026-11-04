@@ -1,8 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { parseUuid } from '@/lib/validation';
 
 export interface Reaction {
   id: string;
@@ -20,14 +21,16 @@ export function useMessageReactions(messageIds: string[]) {
 
   // Stable dependency for the subscription: re-subscribing on a new array
   // identity would thrash, but we must re-run when the actual id set changes.
-  const idsKey = messageIds.join(',');
+  const idsKey = messageIds.filter((id) => !id.startsWith('temp-')).join(',');
+  const persistedMessageIds = useMemo(() => (idsKey ? idsKey.split(',') : []), [idsKey]);
+  const userId = user?.id;
 
   // Realtime subscription for reactions on these messages
   useEffect(() => {
-    if (messageIds.length === 0) return;
+    if (persistedMessageIds.length === 0) return;
 
     const channel = supabase
-      .channel(`reactions-rt-${messageIds[0]}-${instanceIdRef.current}`)
+      .channel(`reactions-rt-${persistedMessageIds[0]}-${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'reactions' },
@@ -35,9 +38,9 @@ export function useMessageReactions(messageIds: string[]) {
           const record = (payload.new || payload.old) as { message_id?: string; user_id?: string } | undefined;
           if (!record?.message_id) return;
           // Only react to messages we're tracking
-          if (!messageIds.includes(record.message_id)) return;
+          if (!persistedMessageIds.includes(record.message_id)) return;
           // Skip own events (handled by optimistic updates)
-          if (user && record.user_id === user.id) return;
+          if (userId && record.user_id === userId) return;
 
           clearTimeout(debounceRef.current);
           debounceRef.current = setTimeout(() => {
@@ -51,17 +54,17 @@ export function useMessageReactions(messageIds: string[]) {
       clearTimeout(debounceRef.current);
       supabase.removeChannel(channel);
     };
-  }, [idsKey, user?.id, queryClient]);
+  }, [persistedMessageIds, userId, queryClient]);
 
   return useQuery({
-    queryKey: ['reactions', messageIds],
+    queryKey: ['reactions', idsKey],
     queryFn: async () => {
-      if (messageIds.length === 0) return {};
+      if (persistedMessageIds.length === 0) return {};
       
       const { data, error } = await supabase
         .from('reactions')
         .select('*')
-        .in('message_id', messageIds);
+        .in('message_id', persistedMessageIds);
       
       if (error) throw error;
       
@@ -72,7 +75,7 @@ export function useMessageReactions(messageIds: string[]) {
       });
       return grouped;
     },
-    enabled: messageIds.length > 0,
+    enabled: persistedMessageIds.length > 0,
   });
 }
 
@@ -83,11 +86,12 @@ export function useAddReaction() {
   return useMutation({
     mutationFn: async ({ messageId, emoji }: { messageId: string; emoji: string }) => {
       if (!user) throw new Error('Not authenticated');
+      const persistedMessageId = parseUuid(messageId, 'Message not saved yet');
       
       const { data, error } = await supabase
         .from('reactions')
         .insert({
-          message_id: messageId,
+          message_id: persistedMessageId,
           user_id: user.id,
           emoji,
         })
@@ -142,11 +146,12 @@ export function useRemoveReaction() {
   return useMutation({
     mutationFn: async ({ messageId, emoji }: { messageId: string; emoji: string }) => {
       if (!user) throw new Error('Not authenticated');
+      const persistedMessageId = parseUuid(messageId, 'Message not saved yet');
       
       const { error } = await supabase
         .from('reactions')
         .delete()
-        .eq('message_id', messageId)
+        .eq('message_id', persistedMessageId)
         .eq('user_id', user.id)
         .eq('emoji', emoji);
 
@@ -189,10 +194,11 @@ export function useRemoveSpecificReaction() {
 
   return useMutation({
     mutationFn: async ({ messageId, userId, emoji }: { messageId: string; userId: string; emoji: string }) => {
+      const persistedMessageId = parseUuid(messageId, 'Message not saved yet');
       const { error } = await supabase
         .from('reactions')
         .delete()
-        .eq('message_id', messageId)
+        .eq('message_id', persistedMessageId)
         .eq('user_id', userId)
         .eq('emoji', emoji);
       if (error) throw error;
@@ -229,7 +235,8 @@ export function useClearMessageReactions() {
 
   return useMutation({
     mutationFn: async ({ messageId, emoji }: { messageId: string; emoji?: string }) => {
-      let query = supabase.from('reactions').delete().eq('message_id', messageId);
+      const persistedMessageId = parseUuid(messageId, 'Message not saved yet');
+      let query = supabase.from('reactions').delete().eq('message_id', persistedMessageId);
       if (emoji) query = query.eq('emoji', emoji);
       const { error } = await query;
       if (error) throw error;

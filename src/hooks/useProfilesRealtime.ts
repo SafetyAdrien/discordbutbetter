@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { subscribePresencePing, subscribeLocalProfilePatch } from '@/lib/presencePing';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Database } from '@/integrations/supabase/types';
 import type { MemberWithProfile, ServerProfileData } from '@/hooks/useMembers';
@@ -17,21 +18,9 @@ export function useProfilesRealtime() {
   const queryClient = useQueryClient();
   const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
-  // Global profiles realtime
-  useEffect(() => {
-    if (!user) return;
-
-    const channel = supabase
-      .channel(`public:profiles-${instanceIdRef.current}`)
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'profiles' },
-        (payload) => {
-          const updated = payload.new as ProfileRow;
-          const previous = payload.old as Partial<ProfileRow> | undefined;
+  const applyProfile = (updated: ProfileRow, previous?: Partial<ProfileRow>, only?: string[]) => {
           const uid = updated.id;
           if (!uid) return;
-
           // Construire un patch minimal : uniquement les champs qui ont réellement changé.
           // Si payload.old est vide (REPLICA IDENTITY DEFAULT), on patche tous les champs suivis.
           const TRACKED = [
@@ -49,6 +38,7 @@ export function useProfilesRealtime() {
           const hasOld = previous && Object.keys(previous).length > 1;
           const patch: Partial<Record<(typeof TRACKED)[number], unknown>> = {};
           for (const key of TRACKED) {
+            if (only && !only.includes(key)) continue;
             const nextVal = (updated as any)[key];
             if (!hasOld || (previous as any)[key] !== nextVal) {
               patch[key] = nextVal;
@@ -125,6 +115,42 @@ export function useProfilesRealtime() {
             });
             return changed ? next : old;
           });
+  };
+
+  // Signal instantane (voir presencePing) : on relit la ligne du profil et on l'applique.
+  const applyRef = useRef(applyProfile);
+  applyRef.current = applyProfile;
+  useEffect(() => {
+    if (!user) return;
+    return subscribePresencePing((id) => {
+      void supabase.from('profiles').select('*').eq('id', id).maybeSingle().then(({ data }) => {
+        if (data) applyRef.current(data as ProfileRow);
+      });
+    });
+  }, [user?.id]);
+
+  // Changement local (optimiste) : appliqué aux caches avant même la réponse de la base.
+  useEffect(() => {
+    if (!user) return;
+    return subscribeLocalProfilePatch((id, patch) => applyRef.current({ id, ...patch } as unknown as ProfileRow, undefined, Object.keys(patch)));
+  }, [user?.id]);
+
+  // Global profiles realtime
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel(`public:profiles-${instanceIdRef.current}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'profiles' },
+        (payload) => {
+          const updated = payload.new as ProfileRow;
+          const previous = payload.old as Partial<ProfileRow> | undefined;
+          const uid = updated.id;
+          if (!uid) return;
+
+          applyProfile(updated, previous);
         },
       )
       .subscribe();

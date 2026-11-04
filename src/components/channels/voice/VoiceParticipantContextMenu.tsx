@@ -6,7 +6,8 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
-import { Volume2, VolumeX, RotateCcw, UserCircle } from 'lucide-react';
+import { VolumeX, RotateCcw, UserCircle } from 'lucide-react';
+import { Volume2 } from '@/components/icons/discord/lucide';
 import { DiscordMicOff as MicOff } from '@/components/icons/DiscordMicOff';
 import { DiscordHeadphonesOff as HeadphoneOff } from '@/components/icons/DiscordHeadphonesOff';
 import { useVoiceUserSettings } from '@/hooks/useVoiceUserSettings';
@@ -113,11 +114,11 @@ export function VoiceParticipantContextMenu({
             )}
           </div>
           <div className="h-px bg-border my-1" />
-          <button type="button" onClick={() => { handleMuteUser(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
+          <button type="button" onClick={() => { handleMuteUser(); onAction?.(); }} className="flex items-center gap-3 w-full px-2 py-[6px] rounded-[4px] text-[14px] leading-[18px] text-foreground hover:bg-[hsl(var(--surface-hover))] transition-colors">
             <VolumeX className="w-4 h-4 text-muted-foreground" />
             {currentVolume === 0 ? 'Déjà muté' : 'Muter cet utilisateur'}
           </button>
-          <button type="button" onClick={() => { handleResetVolume(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
+          <button type="button" onClick={() => { handleResetVolume(); onAction?.(); }} className="flex items-center gap-3 w-full px-2 py-[6px] rounded-[4px] text-[14px] leading-[18px] text-foreground hover:bg-[hsl(var(--surface-hover))] transition-colors">
             <RotateCcw className="w-4 h-4 text-muted-foreground" />
             Réinitialiser le volume
           </button>
@@ -127,13 +128,13 @@ export function VoiceParticipantContextMenu({
             <>
               <div className="h-px bg-border my-1" />
               {onServerMute && (
-                <button type="button" onClick={() => { onServerMute(!serverMuted); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
+                <button type="button" onClick={() => { onServerMute(!serverMuted); onAction?.(); }} className="flex items-center gap-3 w-full px-2 py-[6px] rounded-[4px] text-[14px] leading-[18px] text-foreground hover:bg-[hsl(var(--surface-hover))] transition-colors">
                   <MicOff className="w-4 h-4 text-muted-foreground" />
                   {serverMuted ? 'Réactiver le micro (serveur)' : 'Couper le micro (serveur)'}
                 </button>
               )}
               {onServerDeafen && (
-                <button type="button" onClick={() => { onServerDeafen(!serverDeafened); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
+                <button type="button" onClick={() => { onServerDeafen(!serverDeafened); onAction?.(); }} className="flex items-center gap-3 w-full px-2 py-[6px] rounded-[4px] text-[14px] leading-[18px] text-foreground hover:bg-[hsl(var(--surface-hover))] transition-colors">
                   <HeadphoneOff className="w-4 h-4 text-muted-foreground" />
                   {serverDeafened ? 'Réactiver le son (serveur)' : 'Rendre sourd (serveur)'}
                 </button>
@@ -143,7 +144,7 @@ export function VoiceParticipantContextMenu({
           <div className="h-px bg-border my-1" />
         </>
       )}
-      <button type="button" onClick={() => { onViewProfile(); onAction?.(); }} className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-muted rounded-md transition-colors text-sm">
+      <button type="button" onClick={() => { onViewProfile(); onAction?.(); }} className="flex items-center gap-3 w-full px-2 py-[6px] rounded-[4px] text-[14px] leading-[18px] text-foreground hover:bg-[hsl(var(--surface-hover))] transition-colors">
         <UserCircle className="w-4 h-4 text-muted-foreground" />
         Voir le profil
       </button>

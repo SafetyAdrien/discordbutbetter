@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils';
-import { PhoneOff, AlertTriangle, Radio, ChevronDown } from 'lucide-react';
+import { AlertTriangle, Radio } from 'lucide-react';
+import { PhoneOff, ChevronDown } from '@/components/icons/discord/lucide';
 import { DiscordMic } from '@/components/icons/DiscordMic';
 import { DiscordMicOff } from '@/components/icons/DiscordMicOff';
 import { DiscordHeadphones } from '@/components/icons/DiscordHeadphones';
@@ -37,6 +38,7 @@ export function VoiceControls({
     isPushToTalkMode,
     togglePushToTalkMode,
     connectionStats,
+    isReconnecting,
     noiseSuppression,
     setNoiseSuppression,
     rnnoiseAvailable,
@@ -65,10 +67,10 @@ export function VoiceControls({
     <div className="px-2.5 py-2.5 bg-[hsl(var(--surface-2))] rounded-2xl mx-1 mb-1" style={{ boxShadow: 'var(--shadow-elevation-1)' }}>
       {/* Connection Info */}
       <div className="flex items-center gap-2 mb-2 px-1">
-        <VoiceConnectionIndicator stats={connectionStats} connected />
+        <VoiceConnectionIndicator stats={connectionStats} connected reconnecting={isReconnecting} />
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-semibold text-[hsl(var(--online))]">
-            Connecté
+          <p className={cn('text-xs font-semibold', isReconnecting ? 'text-yellow-500' : 'text-[hsl(var(--online))]')}>
+            {isReconnecting ? 'Reconnexion en cours…' : 'Connecté'}
           </p>
           <p className="text-xs text-muted-foreground truncate">
             {channelName}{serverName && ` / ${serverName}`}

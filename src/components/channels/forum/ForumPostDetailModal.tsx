@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { X, ArrowUp, MessageCircle, Send, Lock, Pin, Trash2, Tag as TagIcon } from 'lucide-react';
+import { ArrowUp } from 'lucide-react';
+import { X, MessageCircle, Send, Lock, Pin, Trash2, Tag as TagIcon } from '@/components/icons/discord/lucide';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -26,6 +27,7 @@ import { useForumComments, useCreateForumComment, useDeleteForumComment } from '
 import { useDeleteForumPost, useToggleForumVote, type ForumPost } from '@/hooks/useForumPosts';
 import { useHasChannelPermission } from '@/hooks/useUserChannelPermissions';
 
+import { appLocale } from '@/i18n/locale';
 interface Props {
   post: ForumPost;
   hasVoted: boolean;
@@ -44,7 +46,7 @@ function CommentRow({ comment, postId, canDelete }: { comment: any; postId: stri
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-2">
           <span className="font-medium text-sm">{profile?.display_name ?? 'Utilisateur'}</span>
-          <span className="text-xs text-muted-foreground">{new Date(comment.created_at).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })}</span>
+          <span className="text-xs text-muted-foreground">{new Date(comment.created_at).toLocaleString(appLocale(), { dateStyle: 'short', timeStyle: 'short' })}</span>
         </div>
         <p className="text-sm whitespace-pre-wrap break-words">{comment.content}</p>
       </div>
@@ -99,7 +101,7 @@ export function ForumPostDetailModal({ post, hasVoted, onClose }: Props) {
               <Avatar className="w-5 h-5"><AvatarImage src={author?.avatar_url ?? undefined} /><AvatarFallback>{author?.display_name?.[0] ?? '?'}</AvatarFallback></Avatar>
               <span>{author?.display_name ?? 'Utilisateur'}</span>
               <span>•</span>
-              <span>{new Date(post.created_at).toLocaleString('fr-FR')}</span>
+              <span>{new Date(post.created_at).toLocaleString(appLocale())}</span>
             </div>
           </div>
           <div className="flex items-center gap-1">
@@ -125,7 +127,7 @@ export function ForumPostDetailModal({ post, hasVoted, onClose }: Props) {
         <ScrollArea className="flex-1">
           {post.content && (
             <div className="p-4 border-b border-border">
-              <p className="text-sm whitespace-pre-wrap break-words">{post.content}</p>
+              <p translate="no" className="text-sm whitespace-pre-wrap break-words">{post.content}</p>
             </div>
           )}
           <div className="px-4 py-2 text-xs font-semibold uppercase text-muted-foreground flex items-center gap-1">

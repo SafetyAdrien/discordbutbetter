@@ -1,4 +1,5 @@
-import { CheckCircle2, XCircle, Loader2, Clock, FileWarning } from 'lucide-react';
+import { Loader2, FileWarning } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock } from '@/components/icons/serverSettingsIcons';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';

@@ -5,7 +5,8 @@
  */
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Dice5, Moon, Pipette, Plus, RotateCcw, Share2, Sun, X } from 'lucide-react';
+import { Dice5, Moon, RotateCcw, Sun } from 'lucide-react';
+import { Pipette, Plus, Share2, X } from '@/components/icons/discord/lucide';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';

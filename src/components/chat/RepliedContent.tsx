@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Paperclip, Image as ImageIcon, Video as VideoIcon, FileText } from "lucide-react";
+import { Paperclip } from "lucide-react";
+import { Image as ImageIcon, Video as VideoIcon, FileText } from "@/components/icons/discord/lucide";
 import { cn } from "@/lib/utils";
 import { RoleBadgePopover } from "@/components/chat/RoleBadgePopover";
 import type { Attachment, RepliedMessageRef } from "@/types/app";

@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { EmojiGlyph } from '@/components/chat/message-menu/EmojiGlyph';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
-import { CheckSquare, Square, Trash2, X } from 'lucide-react';
+import { CheckSquare, Square, Trash2, X } from '@/components/icons/discord/lucide';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -182,7 +183,7 @@ export function ReactionsViewerModal({
                   : 'text-muted-foreground hover:bg-muted',
               )}
             >
-              <span className="leading-none">{emoji}</span>
+              <EmojiGlyph emoji={emoji} className="text-base" />
               <span className="text-xs tabular-nums">{list.length}</span>
             </button>
           ))}
@@ -257,7 +258,7 @@ export function ReactionsViewerModal({
                       <div className="flex-1 min-w-0">
                         {profile ? (
                           <>
-                            <div className="text-sm font-medium truncate">{profile.display_name}</div>
+                            <div translate="no" className="text-sm font-medium truncate">{profile.display_name}</div>
                             <div className="text-xs text-muted-foreground truncate">@{profile.username}</div>
                           </>
                         ) : (
@@ -265,7 +266,7 @@ export function ReactionsViewerModal({
                         )}
                       </div>
                       {activeTab === ALL_TAB && (
-                        <span className="text-base leading-none">{r.emoji}</span>
+                        <EmojiGlyph emoji={r.emoji} className="text-base" />
                       )}
                       {isSelf && !selectMode && (
                         <Button

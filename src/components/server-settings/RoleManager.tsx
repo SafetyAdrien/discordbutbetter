@@ -4,15 +4,19 @@ import { useServerRoles, useCreateRole, useDeleteRole, useReorderRoles, useDupli
 import { usePermissions } from '@/hooks/usePermissions';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { RoleEditor } from './RoleEditor';
-import { Plus, Shield, Trash2, Loader2, Copy, Users, AlertTriangle, GripVertical, ChevronUp, ChevronDown } from 'lucide-react';
+import { GripVertical, Loader2 } from 'lucide-react';
+import { ArrowLeft, ChevronRight, ChevronUp, Copy, Pencil, Trash2 } from '@/components/icons/discord/lucide';
+import { ChevronDown, MoreHorizontal, Plus, Search, User as UserIcon, Users } from '@/components/icons/serverSettingsIcons';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { SettingsPage } from './SettingsUI';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import { settingsInputCls } from './settingsStyles';
 import { toast } from 'sonner';
 
 // DnD Kit imports
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragOverlay, DragStartEvent, DragOverEvent, UniqueIdentifier } from '@dnd-kit/core';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, UniqueIdentifier } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 
 interface RoleManagerProps {
@@ -87,112 +91,79 @@ function SortableRole({
     disabled: isDisabled,
   });
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition: isDragging
-      ? 'opacity 150ms ease'
-      : 'transform 200ms cubic-bezier(0.25, 1, 0.5, 1), opacity 150ms ease',
-  };
+  // Ni deplacement ni fantome (video de reference) : la ligne glissee reste en place sous forme
+  // d'emplacement gris, la barre verte indique ou elle tombera.
+  const style = { transform: undefined as string | undefined };
 
   return (
     <div ref={setNodeRef} style={style} className="relative">
       {/* Inline drop indicator - before */}
-      {dropIndicator === 'before' && (
-        <div className="h-[2px] bg-primary rounded-full mx-1 mb-0.5 shadow-[0_0_4px_hsl(var(--primary)/0.5)]" />
-      )}
+      {dropIndicator === 'before' && <div className="absolute inset-x-0 -top-px z-10 h-[3px] -translate-y-1/2 rounded-full bg-[hsl(var(--dnd-line))] pointer-events-none" />}
 
       <div
         className={cn(
-          'flex items-center gap-2 px-1 py-1 rounded-lg transition-all duration-150 group cursor-pointer',
-          isSelected ? 'bg-primary/10 text-primary ring-1 ring-primary/30' : 'hover:bg-muted',
-          isDragging && 'opacity-30',
-          isDisabled && 'opacity-50'
+          'grid grid-cols-[24px_1fr_88px_auto] items-center gap-2 h-14 pr-2 border-b border-border group cursor-pointer transition-colors',
+          isSelected ? 'bg-[hsl(var(--interactive-background-selected))]' : 'hover:bg-[hsl(var(--interactive-background-hover))]',
+          isDragging && 'bg-white/[0.08] [&>*]:invisible',
         )}
         onClick={onSelect}
       >
-        {/* Drag handle - with setActivatorNodeRef + touch-none */}
+        {/* Poignee de glisser-deposer, visible au survol comme sur Discord */}
         <div
           ref={setActivatorNodeRef}
           {...(isDisabled ? {} : { ...attributes, ...listeners })}
           className={cn(
-            'flex items-center justify-center w-8 h-8 min-h-[44px] min-w-[44px] flex-shrink-0 touch-none select-none',
-            isDisabled
-              ? 'cursor-not-allowed text-muted-foreground/20'
-              : 'cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground transition-colors'
+            'flex items-center justify-center h-full touch-none select-none',
+            isDisabled ? 'invisible' : 'cursor-grab active:cursor-grabbing text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity',
           )}
           onPointerDown={(e) => {
             e.stopPropagation();
-            const sensorHandler = isDisabled ? undefined : (listeners as any)?.onPointerDown;
+            const sensorHandler = isDisabled ? undefined : (listeners as { onPointerDown?: (ev: React.PointerEvent) => void } | undefined)?.onPointerDown;
             sensorHandler?.(e);
           }}
         >
-          <GripVertical className="w-3.5 h-3.5" />
+          <GripVertical className="w-4 h-4" />
         </div>
-        <RoleIcon role={role} />
-        <span className="flex-1 truncate text-sm">{role.name}</span>
-
-        {/* Member count */}
-        <div className="flex items-center gap-1 text-xs text-muted-foreground opacity-70">
-          <Users className="w-3 h-3" />
-          <span>{memberCount}</span>
+        <div className="flex items-center gap-3 min-w-0">
+          <RoleIcon role={role} size="md" />
+          <span translate="no" className="truncate text-base font-medium text-foreground" style={{ color: role.color && role.color !== '#99AAB5' ? role.color : undefined }}>
+            {role.name}
+          </span>
         </div>
-
-        {showArrows && !isDisabled && (
-          <div className="flex flex-col">
-            <button type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onMoveUp?.();
-              }}
-              disabled={!canMoveUp}
-              className="p-0.5 text-muted-foreground/60 hover:text-foreground disabled:opacity-20 disabled:pointer-events-none transition-colors"
-              aria-label="Monter le rôle"
-            >
-              <ChevronUp className="w-3.5 h-3.5" />
-            </button>
-            <button type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onMoveDown?.();
-              }}
-              disabled={!canMoveDown}
-              className="p-0.5 text-muted-foreground/60 hover:text-foreground disabled:opacity-20 disabled:pointer-events-none transition-colors"
-              aria-label="Descendre le rôle"
-            >
-              <ChevronDown className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        )}
-
-        {!role.is_default && (
-          <>
-            <button type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onDuplicate();
-              }}
-              className="opacity-0 group-hover:opacity-100 p-1 hover:text-primary transition-all"
-              title="Dupliquer ce rôle"
-            >
-              <Copy className="w-3.5 h-3.5" />
-            </button>
-            <button type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete();
-              }}
-              className="opacity-0 group-hover:opacity-100 p-1 hover:text-destructive transition-all"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
-          </>
-        )}
+        <div className="flex items-center gap-1 text-sm text-muted-foreground">
+          {memberCount}
+          <UserIcon className="w-4 h-4" />
+        </div>
+        <div className="flex items-center gap-2">
+          {showArrows && !isDisabled && (
+            <div className="flex flex-col">
+              <button type="button" onClick={(e) => { e.stopPropagation(); onMoveUp?.(); }} disabled={!canMoveUp} className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-20" aria-label="Monter le rôle">
+                <ChevronUp className="w-3.5 h-3.5" />
+              </button>
+              <button type="button" onClick={(e) => { e.stopPropagation(); onMoveDown?.(); }} disabled={!canMoveDown} className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-20" aria-label="Descendre le rôle">
+                <ChevronDown className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+          <button type="button" aria-label="Modifier le rôle" onClick={(e) => { e.stopPropagation(); onSelect(); }} className="w-9 h-9 rounded-full bg-[hsl(var(--button-secondary))] flex items-center justify-center text-foreground hover:text-white">
+            <Pencil className="w-4 h-4" />
+          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button type="button" aria-label="Plus d'options" onClick={(e) => e.stopPropagation()} className="w-9 h-9 rounded-full bg-[hsl(var(--button-secondary))] flex items-center justify-center text-foreground hover:text-white">
+                <MoreHorizontal className="w-4 h-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+              <DropdownMenuItem onClick={onDuplicate}><Copy className="w-4 h-4 mr-2" />Dupliquer</DropdownMenuItem>
+              <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={onDelete}><Trash2 className="w-4 h-4 mr-2" />Supprimer</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       {/* Inline drop indicator - after */}
-      {dropIndicator === 'after' && (
-        <div className="h-[2px] bg-primary rounded-full mx-1 mt-0.5 shadow-[0_0_4px_hsl(var(--primary)/0.5)]" />
-      )}
+      {dropIndicator === 'after' && <div className="absolute inset-x-0 -bottom-px z-10 h-[3px] translate-y-1/2 rounded-full bg-[hsl(var(--dnd-line))] pointer-events-none" />}
     </div>
   );
 }
@@ -208,8 +179,8 @@ export function RoleManager({ serverId }: RoleManagerProps) {
   const duplicateRole = useDuplicateRole();
 
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
-  const [newRoleName, setNewRoleName] = useState('');
-  const [showNewRoleInput, setShowNewRoleInput] = useState(false);
+  const [roleQuery, setRoleQuery] = useState('');
+  const [roleToDelete, setRoleToDelete] = useState<RoleWithPermissions | null>(null);
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   const [dropPosition, setDropPosition] = useState<'before' | 'after'>('after');
@@ -327,31 +298,19 @@ export function RoleManager({ serverId }: RoleManagerProps) {
     setSelectedRoleId(roleId);
   }, []);
 
-  const handleCreateRole = () => {
-    if (!newRoleName.trim()) return;
-    createRole.mutate(
-      { serverId, name: newRoleName.trim() },
-      {
-        onSuccess: () => {
-          setNewRoleName('');
-          setShowNewRoleInput(false);
-        },
-      }
-    );
-  };
-
-  const handleDeleteRole = (roleId: string) => {
-    if (selectedRoleId === roleId) {
-      setSelectedRoleId(null);
-    }
-    deleteRole.mutate({ roleId, serverId });
+  // Confirmation avant suppression, comme la fenetre "Supprimer le role" de Discord.
+  const handleDeleteRole = (roleId: string) => setRoleToDelete(roles.find((r) => r.id === roleId) ?? null);
+  const confirmDeleteRole = () => {
+    if (!roleToDelete) return;
+    if (selectedRoleId === roleToDelete.id) setSelectedRoleId(null);
+    deleteRole.mutate({ roleId: roleToDelete.id, serverId });
+    setRoleToDelete(null);
   };
 
   const handleDuplicateRole = (roleId: string) => {
     duplicateRole.mutate({ roleId, serverId });
   };
 
-  const activeRole = activeId ? sortableRoles.find(r => r.id === activeId) : null;
 
   if (isLoading) {
     return (
@@ -361,153 +320,164 @@ export function RoleManager({ serverId }: RoleManagerProps) {
     );
   }
 
-  return (
-    <div className="flex gap-6 h-full min-h-[400px]">
-      {/* Role List */}
-      <div className="w-64 flex-shrink-0 space-y-2">
-        <div className="flex items-center justify-between mb-4">
-          <h4 className="text-sm font-medium text-muted-foreground">
-            Rôles — {roles.length}
-          </h4>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => setShowNewRoleInput(true)}
-          >
-            <Plus className="w-4 h-4" />
-          </Button>
-        </div>
+  const handleCreateDefaultRole = () => {
+    createRole.mutate(
+      { serverId, name: 'nouveau rôle' },
+      { onSuccess: (created) => created?.id && setSelectedRoleId(created.id) },
+    );
+  };
 
-        {showNewRoleInput && (
-          <div className="flex gap-2 mb-2">
-            <Input
-              value={newRoleName}
-              onChange={(e) => setNewRoleName(e.target.value)}
-              placeholder="Nom du rôle"
-              className="h-8 text-sm"
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleCreateRole();
-                if (e.key === 'Escape') setShowNewRoleInput(false);
-              }}
+  const q = roleQuery.trim().toLowerCase();
+  const visibleRoles = q ? sortableRoles.filter((r) => r.name.toLowerCase().includes(q)) : sortableRoles;
+
+  const sortableList = (
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      modifiers={[restrictToVerticalAxis]}
+      onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
+      onDragEnd={handleDragEnd}
+      onDragCancel={handleDragCancel}
+    >
+      <SortableContext items={sortableRoleIds} strategy={verticalListSortingStrategy}>
+        <div className={cn(activeId && 'cursor-grabbing')}>
+          {visibleRoles.map((role, index) => (
+            <SortableRole
+              key={role.id}
+              role={role}
+              isSelected={false}
+              onSelect={() => handleRoleSelect(role.id)}
+              onDelete={() => handleDeleteRole(role.id)}
+              onDuplicate={() => handleDuplicateRole(role.id)}
+              memberCount={memberCounts[role.id] || 0}
+              dropIndicator={overId === role.id && activeId !== role.id ? dropPosition : null}
+              canDragAbove={canDragRole(role) && !q}
+              showArrows={isMobile}
+              onMoveUp={() => moveRole(role.id, 'up')}
+              onMoveDown={() => moveRole(role.id, 'down')}
+              canMoveUp={index > 0}
+              canMoveDown={index < sortableRoles.length - 1}
             />
-            <Button
-              size="sm"
-              onClick={handleCreateRole}
-              disabled={!newRoleName.trim() || createRole.isPending}
-            >
-              {createRole.isPending ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Plus className="w-4 h-4" />
-              )}
-            </Button>
-          </div>
-        )}
-
-        {/* Hierarchy warning */}
-        <div className="flex items-center gap-2 px-2 py-1.5 text-xs text-muted-foreground bg-muted/30 rounded-md mb-2">
-          <AlertTriangle className="w-3.5 h-3.5 text-yellow-500" />
-          <span>Les rôles en haut ont plus de pouvoir</span>
+          ))}
         </div>
+      </SortableContext>
+    </DndContext>
+  );
 
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          modifiers={[restrictToVerticalAxis]}
-          onDragStart={handleDragStart}
-          onDragOver={handleDragOver}
-          onDragEnd={handleDragEnd}
-          onDragCancel={handleDragCancel}
-        >
-          <SortableContext
-            items={sortableRoleIds}
-            strategy={verticalListSortingStrategy}
-          >
-            <div className={cn("space-y-0", activeId && "cursor-grabbing")}>
-              {sortableRoles.map((role, index) => (
-                <SortableRole
-                  key={role.id}
-                  role={role}
-                  isSelected={selectedRoleId === role.id}
-                  onSelect={() => handleRoleSelect(role.id)}
-                  onDelete={() => handleDeleteRole(role.id)}
-                  onDuplicate={() => handleDuplicateRole(role.id)}
-                  memberCount={memberCounts[role.id] || 0}
-                  dropIndicator={overId === role.id && activeId !== role.id ? dropPosition : null}
-                  canDragAbove={canDragRole(role)}
-                  showArrows={isMobile}
-                  onMoveUp={() => moveRole(role.id, 'up')}
-                  onMoveDown={() => moveRole(role.id, 'down')}
-                  canMoveUp={index > 0}
-                  canMoveDown={index < sortableRoles.length - 1}
-                />
-              ))}
-
-              {/* @everyone - inline, not draggable */}
-              {defaultRole && (
-                <div
-                  className={cn(
-                    'flex items-center gap-2 px-1 py-1 rounded-lg transition-all duration-150 group cursor-pointer',
-                    selectedRoleId === defaultRole.id ? 'bg-primary/10 text-primary ring-1 ring-primary/30' : 'hover:bg-muted',
-                  )}
-                  onClick={() => handleRoleSelect(defaultRole.id)}
-                >
-                  <div className="flex items-center justify-center w-8 h-8 min-h-[44px] min-w-[44px] flex-shrink-0 cursor-not-allowed text-muted-foreground/20">
-                    <GripVertical className="w-3.5 h-3.5" />
-                  </div>
-                  <RoleIcon role={defaultRole} />
-                  <span className="flex-1 truncate text-sm">{defaultRole.name}</span>
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground opacity-70">
-                    <Users className="w-3 h-3" />
-                    <span>{memberCounts[defaultRole.id] || 0}</span>
-                  </div>
-                </div>
-              )}
-            </div>
-          </SortableContext>
-
-          <DragOverlay dropAnimation={null}>
-            {activeRole && (
-              <div className={cn(
-                "flex items-center gap-2 px-3 py-2 rounded-lg min-w-[200px]",
-                "bg-card/95 backdrop-blur-sm border border-[#5865f2]/50",
-                "shadow-[0_10px_30px_rgba(0,0,0,0.3),0_0_0_1px_rgba(88,101,242,0.3)]",
-                "scale-105 cursor-grabbing"
-              )}>
-                {activeRole.icon_url ? (
-                  activeRole.icon_url.startsWith('http') ? (
-                    <img src={activeRole.icon_url} alt="" className="w-3 h-3 object-contain flex-shrink-0" />
-                  ) : (
-                    <span className="text-sm">{activeRole.icon_url}</span>
-                  )
-                ) : (
-                  <div
-                    className="w-3 h-3 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: activeRole.color || '#99AAB5' }}
-                  />
-                )}
-                <span className="text-sm font-medium">{activeRole.name}</span>
-              </div>
-            )}
-          </DragOverlay>
-        </DndContext>
-      </div>
-
-      {/* Role Editor */}
-      <div className="flex-1 border-l border-border pl-6">
-        {selectedRole ? (
-          <RoleEditor role={selectedRole} serverId={serverId} />
-        ) : (
-          <div className="flex flex-col items-center justify-center h-full text-center">
-            <Shield className="w-12 h-12 text-muted-foreground/30 mb-4" />
-            <h3 className="text-lg font-medium">Sélectionnez un rôle</h3>
-            <p className="text-sm text-muted-foreground mt-1">
-              Choisissez un rôle pour modifier ses permissions
-            </p>
+  // Mode edition : colonne des roles a gauche, editeur a droite (video).
+  if (selectedRole) {
+    return (
+      <div className="flex gap-6">
+        <div className="w-[170px] shrink-0">
+          <div className="flex items-center justify-between mb-3">
+            <button type="button" onClick={() => setSelectedRoleId(null)} className="flex items-center gap-2 text-base font-semibold text-white hover:underline">
+              <ArrowLeft className="w-5 h-5" />
+              Retour
+            </button>
+            <button type="button" aria-label="Création de rôle" onClick={handleCreateDefaultRole} className="text-[hsl(var(--header-icon))] hover:text-white">
+              <Plus className="w-5 h-5" />
+            </button>
           </div>
-        )}
+          <div className="space-y-0.5">
+            {[...sortableRoles, ...(defaultRole ? [defaultRole] : [])].map((r) => (
+              <button
+                key={r.id}
+                type="button"
+                onClick={() => handleRoleSelect(r.id)}
+                className={cn(
+                  'w-full flex items-center gap-2 h-8 px-2 rounded-lg text-left text-sm font-medium transition-colors',
+                  r.id === selectedRole.id
+                    ? 'bg-[hsl(var(--interactive-background-selected))] text-white'
+                    : 'text-[hsl(var(--icon-default))] hover:bg-[hsl(var(--interactive-background-hover))]',
+                )}
+              >
+                <RoleIcon role={r} />
+                <span translate="no" className="truncate">{r.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex-1 min-w-0">
+          <RoleEditor
+            role={selectedRole}
+            serverId={serverId}
+            onDuplicate={() => handleDuplicateRole(selectedRole.id)}
+            onDelete={() => handleDeleteRole(selectedRole.id)}
+          />
+        </div>
+      <Dialog open={!!roleToDelete} onOpenChange={(o) => !o && setRoleToDelete(null)}>
+        <DialogContent className="sm:max-w-[400px] p-6 gap-0">
+          <DialogTitle className="text-xl font-semibold text-white">Supprimer le rôle</DialogTitle>
+          <DialogDescription className="mt-2 text-sm text-muted-foreground">
+            Tu es sûr(e) de vouloir supprimer le rôle <strong className="text-foreground">{roleToDelete?.name}</strong> ? Cette action est irréversible.
+          </DialogDescription>
+          <div className="mt-6 flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setRoleToDelete(null)}>Annuler</Button>
+            <Button variant="destructive" onClick={confirmDeleteRole}>Supprimer</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       </div>
-    </div>
+    );
+  }
+
+  return (
+    <SettingsPage title="Rôles" description="Utilise des rôles pour regrouper les membres de ton serveur et leur assigner des permissions.">
+      {defaultRole && (
+        <button
+          type="button"
+          onClick={() => handleRoleSelect(defaultRole.id)}
+          className="w-full flex items-center gap-4 p-4 rounded-lg bg-[hsl(var(--card))] hover:bg-[hsl(var(--interactive-background-hover))] text-left transition-colors"
+        >
+          <span className="w-10 h-10 shrink-0 rounded-full bg-[hsl(var(--button-secondary))] flex items-center justify-center">
+            <Users className="w-5 h-5 text-foreground" />
+          </span>
+          <span className="flex-1 min-w-0">
+            <span className="block text-base font-semibold text-white">Permissions par défaut</span>
+            <span className="block text-sm text-muted-foreground">@everyone • s'applique à tous les membres du serveur</span>
+          </span>
+          <ChevronRight className="w-5 h-5 text-muted-foreground" />
+        </button>
+      )}
+
+      <div className="mt-6 flex gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <input value={roleQuery} onChange={(e) => setRoleQuery(e.target.value)} placeholder="Rechercher des rôles" className={cn(settingsInputCls, 'pl-9')} />
+        </div>
+        <Button onClick={handleCreateDefaultRole} disabled={createRole.isPending}>
+          Création de rôle
+        </Button>
+      </div>
+      <p className="mt-2 text-sm text-muted-foreground">
+        Les membres utilisent la couleur du rôle le plus élevé qu'ils ont dans cette liste. Fais glisser les rôles pour les
+        réorganiser : les rôles en haut ont plus de pouvoir.
+      </p>
+
+      <div className="mt-6 grid grid-cols-[24px_1fr_88px_auto] gap-2 pr-2 pb-2 border-b border-border text-xs font-semibold text-muted-foreground">
+        <span />
+        <span>Rôles – {sortableRoles.length}</span>
+        <span>Membres</span>
+        <span className="w-[80px]" />
+      </div>
+      {sortableRoles.length === 0 ? (
+        <p className="py-6 text-sm text-muted-foreground">Aucun rôle pour l'instant. Crée le premier !</p>
+      ) : (
+        sortableList
+      )}
+      <Dialog open={!!roleToDelete} onOpenChange={(o) => !o && setRoleToDelete(null)}>
+        <DialogContent className="sm:max-w-[400px] p-6 gap-0">
+          <DialogTitle className="text-xl font-semibold text-white">Supprimer le rôle</DialogTitle>
+          <DialogDescription className="mt-2 text-sm text-muted-foreground">
+            Tu es sûr(e) de vouloir supprimer le rôle <strong className="text-foreground">{roleToDelete?.name}</strong> ? Cette action est irréversible.
+          </DialogDescription>
+          <div className="mt-6 flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setRoleToDelete(null)}>Annuler</Button>
+            <Button variant="destructive" onClick={confirmDeleteRole}>Supprimer</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </SettingsPage>
   );
 }

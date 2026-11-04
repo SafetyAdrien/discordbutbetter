@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Hash, BookOpen, Search, List, MessageSquare, Copy, Check } from 'lucide-react';
+import { BookOpen } from 'lucide-react';
+import { Hash, Search, List, MessageSquare, Copy, Check } from '@/components/icons/discord/lucide';
 import { RoleInfoPopup } from '@/components/profile/RoleInfoPopup';
 import { EveryoneHerePopup } from '@/components/profile/EveryoneHerePopup';
 import { nearestColorName } from '@/lib/colorNames';
@@ -59,7 +60,7 @@ export function UserMention({ userId, displayName, avatarUrl, isSelf, onClick, v
               <AvatarFallback className="bg-primary text-xs">{displayName[0]?.toUpperCase()}</AvatarFallback>
             </Avatar>
             <div>
-              <p className="font-semibold text-white">{displayName}</p>
+              <p translate="no" className="font-semibold text-white">{displayName}</p>
               <p className="text-xs text-muted-foreground">Cliquer pour voir le profil</p>
             </div>
           </div>
@@ -146,7 +147,7 @@ export function RoleMention({ roleId, roleName, roleColor, serverId }: RoleMenti
               style={{ backgroundColor: color }}
             />
             <div>
-              <p className="font-semibold" style={{ color }}>{roleName}</p>
+              <p translate="no" className="font-semibold" style={{ color }}>{roleName}</p>
               <p className="text-xs text-muted-foreground">Rôle du serveur</p>
             </div>
           </div>
@@ -246,12 +247,12 @@ export function MessageLinkEmbed({
         </Avatar>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-            <span className="font-medium text-white">{authorName}</span>
+            <span translate="no" className="font-medium text-white">{authorName}</span>
             <span>•</span>
-            <span>{serverName}</span>
+            <span translate="no">{serverName}</span>
             <span>•</span>
             <Hash className="w-3 h-3" />
-            <span>{channelName}</span>
+            <span translate="no">{channelName}</span>
           </div>
           <p className="text-sm text-foreground line-clamp-2">{contentPreview}</p>
         </div>

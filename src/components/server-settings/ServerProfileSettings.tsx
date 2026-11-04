@@ -1,18 +1,27 @@
 import { useState, useRef, useCallback } from 'react';
 import { useServers } from '@/hooks/useServers';
 import { useUpdateServerInfo, useUploadServerIcon, useUploadServerBanner } from '@/hooks/useServerAssets';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Camera, Loader2, X, ImageIcon } from 'lucide-react';
-import { Switch } from '@/components/ui/switch';
+import { Camera, Loader2 } from 'lucide-react';
+import { ImageIcon, Smile } from '@/components/icons/discord/lucide';
+import { useMembers } from '@/hooks/useMembers';
+import { SettingsDivider, SettingsPage, SettingsSection, SettingsToggleRow, UnsavedChangesBar } from './SettingsUI';
+import { settingsInputCls, settingsLabelCls, settingsTextareaCls } from './settingsStyles';
 import { ImageCropper } from '@/components/ui/image-cropper';
 import { ServerIconUploadEditor } from '@/components/server-settings/ServerIconUploadEditor';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
-import { useServerSettings, useUpdateServerSettings } from '@/hooks/useServerSettings';
+import { useServerSettings, useUpdateServerSettings, type ProfileTrait } from '@/hooks/useServerSettings';
+import { BANNER_PRESETS } from '@/lib/bannerPresets';
+import { cn } from '@/lib/utils';
+import { EmojiStickerPicker } from '@/components/chat/EmojiStickerPicker';
+import { ServerPreviewCard } from '@/components/server-views/ServerPreviewCard';
+
+import { appLocale } from '@/i18n/locale';
+const padTraits = (traits: ProfileTrait[] | undefined): ProfileTrait[] =>
+  Array.from({ length: 5 }, (_, i) => ({ emoji: traits?.[i]?.emoji, label: traits?.[i]?.label ?? '' }));
+const cleanTraits = (traits: ProfileTrait[]): ProfileTrait[] =>
+  traits.filter((t) => t.label.trim()).map((t) => ({ ...(t.emoji ? { emoji: t.emoji } : {}), label: t.label.trim() }));
 
 interface ServerProfileSettingsProps {
   serverId: string;
@@ -23,6 +32,7 @@ export function ServerProfileSettings({ serverId }: ServerProfileSettingsProps) 
   const { data: servers = [] } = useServers();
   const server = servers.find(s => s.id === serverId);
   const { data: settings } = useServerSettings(serverId);
+  const { data: members = [] } = useMembers(serverId);
   
   const updateServer = useUpdateServerInfo();
   const updateSettings = useUpdateServerSettings();
@@ -33,19 +43,28 @@ export function ServerProfileSettings({ serverId }: ServerProfileSettingsProps) 
     name: server?.name || '',
     description: server?.description || '',
     flexible_channel_names: settings?.flexible_channel_names ?? true,
+    banner_preset: settings?.profile_banner_preset ?? 'default',
+    traits: padTraits(settings?.profile_traits),
   });
 
   // Sync flexible_channel_names when settings load
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   if (settings && !settingsLoaded) {
     setSettingsLoaded(true);
-    setFormData(prev => ({ ...prev, flexible_channel_names: settings.flexible_channel_names ?? true }));
+    setFormData(prev => ({
+      ...prev,
+      flexible_channel_names: settings.flexible_channel_names ?? true,
+      banner_preset: settings.profile_banner_preset ?? 'default',
+      traits: padTraits(settings.profile_traits),
+    }));
   }
 
   const hasChanges = server && (
-    formData.name !== (server.name || '') ||
+    formData.name.trim() !== (server.name || '') ||
     formData.description !== (server.description || '') ||
-    formData.flexible_channel_names !== (settings?.flexible_channel_names ?? true)
+    formData.flexible_channel_names !== (settings?.flexible_channel_names ?? true) ||
+    formData.banner_preset !== (settings?.profile_banner_preset ?? 'default') ||
+    JSON.stringify(cleanTraits(formData.traits)) !== JSON.stringify(cleanTraits(settings?.profile_traits ?? []))
   );
 
   // Cropper / icon editor states
@@ -55,20 +74,29 @@ export function ServerProfileSettings({ serverId }: ServerProfileSettingsProps) 
   const [iconEditorFile, setIconEditorFile] = useState<File | null>(null);
 
   const isSaving = updateServer.isPending || updateSettings.isPending;
+  const setTrait = (i: number, patch: Partial<ProfileTrait>) =>
+    setFormData((prev) => ({ ...prev, traits: prev.traits.map((t, j) => (j === i ? { ...t, ...patch } : t)) }));
 
+  // N'envoie que ce qui a change : une erreur sur les reglages du profil ne
+  // doit pas faire croire que le nom n'a pas ete enregistre (et inversement).
   const handleSave = () => {
-    updateServer.mutate({
-      serverId,
-      name: formData.name,
-      description: formData.description,
-    });
-
-    if (formData.flexible_channel_names !== (settings?.flexible_channel_names ?? true)) {
-      updateSettings.mutate({
-        serverId,
-        settings: { flexible_channel_names: formData.flexible_channel_names },
-      });
+    if (!server) return;
+    const name = formData.name.trim();
+    if (name !== server.name || formData.description !== (server.description || '')) {
+      updateServer.mutate({ serverId, name, description: formData.description });
     }
+
+    const settingsPatch: Parameters<typeof updateSettings.mutate>[0]['settings'] = {};
+    if (formData.flexible_channel_names !== (settings?.flexible_channel_names ?? true)) {
+      settingsPatch.flexible_channel_names = formData.flexible_channel_names;
+    }
+    if (formData.banner_preset !== (settings?.profile_banner_preset ?? 'default')) {
+      settingsPatch.profile_banner_preset = formData.banner_preset;
+    }
+    if (JSON.stringify(cleanTraits(formData.traits)) !== JSON.stringify(cleanTraits(settings?.profile_traits ?? []))) {
+      settingsPatch.profile_traits = cleanTraits(formData.traits);
+    }
+    if (Object.keys(settingsPatch).length > 0) updateSettings.mutate({ serverId, settings: settingsPatch });
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, type: 'icon' | 'banner') => {
@@ -132,168 +160,167 @@ export function ServerProfileSettings({ serverId }: ServerProfileSettingsProps) 
 
   if (!server) return null;
 
+  const reset = () =>
+    setFormData({
+      name: server.name || '',
+      description: server.description || '',
+      flexible_channel_names: settings?.flexible_channel_names ?? true,
+      banner_preset: settings?.profile_banner_preset ?? 'default',
+      traits: padTraits(settings?.profile_traits),
+    });
+  const onlineCount = members.filter((m) => m.user.status && m.user.status !== 'offline').length;
+  const since = server.created_at
+    ? new Date(server.created_at).toLocaleDateString(appLocale(), { month: 'short', year: 'numeric' })
+    : null;
+  const initials = server.name.split(/\s+/).map((w) => w[0]).join('').slice(0, 3);
+
   return (
     <>
-      <div className="space-y-8">
-        {/* Banner & Icon */}
-        <div>
-          <Label className="mb-3 block">Apparence du serveur</Label>
-          
-          {/* Banner */}
-          <div className="relative group">
-            <label className="cursor-pointer block" aria-label="Importer ou modifier la bannière du serveur">
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => handleFileSelect(e, 'banner')}
-                className="hidden"
-              />
-              <div 
-                className="h-32 rounded-lg bg-muted overflow-hidden flex items-center justify-center"
-                style={server.banner_url ? {
-                  backgroundImage: `url(${server.banner_url})`,
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center'
-                } : undefined}
-              >
-                {!server.banner_url && (
-                  <div className="flex flex-col items-center gap-1 text-muted-foreground">
-                    <ImageIcon className="w-8 h-8" />
-                    <span className="text-sm">Ajouter une bannière</span>
-                  </div>
+      <SettingsPage
+        title="Profil du serveur"
+        description="Personnalise la façon dont ton serveur apparaît dans les liens d'invitation et, si cette option est activée, dans la Découverte de serveurs."
+      >
+        <div className="flex flex-col-reverse lg:flex-row gap-10">
+          <div className="flex-1 min-w-0">
+            <label htmlFor="server-name" className={settingsLabelCls}>Nom</label>
+            <input
+              id="server-name"
+              value={formData.name}
+              maxLength={100}
+              onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+              className={settingsInputCls}
+            />
+
+            <SettingsDivider />
+
+            <SettingsSection title="Icône" description="Nous recommandons une taille d'image d'au moins 512 x 512.">
+              <div className="flex items-center gap-4">
+                <label className="cursor-pointer">
+                  <input type="file" accept="image/*" onChange={(e) => handleFileSelect(e, 'icon')} className="hidden" />
+                  <span className="inline-flex items-center h-8 px-4 rounded-lg bg-primary hover:bg-primary/90 text-sm font-medium text-white transition-colors">
+                    {uploadIcon.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Changer l'icône du serveur"}
+                  </span>
+                </label>
+                {server.icon_url && (
+                  <button type="button" onClick={handleRemoveIcon} className="text-sm font-medium text-foreground hover:underline">
+                    Supprimer l'icône
+                  </button>
                 )}
               </div>
-              <div className="absolute inset-0 rounded-lg bg-background/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                {uploadBanner.isPending ? (
-                  <Loader2 className="w-8 h-8 animate-spin text-foreground" />
-                ) : (
-                  <div className="flex flex-col items-center gap-1">
-                    <Camera className="w-8 h-8 text-foreground" />
-                    <span className="text-xs text-foreground">Modifier la bannière</span>
-                  </div>
+            </SettingsSection>
+
+            <SettingsDivider />
+
+            <SettingsSection title="Bannière" description="Choisis une couleur, ou importe une image (format 16:9 conseillé) : elle s'affiche en haut de la liste des salons et sur les invitations.">
+              <div className="flex items-center gap-4">
+                <label className="relative block w-[200px] h-[90px] rounded-lg overflow-hidden cursor-pointer ring-1 ring-white/[0.06] group">
+                  <input type="file" accept="image/*" onChange={(e) => handleFileSelect(e, 'banner')} className="hidden" />
+                  {server.banner_url ? (
+                    <img src={server.banner_url} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="w-full h-full flex items-center justify-center bg-gradient-to-b from-[#5c5d66] to-[#2c2d32] text-muted-foreground">
+                      <ImageIcon className="w-6 h-6" />
+                    </span>
+                  )}
+                  <span className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                    {uploadBanner.isPending ? <Loader2 className="w-5 h-5 animate-spin text-white" /> : <Camera className="w-5 h-5 text-white" />}
+                  </span>
+                </label>
+                {server.banner_url && (
+                  <button type="button" onClick={handleRemoveBanner} className="text-sm font-medium text-foreground hover:underline">
+                    Supprimer la bannière
+                  </button>
                 )}
               </div>
-            </label>
-            {server.banner_url && (
-                <button type="button"
-                onClick={handleRemoveBanner}
-                className="absolute top-2 right-2 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center hover:opacity-90 transition-opacity z-10"
-                  aria-label="Supprimer la bannière du serveur"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-
-          {/* Icon - centered below banner */}
-          <div className="flex justify-center -mt-10">
-            <div className="relative group">
-              <label className="cursor-pointer block" aria-label="Importer ou modifier l'icône du serveur">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => handleFileSelect(e, 'icon')}
-                  className="hidden"
-                />
-                <div className="w-20 h-20 rounded-full bg-card border-4 border-card flex items-center justify-center shadow-lg transition-all overflow-hidden">
-                  {server.icon_url ? (
-                    <img src={server.icon_url} alt="Server icon" className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full rounded-full bg-surface-elevated flex items-center justify-center">
-                      <span className="text-2xl font-bold text-primary">
-                        {server.name.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                  )}
+              {!server.banner_url && (
+                <div className="mt-4 grid grid-cols-5 gap-2 max-w-[520px]">
+                  {BANNER_PRESETS.map((b) => (
+                    <button
+                      key={b.id}
+                      type="button"
+                      aria-label={`Bannière ${b.label}`}
+                      aria-pressed={formData.banner_preset === b.id}
+                      onClick={() => setFormData((prev) => ({ ...prev, banner_preset: b.id }))}
+                      className={cn('h-[58px] rounded-lg ring-offset-2 ring-offset-[hsl(var(--background))] transition-shadow', formData.banner_preset === b.id ? 'ring-2 ring-primary' : 'hover:ring-2 hover:ring-white/30')}
+                      style={{ backgroundImage: b.css }}
+                    />
+                  ))}
                 </div>
-                <div className="absolute inset-0 rounded-full bg-background/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                  {uploadIcon.isPending ? (
-                    <Loader2 className="w-6 h-6 animate-spin text-foreground" />
-                  ) : (
-                    <Camera className="w-6 h-6 text-foreground" />
-                  )}
-                </div>
-              </label>
-              {server.icon_url && (
-                <button type="button"
-                  onClick={handleRemoveIcon}
-                  className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center hover:opacity-90 transition-opacity z-10"
-                  aria-label="Supprimer l'icône du serveur"
-                >
-                  <X className="w-4 h-4" />
-                </button>
               )}
-            </div>
-          </div>
-        </div>
+            </SettingsSection>
 
-        {/* Name */}
-        <div className="space-y-2">
-          <Label htmlFor="name">Nom du Serveur</Label>
-          <Input
-            id="name"
-            value={formData.name}
-            onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-            maxLength={100}
-          />
-        </div>
+            <SettingsDivider />
 
-        {/* Description */}
-        <div className="space-y-2">
-          <Label htmlFor="description">Description</Label>
-          <Textarea
-            id="description"
-            value={formData.description}
-            onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-            placeholder="Décrivez votre serveur..."
-            rows={3}
-            maxLength={1000}
-          />
-        </div>
-
-        {/* Flexible channel names section - inlined */}
-        <div className="pt-6 border-t border-border space-y-4">
-          <div>
-            <h3 className="text-sm font-semibold uppercase text-muted-foreground tracking-wide">
-              Noms des salons textuels
-            </h3>
-          </div>
-          <div className="rounded-lg border border-border bg-card p-4">
-            <div className="flex items-center justify-between gap-4">
-              <div className="space-y-1 flex-1">
-                <span className="font-medium text-sm">Autoriser des noms de canal de texte flexibles</span>
-                <p className="text-xs text-muted-foreground">
-                  Quand activé, les noms de salons textuels peuvent contenir des majuscules, des espaces et des caractères spéciaux. Quand désactivé, les noms seront automatiquement formatés en minuscules avec des tirets.
-                </p>
-              </div>
-              <Switch
-                checked={formData.flexible_channel_names}
-                onCheckedChange={(checked) => setFormData(prev => ({ ...prev, flexible_channel_names: checked }))}
+            <SettingsSection title="Description" description="Présente ton serveur en quelques mots.">
+              <textarea
+                value={formData.description}
+                maxLength={1000}
+                onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
+                placeholder="Décris ton serveur..."
+                className={settingsTextareaCls}
               />
-            </div>
+            </SettingsSection>
+
+            <SettingsDivider />
+
+            <SettingsSection title="Particularités" description="Ajoute jusqu'à 5 particularités pour montrer les intérêts et la personnalité de ton serveur.">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {formData.traits.map((t, i) => (
+                  <div key={i} className="flex items-center gap-2 h-10 px-2 rounded-lg bg-[hsl(var(--search-background))] border border-white/[0.06] focus-within:border-primary">
+                    <EmojiStickerPicker
+                      serverId={null}
+                      onEmojiSelect={(emoji) => setTrait(i, { emoji })}
+                      trigger={
+                        <button type="button" aria-label="Choisir un émoji" className="w-6 h-6 shrink-0 flex items-center justify-center text-[hsl(var(--icon-default))] hover:text-white">
+                          {t.emoji ? <span className="text-base leading-none">{t.emoji}</span> : <Smile className="w-5 h-5" />}
+                        </button>
+                      }
+                    />
+                    <input
+                      value={t.label}
+                      maxLength={24}
+                      onChange={(e) => setTrait(i, { label: e.target.value })}
+                      aria-label={`Particularité ${i + 1}`}
+                      className="flex-1 min-w-0 bg-transparent text-sm text-foreground outline-none"
+                    />
+                  </div>
+                ))}
+              </div>
+            </SettingsSection>
+
+            <SettingsDivider />
+
+            <SettingsToggleRow
+              title="Noms de salons textuels flexibles"
+              description="Les noms de salons textuels peuvent contenir des majuscules, des espaces et des caractères spéciaux. Désactivé, ils sont mis en minuscules avec des tirets."
+              checked={formData.flexible_channel_names}
+              onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, flexible_channel_names: checked }))}
+            />
+          </div>
+
+          {/* Apercu, comme la carte a droite de la video */}
+          <div className="w-full lg:w-[280px] shrink-0">
+            <ServerPreviewCard
+              name={formData.name || server.name}
+              iconUrl={server.icon_url}
+              bannerUrl={server.banner_url}
+              bannerPreset={formData.banner_preset}
+              community={!!settings?.community_enabled}
+              onlineCount={onlineCount}
+              memberCount={members.length}
+              createdAt={server.created_at}
+              traits={cleanTraits(formData.traits)}
+            />
           </div>
         </div>
 
-        {/* Sticky save button */}
-        {hasChanges && (
-          <div className="sticky bottom-0 pt-4 pb-2 bg-gradient-to-t from-background via-background to-transparent">
-            <Button 
-              onClick={handleSave} 
-              disabled={isSaving || !formData.name.trim()}
-              className="w-full"
-            >
-              {isSaving ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Sauvegarde...
-                </>
-              ) : (
-                'Sauvegarder les modifications'
-              )}
-            </Button>
-          </div>
-        )}
-      </div>
+        <UnsavedChangesBar
+          visible={!!hasChanges}
+          onReset={reset}
+          onSave={handleSave}
+          saving={isSaving || !formData.name.trim()}
+        />
+      </SettingsPage>
 
       {/* Banner cropper (legacy 16:9) */}
       <ImageCropper

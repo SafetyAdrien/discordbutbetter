@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { userKey } from '@/lib/userScope';
 
 /**
  * Preference persisted in localStorage under `nexuschat:settings:<key>`.
@@ -10,7 +11,7 @@ export function useLocalSetting<T>(key: string, defaultValue: T): [T, (v: T | ((
   const read = useCallback((): T => {
     if (typeof window === 'undefined') return defaultValue;
     try {
-      const raw = window.localStorage.getItem(storageKey);
+      const raw = window.localStorage.getItem(userKey(storageKey));
       if (raw == null) return defaultValue;
       return JSON.parse(raw) as T;
     } catch {
@@ -22,7 +23,7 @@ export function useLocalSetting<T>(key: string, defaultValue: T): [T, (v: T | ((
 
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
-      if (e.key === storageKey) setValue(read());
+      if (e.key === userKey(storageKey)) setValue(read());
     };
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
@@ -33,7 +34,7 @@ export function useLocalSetting<T>(key: string, defaultValue: T): [T, (v: T | ((
       setValue((prev) => {
         const resolved = typeof next === 'function' ? (next as (p: T) => T)(prev) : next;
         try {
-          window.localStorage.setItem(storageKey, JSON.stringify(resolved));
+          window.localStorage.setItem(userKey(storageKey), JSON.stringify(resolved));
         } catch {
           // ignore
         }

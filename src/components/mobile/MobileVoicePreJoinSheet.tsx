@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, useMotionValue, PanInfo, AnimatePresence } from 'framer-motion';
-import { ChevronDown, ChevronRight, Smartphone, UserPlus } from 'lucide-react';
+import { ChevronDown, ChevronRight, Smartphone, UserPlus } from '@/components/icons/discord/lucide';
 import { useVoice, useVoiceParticipants } from '@/contexts/VoiceContext';
 import { useMultipleChannelPermissions } from '@/hooks/useUserChannelPermissions';
 import { MobileVoicePreJoin } from './MobileVoicePreJoin';
@@ -124,7 +124,7 @@ export function MobileVoicePreJoinSheet({
                     aria-label="Paramètres du salon"
                     className="flex items-center gap-1 px-4 h-10 rounded-full bg-[hsl(var(--surface-2))] active:bg-[hsl(var(--surface-3))] transition-colors max-w-full"
                   >
-                    <span className="font-bold text-foreground truncate">{channel.name}</span>
+                    <span translate="no" className="font-bold text-foreground truncate">{channel.name}</span>
                     <ChevronRight className="w-4 h-4 text-foreground shrink-0" />
                   </button>
                 </div>

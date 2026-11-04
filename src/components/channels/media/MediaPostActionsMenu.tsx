@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { MoreHorizontal, CheckCheck, Pencil, ClipboardCopy, Link as LinkIcon, Reply, Trash2, BarChart3 } from 'lucide-react';
+import { ClipboardCopy, BarChart3 } from 'lucide-react';
+import { MoreHorizontal, CheckCheck, Pencil, Link as LinkIcon, Reply, Trash2 } from '@/components/icons/discord/lucide';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -16,14 +17,16 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import type { MediaPost } from '@/hooks/useMediaPosts';
 
+import { ChannelSheetIcon } from '@/components/icons/ChannelSheetIcon';
+import { userKey } from '@/lib/userScope';
 const READ_KEY = 'media-read-posts';
 function readSet(): Set<string> {
-  try { return new Set(JSON.parse(localStorage.getItem(READ_KEY) || '[]')); } catch { return new Set(); }
+  try { return new Set(JSON.parse(localStorage.getItem(userKey(READ_KEY)) || '[]')); } catch { return new Set(); }
 }
 export function markPostRead(postId: string) {
   const s = readSet();
   s.add(postId);
-  localStorage.setItem(READ_KEY, JSON.stringify([...s]));
+  localStorage.setItem(userKey(READ_KEY), JSON.stringify([...s]));
   window.dispatchEvent(new CustomEvent('media-post-read', { detail: postId }));
 }
 export function isPostRead(postId: string): boolean {
@@ -116,7 +119,7 @@ export function MediaPostActionsMenu({
           </DropdownMenuItem>
         )}
         <DropdownMenuItem onClick={handleCopyId}>
-          <ClipboardCopy className="w-4 h-4 mr-2" /> Copier l'identifiant
+          <ChannelSheetIcon name="id" className="w-4 h-4 mr-2" /> Copier l'identifiant
         </DropdownMenuItem>
         <DropdownMenuItem onClick={handleCopyLink}>
           <LinkIcon className="w-4 h-4 mr-2" /> Copier le lien

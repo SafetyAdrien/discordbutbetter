@@ -23,14 +23,8 @@ import {
 import { NotificationSection } from '@/components/mobile/notifications/NotificationSection';
 import { UnifiedNotificationRow } from '@/components/mobile/notifications/UnifiedNotificationRow';
 import { cn } from '@/lib/utils';
-import {
-
-  SlidersHorizontal,
-  CheckCheck,
-  Loader2,
-  ChevronLeft,
-  X,
-} from 'lucide-react';
+import { Loader2 } from 'lucide-react';
+import { SlidersHorizontal, CheckCheck, ChevronLeft, X } from '@/components/icons/discord/lucide';
 import { haptics } from '@/lib/haptics';
 
 const DAY = 24 * 60 * 60 * 1000;

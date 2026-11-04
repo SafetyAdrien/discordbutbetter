@@ -220,21 +220,24 @@ export function useChannels(
     queryFn: () => timeAsync(`query:channels(${serverId ?? 'none'})`, async (): Promise<{ categories: CategoryWithChannels[]; orphanChannels: OrphanChannel[] }> => {
       if (!serverId) return { categories: [], orphanChannels: [] };
 
-      const { data: categories, error: catError } = await supabase
-        .from('categories')
-        .select('id, name, icon, position')
-        .eq('server_id', serverId)
-        .order('position', { ascending: true });
+      const [categoriesResult, channelsResult] = await Promise.all([
+        supabase
+          .from('categories')
+          .select('id, name, icon, position')
+          .eq('server_id', serverId)
+          .order('position', { ascending: true }),
+        supabase
+          .from('channels')
+          .select('id, name, type, description, position, category_id, server_id, icon_url')
+          .eq('server_id', serverId)
+          .order('position', { ascending: true }),
+      ]);
 
-      if (catError) throw catError;
+      if (categoriesResult.error) throw categoriesResult.error;
+      if (channelsResult.error) throw channelsResult.error;
 
-      const { data: channels, error: chanError } = await supabase
-        .from('channels')
-        .select('id, name, type, description, position, category_id, server_id, icon_url')
-        .eq('server_id', serverId)
-        .order('position', { ascending: true });
-
-      if (chanError) throw chanError;
+      const categories = categoriesResult.data;
+      const channels = channelsResult.data;
 
       const categorizedChannels = categories.map((cat) => ({
         ...cat,

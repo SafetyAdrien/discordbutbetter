@@ -1,4 +1,4 @@
-import { Megaphone, X } from "lucide-react";
+import { Megaphone, X } from "@/components/icons/discord/lucide";
 import { usePublishMessage, useDismissPublishPrompt, useChannelFollowers } from "@/hooks/useChannelFollowers";
 
 interface PublishPromptProps {
@@ -28,15 +28,7 @@ export function PublishPrompt({
   if (followers.length === 0) return null;
 
   const handlePublish = () => {
-    publishMessage.mutate({
-      messageId,
-      channelId,
-      content,
-      sourceServerId,
-      sourceServerName,
-      sourceServerIcon,
-      sourceChannelName,
-    });
+    publishMessage.mutate({ messageId, channelId });
   };
 
   const handleDismiss = () => {

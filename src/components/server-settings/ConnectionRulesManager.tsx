@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { Plus, Trash2, Pencil, BadgeCheck, Twitter, Instagram, Youtube, Cloud } from 'lucide-react';
+import { BadgeCheck, Cloud } from 'lucide-react';
+import { Trash2, Pencil, Twitter, Instagram, Youtube } from '@/components/icons/discord/lucide';
+import { Plus } from '@/components/icons/serverSettingsIcons';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -26,12 +28,17 @@ const PROVIDERS_BY_ID = Object.fromEntries(PROVIDERS.map((p) => [p.id, p]));
 
 interface Props {
   serverId: string;
+  /** Onglet "Liens" d'un role : n'affiche et ne cree que les regles de ce role. */
+  roleId?: string;
+  /** Integre dans une autre page : pas d'en-tete de page. */
+  embedded?: boolean;
 }
 
 type Draft = Partial<ServerConnectionRule> & { provider: string; role_id: string; name: string };
 
-export function ConnectionRulesManager({ serverId }: Props) {
-  const { data: rules = [] } = useServerConnectionRules(serverId);
+export function ConnectionRulesManager({ serverId, roleId, embedded = false }: Props) {
+  const { data: allRules = [] } = useServerConnectionRules(serverId);
+  const rules = roleId ? allRules.filter((r) => r.role_id === roleId) : allRules;
   const { data: roles = [] } = useServerRoles(serverId);
   const upsert = useUpsertConnectionRule(serverId);
   const del = useDeleteConnectionRule(serverId);
@@ -39,7 +46,7 @@ export function ConnectionRulesManager({ serverId }: Props) {
   const [editing, setEditing] = useState<Draft | null>(null);
 
   const startNew = () =>
-    setEditing({ provider: 'twitter', role_id: '', name: '', require_verified: false });
+    setEditing({ provider: 'twitter', role_id: roleId ?? '', name: '', require_verified: false });
 
   const startEdit = (r: ServerConnectionRule) => setEditing({ ...r });
 
@@ -59,14 +66,14 @@ export function ConnectionRulesManager({ serverId }: Props) {
   const assignableRoles = roles.filter((r) => !r.is_default);
 
   return (
-    <div className="p-6 space-y-4 max-w-3xl">
-      <header className="space-y-1">
-        <h2 className="text-xl font-bold">Critères Connections</h2>
-        <p className="text-sm text-muted-foreground">
+    <div className="space-y-4 pb-24">
+      {!embedded && <header>
+        <h2 className="text-xl font-semibold leading-6 text-white">Critères de connexion</h2>
+        <p className="mt-1 text-sm leading-[18px] text-foreground">
           Attribue automatiquement un rôle aux membres qui ont lié un compte (Twitter/X, Instagram, Bluesky, YouTube) respectant tes seuils.
           Les statistiques sont déclarées par les membres et ne sont pas vérifiées automatiquement.
         </p>
-      </header>
+      </header>}
 
       <Button onClick={startNew} size="sm" className="gap-2">
         <Plus className="w-4 h-4" />
@@ -94,7 +101,7 @@ export function ConnectionRulesManager({ serverId }: Props) {
                 <Icon className="w-5 h-5 text-muted-foreground" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="font-medium">{r.name}</div>
+                <div translate="no" className="font-medium">{r.name}</div>
                 <div className="text-xs text-muted-foreground">
                   {provider?.label ?? r.provider} → attribue <span className="font-medium" style={{ color: role?.color ?? undefined }}>{role?.name ?? 'rôle inconnu'}</span>
                 </div>

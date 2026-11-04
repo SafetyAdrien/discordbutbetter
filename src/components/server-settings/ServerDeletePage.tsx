@@ -14,7 +14,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { AlertTriangle, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
+import { AlertTriangle } from '@/components/icons/serverSettingsIcons';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
@@ -91,7 +92,8 @@ export function ServerDeletePage({ serverId, onClose }: ServerDeletePageProps) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-24">
+      <h2 className="text-xl font-semibold leading-6 text-white">Supprimer le serveur</h2>
       <div className="flex items-start gap-4 p-4 bg-destructive/10 border border-destructive/30 rounded-lg">
         <AlertTriangle className="w-6 h-6 text-destructive flex-shrink-0 mt-0.5" />
         <div>
@@ -158,11 +160,11 @@ export function ServerDeletePage({ serverId, onClose }: ServerDeletePageProps) {
               {isSecondaryOwner ? (
                 <>
                   Une notification sera envoyée au propriétaire principal pour approuver 
-                  la suppression du serveur <strong>{server.name}</strong>.
+                  la suppression du serveur <strong translate="no">{server.name}</strong>.
                 </>
               ) : (
                 <>
-                  Cette action est irréversible. Le serveur <strong>{server.name}</strong> et 
+                  Cette action est irréversible. Le serveur <strong translate="no">{server.name}</strong> et 
                   toutes ses données seront définitivement supprimés.
                 </>
               )}

@@ -1,4 +1,4 @@
-import { MessageSquare, Mic, MicOff } from 'lucide-react';
+import { MessageSquare, Mic, MicOff } from '@/components/icons/discord/lucide';
 import { cn } from '@/lib/utils';
 
 interface Props {

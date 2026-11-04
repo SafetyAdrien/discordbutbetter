@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils';
-import { Clock, Smile, Cat, UtensilsCrossed, Trophy, Plane, Lightbulb, Hash, Flag, Sparkles } from 'lucide-react';
+import { Cat, UtensilsCrossed, Plane, Lightbulb } from 'lucide-react';
+import { Clock, Smile, Trophy, Hash, Flag, Sparkles } from '@/components/icons/discord/lucide';
 import { Icon } from '@/components/ui/icon';
 
 export interface CategoryEntry {

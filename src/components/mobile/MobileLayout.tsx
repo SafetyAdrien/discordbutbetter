@@ -13,7 +13,7 @@ import { MobileVoicePreJoinSheet } from './MobileVoicePreJoinSheet';
 import { VoicePiP } from './VoicePiP';
 import { ExternalLinkWarningModal } from '@/components/modals/ExternalLinkWarningModal';
 import { GlobalSearchModal } from '@/components/modals/GlobalSearchModal';
-import { Search, CalendarDays } from 'lucide-react';
+import { Search, CalendarDays } from '@/components/icons/discord/lucide';
 import { Spinner } from '@/components/ui/spinner';
 import { VoiceControls } from '@/components/layout/VoiceControls';
 import { useVoice } from '@/contexts/VoiceContext';

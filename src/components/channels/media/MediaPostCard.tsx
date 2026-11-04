@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { Heart, MessageCircle, Bookmark, Volume2, VolumeX, ChevronLeft, ChevronRight, EyeOff, BarChart3 } from 'lucide-react';
+import { Bookmark, VolumeX, BarChart3 } from 'lucide-react';
+import { Heart, MessageCircle, Volume2, ChevronLeft, ChevronRight, EyeOff } from '@/components/icons/discord/lucide';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -14,6 +15,8 @@ import { MediaPostActionsMenu } from './MediaPostActionsMenu';
 import { EditMediaPostModal } from './EditMediaPostModal';
 import { useHasChannelPermission } from '@/hooks/useUserChannelPermissions';
 
+import { appLocale } from '@/i18n/locale';
+import { userKey } from '@/lib/userScope';
 interface Props {
   post: MediaPost;
   channelId: string;
@@ -33,7 +36,7 @@ function relTime(iso: string) {
   if (h < 24) return `il y a ${h} h`;
   const j = Math.floor(h / 24);
   if (j < 7) return `il y a ${j} j`;
-  return d.toLocaleDateString('fr-FR');
+  return d.toLocaleDateString(appLocale());
 }
 
 function useAuthor(userId?: string) {
@@ -50,13 +53,13 @@ function useAuthor(userId?: string) {
 
 const SAVED_KEY = 'media-saved-posts';
 function readSaved(): Set<string> {
-  try { return new Set(JSON.parse(localStorage.getItem(SAVED_KEY) || '[]')); } catch { return new Set(); }
+  try { return new Set(JSON.parse(localStorage.getItem(userKey(SAVED_KEY)) || '[]')); } catch { return new Set(); }
 }
 function toggleSaved(id: string): boolean {
   const s = readSaved();
   const now = !s.has(id);
   if (now) s.add(id); else s.delete(id);
-  localStorage.setItem(SAVED_KEY, JSON.stringify([...s]));
+  localStorage.setItem(userKey(SAVED_KEY), JSON.stringify([...s]));
   return now;
 }
 
@@ -306,8 +309,8 @@ export function MediaPostCard({ post, channelId, serverId = null, onOpenDetail, 
         <div className="px-4 pb-2 space-y-1">
           {previewComments.map((c) => (
             <div key={c.id} className="text-sm">
-              <span className="font-semibold mr-2">{c.author?.display_name}</span>
-              <span className="text-muted-foreground">{c.content}</span>
+              <span translate="no" className="font-semibold mr-2">{c.author?.display_name}</span>
+              <span translate="no" className="text-muted-foreground">{c.content}</span>
             </div>
           ))}
           {comments.length > previewComments.length && (

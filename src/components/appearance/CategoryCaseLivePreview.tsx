@@ -1,5 +1,6 @@
 import { useId } from 'react';
-import { ChevronDown, Hash, Volume2, User, Palette, Users, Shield, ListTree, IdCard } from 'lucide-react';
+import { Palette, ListTree } from 'lucide-react';
+import { ChevronDown, Hash, Volume2, User, Users, Shield, IdCard } from '@/components/icons/discord/lucide';
 import { cn } from '@/lib/utils';
 import { useCategoryCasePreferences } from '@/hooks/useCategoryCasePreferences';
 import { caseClass } from '@/lib/ui/categoryCase';
@@ -62,7 +63,7 @@ export function CategoryCaseLivePreview() {
             <div key={cat.name} className="space-y-0.5">
               <div className="flex items-center gap-1 px-1 text-muted-foreground">
                 <ChevronDown className="h-3 w-3 shrink-0" />
-                <span className={cn('text-xs font-semibold tracking-wide', channelCaseCls)}>
+                <span translate="no" className={cn('text-xs font-semibold tracking-wide', channelCaseCls)}>
                   {cat.name}
                 </span>
               </div>

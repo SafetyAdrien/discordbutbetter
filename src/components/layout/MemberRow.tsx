@@ -1,4 +1,6 @@
-import { memo } from "react";
+import { memo, useState } from "react";
+import { MemberMenuItems } from "./MemberMenuItems";
+import { FriendNicknameDialog, RemoveFriendDialog } from "@/components/dm/RelationDialogs";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -10,29 +12,20 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { ServerTagBadge } from '@/components/server-tags/ServerTagBadge';
+import { MemberStatusText } from "@/components/profile/StatusEmoji";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { UserAvatarImage } from "@/components/ui/user-avatar-image";
 import { StatusIndicator } from "@/components/ui/StatusIndicator";
 import { RoleCheckboxItem } from "@/components/profile/RoleCheckboxItem";
 import { cn } from "@/lib/utils";
+import { RoleIcon } from "@/components/chat/RoleIcon";
 import { StreamlineCrown } from "@/components/icons/StreamlineCrown";
-import {
-  Shield,
-  UserIcon,
-  MessageCircle,
-  UserPlus,
-  Hash,
-  Pencil,
-  VolumeX,
-  LogOut,
-  Ban,
-  Gamepad2,
-  Headphones,
-  Eye,
-  Trophy,
-} from "lucide-react";
+import { VolumeX, Ban } from "lucide-react";
+import { Shield, UserIcon, MessageCircle, UserPlus, Pencil, LogOut, Gamepad2, Headphones, Eye, Trophy, Volume2 } from "@/components/icons/discord/lucide";
 import type { ElementType } from "react";
 
+import { ChannelSheetIcon } from "@/components/icons/ChannelSheetIcon";
 export interface MemberWithRoles {
   id: string;
   username: string;
@@ -63,6 +56,8 @@ interface MemberRowProps {
   serverId?: string;
   currentUserId?: string;
   ownerId: string;
+  /** Connecte a un salon vocal de ce serveur. */
+  inVoice?: boolean;
   canManageRoles: boolean;
   onOpenProfile: (member: MemberWithRoles, memberId?: string) => void;
   onSendMessage: (member: MemberWithRoles) => void;
@@ -71,6 +66,10 @@ interface MemberRowProps {
   onEditServerProfile: () => void;
   onSetSecondOwner: (target: { id: string; name: string }) => void;
   onRemoveSecondOwner: (target: { id: string; name: string }) => void;
+  canKick?: boolean;
+  canBan?: boolean;
+  onKick?: (target: { id: string; name: string }) => void;
+  onBan?: (target: { id: string; name: string }) => void;
 }
 
 const activityIcons: Record<string, ElementType> = {
@@ -100,6 +99,8 @@ const activityColors: Record<string, string> = {
  * longer re-renders every row. All callbacks are stable references owned by the
  * parent, so a row only re-renders when its own data actually changes.
  */
+const noop = () => {};
+
 function MemberRowComponent({
   member,
   isOwner,
@@ -109,6 +110,7 @@ function MemberRowComponent({
   serverId,
   currentUserId,
   ownerId,
+  inVoice,
   canManageRoles,
   onOpenProfile,
   onSendMessage,
@@ -117,19 +119,36 @@ function MemberRowComponent({
   onEditServerProfile,
   onSetSecondOwner,
   onRemoveSecondOwner,
+  canKick = false,
+  canBan = false,
+  onKick = noop,
+  onBan = noop,
 }: MemberRowProps) {
+  const [dialog, setDialog] = useState<{ kind: 'nick' } | { kind: 'remove'; friendshipId: string | null } | null>(null);
   const manageableRoles = roles
     .filter((role) => !role.is_default)
     .sort((a, b) => (b.position ?? 0) - (a.position ?? 0));
 
   return (
+    <>
     <ContextMenu>
       <ContextMenuTrigger asChild>
         <button
           type="button"
           onClick={() => onOpenProfile(member, memberId)}
-          className="flex items-center gap-3 w-full px-2.5 py-1 rounded-2xl hover:bg-surface-hover/40 group"
-          style={{ transition: 'all 300ms cubic-bezier(0.2, 0, 0, 1)' }}
+          /* Cotes Discord :
+     hauteur  42px (nom + statut), rayon 8px
+     padding interne 8px
+     Le rayon etait en `2xl` (16px), ce qui transformait chaque membre en
+     pilule : Discord utilise des lignes pleine largeur a angle quasi droit.
+     L'inset de 8px vient du `p-2` du conteneur de MemberList. */
+          className={cn(
+            "flex items-center gap-3 w-full h-[42px] px-2 rounded-lg hover:bg-surface-hover group",
+            // Capture : les membres hors ligne sont attenues en bloc (avatar,
+            // nom, badges), sans passer l'avatar en niveaux de gris.
+            member.status === "offline" && "opacity-30 hover:opacity-100",
+          )}
+          style={{ transition: 'background-color 150ms ease' }}
         >
           <div className="relative flex-shrink-0">
             <UserAvatarImage
@@ -137,31 +156,44 @@ function MemberRowComponent({
               alt={member.displayName}
               fallback={member.displayName.charAt(0).toUpperCase()}
               ownerId={member.id}
-              className={cn("w-8 h-8", member.status === "offline" && "opacity-50 grayscale")}
+              className="w-8 h-8"
             />
             <StatusIndicator
               status={member.status}
-              className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 border-2 border-card"
+              /* L'anneau de l'indicateur de statut epouse le fond de la colonne
+         membres (meme gris que le chat). */
+              className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 border-2 border-background"
             />
           </div>
 
           <div className="flex-1 min-w-0 text-left overflow-hidden">
             <div className="flex items-center gap-1 min-w-0 overflow-hidden">
-              <span
+              <span translate="no"
                 className={cn(
-                  "text-sm font-medium truncate min-w-0 block",
-                  member.status === "offline" && "opacity-60",
+                  "text-base font-medium leading-5 truncate min-w-0 block",
                 )}
                 style={{ color: member.roles?.[0]?.color || undefined }}
               >
                 {member.displayName}
               </span>
-              <div className="flex items-center gap-0.5 flex-shrink-0">
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <ServerTagBadge userId={member.id} variant="compact" />
+                {(() => {
+                  const iconRole = member.roles?.find((r) => r.icon_url);
+                  return iconRole ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="inline-flex"><RoleIcon role={iconRole} size={16} /></span>
+                      </TooltipTrigger>
+                      <TooltipContent><p>{iconRole.name}</p></TooltipContent>
+                    </Tooltip>
+                  ) : null;
+                })()}
                 {(isOwner || isSecondaryOwner) && (
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <span className="flex-shrink-0 cursor-pointer">
-                        <StreamlineCrown size={14} className="text-yellow-500" />
+                        <StreamlineCrown size={16} className="text-yellow-500" />
                       </span>
                     </TooltipTrigger>
                     <TooltipContent>
@@ -188,103 +220,43 @@ function MemberRowComponent({
                 </span>
                 <span className="text-muted-foreground truncate">{member.activity_text}</span>
               </div>
-            ) : member.customStatus && member.status !== 'offline' ? (
-              <p className="text-xs text-muted-foreground truncate">{member.customStatus}</p>
+            ) : (member.customStatus && member.status !== 'offline') || inVoice ? (
+              <p className="flex items-center gap-1 text-xs leading-4 text-muted-foreground truncate">
+                {inVoice && <Volume2 className="w-3.5 h-3.5 shrink-0 text-[hsl(var(--online))]" aria-label="Dans un salon vocal" />}
+                {inVoice && member.customStatus && <span aria-hidden>•</span>}
+                {member.customStatus && member.status !== 'offline' && <span className="truncate"><MemberStatusText value={member.customStatus} /></span>}
+              </p>
             ) : null}
           </div>
         </button>
       </ContextMenuTrigger>
-      <ContextMenuContent className="w-48">
-        <ContextMenuItem onClick={() => onOpenProfile(member, memberId)}>
-          <UserIcon className="w-4 h-4 mr-2" />
-          Voir le profil
-        </ContextMenuItem>
-        <ContextMenuItem onClick={() => onSendMessage(member)}>
-          <MessageCircle className="w-4 h-4 mr-2" />
-          Envoyer un message
-        </ContextMenuItem>
-        <ContextMenuItem onClick={() => onAddFriend(member)}>
-          <UserPlus className="w-4 h-4 mr-2" />
-          Ajouter en ami
-        </ContextMenuItem>
-        <ContextMenuSeparator />
-        {currentUserId && member.id === currentUserId && (
-          <ContextMenuItem onClick={onEditServerProfile}>
-            <Pencil className="w-4 h-4 mr-2" />
-            Modifier le profil serveur
-          </ContextMenuItem>
-        )}
-        <ContextMenuItem onClick={() => onCopyId(member.id)}>
-          <Hash className="w-4 h-4 mr-2" />
-          Copier l'ID
-        </ContextMenuItem>
-        {canManageRoles && memberId && (
-          <>
-            <ContextMenuSeparator />
-            <ContextMenuSub>
-              <ContextMenuSubTrigger>
-                <Shield className="w-4 h-4 mr-2" />
-                Gérer les rôles
-              </ContextMenuSubTrigger>
-              <ContextMenuSubContent className="w-56 p-0">
-                <div className="p-2 border-b border-border">
-                  <h4 className="font-semibold text-xs text-muted-foreground uppercase tracking-wide">
-                    Rôles
-                  </h4>
-                </div>
-                <ScrollArea className="max-h-[300px]">
-                  <div className="p-2 space-y-1">
-                    {manageableRoles.map((role) => (
-                      <RoleCheckboxItem
-                        key={role.id}
-                        role={role as Parameters<typeof RoleCheckboxItem>[0]["role"]}
-                        serverId={serverId!}
-                        memberId={memberId}
-                        userId={member.id}
-                      />
-                    ))}
-                  </div>
-                </ScrollArea>
-              </ContextMenuSubContent>
-            </ContextMenuSub>
-          </>
-        )}
-        {currentUserId === ownerId && !isOwner && (
-          <>
-            <ContextMenuSeparator />
-            {!isSecondaryOwner ? (
-              <ContextMenuItem
-                onClick={() => onSetSecondOwner({ id: member.id, name: member.displayName })}
-              >
-                <StreamlineCrown size={14} className="mr-2 text-yellow-500" />
-                Ajouter second propriétaire
-              </ContextMenuItem>
-            ) : (
-              <ContextMenuItem
-                className="text-destructive focus:text-destructive"
-                onClick={() => onRemoveSecondOwner({ id: member.id, name: member.displayName })}
-              >
-                <StreamlineCrown size={14} className="mr-2" />
-                Retirer second propriétaire
-              </ContextMenuItem>
-            )}
-          </>
-        )}
-        <ContextMenuSeparator />
-        <ContextMenuItem>
-          <VolumeX className="w-4 h-4 mr-2" />
-          Rendre muet
-        </ContextMenuItem>
-        <ContextMenuItem className="text-destructive focus:text-destructive">
-          <LogOut className="w-4 h-4 mr-2" />
-          Expulser
-        </ContextMenuItem>
-        <ContextMenuItem className="text-destructive focus:text-destructive">
-          <Ban className="w-4 h-4 mr-2" />
-          Bannir
-        </ContextMenuItem>
+      <ContextMenuContent className="w-max min-w-[221px] max-h-[calc(100vh-16px)] overflow-y-auto scrollbar-thin">
+        <MemberMenuItems
+          member={member}
+          memberId={memberId}
+          roles={roles}
+          serverId={serverId}
+          currentUserId={currentUserId}
+          ownerId={ownerId}
+          isOwner={isOwner}
+          isSecondaryOwner={isSecondaryOwner}
+          canManageRoles={canManageRoles}
+          canKick={canKick}
+          canBan={canBan}
+          onOpenProfile={onOpenProfile}
+          onEditServerProfile={onEditServerProfile}
+          onSetSecondOwner={onSetSecondOwner}
+          onRemoveSecondOwner={onRemoveSecondOwner}
+          onKick={onKick}
+          onBan={onBan}
+          onNickname={() => setDialog({ kind: 'nick' })}
+          onRemoveFriend={(friendshipId) => setDialog({ kind: 'remove', friendshipId })}
+        />
       </ContextMenuContent>
     </ContextMenu>
+      {dialog?.kind === 'nick' && <FriendNicknameDialog open onOpenChange={(o) => !o && setDialog(null)} userId={member.id} displayName={member.displayName} />}
+      {dialog?.kind === 'remove' && <RemoveFriendDialog open onOpenChange={(o) => !o && setDialog(null)} friendshipId={dialog.friendshipId} username={member.username} />}
+    </>
   );
 }
 
@@ -306,6 +278,7 @@ export const MemberRow = memo(MemberRowComponent, (prev, next) => {
     prev.canManageRoles === next.canManageRoles &&
     prev.currentUserId === next.currentUserId &&
     prev.ownerId === next.ownerId &&
+    prev.inVoice === next.inVoice &&
     prev.serverId === next.serverId &&
     prev.roles === next.roles &&
     prev.onOpenProfile === next.onOpenProfile &&
@@ -314,6 +287,10 @@ export const MemberRow = memo(MemberRowComponent, (prev, next) => {
     prev.onCopyId === next.onCopyId &&
     prev.onEditServerProfile === next.onEditServerProfile &&
     prev.onSetSecondOwner === next.onSetSecondOwner &&
-    prev.onRemoveSecondOwner === next.onRemoveSecondOwner
+    prev.onRemoveSecondOwner === next.onRemoveSecondOwner &&
+    prev.canKick === next.canKick &&
+    prev.canBan === next.canBan &&
+    prev.onKick === next.onKick &&
+    prev.onBan === next.onBan
   );
 });

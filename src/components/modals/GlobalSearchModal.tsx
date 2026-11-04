@@ -12,19 +12,8 @@ function GuardedAvatarImg({ src, ownerId }: { src?: string; ownerId?: string | n
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
-import { 
-  Search, 
-  User, 
-  AtSign, 
-  FileText, 
-  Hash, 
-  Calendar as CalendarIcon, 
-  Pin, 
-  UserCircle,
-  MessageSquare,
-  X,
-  Loader2
-} from 'lucide-react';
+import { UserCircle, Loader2 } from 'lucide-react';
+import { Search, User, AtSign, FileText, Hash, Calendar as CalendarIcon, Pin, MessageSquare, X } from '@/components/icons/discord/lucide';
 import { cn } from '@/lib/utils';
 import { useGlobalSearch, SearchFilters as SearchFiltersType } from '@/hooks/useGlobalSearch';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
@@ -90,7 +79,7 @@ function AutocompleteSuggestions({
                 {member.displayName.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <span className="text-sm font-medium">{member.displayName}</span>
+            <span translate="no" className="text-sm font-medium">{member.displayName}</span>
             <span className="text-xs text-muted-foreground">@{member.username}</span>
           </button>
         ))}
@@ -114,7 +103,7 @@ function AutocompleteSuggestions({
             className="flex items-center gap-2 w-full px-3 py-2 hover:bg-muted transition-colors text-left"
           >
             <Hash className="w-4 h-4 text-muted-foreground" />
-            <span className="text-sm">{channel.name}</span>
+            <span translate="no" className="text-sm">{channel.name}</span>
           </button>
         ))}
       </div>
@@ -378,7 +367,7 @@ export function GlobalSearchModal({
     delete newFilters[key];
     setFilters(newFilters);
     
-    const prefixMap: Record<keyof SearchFiltersType, string> = {
+    const prefixMap: Partial<Record<keyof SearchFiltersType, string>> = {
       from: 'de:',
       mentions: 'mentions:',
       contains: 'contient:',

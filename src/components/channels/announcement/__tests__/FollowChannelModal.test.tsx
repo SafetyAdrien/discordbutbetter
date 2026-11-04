@@ -27,10 +27,6 @@ vi.mock("@/hooks/useChannelFollowers", () => ({
     mutateAsync: followMutate,
     isPending: false,
   }),
-  useSendFollowSystemMessage: () => ({
-    mutateAsync: sendSystemMutate,
-    isPending: false,
-  }),
 }));
 
 import { FollowChannelModal } from "@/components/channels/announcement/FollowChannelModal";
@@ -90,11 +86,6 @@ describe("FollowChannelModal — flow 'Suivre un salon sur un autre serveur'", (
       sourceChannelId: "source-channel",
       targetChannelId: "channel-1",
     });
-    expect(sendSystemMutate).toHaveBeenCalledWith({
-      targetChannelId: "channel-1",
-      sourceServerName: "Communauté BCord",
-      sourceChannelName: "annonces",
-    });
     expect(onSuccess).toHaveBeenCalledTimes(1);
   }
 
@@ -104,17 +95,17 @@ describe("FollowChannelModal — flow 'Suivre un salon sur un autre serveur'", (
     window.dispatchEvent(new Event("resize"));
   }
 
-  it("[Desktop 1280×720] clic Suivre → followChannel + sendSystemMessage + onSuccess", async () => {
+  it("[Desktop 1280×720] clic Suivre → followChannel + onSuccess", async () => {
     setViewport(1280, 720);
     await runFollowFlow();
   });
 
-  it("[Mobile 390×844] clic Suivre → followChannel + sendSystemMessage + onSuccess", async () => {
+  it("[Mobile 390×844] clic Suivre → followChannel + onSuccess", async () => {
     setViewport(390, 844);
     await runFollowFlow();
   });
 
-  it("(legacy) appelle followChannel + sendSystemMessage + onSuccess après sélection complète", async () => {
+  it("(legacy) appelle followChannel + onSuccess après sélection complète", async () => {
     renderModal();
     const user = userEvent.setup();
 
@@ -137,11 +128,6 @@ describe("FollowChannelModal — flow 'Suivre un salon sur un autre serveur'", (
     expect(followMutate).toHaveBeenCalledWith({
       sourceChannelId: "source-channel",
       targetChannelId: "channel-1",
-    });
-    expect(sendSystemMutate).toHaveBeenCalledWith({
-      targetChannelId: "channel-1",
-      sourceServerName: "Communauté BCord",
-      sourceChannelName: "annonces",
     });
     expect(onSuccess).toHaveBeenCalledTimes(1);
   });

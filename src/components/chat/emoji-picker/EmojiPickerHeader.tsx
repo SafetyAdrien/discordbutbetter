@@ -1,4 +1,4 @@
-import { Search, Smile, Sticker, Clapperboard, X } from 'lucide-react';
+import { Search, Smile, Sticker, Clapperboard, X } from '@/components/icons/discord/lucide';
 import { cn } from '@/lib/utils';
 import { Icon } from '@/components/ui/icon';
 

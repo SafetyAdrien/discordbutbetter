@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://*.supabase.co https://i.ytimg.com https://*.ytimg.com https://*.jtvnw.net https://*.giphy.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.pwnedpasswords.com; media-src 'self' blob: https://*.supabase.co https://*.ttvnw.net; frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com https://player.twitch.tv https://clips.twitch.tv; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none';" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://*.supabase.co https://i.ytimg.com https://*.ytimg.com https://*.jtvnw.net https://*.giphy.com https://cdn.discordapp.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.pwnedpasswords.com https://discord.com; media-src 'self' blob: https://*.supabase.co https://*.ttvnw.net; frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com https://player.twitch.tv https://clips.twitch.tv; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none';" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <title>BCord - Messagerie instantannée</title>
     <meta name="description" content="BCord est une plateforme de messagerie et VoIP optimisée pour les communautés de gamers. Créez des serveurs.">
@@ -17,7 +17,9 @@
     <!-- Preconnect Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans:wght@400;500;600;700&display=swap">
+    <!-- Polices distantes (secours uniquement : gg sans est locale) : chargees SANS bloquer le premier affichage. -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans:wght@400;500;600;700&display=swap"></noscript>
 
     <!-- Preload critical local fonts (gg sans) -->
     <link rel="preload" href="/fonts/ggsans-Normal.ttf" as="font" type="font/ttf" crossorigin>
@@ -60,6 +62,14 @@
       }
     })();
   </script>
+  <style>
+    /* Ecran de demarrage : fond sombre immediat (aucun flash blanc) et pastille discrete avant que l'application monte. */
+    html.dark body { background: #2c2d32; }
+    #boot-splash { position: fixed; inset: 0; background: #2c2d32; display: flex; align-items: center; justify-content: center; }
+    #boot-splash::after { content: ""; width: 26px; height: 26px; border-radius: 50%; border: 3px solid rgba(255,255,255,.12); border-top-color: #5865f2; animation: boot-spin .8s linear infinite; }
+    html.light #boot-splash { background: #f2f3f5; }
+    @keyframes boot-spin { to { transform: rotate(360deg); } }
+  </style>
   <meta property="og:title" content="BCord - Messagerie instantannée">
   <meta name="twitter:title" content="BCord - Messagerie instantannée">
   <meta property="og:description" content="BCord est une plateforme de messagerie et VoIP optimisée pour les communautés de gamers. Créez des serveurs.">
@@ -67,7 +77,7 @@
 </head>
 
   <body>
-    <div id="root"></div>
+    <div id="root"><div id="boot-splash" aria-hidden="true"></div></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

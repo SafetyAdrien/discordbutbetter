@@ -1,4 +1,4 @@
-import { Hash, Volume2, ChevronDown, Search } from 'lucide-react';
+import { Hash, Volume2, ChevronDown, Search } from '@/components/icons/discord/lucide';
 
 /**
  * Miniature representation of the global app layout:
@@ -53,7 +53,7 @@ export function SceneGlobal() {
             <div key={m.name} className="flex gap-1">
               <div className="w-3 h-3 rounded-full shrink-0" style={{ background: m.color }} />
               <div className="min-w-0">
-                <div className="font-semibold leading-tight" style={{ color: m.color }}>{m.name}</div>
+                <div translate="no" className="font-semibold leading-tight" style={{ color: m.color }}>{m.name}</div>
                 <div className="text-[hsl(var(--foreground))/0.85] truncate">{m.text}</div>
               </div>
             </div>

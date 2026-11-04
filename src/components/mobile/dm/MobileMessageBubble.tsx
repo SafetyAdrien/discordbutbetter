@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Reply, Pencil } from 'lucide-react';
+import { Reply, Pencil } from '@/components/icons/discord/lucide';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/lib/haptics';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
@@ -218,7 +218,7 @@ export function MobileMessageBubble({
         >
           {/* Author name (groups only, first of burst) */}
           {!message.isOwn && isGroup && showAuthorName && (
-            <span className="text-[11px] text-muted-foreground font-medium mb-0.5 px-2">
+            <span translate="no" className="text-[11px] text-muted-foreground font-medium mb-0.5 px-2">
               {message.author?.displayName}
             </span>
           )}

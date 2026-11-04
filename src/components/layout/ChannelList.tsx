@@ -1,34 +1,14 @@
+import { ThreadContextMenuBody } from '@/components/threads/ThreadContextMenuBody';
+import { DeleteThreadDialog } from '@/components/threads/DeleteThreadDialog';
+import { ThreadSettingsPage } from '@/components/threads/ThreadSettingsPage';
 import { cn } from "@/lib/utils";
 import { useCategoryCasePreferences } from "@/hooks/useCategoryCasePreferences";
 import { caseClass } from "@/lib/ui/categoryCase";
 import { resolveCategoryDropTarget, pickCategoryDropTarget } from "@/lib/dnd/categoryDropTarget";
 import { uuidToSnowflake } from "@/lib/snowflake";
 import { useScrollAwareContextMenuGuard } from "@/hooks/useScrollAwareContextMenuGuard";
-import {
-  ChevronDown,
-  Settings,
-  Plus,
-  Pencil,
-  Calendar,
-  Users,
-  FolderPlus,
-  UserPlus,
-  CheckCircle,
-  Link,
-  Trash2,
-  MicOff,
-  HeadphoneOff,
-  AlertTriangle,
-  LogOut,
-  Copy,
-  Headphones,
-  MessageSquare,
-  Video as VideoIcon,
-  Lock,
-  Unlock,
-  XCircle,
-  CircleDot } from
-"lucide-react";
+import { FolderPlus, AlertTriangle, Unlock, CircleDot, PlusCircle, CalendarPlus, Blocks, ShieldCheck } from "lucide-react";
+import { ChevronDown, Settings, Plus, Pencil, Users, UserPlus, CheckCircle, Link, Trash2, MicOff, HeadphoneOff, LogOut, Copy, Headphones, MessageSquare, Video as VideoIcon, Lock, XCircle, Gem, TrendingUp, Eye, EyeOff, Bell, Check, Shield, Info, IdCard, ChevronRight } from "@/components/icons/discord/lucide";
 
 import { ChannelNotificationMenu } from "@/components/channels/ChannelNotificationMenu";
 import { StreamlineCrown } from "@/components/icons/StreamlineCrown";
@@ -39,11 +19,15 @@ import { StreamlineMedia } from "@/components/icons/StreamlineMedia";
 import { StreamlineCalendar } from "@/components/icons/StreamlineCalendar";
 import { StreamlineTasks } from "@/components/icons/StreamlineTasks";
 import { StreamlineVoice } from "@/components/icons/StreamlineVoice";
-import { StreamlineVoiceLocked } from "@/components/icons/StreamlineVoiceLocked";
+import { ChannelSheetIcon } from "@/components/icons/ChannelSheetIcon";
+import { requestOpenForumPost, closeForumPost, useOpenForumPost } from "@/lib/forum";
+import { ForumChannelHoverCard } from "./ForumChannelHoverCard";
+import { channelSheetIconName } from "@/lib/channelIcons";
+import { usePrivateChannelIds } from "@/hooks/usePrivateChannelIds";
 import { StreamlineStage } from "@/components/icons/StreamlineStage";
 import { StreamlineLink } from "@/components/icons/StreamlineLink";
 
-import { useState, useCallback, useMemo, useRef, useEffect, forwardRef, lazy, Suspense, memo } from "react";
+import { useState, useCallback, useMemo, useRef, useEffect, forwardRef, lazy, Suspense, memo, createContext, useContext } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { fetchChannelMessages } from "@/hooks/useMessages";
 import { fetchPinnedMessages } from "@/hooks/usePinnedMessages";
@@ -58,8 +42,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MentionBadge } from "@/components/ui/MentionBadge";
 import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Separator } from "@/components/ui/separator";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { LazyServerProfileEditModal as ServerProfileEditModal } from "@/components/lazy/LazyModals";
+import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   ContextMenu,
@@ -78,13 +63,24 @@ import {
   AlertDialogHeader,
   AlertDialogTitle } from
 "@/components/ui/alert-dialog";
-import { ChannelSettingsModal } from "@/components/channel-settings/ChannelSettingsModal";
+import { ServerHeaderBadge } from "./ServerHeaderBadge";
+import { DiscordRules } from "@/components/icons/DiscordRules";
+import { ServerNavItems } from "./ServerNavItems";
+import { ServerSetupProgress } from "./ServerSetupProgress";
+import { LazyEventsModal as EventsModal, LazyChannelSettingsModal as ChannelSettingsModal } from "@/components/lazy/LazyModals";
+import { useServerEvents } from "@/hooks/useServerEvents";
+import { useHiddenChannels, readShowAllChannels, writeShowAllChannels } from "@/hooks/useHiddenChannels";
+import type { ServerView } from "@/components/server-views/ServerViews";
+import { useServerSettings } from "@/hooks/useServerSettings";
 import { EditCategoryModal } from "@/components/category-settings/EditCategoryModal";
 import { CreateChannelModal } from "@/components/modals/CreateChannelModal";
 import { DuplicateChannelModal } from "@/components/modals/DuplicateChannelModal";
 import { CreateCategoryModal } from "@/components/modals/CreateCategoryModal";
 import { ExternalLinkWarningModal } from "@/components/modals/ExternalLinkWarningModal";
 import { CreateInviteModal } from "@/components/modals/CreateInviteModal";
+import { VoiceStatusModal } from "@/components/channels/voice/VoiceStatusModal";
+import { useVoiceChannelStatuses, useSetVoiceChannelStatus } from "@/hooks/useVoiceChannelStatus";
+import { OPEN_VOICE_INVITE_EVENT, OPEN_VOICE_STATUS_EVENT } from "@/lib/invites";
 import { VoiceControls } from "./VoiceControls";
 
 import { copyToClipboard } from "@/lib/clipboard";
@@ -94,8 +90,6 @@ import { VoiceParticipantContextMenu } from "@/components/channels/voice/VoicePa
 import { UserProfilePopup } from "@/components/profile/UserProfilePopup";
 import { User } from "@/types/app";
 import { useUpdateCategory } from "@/hooks/useCategories";
-import { useServerEmojis } from "@/hooks/useServerAssets";
-import { useMembers } from "@/hooks/useMembers";
 import {
   useChannels,
   useReorderCategories,
@@ -135,7 +129,6 @@ import {
   verticalListSortingStrategy,
   useSortable } from
 "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import React from "react";
 
 // Discord-style Drop Indicator - Blue horizontal line with 80ms fade
@@ -154,14 +147,8 @@ const DropIndicator = React.forwardRef<
         data-visible={isVisible ? "true" : "false"}
         className={cn(
           "dnd-drop-indicator-line absolute z-50 pointer-events-none",
-          isCategory ? "-left-1 -right-1 h-[3px] rounded-sm" : "-left-2 -right-2 h-[2px]",
-          "bg-[#5865f2]",
-          !isCategory && [
-            "before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:-translate-x-[3px]",
-            "before:w-[8px] before:h-[8px] before:rounded-full before:bg-[#5865f2]",
-            "after:absolute after:right-0 after:top-1/2 after:-translate-y-1/2 after:translate-x-[3px]",
-            "after:w-[8px] after:h-[8px] after:rounded-full after:bg-[#5865f2]",
-          ],
+          // Barre verte de 3px sur toute la largeur de la rangee (video de reference), sans pastilles.
+          "-left-1 -right-1 h-[3px] rounded-full bg-[hsl(var(--dnd-line))]",
           position === "before" ? "top-0 -translate-y-1/2" : "bottom-0 translate-y-1/2"
         )} />);
   });
@@ -216,6 +203,8 @@ interface Server {
   bannerUrl?: string;
   description?: string;
   createdAt?: string;
+  /** Mode Decouverte : tout le monde peut rejoindre. */
+  isPublic?: boolean;
 }
 interface ChannelListProps {
   server: Server;
@@ -226,6 +215,8 @@ interface ChannelListProps {
   activeThreadId?: string | null;
   onThreadSelect?: (threadId: string) => void;
   onOpenVoiceChat?: (channelId: string) => void;
+  activeServerView?: ServerView | null;
+  onOpenServerView?: (view: ServerView) => void;
 }
 interface ThreadWithUnread extends Thread {
   unreadCount?: number;
@@ -241,6 +232,7 @@ const channelIcons: Record<ChannelType, React.ElementType> = {
   stage: StreamlineStage,
   link: StreamlineLink
 };
+const EMPTY_ID_SET: ReadonlySet<string> = new Set();
 const channelTypeTooltips: Record<string, string> = {
   text: 'Salon textuel',
   voice: 'Salon vocal',
@@ -264,15 +256,6 @@ const statusLabels = {
   dnd: "Ne pas déranger",
   offline: "Hors ligne"
 };
-function formatServerDate(dateString?: string): string {
-  if (!dateString) return "Date inconnue";
-  const date = new Date(dateString);
-  return date.toLocaleDateString("fr-FR", {
-    day: "numeric",
-    month: "long",
-    year: "numeric"
-  });
-}
 
 // Sortable Category Component
 function SortableCategory({
@@ -287,7 +270,8 @@ function SortableCategory({
   dropPosition = "after",
   canManageChannels = false,
   serverId,
-  showInsideHighlight = false
+  showInsideHighlight = false,
+  isBeingDragged = false
 
 
 
@@ -300,7 +284,7 @@ function SortableCategory({
 
 
 
-}: {category: Category;children: React.ReactNode;isCollapsed: boolean;onToggle: () => void;onEdit: () => void;onCreateChannel: () => void;onDelete: () => void;showDropIndicator?: boolean;dropPosition?: "before" | "after";canManageChannels?: boolean;serverId: string;showInsideHighlight?: boolean;}) {
+}: {category: Category;children: React.ReactNode;isCollapsed: boolean;onToggle: () => void;onEdit: () => void;onCreateChannel: () => void;onDelete: () => void;showDropIndicator?: boolean;dropPosition?: "before" | "after";canManageChannels?: boolean;serverId: string;showInsideHighlight?: boolean;isBeingDragged?: boolean;}) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const { prefs: casePrefs } = useCategoryCasePreferences();
   const { attributes, listeners, setNodeRef, transform, isDragging } = useSortable({
@@ -313,7 +297,8 @@ function SortableCategory({
     disabled: !canManageChannels
   });
   const style = {
-    transform: CSS.Transform.toString(transform),
+    // Pas de deplacement : l'element glisse reste en place (emplacement grise), seule la barre verte bouge.
+    transform: undefined as string | undefined,
     transition: 'none'
   };
   return (
@@ -342,24 +327,28 @@ function SortableCategory({
             <div
               {...attributes}
               {...listeners}
-              className="flex items-center gap-1.5 px-3 pt-1.5 pb-0 w-full text-xs font-semibold text-muted-foreground hover:text-foreground group cursor-default">
+              /* Categorie de la capture : 16px au-dessus, libelle de 24px
+                 aligne sur les icones des salons (16px du bord), emoji, nom
+                 en casse normale 14px, petit chevron APRES le nom, et "+" a
+                 droite. */
+                className="flex items-center h-[22px] mt-[18px] pl-4 pr-4 w-full text-muted-foreground hover:text-[hsl(var(--interactive-text-hover))] group cursor-default">
 
               <button type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   onToggle();
                 }}
-                className="flex items-center gap-px flex-1">
+                className="flex items-center gap-1 flex-1 min-w-0">
 
-                <ChevronDown className={cn("w-3 h-3 transition-transform duration-200", isCollapsed && "-rotate-90")} />
-                {category.icon && <span className="text-sm leading-none">{category.icon}</span>}
-                <span className={cn("tracking-wide font-ginto text-[14px] font-medium my-0 py-0 px-[2px] mx-[2px] text-muted-foreground", caseClass('channelCategories', casePrefs))}>
+                {category.icon && <span className="text-base leading-none shrink-0">{category.icon}</span>}
+                <span translate="no" className={cn("font-ginto text-[14px] font-medium truncate", caseClass('channelCategories', casePrefs))}>
                   {category.name}
                 </span>
+                <ChevronDown className={cn("w-3 h-3 shrink-0 transition-transform duration-200", isCollapsed && "-rotate-90")} />
               </button>
               {canManageChannels &&
               <Plus
-                className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                className="w-[13px] h-[13px] shrink-0 cursor-pointer hover:text-foreground transition-colors"
                 onClick={(e) => {
                   e.stopPropagation();
                   onCreateChannel();
@@ -389,7 +378,7 @@ function SortableCategory({
               </>
             )}
             <ContextMenuItem onClick={() => copyToClipboard(uuidToSnowflake(category.id), "ID de catégorie copié")}>
-              <Copy className="w-4 h-4 mr-2" />
+              <ChannelSheetIcon name="id" className="w-4 h-4 mr-2" />
               Copier l'ID
             </ContextMenuItem>
             {canManageChannels && (
@@ -410,7 +399,7 @@ function SortableCategory({
 
       {/* Salons enfants en dehors de la zone sortable: la catégorie reste un en-tête fin (rect réduit),
           ce qui empêche la catégorie active d'absorber le pointeur pendant un drag. */}
-      {!isCollapsed && <div className="mb-1">{children}</div>}
+      {!isCollapsed && <div className={cn(isBeingDragged && 'opacity-40')}>{children}</div>}
 
 
       {/* Delete Category Confirmation Dialog */}
@@ -430,7 +419,7 @@ function SortableCategory({
               Supprimer la catégorie
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Tu es sûr(e) de vouloir supprimer <strong>{category.name}</strong> ? Cette action est irréversible.
+              Tu es sûr(e) de vouloir supprimer <strong translate="no">{category.name}</strong> ? Cette action est irréversible.
               {category.channels.length > 0 &&
               <>
                   <br />
@@ -467,6 +456,7 @@ interface ThreadContextMenuListProps {
   activeThreadId?: string | null;
   onThreadSelect?: (threadId: string) => void;
   channelId: string;
+  channelName?: string;
   serverId: string;
   canManageChannels: boolean;
 }
@@ -477,6 +467,7 @@ const ThreadContextMenuList: React.FC<ThreadContextMenuListProps> = ({
   activeThreadId,
   onThreadSelect,
   channelId,
+  channelName,
   serverId,
   canManageChannels,
 }) => {
@@ -489,11 +480,19 @@ const ThreadContextMenuList: React.FC<ThreadContextMenuListProps> = ({
   const unfollowThread = useUnfollowThread();
   const markAsRead = useMarkThreadAsRead();
 
-  const filteredThreads = threads.filter((thread) => showArchivedThreads || !thread.archived);
+  // Un fil inactif depuis plus que sa duree de masquage ("Masquer apres une periode d'inactivite") quitte la liste,
+  // sauf s'il est ouvert ; il reste accessible dans "anciens fils" de la liste des fils.
+  const nowMs = Date.now();
+  const filteredThreads = threads.filter((thread) => {
+    if (thread.id === activeThreadId) return true;
+    if (!showArchivedThreads && thread.archived) return false;
+    const last = new Date(thread.last_message_at || thread.created_at).getTime();
+    return showArchivedThreads || nowMs - last <= (thread.auto_archive_minutes ?? 4320) * 60_000;
+  });
 
   return (
     <>
-      <div className="mt-1">
+      <div className="mt-0.5">
         {filteredThreads.map((thread, index) => {
           const isLast = index === filteredThreads.length - 1;
           const isSingle = filteredThreads.length === 1;
@@ -504,13 +503,18 @@ const ThreadContextMenuList: React.FC<ThreadContextMenuListProps> = ({
 
 
           return (
-            <div key={thread.id} className="flex items-stretch w-full px-2">
-              <div className="flex-shrink-0 w-6 relative">
+            // Ligne de fil (video / capture de reference) : meme marge que les salons (mx-2), connecteur
+            // au centre de l'icone du salon (16px) qui s'arrondit vers la ligne, ligne decalee de 26px,
+            // meme hauteur (32px) et meme police que les salons.
+            <div key={thread.id} className="relative mx-2 flex items-stretch h-8">
+              {/* Epine (reference) : trait opaque de 2px sous le centre de l'icone du salon, qui remonte
+                  jusqu'a la ligne du dessus, puis s'arrondit (rayon 8) vers le nom du fil. */}
+              <div className="absolute left-[17px] w-[10px] pointer-events-none" style={{ top: index === 0 ? -2 : 0, bottom: 0 }}>
+                {!(isLast || isSingle) && <div className="absolute inset-y-0 left-0 border-l-2 border-[#4e5058]" />}
                 <div
-                  className="absolute left-[5px] top-0 border-l-2 border-muted-foreground/30"
-                  style={{ height: isLast || isSingle ? '50%' : '100%' }}
+                  className="absolute left-0 w-[10px] border-l-2 border-b-2 border-[#4e5058] rounded-bl-[8px]"
+                  style={{ top: 0, height: index === 0 ? 18 : 16 }}
                 />
-                <div className="absolute left-[5px] top-1/2 -translate-y-1/2 w-[14px] h-[12px] border-l-2 border-b-2 border-muted-foreground/30 rounded-bl-lg" />
               </div>
               <ContextMenu>
                 <ContextMenuTrigger asChild>
@@ -521,119 +525,39 @@ const ThreadContextMenuList: React.FC<ThreadContextMenuListProps> = ({
                     }}
                     onContextMenu={(e) => e.stopPropagation()}
                     className={cn(
-                      "flex items-center flex-1 py-1 rounded hover:bg-muted/50 transition-colors",
-                      activeThreadId === thread.id && "bg-muted",
+                      "ml-[26px] flex items-center flex-1 min-w-0 h-8 px-2 rounded-lg text-base font-medium transition-colors",
+                      activeThreadId === thread.id
+                        ? "bg-[hsl(var(--interactive-background-selected))] text-white"
+                        : "text-[hsl(var(--interactive-icon-default))] hover:bg-[hsl(var(--interactive-background-hover))] hover:text-[hsl(var(--interactive-text-hover))]",
                       thread.archived && "opacity-50"
                     )}
                   >
-                    <span className="truncate flex-1 text-left font-ginto text-[14px] text-muted-foreground hover:text-foreground ml-1">
+                    <span className="truncate flex-1 text-left">
                        {thread.name}
                        {thread.archived && " (archivé)"}
                      </span>
                   </button>
                 </ContextMenuTrigger>
-                <ContextMenuContent className="w-52">
-                  <ContextMenuItem
-                    onClick={() => markAsRead.mutate({ threadId: thread.id, channelId })}
-                  >
-                    <CheckCircle className="w-4 h-4 mr-2" />
-                    Marquer comme lu
-                  </ContextMenuItem>
-                  <ContextMenuItem
-                    onClick={() => unfollowThread.mutate(thread.id)}
-                  >
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Quitter le fil
-                  </ContextMenuItem>
-                  <ContextMenuSeparator />
-                  {canManage && (
-                    <>
-                      <ContextMenuItem onClick={() => closeThread.mutate({ threadId: thread.id, closed: !thread.closed })}>
-                        {thread.closed ? <CircleDot className="w-4 h-4 mr-2" /> : <XCircle className="w-4 h-4 mr-2" />}
-                        {thread.closed ? "Rouvrir le fil" : "Fermer le fil"}
-                      </ContextMenuItem>
-                      <ContextMenuItem onClick={() => lockThread.mutate({ threadId: thread.id, locked: !thread.locked })}>
-                        {thread.locked ? <Unlock className="w-4 h-4 mr-2" /> : <Lock className="w-4 h-4 mr-2" />}
-                        {thread.locked ? "Déverrouiller le fil" : "Verrouiller le fil"}
-                      </ContextMenuItem>
-                      <ContextMenuSeparator />
-                      <ContextMenuItem onClick={() => setEditThread(thread)}>
-                        <Pencil className="w-4 h-4 mr-2" />
-                        Modifier le fil
-                      </ContextMenuItem>
-                    </>
-                  )}
-                  <ContextMenuItem
-                    onClick={() => {
-                      const link = `${window.location.origin}/channels/${channelId}/${thread.id}`;
-                      copyToClipboard(link, "Lien du fil copié");
-                    }}
-                  >
-                    <Link className="w-4 h-4 mr-2" />
-                    Copier le lien
-                  </ContextMenuItem>
-                  {canManage && (
-                    <>
-                      <ContextMenuSeparator />
-                      <ContextMenuItem
-                        onClick={() => setDeleteThreadId(thread.id)}
-                        className="text-destructive focus:text-destructive"
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Supprimer le fil
-                      </ContextMenuItem>
-                    </>
-                  )}
-                  <ContextMenuSeparator />
-                  <ContextMenuItem
-                    onClick={() => copyToClipboard(uuidToSnowflake(thread.id), "Identifiant du fil copié")}
-                  >
-                    <Copy className="w-4 h-4 mr-2" />
-                    Copier l'identifiant du fil
-                  </ContextMenuItem>
-                </ContextMenuContent>
+                <ThreadContextMenuBody thread={thread} channelId={channelId} canManage={canManage} onEdit={() => setEditThread(thread)} onDelete={() => setDeleteThreadId(thread.id)} />
               </ContextMenu>
             </div>
           );
         })}
       </div>
 
-      {/* Delete Thread Confirmation */}
-      <AlertDialog open={!!deleteThreadId} onOpenChange={(open) => !open && setDeleteThreadId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-destructive" />
-              Supprimer le fil
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Tu es sûr(e) de vouloir supprimer ce fil ? Cette action est irréversible et supprimera tous les messages associés.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (deleteThreadId) {
-                  deleteThread.mutate({ threadId: deleteThreadId, channelId });
-                  setDeleteThreadId(null);
-                }
-              }}
-              className="bg-destructive hover:bg-destructive/90"
-            >
-              Supprimer
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteThreadDialog
+        open={!!deleteThreadId}
+        onOpenChange={(open) => !open && setDeleteThreadId(null)}
+        name={threads.find((t) => t.id === deleteThreadId)?.name ?? ''}
+        onConfirm={() => { if (deleteThreadId) deleteThread.mutate({ threadId: deleteThreadId, channelId }); setDeleteThreadId(null); }}
+      />
 
-      {/* Edit Thread Modal */}
       {editThread && (
-        <EditThreadModal
-          open={!!editThread}
-          onOpenChange={(open) => !open && setEditThread(null)}
+        <ThreadSettingsPage
           thread={editThread}
-          serverId={serverId}
+          channelName={channelName ?? ''}
+          onClose={() => setEditThread(null)}
+          onDelete={() => deleteThread.mutate({ threadId: editThread.id, channelId })}
         />
       )}
     </>
@@ -665,15 +589,54 @@ interface SortableChannelProps {
   canManageChannels?: boolean;
   canCreateInvite?: boolean;
   isVoiceLocked?: boolean;
+  /** @everyone ne voit pas ce salon : icone verrouillee. */
+  isPrivate?: boolean;
   onOpenChat?: () => void;
+  /** Statut du salon vocal (texte libre, emoji compris). */
+  voiceStatus?: string;
+  onEditVoiceStatus?: () => void;
+  onInviteVoice?: () => void;
 }
+// Debut de la connexion vocale, par salon (compteur vert de la liste des salons).
+const voiceSince: Record<string, number> = {};
+function VoiceTimer({ channelId }: { channelId: string }) {
+  voiceSince[channelId] ??= Date.now();
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => tick((n) => n + 1), 1000);
+    return () => { clearInterval(t); delete voiceSince[channelId]; };
+  }, [channelId]);
+  const sec = Math.max(0, Math.floor((Date.now() - voiceSince[channelId]) / 1000));
+  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), r = sec % 60;
+  return <span className="ml-auto text-xs tabular-nums text-[hsl(var(--online))] group-hover:hidden">{h ? `${h}:${String(m).padStart(2, '0')}` : m}:{String(r).padStart(2, '0')}</span>;
+}
+
 // Sortable Channel Component
+/* Lignes du menu du nom du serveur : 36px, icone 18px a gauche. */
+// Video de reference : pas de 36px (35px + 1px), icone 20px, 8px d'ecart, texte 15px.
+/** Plage de la glissiere de largeur de la liste de salons (video de reference, zoom 131 %). */
+const SIDEBAR_MIN = 186;
+const SIDEBAR_MAX = 432;
+
+const serverMenuItemCls = "h-auto min-h-[35px] mb-px gap-2 px-2 py-[7px] text-[15px] leading-5 font-normal rounded-[4px] whitespace-nowrap [&_svg]:w-5 [&_svg]:h-5 focus:bg-white/[0.07]";
+
+function MenuCheckbox({ checked }: { checked: boolean }) {
+  return (
+    <span className={cn("ml-auto w-5 h-5 rounded-[4px] border-2 flex items-center justify-center", checked ? "bg-primary border-primary" : "border-[hsl(var(--header-icon))]")}>
+      {checked && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
+    </span>
+  );
+}
+
+/** Salon de regles de la communaute : icone dediee dans la liste. */
+const RulesChannelContext = createContext<string | null>(null);
+
 const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
   (
   {
     channel,
     serverId,
-    isActive,
+    isActive: isActiveProp,
     isVoiceConnected,
     speakingUsers,
     hasUnread = false,
@@ -695,7 +658,11 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
     canManageChannels = false,
     canCreateInvite = false,
     isVoiceLocked = false,
-    onOpenChat
+    isPrivate = false,
+    onOpenChat,
+    voiceStatus,
+    onEditVoiceStatus,
+    onInviteVoice
   },
   ref) =>
   {
@@ -709,21 +676,41 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
       disabled: !canManageChannels
     });
     const style = {
-      transform: CSS.Transform.toString(transform),
+      transform: undefined as string | undefined,
       transition: undefined // Let Tailwind handle transitions
     };
     const isVoice = channel.type === "voice";
     const isStage = channel.type === "stage";
+    const isForumLike = channel.type === "forum" || channel.type === "media";
+    // Post de ce salon ouvert en pleine fenetre : le post est surligne a la place du salon.
+    const openForumPost = useOpenForumPost();
+    const postFullscreen = isForumLike && openForumPost.channelId === channel.id && openForumPost.fullscreen;
+    const isActive = isActiveProp && !postFullscreen;
     // Show lock icon for voice/stage channels when locked (permission denied)
-    const DefaultIcon = (isVoice || isStage) && isVoiceLocked ? StreamlineVoiceLocked : channelIcons[channel.type];
+    const isRulesChannel = useContext(RulesChannelContext) === channel.id;
     const { data: participants = [] } = useVoiceParticipants(isVoice ? channel.id : null);
 
     // Stage audience count with realtime
     const { data: stageData } = useStageAudienceCount(isStage ? channel.id : null);
     const hasActiveSession = stageData?.sessionId && stageData.count > 0;
     const isLiveStage = stageData?.isLive;
+    // Planche des types de salon : variante verrouillee (salon prive ou
+    // vocal inaccessible) et active (vocal occupe, conference en direct).
+    const sheetIcon = channelSheetIconName(channel.type, {
+      locked: isVoiceLocked || isPrivate,
+      active: (isVoice && participants.length > 0) || (isStage && !!isLiveStage),
+    });
+    const DefaultIcon = isRulesChannel ? DiscordRules : channelIcons[channel.type];
+    // Salon Forum / Multimedia : la carte "Plus de posts actifs" apparait au survol.
+    const wrapHover = (node: React.ReactElement) =>
+      channel.type === 'forum' || channel.type === 'media' ? (
+        <ForumChannelHoverCard channelId={channel.id} type={channel.type} onOpenChannel={onChannelClick}>{node}</ForumChannelHoverCard>
+      ) : (
+        node
+      );
     return (
       <>
+        {wrapHover(
         <div
           ref={setNodeRef}
           style={style}
@@ -740,12 +727,17 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
           <ContextMenu>
             <ContextMenuTrigger asChild>
               <button type="button"
-                onClick={onChannelClick}
+                onClick={() => { if (postFullscreen) closeForumPost(channel.id); onChannelClick(); }}
                 onMouseEnter={onChannelHover}
                 className={cn(
-                  "channel-item w-full group",
+                  // Inset de 8px de Discord. Un <button> ne s'etire pas tout
+                  // seul : la largeur doit compenser explicitement la marge.
+                  "channel-item group mx-2 w-[calc(100%-16px)]",
                   isActive && !isVoice && !isStage && "active",
-                  isVoiceConnected && "bg-[hsl(var(--online))]/10 border-l-2 border-[hsl(var(--online))]",
+                  // Salon vocal connecte (video de reference) : bloc "selectionne" qui englobe aussi
+                  // la ligne de statut ; plus de filet vert ni de teinte verte.
+                  isVoiceConnected && "bg-[hsl(var(--interactive-background-selected))] !text-white font-semibold",
+                  isVoice && (voiceStatus || isVoiceConnected) && "rounded-b-none",
                   // Stage active/live highlight
                   isStage && isActive && "bg-muted/80",
                   isStage && isLiveStage && "bg-[hsl(var(--online))]/10",
@@ -757,19 +749,23 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
                   <TooltipTrigger asChild>
                     <span className="flex-shrink-0 flex items-center justify-center">
                       {channel.icon_url && !isVoice && !isStage ? (
-                        <img src={channel.icon_url} alt="" className="w-4 h-4 rounded-sm object-contain" />
+                        <img src={channel.icon_url} alt="" className="w-5 h-5 rounded-sm object-contain" />
                       ) : (
-                        <DefaultIcon className={cn("w-4 h-4", (isStage && isLiveStage || isVoice && participants.length > 0) && "text-[hsl(var(--online))]")} />
+                        sheetIcon && !isRulesChannel ? (
+                          <ChannelSheetIcon name={sheetIcon} className={cn("w-5 h-5", (isStage && isLiveStage || isVoice && participants.length > 0) && "text-[hsl(var(--online))]")} />
+                        ) : (
+                          <DefaultIcon className={cn("w-5 h-5", (isStage && isLiveStage || isVoice && participants.length > 0) && "text-[hsl(var(--online))]")} />
+                        )
                       )}
                     </span>
                   </TooltipTrigger>
                   <TooltipContent side="top"><p>{channelTypeTooltips[channel.type] ?? 'Salon'}</p></TooltipContent>
                 </Tooltip>
-                <span
+                <span translate="no"
                   className={cn(
                     "truncate flex-1 text-left font-ginto text-[16px] font-medium",
                     // White text for unread channels, gray for read
-                    hasUnread || isActive ? "text-foreground" : "text-[#9B9CA3]"
+                    hasUnread || isActive ? "text-white" : "text-[hsl(var(--interactive-text-default))] group-hover:text-[hsl(var(--interactive-text-hover))]"
                   )}>
 
                   {channel.name}
@@ -778,7 +774,8 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
                 {/* Mention badge - ONLY shows for mentions */}
                 <MentionBadge count={mentionCount} size="sm" />
 
-                <div className="hidden group-hover:flex gap-[5px]">
+                {isVoice && isVoiceConnected && <VoiceTimer channelId={channel.id} />}
+                <div className="flex gap-[5px] max-w-0 overflow-hidden opacity-0 group-hover:max-w-[80px] group-hover:overflow-visible group-hover:opacity-100">
                   {(isVoice || isStage) && onOpenChat &&
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -795,7 +792,7 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <UserPlus
-                        className="w-4 h-4 text-muted-foreground"
+                        className="w-5 h-5 text-muted-foreground"
                         onClick={(e) => {
                           e.stopPropagation();
                           onCreateInvite();
@@ -807,7 +804,7 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Settings
-                        className="w-4 h-4 text-muted-foreground"
+                        className="w-[18px] h-[18px] text-muted-foreground"
                         onClick={(e) => {
                           e.stopPropagation();
                           onOpenSettings();
@@ -829,7 +826,7 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
                 Copier le lien
               </ContextMenuItem>
               <ContextMenuItem onClick={() => copyToClipboard(uuidToSnowflake(channel.id), "ID du salon copié")}>
-                <Copy className="w-4 h-4 mr-2" />
+                <ChannelSheetIcon name="id" className="w-4 h-4 mr-2" />
                 Copier l'ID
               </ContextMenuItem>
               {canCreateInvite && (
@@ -868,8 +865,21 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
           </ContextMenu>
 
           {/* Voice Participants */}
-          {isVoice && participants.length > 0 &&
-          <VoiceParticipantsSidebar participants={participants} speakingUsers={speakingUsers} serverId={serverId} />
+          {isVoice && (voiceStatus || isVoiceConnected) && (
+            <div className={cn("mx-2 pl-[34px] pr-2 pb-1.5 -mt-px mb-0.5 flex items-center min-h-[22px] rounded-b-lg", isVoiceConnected && "bg-[hsl(var(--interactive-background-selected))]")}>
+              <button
+                type="button"
+                disabled={!isVoiceConnected}
+                onClick={onEditVoiceStatus}
+                className={cn('max-w-full truncate text-xs leading-[18px] text-left text-muted-foreground flex items-center gap-1', isVoiceConnected ? 'hover:text-foreground cursor-pointer' : 'cursor-default')}
+              >
+                <span className="truncate">{voiceStatus || 'Définir un statut de salon'}</span>
+                {isVoiceConnected && <Pencil className="w-3 h-3 shrink-0" />}
+              </button>
+            </div>
+          )}
+          {isVoice && (participants.length > 0 || isVoiceConnected) &&
+          <VoiceParticipantsSidebar participants={participants} speakingUsers={speakingUsers} serverId={serverId} onInvite={isVoiceConnected ? onInviteVoice : undefined} />
           }
 
           {/* Stage Audience Indicator */}
@@ -887,14 +897,24 @@ const SortableChannel = forwardRef<HTMLDivElement, SortableChannelProps>(
             </div>
           }
         </div>
+        )}
 
-        {/* Threads for text channels - OUTSIDE draggable div */}
-        {(channel.type === "text" || channel.type === "announcement") && threads.length > 0 &&
+        {/* Fils suivis (et posts suivis d'un Forum / Multimedia) - OUTSIDE draggable div */}
+        {(channel.type === "text" || channel.type === "announcement" || channel.type === "forum" || channel.type === "media") && threads.length > 0 &&
         <ThreadContextMenuList
+          channelName={channel.name}
           threads={threads}
           showArchivedThreads={showArchivedThreads}
-          activeThreadId={activeThreadId}
-          onThreadSelect={onThreadSelect}
+          activeThreadId={isForumLike ? (postFullscreen ? openForumPost.threadId : null) : activeThreadId}
+          onThreadSelect={
+            isForumLike
+              ? (threadId: string) => {
+                  // Un post s'ouvre en pleine fenetre dans son salon, pas dans le panneau des fils.
+                  onChannelClick();
+                  requestOpenForumPost(channel.id, threadId, true);
+                }
+              : onThreadSelect
+          }
           channelId={channel.id}
           serverId={serverId}
           canManageChannels={canManageChannels}
@@ -960,7 +980,9 @@ export function ChannelList({
   orphanChannels = [],
   activeThreadId,
   onThreadSelect,
-  onOpenVoiceChat
+  onOpenVoiceChat,
+  activeServerView,
+  onOpenServerView
 }: ChannelListProps) {
   const queryClient = useQueryClient();
   const [collapsedCategories, setCollapsedCategories] = useState<string[]>([]);
@@ -977,6 +999,9 @@ export function ChannelList({
   } | null>(null);
   const [showCreateCategory, setShowCreateCategory] = useState(false);
   const [inviteChannelId, setInviteChannelId] = useState<string | null>(null);
+  const [voiceStatusChannelId, setVoiceStatusChannelId] = useState<string | null>(null);
+  const voiceStatuses = useVoiceChannelStatuses(server.id);
+  const setVoiceStatus = useSetVoiceChannelStatus(server.id);
   const [externalLinkModal, setExternalLinkModal] = useState<{url: string;} | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
@@ -1061,6 +1086,16 @@ export function ChannelList({
   // Subscribed separately so an audio tick only re-renders this component,
   // not every consumer of the connection state.
   const { speakingUsers } = useVoiceLevels();
+  useEffect(() => {
+    const invite = (e: Event) => setInviteChannelId((e as CustomEvent<string>).detail);
+    const status = (e: Event) => setVoiceStatusChannelId((e as CustomEvent<string>).detail);
+    window.addEventListener(OPEN_VOICE_INVITE_EVENT, invite);
+    window.addEventListener(OPEN_VOICE_STATUS_EVENT, status);
+    return () => {
+      window.removeEventListener(OPEN_VOICE_INVITE_EVENT, invite);
+      window.removeEventListener(OPEN_VOICE_STATUS_EVENT, status);
+    };
+  }, []);
   const updateCategory = useUpdateCategory();
   const reorderCategories = useReorderCategories();
   const reorderChannels = useReorderChannels();
@@ -1069,11 +1104,15 @@ export function ChannelList({
   const duplicateChannel = useDuplicateChannel();
   const leaveServer = useLeaveServer();
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
-  const { data: serverEmojis = [] } = useServerEmojis(server.id);
-  const { data: membersData } = useMembers(server.id);
 
   // Check if user can access server settings
   const canAccessSettings = useCanAccessServerSettings(server.id);
+  const { data: serverSettings } = useServerSettings(server.id);
+  const { data: privateChannelIds = EMPTY_ID_SET } = usePrivateChannelIds(server.id);
+  const { upcoming: upcomingEvents } = useServerEvents(server.id);
+  const [eventsModal, setEventsModal] = useState<{ open: boolean; wizard?: boolean }>({ open: false });
+  const [serverMenuOpen, setServerMenuOpen] = useState(false);
+  const [showServerProfileEdit, setShowServerProfileEdit] = useState(false);
 
   // Check if user is the owner (cannot leave, must delete). Calculé
   // directement depuis la prop `server` de cette page (source garantie à
@@ -1105,12 +1144,26 @@ export function ChannelList({
     isLoading: isPermsLoading
   } = useServerChannelPermissions(server.id);
 
+  // Salons non suivis ("Chercher des salons"), sauf "Montrer tous les salons".
+  const { data: hiddenChannels } = useHiddenChannels(server.id);
+  const [showAllChannels, setShowAllChannels] = useState(() => readShowAllChannels(server.id));
+  useEffect(() => {
+    setShowAllChannels(readShowAllChannels(server.id));
+    const onChange = (e: Event) => {
+      const d = (e as CustomEvent<{ serverId: string; value: boolean }>).detail;
+      if (d?.serverId === server.id) setShowAllChannels(d.value);
+    };
+    window.addEventListener('channels:show-all-changed', onChange);
+    return () => window.removeEventListener('channels:show-all-changed', onChange);
+  }, [server.id]);
+
   // Filter visible channels helper - during loading show all to avoid flash
   const shouldShowChannel = useCallback(
     (channelId: string) => {
+      if (!showAllChannels && hiddenChannels?.has(channelId) && channelId !== activeChannelId) return false;
       return isPermsLoading || isVisible(channelId);
     },
-    [isPermsLoading, isVisible]
+    [isPermsLoading, isVisible, showAllChannels, hiddenChannels, activeChannelId]
   );
 
   // Filter orphan channels by visibility
@@ -1176,7 +1229,6 @@ export function ChannelList({
     });
     return map;
   }, [allFollowedThreads]);
-  const ownerProfile = membersData?.find((m) => m.user.id === server.ownerId);
   const handleDeleteChannel = async (channelId: string, channelName: string) => {
     try {
       await deleteChannel.mutateAsync({
@@ -1699,15 +1751,32 @@ const toggleCategory = (categoryId: string) => {setCollapsedCategories((prev) =>
   // when crossing the collapse threshold — it drives text/icon contrast,
   // not the animation itself, so it re-renders at most twice per scroll
   // gesture instead of once per pixel.
-  const BANNER_HEIGHT = 100;
-  const HEADER_HEIGHT = 56;
+  //
+  // A banner that fails to load is treated as no banner at all: otherwise
+  // the header keeps its 100px banner zone and shows an empty dark block
+  // (stale storage URLs after a Supabase migration did exactly that).
+  const [failedBannerUrl, setFailedBannerUrl] = useState<string | null>(null);
+  const bannerUrl = server.bannerUrl && server.bannerUrl !== failedBannerUrl ? server.bannerUrl : undefined;
+  const [failedIconUrl, setFailedIconUrl] = useState<string | null>(null);
+  const iconUrl = server.iconUrl && server.iconUrl !== failedIconUrl ? server.iconUrl : undefined;
+  // Video de reference : bannieres de 130px (a 120% de zoom : 156px) sous une barre de 48px
+  // qui chevauche leur haut ; la zone se replie de 130 a 48px au defilement.
+  const BANNER_HEIGHT = 130;
+  const HEADER_HEIGHT = 48;
   const BANNER_SCROLL_RANGE = BANNER_HEIGHT - HEADER_HEIGHT;
-  const [showBanner, setShowBanner] = useState(!!server.bannerUrl);
+  // Pas d'etat React : la bascule "bannière visible" ne passe que par un attribut
+  // data sur la zone d'en-tete (les classes group-data-[over=1] de l'en-tete s'en servent).
+  // Un setState ici redessinait toute la liste (une centaine de salons) en passant le seuil du defilement.
+  const showBannerRef = useRef(!!bannerUrl);
+  const setShowBanner = useCallback((v: boolean) => {
+    showBannerRef.current = v;
+    headerZoneRef.current?.setAttribute('data-over', v ? '1' : '0');
+  }, []);
   const bannerLayerRef = useRef<HTMLDivElement | null>(null);
+  const barTintRef = useRef<HTMLDivElement | null>(null);
+  const bannerVeilRef = useRef<HTMLDivElement | null>(null);
   const headerZoneRef = useRef<HTMLDivElement | null>(null);
   const bannerRafRef = useRef<number | null>(null);
-  const showBannerRef = useRef(showBanner);
-  showBannerRef.current = showBanner;
 
   const applyBannerOffset = useCallback((offset: number) => {
     // Servers without a banner have nothing to animate — force the header
@@ -1715,8 +1784,7 @@ const toggleCategory = (categoryId: string) => {setCollapsedCategories((prev) =>
     // otherwise a leftover 100px-tall inline height (from BANNER_HEIGHT -
     // 0 on reset) would leave an oversized empty header on every
     // bannerless server.
-    if (!server.bannerUrl) {
-      if (headerZoneRef.current) headerZoneRef.current.style.height = `${HEADER_HEIGHT}px`;
+    if (!bannerUrl) {
       if (bannerLayerRef.current) bannerLayerRef.current.style.transform = 'translateY(0px)';
       if (showBannerRef.current !== false) {
         showBannerRef.current = false;
@@ -1724,68 +1792,69 @@ const toggleCategory = (categoryId: string) => {setCollapsedCategories((prev) =>
       }
       return;
     }
+    // La banniere defile avec la liste, pixel pour pixel (comme Discord) : la zone d'en-tete
+    // reste a 48px et un espaceur de BANNER_SCROLL_RANGE px pousse les salons sous la banniere.
     if (bannerLayerRef.current) {
-      // Slide the banner up by its own full height (not just `offset`) so
-      // it actually exits the viewport instead of merely re-centering
-      // inside a shrinking clip rect — with the clip container's bottom
-      // edge anchored, an equal shrink+translate leaves the banner's
-      // bottom edge pinned in place, permanently covering the header bar
-      // underneath instead of tucking away behind it.
-      const progress = BANNER_SCROLL_RANGE > 0 ? offset / BANNER_SCROLL_RANGE : 0;
-      bannerLayerRef.current.style.transform = `translateY(-${BANNER_HEIGHT * progress}px)`;
-    }
-    if (headerZoneRef.current) {
-      headerZoneRef.current.style.height = `${BANNER_HEIGHT - offset}px`;
+      // Au bout de la plage de repli (BANNER_SCROLL_RANGE) la banniere a quitte entierement la barre :
+      // elle monte plus vite que la liste pour ne laisser aucun reste au-dessus du nom du serveur.
+      const progress = Math.min(1, offset / BANNER_SCROLL_RANGE);
+      bannerLayerRef.current.style.transform = `translate3d(0,-${BANNER_HEIGHT * progress}px,0)`;
+      bannerLayerRef.current.style.visibility = progress >= 1 ? 'hidden' : 'visible';
+      // Reference : la barre s'assombrit au fil du repli (voile du fond du panneau sur la banniere).
+      const tint = Math.min(1, progress * 1.15);
+      if (barTintRef.current) barTintRef.current.style.opacity = String(tint);
+      // Le voile couvre toute la banniere (130px, toute la largeur) et la suit dans son defilement.
+      if (bannerVeilRef.current) bannerVeilRef.current.style.opacity = String(tint * 0.85);
     }
     const nextShowBanner = offset < BANNER_SCROLL_RANGE - 4;
     if (showBannerRef.current !== nextShowBanner) {
       showBannerRef.current = nextShowBanner;
       setShowBanner(nextShowBanner);
     }
-  }, [server.bannerUrl, BANNER_HEIGHT, HEADER_HEIGHT, BANNER_SCROLL_RANGE]);
+  }, [bannerUrl, BANNER_HEIGHT, HEADER_HEIGHT, BANNER_SCROLL_RANGE]);
 
   const handleChannelListScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    if (!server.bannerUrl) return;
+    if (!bannerUrl) return;
     const scrollTop = (e.target as HTMLDivElement).scrollTop;
-    const offset = Math.max(0, Math.min(BANNER_SCROLL_RANGE, scrollTop));
-    if (bannerRafRef.current !== null) cancelAnimationFrame(bannerRafRef.current);
-    bannerRafRef.current = requestAnimationFrame(() => {
-      bannerRafRef.current = null;
-      applyBannerOffset(offset);
-    });
-  }, [server.bannerUrl, BANNER_SCROLL_RANGE, applyBannerOffset]);
+    // Applique tout de suite (pas de rAF) : la banniere reste calee sur la liste, sans retard d'une image.
+    applyBannerOffset(Math.max(0, Math.min(BANNER_SCROLL_RANGE, scrollTop)));
+  }, [bannerUrl, BANNER_HEIGHT, applyBannerOffset]);
 
   // Reset to "fully shown" whenever the active server (or its banner)
   // changes, so a leftover scrolled-away banner from a previous server
   // doesn't leak in.
   useEffect(() => {
-    setShowBanner(!!server.bannerUrl);
+    setShowBanner(!!bannerUrl);
     applyBannerOffset(0);
-  }, [server.id, server.bannerUrl, applyBannerOffset]);
+  }, [server.id, bannerUrl, applyBannerOffset]);
 
   useEffect(() => () => {
     if (bannerRafRef.current !== null) cancelAnimationFrame(bannerRafRef.current);
   }, []);
 
   // Sidebar resizing
-  const [sidebarWidth, setSidebarWidth] = useState(240);
+  // 280px : largeur de la liste de salons sur la capture de reference ;
+  // plage 186-432px relevee a la glissiere (video de reference, zoom 131 %).
+  const [sidebarWidth, setSidebarWidth] = useState(280);
   const [isHoveringResize, setIsHoveringResize] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const isResizing = useRef(false);
   const handleResizeMouseDown = useCallback(
     (e: React.MouseEvent) => {
       e.preventDefault();
       isResizing.current = true;
+      setIsDragging(true);
       const startX = e.clientX;
       const startWidth = sidebarWidth;
       const handleMouseMove = (e: MouseEvent) => {
         if (!isResizing.current) return;
         const delta = e.clientX - startX;
-        const newWidth = Math.max(240, Math.min(340, startWidth + delta));
+        const newWidth = Math.max(SIDEBAR_MIN, Math.min(SIDEBAR_MAX, startWidth + delta));
         setSidebarWidth(newWidth);
       };
       const handleMouseUp = () => {
         isResizing.current = false;
-        setIsHoveringResize(false);
+        setIsDragging(false);
         document.removeEventListener("mousemove", handleMouseMove);
         document.removeEventListener("mouseup", handleMouseUp);
       };
@@ -1799,200 +1868,222 @@ const toggleCategory = (categoryId: string) => {setCollapsedCategories((prev) =>
       className={cn(
         // h-full/min-h-0 let the panel wrapper below distribute the leftover
         // height, so the user panel always sits flush at the bottom.
-        "bg-surface-1 flex flex-col relative select-none h-full min-h-0",
+        // Coin arrondi interieur du panneau principal (12px - 1px de bordure).
+        "bg-surface-1 flex flex-col relative select-none h-full min-h-0 rounded-tl-[11px]",
         !isResizing.current && "transition-[width] duration-300 ease-out"
       )}
       style={{
         width: `${sidebarWidth}px`,
-        minWidth: "240px",
-        maxWidth: "340px"
+        minWidth: `${SIDEBAR_MIN}px`,
+        maxWidth: `${SIDEBAR_MAX}px`
       }}>
 
-      {/* Resize handle - invisible, functional only */}
+      {/* Glissiere de largeur (video de reference) : zone de prise a cheval sur le bord de la liste,
+          la barre claire de 4,5px (collee au bord) n'apparait qu'au survol et pendant le glissement. */}
       <div
-        className="absolute right-0 top-0 bottom-0 w-1 cursor-ew-resize z-10 bg-transparent"
+        className="group/grip absolute -top-px bottom-0 left-full z-20 -ml-[1.5px] w-[7.5px] cursor-ew-resize"
         onMouseEnter={() => setIsHoveringResize(true)}
-        onMouseLeave={() => !isResizing.current && setIsHoveringResize(false)}
+        onMouseLeave={() => setIsHoveringResize(false)}
         onMouseDown={handleResizeMouseDown}
-      />
+      >
+        <span
+          aria-hidden
+          className={cn(
+            'pointer-events-none absolute inset-y-0 left-[1.5px] w-[4.5px] bg-[#404146] transition-opacity duration-100',
+            isHoveringResize || isDragging ? 'opacity-100' : 'opacity-0',
+          )}
+        />
+      </div>
       {/* Server Header - styled like User Panel */}
-      <div className="bg-surface-1">
+      <div className="bg-surface-1 rounded-tl-[11px]">
         <div
           ref={headerZoneRef}
-          className="relative overflow-hidden rounded-t-xl"
-          style={{ height: server.bannerUrl ? `${BANNER_HEIGHT}px` : `${HEADER_HEIGHT}px` }}>
+          data-over={bannerUrl ? "1" : "0"}
+          className="group/hdr relative z-20 rounded-tl-[11px]"
+          // La banniere deborde sous la barre : on ne rogne que le haut, avec le coin arrondi du panneau,
+          // pour qu'il reste arrondi quand la banniere defile (sinon il redevient un angle droit).
+          style={{ height: `${HEADER_HEIGHT}px`, clipPath: 'inset(0 0 -400px 0 round 11px 0 0 0)' }}>
 
           {/* Fixed header bar — always present at the bottom of the header
               zone, opaque background. The banner (if any) is a separate
               layer stacked above it that slides up to tuck away behind it. */}
-          <div className="absolute inset-x-0 bottom-0 z-10 flex items-center bg-surface-1" style={{ height: `${HEADER_HEIGHT}px` }} />
+          <div className="absolute inset-x-0 top-0 z-10 flex items-center bg-surface-1 border-b border-[hsl(var(--frame-border))]" style={{ height: `${HEADER_HEIGHT}px` }} />
 
-          {server.bannerUrl &&
+          {bannerUrl &&
+          <div
+            ref={barTintRef}
+            aria-hidden
+            className="absolute inset-x-0 top-0 z-[25] bg-surface-1 pointer-events-none"
+            // Fondu vers le bas : aucun bord de voile visible (le trait de la barre n'apparait qu'une fois la banniere partie).
+            style={{ height: `${HEADER_HEIGHT + 24}px`, opacity: 0, WebkitMaskImage: 'linear-gradient(to bottom,#000 55%,transparent)', maskImage: 'linear-gradient(to bottom,#000 55%,transparent)' }} />
+          }
+          {bannerUrl &&
           <div
             ref={bannerLayerRef}
-            className="absolute inset-x-0 top-0 z-20 overflow-hidden"
+            className="absolute inset-x-0 top-0 z-20 overflow-hidden rounded-tl-[11px] pointer-events-none will-change-transform"
             style={{ height: `${BANNER_HEIGHT}px` }}>
-              <img src={server.bannerUrl} className="w-full h-full object-cover" alt="" />
-              <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/50 to-transparent" />
+              {/* key + opacite 0 jusqu'au chargement : au changement de serveur l'ancienne banniere
+                  ne reste plus affichee le temps que la nouvelle se charge. */}
+              <img
+                key={bannerUrl}
+                src={bannerUrl}
+                className="w-full h-full object-cover opacity-0 transition-opacity duration-150"
+                alt=""
+                onLoad={(e) => { e.currentTarget.style.opacity = '1'; }}
+                onError={() => setFailedBannerUrl(bannerUrl)} />
+              <div className="absolute inset-x-0 top-0 h-[56px] bg-gradient-to-b from-black/45 to-transparent" />
+              <div ref={bannerVeilRef} aria-hidden className="absolute inset-0 bg-surface-1" style={{ opacity: 0 }} />
             </div>
           }
 
           {/* Server Name + action icons — always on top, anchored to the
               bottom of the header zone (so they read as "inside" the fixed
               bar once the banner has tucked away). */}
-          <div className="absolute inset-x-0 bottom-0 z-30 flex items-center" style={{ height: `${HEADER_HEIGHT}px` }}>
-            {/* Server Name → Card Popover */}
-            <Popover>
-              <PopoverTrigger asChild>
+          <div className="absolute inset-x-0 top-0 z-30 flex items-center" style={{ height: `${HEADER_HEIGHT}px` }}>
+            {/* Nom du serveur -> menu deroulant de Discord (video de reference) */}
+            <DropdownMenu modal={false} onOpenChange={setServerMenuOpen}>
+              <DropdownMenuTrigger asChild>
+                {/* En-tete de la capture : rosette 20px (communaute), nom 16px
+                    gras blanc et chevron, sur une barre de 48px. */}
+                {/* Survol / ouverture : pastille arrondie claire autour de
+                    l'icone, du nom et du chevron (comme Discord). */}
                 <button type="button" className={cn(
-                  "flex items-center justify-start gap-2 min-w-0 max-w-full w-fit transition-colors relative h-full rounded-tl-xl",
-                  showBanner && server.bannerUrl ? "hover:bg-transparent" : "hover:bg-muted/30"
+                  "flex items-center gap-2 min-w-0 max-w-[calc(100%-8px)] h-9 ml-2 pl-2 pr-2 rounded-lg text-white relative transition-colors",
+                  "hover:bg-[hsl(var(--interactive-background-hover))] data-[state=open]:bg-[hsl(var(--interactive-background-selected))]",
+                  "group-data-[over=1]/hdr:[text-shadow:0_1px_6px_rgba(0,0,0,0.9),0_0px_2px_rgba(0,0,0,0.8)]"
                 )}>
-
-                  <div className="min-w-0 text-left relative px-4">
-                    <p className={cn(
-                      "text-sm font-semibold truncate",
-                      showBanner && server.bannerUrl && "[text-shadow:0_1px_6px_rgba(0,0,0,0.9),0_0px_2px_rgba(0,0,0,0.8)] text-white"
-                    )}>{server.name}</p>
-                    {!(showBanner && server.bannerUrl) &&
-                    <p className="text-xs text-muted-foreground">{membersData?.length || 0} membres</p>
-                    }
-                  </div>
+                  {/* Comme Discord : seule la rosette d'un serveur de communaute
+                      precede le nom, jamais l'icone du serveur. */}
+                  {serverSettings?.community_enabled && <ServerHeaderBadge isPublic={!!server.isPublic} className="group-data-[over=1]/hdr:[filter:drop-shadow(0_1px_6px_rgba(0,0,0,0.6))]" />}
+                  <span translate="no" className="text-base font-semibold truncate">{server.name}</span>
+                  <ChevronDown className={cn("w-4 h-4 shrink-0 transition-transform duration-200", "group-data-[over=1]/hdr:[filter:drop-shadow(0_1px_6px_rgba(0,0,0,0.6))]", serverMenuOpen && "rotate-180")} />
                 </button>
-              </PopoverTrigger>
-              <PopoverContent side="bottom" align="start" className="w-80 p-0 overflow-hidden rounded-xl">
-              {/* Banner with Leave Button */}
-              <div className="relative">
-                {server.bannerUrl ?
-                <img src={server.bannerUrl} className="h-24 w-full object-cover" alt="Server banner" /> :
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" sideOffset={6} className="w-max min-w-[220px] max-w-[320px] origin-[var(--radix-dropdown-menu-content-transform-origin)] data-[state=open]:zoom-in-[0.5] data-[state=open]:duration-75 data-[state=closed]:duration-75 p-2 max-h-[calc(100vh-120px)] overflow-y-auto scrollbar-thin rounded-lg bg-[#3b3b45] border border-white/[0.08] shadow-[0_8px_16px_rgba(0,0,0,0.24)] [&>[role=separator]]:my-2 [&>[role=separator]]:mx-0 [&>[role=separator]]:bg-white/[0.08]">
+                <DropdownMenuItem className={serverMenuItemCls} onSelect={() => onOpenServerView?.('boosts')}>
+                  <Gem className="w-[18px] h-[18px]" /> Boost de serveur
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className={serverMenuItemCls} onSelect={() => setInviteChannelId('server')}>
+                  <UserPlus className="w-[18px] h-[18px]" /> Inviter sur le serveur
+                </DropdownMenuItem>
+                {canAccessSettings && (
+                  <DropdownMenuItem className={serverMenuItemCls} onSelect={() => onOpenServerSettings?.()}>
+                    <Settings className="w-[18px] h-[18px]" /> Paramètres du serveur
+                  </DropdownMenuItem>
+                )}
+                {canAccessSettings && serverSettings?.community_enabled && (
+                  <DropdownMenuItem className={serverMenuItemCls} onSelect={() => onOpenServerSettings?.('analytics')}>
+                    <TrendingUp className="w-[18px] h-[18px]" /> Analyses de serveur
+                  </DropdownMenuItem>
+                )}
+                {canManageChannels && (
+                  <>
+                    <DropdownMenuItem className={serverMenuItemCls} onSelect={() => setCreateChannelForCategory({ id: null, name: "Sans catégorie", showSelector: true })}>
+                      <PlusCircle className="w-[18px] h-[18px]" /> Créer un salon
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className={serverMenuItemCls} onSelect={() => setShowCreateCategory(true)}>
+                      <FolderPlus className="w-[18px] h-[18px]" /> Créer une catégorie
+                    </DropdownMenuItem>
+                  </>
+                )}
+                {hasPermission('create_events') && (
+                  <DropdownMenuItem className={serverMenuItemCls} onSelect={() => setEventsModal({ open: true, wizard: true })}>
+                    <CalendarPlus className="w-[18px] h-[18px]" /> Créer un événement
+                  </DropdownMenuItem>
+                )}
+                {canAccessSettings && (
+                  <DropdownMenuItem className={serverMenuItemCls} onSelect={() => onOpenServerSettings?.('integrations')}>
+                    <Blocks className="w-[18px] h-[18px]" /> Répertoire d'applications
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className={serverMenuItemCls}
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    writeShowAllChannels(server.id, !showAllChannels);
+                  }}
+                >
+                  <Eye className="w-[18px] h-[18px]" /> <span className="flex-1">Montrer tous les salons</span>
+                  <MenuCheckbox checked={showAllChannels} />
+                </DropdownMenuItem>
+                <DropdownMenuItem className={serverMenuItemCls} disabled>
+                  <Bell className="w-[18px] h-[18px]" /> <span className="flex-1 truncate">Paramètres de notification</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem className={serverMenuItemCls} disabled>
+                  <ShieldCheck className="w-[18px] h-[18px]" /> <span className="flex-1 truncate">Paramètres de confidentialité</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem className={serverMenuItemCls} disabled>
+                  <Shield className="w-[18px] h-[18px]" /> <span className="flex-1 truncate">Voir les permissions</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem className={serverMenuItemCls} disabled>
+                  <Info className="w-[18px] h-[18px]" /> <span className="flex-1 truncate">Infos du serveur</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className={serverMenuItemCls} onSelect={() => setShowServerProfileEdit(true)}>
+                  <Pencil className="w-[18px] h-[18px]" /> <span className="flex-1 truncate">Modifier le profil par serveur</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem className={serverMenuItemCls} disabled>
+                  <EyeOff className="w-[18px] h-[18px]" /> <span className="flex-1 truncate">Masquer les salons en sourdine</span>
+                  <MenuCheckbox checked={false} />
+                </DropdownMenuItem>
+                <p className="px-2 pt-1 pb-0.5 text-[11px] text-muted-foreground">Notifications, confidentialité et sourdine : bientôt disponible</p>
+                {canAccessSettings && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem className={cn(serverMenuItemCls, "text-[#f57976] focus:text-white focus:bg-destructive")} onSelect={() => onOpenServerSettings?.('invites')}>
+                      <Lock className="w-[18px] h-[18px]" /> Actions de cybersécurité
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className={cn(serverMenuItemCls, "text-[#f57976]")} disabled>
+                      <Shield className="w-[18px] h-[18px]" /> Signaler un raid
+                    </DropdownMenuItem>
+                  </>
+                )}
+                {!isGod && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem className={cn(serverMenuItemCls, "text-[#f57976] focus:text-white focus:bg-destructive")} onSelect={() => setShowLeaveDialog(true)}>
+                      <LogOut className="w-[18px] h-[18px]" /> Quitter le serveur
+                    </DropdownMenuItem>
+                  </>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className={serverMenuItemCls} onSelect={() => copyToClipboard(uuidToSnowflake(server.id), "Identifiant copié !")}>
+                  <IdCard className="w-[18px] h-[18px]" />
+                  <span className="flex-1 truncate">Copier l'identifiant du serveur</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
-                <div className="h-24 bg-gradient-to-r from-primary to-primary/50" />
-                }
-
-                {/* Leave Server Button - Only visible for non-owners */}
-                {!isGod &&
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button type="button"
-                      onClick={() => setShowLeaveDialog(true)}
-                      className="absolute top-2 right-2 p-1.5 rounded-lg bg-background/20 hover:bg-destructive/90 text-white transition-colors">
-
-                        <LogOut className="w-4 h-4" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Quitter le serveur</p>
-                    </TooltipContent>
-                  </Tooltip>
-                }
-              </div>
-
-              <div className="p-4 space-y-3">
-                <div className="flex items-center gap-3">
-                  {server.iconUrl ?
-                  <img src={server.iconUrl} className="w-12 h-12 rounded-xl object-cover" alt="Server icon" /> :
-
-                  <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center text-xl font-bold text-primary">
-                      {server.name.charAt(0).toUpperCase()}
-                    </div>
-                  }
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-lg text-foreground truncate">{server.name}</h3>
-                    {server.description &&
-                    <p className="text-sm text-muted-foreground line-clamp-2">{server.description}</p>
-                    }
-                  </div>
-                </div>
-
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Calendar className="w-4 h-4" />
-                    <span>Créé le {formatServerDate(server.createdAt)}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span>
-                          <StreamlineCrown size={16} className="text-yellow-500" />
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Propriétaire du serveur</p>
-                      </TooltipContent>
-                    </Tooltip>
-                    <span>Fondateur: {ownerProfile?.user?.username?.toLowerCase() || "Inconnu"}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Users className="w-4 h-4" />
-                    <span>{membersData?.length || 0} membres</span>
-                  </div>
-                </div>
-
-                {serverEmojis.length > 0 &&
-                <div>
-                    <p className="text-xs text-muted-foreground mb-1.5">Émojis ({serverEmojis.length})</p>
-                    <div className="flex flex-wrap gap-1">
-                      {serverEmojis.slice(0, 10).map((emoji) =>
-                    <img key={emoji.id} src={emoji.url} alt={emoji.name} className="w-6 h-6 rounded" />
-                    )}
-                      {serverEmojis.length > 10 &&
-                    <span className="text-xs text-muted-foreground self-center ml-1">
-                          +{serverEmojis.length - 10}
-                        </span>
-                    }
-                    </div>
-                  </div>
-                }
-              </div>
-            </PopoverContent>
-          </Popover>
-
-          {/* Action icons - right side of header */}
-          <div className="flex items-center gap-1 pr-2 ml-auto">
+          {/* Action icon - right side of header (invitation seule, comme la
+              capture ; les parametres sont dans le menu du nom). */}
+          <div className="flex items-center pr-3 ml-auto">
             <Tooltip>
               <TooltipTrigger asChild>
                 <button type="button"
                   onClick={() => setInviteChannelId('server')}
+                  aria-label="Créer une invitation"
                   className={cn(
-                    "p-1.5 rounded-lg transition-colors",
-                    showBanner && server.bannerUrl ?
-                    "hover:bg-background/30 text-white" :
-                    "hover:bg-muted text-muted-foreground hover:text-foreground"
+                    "p-1 rounded-md transition-colors",
+                    "text-foreground hover:text-white group-data-[over=1]/hdr:text-white group-data-[over=1]/hdr:[filter:drop-shadow(0_1px_6px_rgba(0,0,0,0.6))]"
                   )}>
-                  <UserPlus className="w-4 h-4" />
+                  <UserPlus className="w-6 h-6" />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom"><p>Créer une invitation</p></TooltipContent>
             </Tooltip>
-            {canAccessSettings &&
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button type="button"
-                    onClick={() => onOpenServerSettings?.()}
-                    className={cn(
-                      "p-1.5 rounded-lg transition-colors",
-                      showBanner && server.bannerUrl ?
-                      "hover:bg-background/30 text-white" :
-                      "hover:bg-muted text-muted-foreground hover:text-foreground"
-                    )}>
-                    <Settings className="w-4 h-4" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom"><p>Paramètres du serveur</p></TooltipContent>
-              </Tooltip>
-            }
           </div>
           </div>
         </div>
       </div>
 
-      {/* Separator */}
-      <Separator className="bg-border/20" />
-
       {/* Channels with DnD */}
       <ContextMenu>
         <ContextMenuTrigger asChild>
+          <RulesChannelContext.Provider value={serverSettings?.community_enabled ? serverSettings.rules_channel_id ?? null : null}>
           <ChannelListScrollContainer onScroll={handleChannelListScroll}>
+            {bannerUrl && <div aria-hidden style={{ height: BANNER_SCROLL_RANGE }} />}
             <DndContext
               onDragStart={handleDragStart}
               onDragOver={handleDragOver}
@@ -2001,11 +2092,22 @@ const toggleCategory = (categoryId: string) => {setCollapsedCategories((prev) =>
 
 
 
+              <ServerSetupProgress serverId={server.id} activeChannelId={activeChannelId} onChannelSelect={onChannelSelect} />
+
+              <ServerNavItems
+                community={!!serverSettings?.community_enabled}
+                eventCount={upcomingEvents.length}
+                canSeeMembers={canAccessSettings}
+                activeView={activeServerView}
+                onOpenView={onOpenServerView}
+                onOpenEvents={() => setEventsModal({ open: true })}
+              />
+
               {/* Orphan Channels - displayed BEFORE categories to allow insertion at top */}
               <TopOrphanDropTarget activeId={activeId} overId={overId} />
 
               {visibleOrphanChannels.length > 0 &&
-              <div className="px-2 space-y-0.5 mb-2">
+              <div className="space-y-0.5 mb-2">
                   <SortableContext
                   items={visibleOrphanChannels.map((ch) => `channel-${ch.id}`)}
                   strategy={verticalListSortingStrategy}>
@@ -2023,6 +2125,9 @@ const toggleCategory = (categoryId: string) => {setCollapsedCategories((prev) =>
                     serverId={server.id}
                     isActive={activeChannelId === channel.id && !activeThreadId}
                     isVoiceConnected={voiceState.channelId === channel.id}
+                    voiceStatus={voiceStatuses[channel.id]}
+                    onEditVoiceStatus={() => setVoiceStatusChannelId(channel.id)}
+                    onInviteVoice={() => setInviteChannelId(channel.id)}
                     speakingUsers={speakingUsers}
                     hasUnread={channelUnreadInfo[channel.id]?.hasUnread}
                     mentionCount={channelUnreadInfo[channel.id]?.mentionCount || 0}
@@ -2061,6 +2166,7 @@ threads={threadsByChannel[channel.id] || []}
                     isVoiceLocked={
                     (channel.type === "voice" || channel.type === "stage") && isVoiceChannelLocked(channel.id)
                     }
+                    isPrivate={privateChannelIds.has(channel.id)}
                     onOpenChat={
                     channel.type === "voice" || channel.type === "stage" ?
                     () => onOpenVoiceChat?.(channel.id) :
@@ -2081,7 +2187,8 @@ threads={threadsByChannel[channel.id] || []}
                 <div key={category.id} className={cn(index > 0 && "mt-4")}>
                     <SortableCategory
                     category={category}
-                    isCollapsed={collapsedCategories.includes(category.id)}
+                    isCollapsed={collapsedCategories.includes(category.id) || (!!activeId?.startsWith("category-") && activeId !== `category-${category.id}`)}
+                    isBeingDragged={activeId === `category-${category.id}`}
                     onToggle={() => toggleCategory(category.id)}
                     onEdit={() => handleStartEditCategory(category)}
                     onCreateChannel={() =>
@@ -2097,7 +2204,7 @@ threads={threadsByChannel[channel.id] || []}
                     serverId={server.id}
                     showInsideHighlight={overId === `category-${category.id}` && dropMode === "inside"}>
 
-                      <div className="mt-1 px-2 space-y-0.5">
+                      <div className="mt-0.5 space-y-0.5">
                         <SortableContext
                         items={category.channels.map((ch) => `channel-${ch.id}`)}
                         strategy={verticalListSortingStrategy}>
@@ -2109,6 +2216,9 @@ threads={threadsByChannel[channel.id] || []}
                           serverId={server.id}
                           isActive={activeChannelId === channel.id && !activeThreadId}
                           isVoiceConnected={voiceState.channelId === channel.id}
+                    voiceStatus={voiceStatuses[channel.id]}
+                    onEditVoiceStatus={() => setVoiceStatusChannelId(channel.id)}
+                    onInviteVoice={() => setInviteChannelId(channel.id)}
                           speakingUsers={speakingUsers}
                           hasUnread={channelUnreadInfo[channel.id]?.hasUnread}
                           mentionCount={channelUnreadInfo[channel.id]?.mentionCount || 0}
@@ -2132,6 +2242,7 @@ threads={threadsByChannel[channel.id] || []}
                           (channel.type === "voice" || channel.type === "stage") &&
                           isVoiceChannelLocked(channel.id)
                           }
+                          isPrivate={privateChannelIds.has(channel.id)}
                           onOpenChat={
                           channel.type === "voice" || channel.type === "stage" ?
                           () => onOpenVoiceChat?.(channel.id) :
@@ -2146,45 +2257,10 @@ threads={threadsByChannel[channel.id] || []}
                 )}
               </SortableContext>
 
-              {/* Drag Overlay - Discord-style ghost: faithful copy at 0.85 opacity with soft shadow */}
-              <DragOverlay dropAnimation={null}>
-                {activeId && (() => {
-                  const ghostStyle: React.CSSProperties = {
-                    opacity: 0.85,
-                    background: "#2B2D31",
-                    borderRadius: 4,
-                    boxShadow: "1px 2px 8px rgba(0,0,0,0.3)",
-                    cursor: "grabbing",
-                  };
-                  if (activeId.startsWith("category-")) {
-                    const cat = server.categories.find((c) => `category-${c.id}` === activeId);
-                    return (
-                      <div style={ghostStyle} className="flex items-center gap-1.5 px-3 py-1.5 w-full">
-                        <ChevronDown className="w-3 h-3 text-[#949BA4]" />
-                        <span className="font-ginto text-[12px] font-semibold uppercase tracking-wide text-[#949BA4]">
-                          {cat?.name ?? "Catégorie"}
-                        </span>
-                      </div>
-                    );
-                  }
-                  const channel = findChannelById(activeId.replace("channel-", ""));
-                  const Icon = channel ? channelIcons[(channel.type || "text") as ChannelType] : StreamlineHash;
-                  return (
-                    <div style={ghostStyle} className="flex items-center gap-2 px-2 py-1.5 ml-2">
-                      {channel?.icon_url && channel.type !== "voice" && channel.type !== "stage" ? (
-                        <img src={channel.icon_url} alt="" className="w-5 h-5 rounded-sm object-contain shrink-0" />
-                      ) : (
-                        <Icon className="w-5 h-5 text-[#949BA4] shrink-0" />
-                      )}
-                      <span className="text-sm font-medium text-[#F2F3F5] truncate">
-                        {channel?.name ?? "Salon"}
-                      </span>
-                    </div>
-                  );
-                })()}
-              </DragOverlay>
+              {/* Pas de fantome sous le curseur (video de reference) : l'element reste en place, grise. */}
             </DndContext>
           </ChannelListScrollContainer>
+          </RulesChannelContext.Provider>
         </ContextMenuTrigger>
         <ContextMenuContent className="w-52">
           {canManageChannels ? (
@@ -2216,6 +2292,21 @@ threads={threadsByChannel[channel.id] || []}
 
       {/* The user panel is now rendered by Index inside this same column, directly
           after the channel list, so no reserved-space spacer is needed here. */}
+      {showServerProfileEdit && (
+        <ServerProfileEditModal open onOpenChange={setShowServerProfileEdit} initialServerId={server.id} />
+      )}
+      {eventsModal.open && (
+        <EventsModal
+          serverId={server.id}
+          open
+          startWithWizard={eventsModal.wizard}
+          onClose={() => setEventsModal({ open: false })}
+          onOpenRoles={canAccessSettings && onOpenServerSettings ? () => {
+            setEventsModal({ open: false });
+            onOpenServerSettings('roles');
+          } : undefined}
+        />
+      )}
       {showAccountSettings && (
         <Suspense fallback={<Spinner />}>
           <AccountSettingsModal onClose={() => setShowAccountSettings(false)} />
@@ -2270,6 +2361,15 @@ threads={threadsByChannel[channel.id] || []}
 
       }
 
+      {voiceStatusChannelId &&
+      <VoiceStatusModal
+        channelName={getChannelName(voiceStatusChannelId)}
+        serverId={server.id}
+        initial={voiceStatuses[voiceStatusChannelId] ?? ''}
+        onClose={() => setVoiceStatusChannelId(null)}
+        onSave={(status) => setVoiceStatus.mutate({ channelId: voiceStatusChannelId, status })} />
+      }
+
       {inviteChannelId &&
       <CreateInviteModal
         serverId={server.id}
@@ -2294,7 +2394,7 @@ threads={threadsByChannel[channel.id] || []}
           <AlertDialogHeader>
             <AlertDialogTitle>Quitter le serveur</AlertDialogTitle>
             <AlertDialogDescription>
-              Êtes-vous sûr de vouloir quitter <strong>{server.name}</strong> ? Vous pourrez rejoindre à nouveau avec
+              Êtes-vous sûr de vouloir quitter <strong translate="no">{server.name}</strong> ? Vous pourrez rejoindre à nouveau avec
               une invitation.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -2318,7 +2418,9 @@ function VoiceParticipantsSidebar({
   participants,
   speakingUsers,
   serverId,
+  onInvite,
 }: {
+  onInvite?: () => void;
   participants: Array<{
     id: string;
     user_id: string;
@@ -2357,7 +2459,7 @@ function VoiceParticipantsSidebar({
   };
 
   return (
-    <div className="ml-6 mt-1 space-y-0.5">
+    <div className="ml-8 mr-2 mt-1 space-y-0.5">
       {participants.map((participant) => {
         const isSpeaking = speakingUsers.has(participant.user_id);
         return (
@@ -2368,7 +2470,7 @@ function VoiceParticipantsSidebar({
             onViewProfile={() => handleOpenProfile(participant)}
           >
             <div
-              className="flex items-center gap-2 px-2 py-1 text-sm text-muted-foreground rounded-md hover:bg-muted/50 cursor-pointer transition-colors"
+              className="flex items-center gap-2.5 px-2 h-9 text-sm text-muted-foreground rounded-[4px] hover:bg-[hsl(var(--interactive-background-hover))] cursor-pointer transition-colors"
               onClick={(e) => handleOpenProfile(participant, e)}
             >
               <div
@@ -2378,17 +2480,17 @@ function VoiceParticipantsSidebar({
                   isSpeaking ? "border-[hsl(var(--online))]" : "border-transparent"
                 )}
               >
-                <Avatar className="w-5 h-5">
+                <Avatar className="w-7 h-7">
                   <AvatarImage src={participant.profile.avatar_url || undefined} />
                   <AvatarFallback className="text-[10px] bg-primary/20 text-primary">
                     {participant.profile.display_name.charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
               </div>
-              <span className="truncate flex-1 text-xs">{participant.profile.display_name}</span>
+              <span className="truncate flex-1 text-[15px] font-medium text-[hsl(var(--interactive-icon-default))]">{participant.profile.display_name}</span>
               {participant.camera && <VideoIcon className="w-3 h-3 text-muted-foreground" />}
               {participant.streaming && (
-                <span className="px-1 py-0.5 text-[9px] font-bold leading-none bg-destructive text-destructive-foreground rounded">DIRECT</span>
+                <span className="px-1.5 h-[18px] flex items-center text-[10px] font-bold uppercase leading-none bg-[#da373c] text-white rounded-[4px]">En direct</span>
               )}
               {participant.muted && <MicOff className="w-3 h-3 text-destructive" />}
               {participant.deafened && <HeadphoneOff className="w-3 h-3 text-destructive" />}
@@ -2396,6 +2498,14 @@ function VoiceParticipantsSidebar({
           </VoiceParticipantContextMenu>
         );
       })}
+
+      {onInvite && (
+        <button type="button" onClick={onInvite} className="w-full h-8 pl-2 pr-2 rounded-[4px] flex items-center gap-2 text-sm text-muted-foreground hover:bg-[hsl(var(--interactive-background-hover))] hover:text-foreground transition-colors">
+          <span className="w-6 h-6 rounded-full border border-dashed border-current flex items-center justify-center shrink-0"><UserPlus className="w-3.5 h-3.5" /></span>
+          <span className="flex-1 truncate text-left">Inviter dans le salon vocal</span>
+          <ChevronRight className="w-4 h-4 shrink-0" />
+        </button>
+      )}
 
       {/* Profile Popup */}
       <UserProfilePopup
@@ -2420,7 +2530,8 @@ const ChannelListScrollContainer = forwardRef<
   return (
     <div
       ref={ref}
-      className={cn("flex-1 overflow-y-auto scrollbar-thin py-2 px-1 relative", className)}
+      // pb : le panneau utilisateur flotte par-dessus le bas de la liste.
+      className={cn("flex-1 overflow-y-auto scrollbar-thin pt-3 pb-[76px] relative", className)}
       {...guard}
       {...rest}
     >

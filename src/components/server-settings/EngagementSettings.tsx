@@ -1,5 +1,7 @@
 import { useState, useEffect, forwardRef } from 'react';
-import { Heart, MessageSquare, Users, TrendingUp, Loader2, Hash, Sticker, Sparkles, Lightbulb, Activity } from 'lucide-react';
+import { Loader2, Lightbulb, Activity } from 'lucide-react';
+import { Heart, MessageSquare, TrendingUp, Hash, Sticker, Sparkles } from '@/components/icons/discord/lucide';
+import { Users } from '@/components/icons/serverSettingsIcons';
 import { useEngagementStats } from '@/hooks/useEngagementStats';
 import { useServerSettings, useUpdateServerSettings, ServerSettings } from '@/hooks/useServerSettings';
 import { useChannels } from '@/hooks/useChannels';
@@ -198,9 +200,9 @@ export const EngagementSettings = forwardRef<HTMLDivElement, EngagementSettingsP
   return (
     <div ref={ref} className="space-y-8">
       <div>
-        <h3 className="text-lg font-semibold mb-1">Engagement des membres</h3>
-        <p className="text-sm text-muted-foreground">
-          Suivez et améliorez l'engagement de votre communauté
+        <h2 className="text-xl font-semibold leading-6 text-white">Participation</h2>
+        <p className="mt-1 text-sm leading-[18px] text-foreground">
+          Suis et améliore la participation de ta communauté.
         </p>
       </div>
 

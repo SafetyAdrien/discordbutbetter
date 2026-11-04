@@ -1,5 +1,5 @@
 import { ReactNode, useState } from 'react';
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X } from '@/components/icons/discord/lucide';
 import { StreamlineHash } from '@/components/icons/StreamlineHash';
 import { StreamlineVoice } from '@/components/icons/StreamlineVoice';
 import { StreamlineForum } from '@/components/icons/StreamlineForum';
@@ -84,7 +84,7 @@ export function MobileChannelHeader({
       </div>
       <div className="min-w-0 flex-1 leading-tight">
         <div className="flex items-center gap-0.5 min-w-0">
-          <h2 className="font-semibold text-sm truncate">{channelName}</h2>
+          <h2 translate="no" className="font-semibold text-sm truncate">{channelName}</h2>
           <ChevronRight className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0 -ml-0.5" />
         </div>
         {typeof onlineCount === 'number' && (

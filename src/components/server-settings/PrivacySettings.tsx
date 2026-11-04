@@ -4,7 +4,8 @@ import { useUpdateServerInfo } from '@/hooks/useServerAssets';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
-import { Globe, Lock, Loader2 } from 'lucide-react';
+import { Globe, Loader2 } from 'lucide-react';
+import { Lock } from '@/components/icons/discord/lucide';
 
 interface PrivacySettingsProps {
   serverId: string;

@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useDMConversations } from './useDMs';
 import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { isDirectMentionForUser } from '@/lib/mentions';
+import { acquireSharedRealtimeEffect, subscribeWithDiagnostics } from '@/lib/realtimeDiagnostics';
 
 /**
  * Per-conversation mention counts (Discord-style red bubble logic):
@@ -16,7 +17,6 @@ export function useDMMentionCounts() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { data: conversations = [] } = useDMConversations();
-  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   const cacheKey = user?.id ? `dm-mention-counts:${user.id}` : null;
   const cached = cacheKey ? cacheGetSync<Record<string, number>>(cacheKey) : undefined;
@@ -26,6 +26,8 @@ export function useDMMentionCounts() {
     for (const c of conversations) m[c.id] = { isGroup: !!c.is_group };
     return m;
   }, [conversations]);
+  const convMetaRef = useRef(convMeta);
+  convMetaRef.current = convMeta;
 
   const convIds = useMemo(() => conversations.map((c) => c.id), [conversations]);
 
@@ -92,6 +94,7 @@ export function useDMMentionCounts() {
   // Realtime: invalidate (debounced) on new dm_messages or my own read state changes.
   useEffect(() => {
     if (!user) return;
+    return acquireSharedRealtimeEffect(`dm-mention-counts:${user.id}`, () => {
     const patchConversation = (conversationId: string, delta: number) => {
       queryClient.setQueriesData<Record<string, number>>(
         { queryKey: ['dm-mention-counts'] },
@@ -106,19 +109,22 @@ export function useDMMentionCounts() {
       );
     };
     const ch1 = supabase
-      .channel(`dm-mention-counts-messages-${user.id}-${instanceIdRef.current}`)
+      .channel(`dm-mention-counts-messages-${user.id}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'dm_messages' }, (payload) => {
         const msg = payload.new as { conversation_id?: string; author_id?: string; content?: string | null };
         if (!msg.conversation_id || msg.author_id === user.id) return;
-        const meta = convMeta[msg.conversation_id];
+        const meta = convMetaRef.current[msg.conversation_id];
         if (!meta || !meta.isGroup || isDirectMentionForUser(msg.content, user.id)) {
           patchConversation(msg.conversation_id, 1);
         }
         queryClient.invalidateQueries({ queryKey: ['dm-mention-counts'] });
-      })
-      .subscribe();
+      });
+    const stopMessagesDiagnostics = subscribeWithDiagnostics(
+      ch1,
+      `dm-mention-messages-${user.id}`,
+    );
     const ch2 = supabase
-      .channel(`dm-mention-counts-reads-${user.id}-${instanceIdRef.current}`)
+      .channel(`dm-mention-counts-reads-${user.id}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'dm_read_states', filter: `user_id=eq.${user.id}` },
@@ -135,13 +141,19 @@ export function useDMMentionCounts() {
           }
           queryClient.invalidateQueries({ queryKey: ['dm-mention-counts'] });
         },
-      )
-      .subscribe();
+      );
+    const stopReadsDiagnostics = subscribeWithDiagnostics(
+      ch2,
+      `dm-mention-reads-${user.id}`,
+    );
     return () => {
+      stopMessagesDiagnostics();
+      stopReadsDiagnostics();
       supabase.removeChannel(ch1);
       supabase.removeChannel(ch2);
     };
-  }, [user, queryClient, convMeta]);
+    });
+  }, [user, queryClient]);
 
   const mentionCounts = useMemo(() => query.data || {}, [query.data]);
   const totalMentionCount = useMemo(

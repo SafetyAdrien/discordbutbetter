@@ -55,6 +55,24 @@ export function useDMCalls(conversationId: string | null) {
     refetchInterval: 5000,
   });
 
+  // Historique des appels de la conversation (lignes "a commence un appel" dans la discussion).
+  const { data: history = [] } = useQuery({
+    queryKey: ['dm-call-history', conversationId],
+    queryFn: async () => {
+      if (!conversationId) return [] as DMCall[];
+      const { data, error } = await supabase
+        .from('dm_calls')
+        .select(`*, initiator:profiles!dm_calls_initiator_id_fkey (id, username, display_name, avatar_url)`)
+        .eq('conversation_id', conversationId)
+        .order('created_at', { ascending: true })
+        .limit(60);
+      if (error) throw error;
+      return (data ?? []) as DMCall[];
+    },
+    enabled: !!conversationId && !!user,
+    refetchInterval: 15000,
+  });
+
   // Subscribe to call changes
   useEffect(() => {
     if (!conversationId) return;
@@ -71,6 +89,8 @@ export function useDMCalls(conversationId: string | null) {
         },
         () => {
           queryClient.invalidateQueries({ queryKey: ['dm-call', conversationId] });
+          queryClient.invalidateQueries({ queryKey: ['dm-call-history', conversationId] });
+          queryClient.invalidateQueries({ queryKey: ['dm-calls-all'] });
         }
       )
       .subscribe();
@@ -101,6 +121,8 @@ export function useDMCalls(conversationId: string | null) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dm-call', conversationId] });
+      queryClient.invalidateQueries({ queryKey: ['dm-call-history', conversationId] });
+      queryClient.invalidateQueries({ queryKey: ['dm-calls-all'] });
     },
     onError: () => {
       toast.error('Impossible de lancer l\'appel');
@@ -122,6 +144,8 @@ export function useDMCalls(conversationId: string | null) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dm-call', conversationId] });
+      queryClient.invalidateQueries({ queryKey: ['dm-call-history', conversationId] });
+      queryClient.invalidateQueries({ queryKey: ['dm-calls-all'] });
     },
     onError: () => {
       toast.error('Impossible d\'accepter l\'appel');
@@ -143,6 +167,8 @@ export function useDMCalls(conversationId: string | null) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dm-call', conversationId] });
+      queryClient.invalidateQueries({ queryKey: ['dm-call-history', conversationId] });
+      queryClient.invalidateQueries({ queryKey: ['dm-calls-all'] });
     },
   });
 
@@ -161,17 +187,61 @@ export function useDMCalls(conversationId: string | null) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dm-call', conversationId] });
+      queryClient.invalidateQueries({ queryKey: ['dm-call-history', conversationId] });
+      queryClient.invalidateQueries({ queryKey: ['dm-calls-all'] });
     },
   });
 
   return {
     activeCall,
+    history,
     isLoading,
     startCall,
     acceptCall,
     declineCall,
     endCall,
   };
+}
+
+/* Appels en cours (sonnerie ou actifs) dans toutes mes conversations : pastilles "Dans un appel" et sonnerie. */
+export function useAllDMCalls() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
+
+  const { data: calls = [] } = useQuery({
+    queryKey: ['dm-calls-all', user?.id],
+    enabled: !!user,
+    refetchInterval: 4000,
+    queryFn: async (): Promise<DMCall[]> => {
+      const { data: parts } = await supabase.from('dm_participants').select('conversation_id').eq('user_id', user!.id);
+      const ids = (parts ?? []).map((p) => p.conversation_id);
+      if (!ids.length) return [];
+      const { data, error } = await supabase
+        .from('dm_calls')
+        .select(`*, initiator:profiles!dm_calls_initiator_id_fkey (id, username, display_name, avatar_url)`)
+        .in('conversation_id', ids)
+        .in('status', ['ringing', 'active'])
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as DMCall[];
+    },
+  });
+
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel(`dm-calls-all-${instanceIdRef.current}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'dm_calls' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['dm-calls-all', user.id] });
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, queryClient]);
+
+  return calls;
 }
 
 // Hook for incoming calls across all conversations

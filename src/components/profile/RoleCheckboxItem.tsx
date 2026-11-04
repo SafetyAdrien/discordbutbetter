@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check } from "lucide-react";
+import { Check } from "@/components/icons/discord/lucide";
 import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
@@ -36,6 +36,8 @@ interface RoleCheckboxItemProps {
   memberId: string;
   userId?: string;
   disabled?: boolean;
+  /** Liste d'ajout (carte de profil) : masque les roles deja attribues, sans case a cocher. */
+  hideWhenChecked?: boolean;
 }
 
 /**
@@ -43,7 +45,7 @@ interface RoleCheckboxItemProps {
  * via useQuery + select, so it re-renders instantly on optimistic updates
  * and Realtime changes.
  */
-export function RoleCheckboxItem({ role, serverId, memberId, userId, disabled }: RoleCheckboxItemProps) {
+export function RoleCheckboxItem({ role, serverId, memberId, userId, disabled, hideWhenChecked }: RoleCheckboxItemProps) {
   const queryClient = useQueryClient();
 
   // Reactive subscription to the members cache — re-renders when cache changes
@@ -162,6 +164,8 @@ export function RoleCheckboxItem({ role, serverId, memberId, userId, disabled }:
     [disabled, getHasRoleNow, memberId, queryClient, role, serverId, userId]
   );
 
+  if (hideWhenChecked && isChecked) return null;
+
   return (
     <div
       role="checkbox"
@@ -173,27 +177,27 @@ export function RoleCheckboxItem({ role, serverId, memberId, userId, disabled }:
         handleRoleToggle(e as unknown as React.MouseEvent<HTMLElement>);
       }}
       className={cn(
-        "w-full flex items-center gap-2 p-1.5 rounded transition-colors",
-        !disabled ? "hover:bg-muted/50" : "cursor-not-allowed",
+        "w-full h-[46px] px-3 flex items-center gap-3 rounded-[4px] transition-colors select-none",
+        !disabled ? "cursor-pointer hover:bg-white/[0.06]" : "cursor-not-allowed opacity-60",
       )}
       aria-checked={isChecked}
       aria-disabled={disabled}
     >
-      <span
-        aria-hidden="true"
-        className={cn(
-          "flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border border-primary transition-colors duration-150",
-          isChecked ? "bg-primary text-primary-foreground" : "bg-transparent",
-        )}
-      >
-        <Check className={cn("h-3.5 w-3.5 transition-opacity duration-150", isChecked ? "opacity-100" : "opacity-0")} />
+      <span className="w-3.5 h-3.5 rounded-full shrink-0" style={{ backgroundColor: role.color || "#99AAB5" }} />
+      <span translate="no" className="flex-1 min-w-0 truncate text-base font-medium text-white text-left">
+        {role.name}
       </span>
-      <span className="flex items-center gap-1.5 flex-1 text-sm text-left">
-        <RoleIconMini role={role} />
-        <span style={{ color: role.color || undefined }} className="truncate">
-          {role.name}
+      {!hideWhenChecked && (
+        <span
+          aria-hidden="true"
+          className={cn(
+            "flex h-6 w-6 shrink-0 items-center justify-center rounded-[4px] border-2 transition-colors duration-150",
+            isChecked ? "bg-[#5865f2] border-[#5865f2] text-white" : "bg-transparent border-[#80848e]",
+          )}
+        >
+          <Check className={cn("h-4 w-4 transition-opacity duration-150", isChecked ? "opacity-100" : "opacity-0")} />
         </span>
-      </span>
+      )}
     </div>
   );
 }

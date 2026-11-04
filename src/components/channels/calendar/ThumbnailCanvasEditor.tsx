@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Loader2, Check, X, Lock, Unlock, RotateCcw, AlignCenter } from 'lucide-react';
+import { Loader2, Unlock, RotateCcw, AlignCenter } from 'lucide-react';
+import { Check, X, Lock } from '@/components/icons/discord/lucide';
 import { findOpaqueBounds, sourceMayHaveTransparency, type OpaqueBounds } from './thumbnailAlpha';
 
 interface Props {

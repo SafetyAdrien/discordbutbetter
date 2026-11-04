@@ -12,7 +12,9 @@ describe('dateUtils (remplace date-fns)', () => {
   });
   it('isSameDay/isToday/isYesterday', () => {
     const now = new Date();
-    expect(isSameDay(now, new Date(now.getTime() + 3600_000))).toBe(true);
+    // Midi : "+1 h" reste le meme jour (a 23 h, cela basculait au lendemain).
+    const noon = new Date(now); noon.setHours(12, 0, 0, 0);
+    expect(isSameDay(noon, new Date(noon.getTime() + 3600_000))).toBe(true);
     expect(isToday(now)).toBe(true);
     const y = new Date(); y.setDate(y.getDate() - 1);
     expect(isYesterday(y)).toBe(true);

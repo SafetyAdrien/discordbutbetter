@@ -128,6 +128,7 @@ export function useCreateWebhook() {
     },
     onSettled: (_, __, { channelId }) => {
       queryClient.invalidateQueries({ queryKey: ['webhooks', channelId] });
+      queryClient.invalidateQueries({ queryKey: ['server-webhooks'] });
     },
   });
 }
@@ -164,6 +165,51 @@ export function useDeleteWebhook() {
     },
     onSettled: (_, __, { channelId }) => {
       queryClient.invalidateQueries({ queryKey: ['webhooks', channelId] });
+      queryClient.invalidateQueries({ queryKey: ['server-webhooks'] });
+    },
+  });
+}
+
+/**
+ * Tous les webhooks du serveur (page "Integrations > Webhooks"). Agrege
+ * get_channel_webhooks sur chaque salon textuel ; la cle de cache inclut la
+ * liste des salons pour suivre les creations et suppressions.
+ */
+export function useServerWebhooks(serverId: string | null, channelIds: string[]) {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['server-webhooks', serverId, channelIds],
+    queryFn: async (): Promise<Webhook[]> => {
+      const lists = await Promise.all(
+        channelIds.map(async (id) => {
+          const { data, error } = await supabase.rpc('get_channel_webhooks', { _channel_id: id });
+          if (error) throw error;
+          return (data || []) as Webhook[];
+        }),
+      );
+      return lists.flat().sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''));
+    },
+    enabled: !!serverId && !!user && channelIds.length > 0,
+  });
+}
+
+export function useUpdateWebhook() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ webhookId, name, channelId }: { webhookId: string; name?: string; channelId?: string }) => {
+      const patch: { name?: string; channel_id?: string } = {};
+      if (name !== undefined) patch.name = name;
+      if (channelId !== undefined) patch.channel_id = channelId;
+      const { error } = await supabase.from('webhooks').update(patch).eq('id', webhookId);
+      if (error) throw error;
+    },
+    onError: () => {
+      toast.error('Erreur lors de la modification du webhook');
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['server-webhooks'] });
+      queryClient.invalidateQueries({ queryKey: ['webhooks'] });
     },
   });
 }

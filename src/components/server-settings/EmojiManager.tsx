@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useServerEmojis, useUploadEmoji, useDeleteEmoji } from '@/hooks/useServerAssets';
+import { SettingsDivider, SettingsPage } from './SettingsUI';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Loader2, Smile } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
+import { Trash2 } from '@/components/icons/discord/lucide';
 import { UploadingOverlay } from './UploadingOverlay';
 import { EmojiStickerEditor, type EditorResult } from './EmojiStickerEditor';
 import { supabase } from '@/integrations/supabase/client';
@@ -127,18 +129,11 @@ export function EmojiManager({ serverId }: EmojiManagerProps) {
   const slotsAvailable = Math.max(0, slotsTotal - emojis.length);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h4 className="text-sm font-medium">Emojis personnalisés</h4>
-          <p className="text-sm text-muted-foreground">
-            {emojis.length} emoji{emojis.length > 1 ? 's' : ''} · 8 Mo max (HD)
-          </p>
-        </div>
-        <Button onClick={() => fileInputRef.current?.click()} className="w-full sm:w-auto min-h-11">
-          <Plus className="w-4 h-4 mr-2" />
-          Importer un emoji
-        </Button>
+    <SettingsPage
+      title="Émoji"
+      description={`Ajoute jusqu'à ${slotsTotal} émojis personnalisés que n'importe qui peut utiliser dans ce serveur. Les GIF d'émojis animés sont aussi acceptés.`}
+    >
+      <Button onClick={() => fileInputRef.current?.click()}>Uploader un émoji</Button>
         <input
           ref={fileInputRef}
           type="file"
@@ -148,26 +143,27 @@ export function EmojiManager({ serverId }: EmojiManagerProps) {
           className="hidden"
           aria-label="Importer des emojis personnalisés"
         />
-      </div>
+      <p className="mt-3 text-xs leading-4 text-muted-foreground">
+        Tu peux sélectionner plusieurs fichiers d'un coup : chacun passera par l'éditeur. 8 Mo maximum par fichier.
+      </p>
 
-      {/* Emoji section header — like image 3 */}
-      <div>
-        <h3 className="text-2xl font-bold mb-0.5">Emoji</h3>
-        <p className="text-sm text-muted-foreground mb-3">
-          {slotsAvailable} slots available
-        </p>
+      <SettingsDivider />
 
-        {emojis.length === 0 ? (
-          <div className="rounded-lg bg-muted/30 py-10 text-center">
-            <Smile className="w-10 h-10 mx-auto mb-3 text-muted-foreground/30" />
-            <p className="text-sm text-muted-foreground">Aucun emoji pour ce serveur</p>
-          </div>
-        ) : (
-          <div className="rounded-lg bg-muted/30 overflow-hidden">
-            <div className="hidden sm:grid grid-cols-[80px_1fr_1fr_40px] gap-3 px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b border-border/30">
+      {emojis.length === 0 ? (
+        <div>
+          <p className="text-base font-semibold text-muted-foreground">Aucun émoji</p>
+          <p className="mt-1 text-sm text-muted-foreground">Commence à mettre l'ambiance en uploadant un émoji</p>
+        </div>
+      ) : (
+        <div>
+          <p className="mb-3 text-base font-semibold text-white">
+            Émoji <span className="text-muted-foreground font-normal">— {slotsAvailable} emplacement{slotsAvailable > 1 ? 's' : ''} disponible{slotsAvailable > 1 ? 's' : ''}</span>
+          </p>
+          <div className="rounded-lg bg-[hsl(var(--card))] overflow-hidden">
+            <div className="hidden sm:grid grid-cols-[80px_1fr_1fr_40px] gap-3 px-4 py-2.5 text-xs font-semibold text-muted-foreground border-b border-border">
               <div>Image</div>
-              <div>Name</div>
-              <div>Uploaded By</div>
+              <div>Nom</div>
+              <div>Uploadé par</div>
               <div />
             </div>
             <ul className="divide-y divide-border/20">
@@ -207,7 +203,7 @@ export function EmojiManager({ serverId }: EmojiManagerProps) {
                     <button type="button"
                       onClick={() => deleteEmoji.mutate({ emojiId: emoji.id, serverId })}
                       className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 p-1.5 text-muted-foreground hover:text-destructive transition-all shrink-0"
-                      aria-label="Delete emoji"
+                      aria-label="Supprimer l\'émoji"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -216,8 +212,8 @@ export function EmojiManager({ serverId }: EmojiManagerProps) {
               })}
             </ul>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       <UploadingOverlay open={preparing} />
 
@@ -230,6 +226,6 @@ export function EmojiManager({ serverId }: EmojiManagerProps) {
         onClose={handleEditorClose}
         onFinish={handleEditorFinish}
       />
-    </div>
+    </SettingsPage>
   );
 }

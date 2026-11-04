@@ -1,13 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
+import { acquireSharedRealtimeEffect, subscribeWithDiagnostics } from '@/lib/realtimeDiagnostics';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { z } from 'zod';
+import { InvalidInputError, parseUuid } from '@/lib/validation';
 
 // Validation schema
-const targetUserSchema = z.string().uuid('Invalid user ID');
 
 export interface DMConversation {
   id: string;
@@ -35,12 +35,6 @@ export interface DMConversation {
 export function useDMConversations() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  // Multiple components (ServerList via useDMMentionCounts, DMList directly,
-  // etc.) mount their own instance of this hook simultaneously — suffix the
-  // realtime channel name per instance so they don't collide on the same
-  // Supabase Realtime topic (matches the pattern in useDMMentionCounts.ts).
-  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
-
   const query = useQuery({
     queryKey: ['dm-conversations', user?.id],
     placeholderData: () => cacheGetSync(`dm-conversations:${user?.id}`),
@@ -146,15 +140,16 @@ export function useDMConversations() {
   useEffect(() => {
     if (!userId) return;
 
-    let cancelled = false;
-    const refetch = () => queryClient.invalidateQueries({ queryKey: ['dm-conversations', userId] });
+    return acquireSharedRealtimeEffect(`dm-conversations:${userId}`, () => {
+      let cancelled = false;
+      const refetch = () => queryClient.invalidateQueries({ queryKey: ['dm-conversations', userId] });
 
-    const channel = supabase
-      .channel(`dm-updates:${userId}-${instanceIdRef.current}`, { config: { private: true } })
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'dm_messages' },
-        (payload) => {
+      const channel = supabase
+        .channel(`dm-updates:${userId}`, { config: { private: true } })
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'dm_messages' },
+          (payload) => {
           const msg = payload.new as {
             conversation_id: string;
             content: string;
@@ -185,26 +180,31 @@ export function useDMConversations() {
             const next = [updated, ...old.slice(0, idx), ...old.slice(idx + 1)];
             return next;
           });
-        },
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'dm_conversations' },
-        () => { refetch(); },
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'dm_participants' },
-        () => { refetch(); },
-      )
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED' && !cancelled) refetch();
-      });
+          },
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'dm_conversations' },
+          () => { refetch(); },
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'dm_participants' },
+          () => { refetch(); },
+        );
+      const stopDiagnostics = subscribeWithDiagnostics(
+        channel,
+        `dm-conversations-${userId}`,
+        (status) => {
+          if (status === 'SUBSCRIBED' && !cancelled) refetch();
+        });
 
-    return () => {
-      cancelled = true;
-      void supabase.removeChannel(channel);
-    };
+      return () => {
+        cancelled = true;
+        stopDiagnostics();
+        void supabase.removeChannel(channel);
+      };
+    });
   }, [userId, queryClient]);
 
   return query;
@@ -219,7 +219,7 @@ export function useCreateDMConversation() {
       if (!user) throw new Error('Not authenticated');
 
       // Validate input
-      const validatedUserId = targetUserSchema.parse(targetUserId);
+      const validatedUserId = parseUuid(targetUserId, 'Invalid user ID');
 
       // Use secure database function that handles conversation creation and participant enrollment
       const { data, error } = await supabase
@@ -241,7 +241,7 @@ export function useCreateDMConversation() {
       if (context?.previousConversations) {
         queryClient.setQueryData(['dm-conversations', user?.id], context.previousConversations);
       }
-      if (error instanceof z.ZodError) {
+      if (error instanceof InvalidInputError) {
         toast.error('Invalid user ID');
       } else {
         toast.error('Erreur lors de la création de la conversation');

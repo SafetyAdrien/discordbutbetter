@@ -45,7 +45,7 @@ export function AvatarUploadEditor({ open, file, onClose, onFinish }: AvatarUplo
                 <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-background" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs font-semibold truncate">{username}</p>
+                <p translate="no" className="text-xs font-semibold truncate">{username}</p>
                 <p className="text-[10px] text-muted-foreground">Online</p>
               </div>
             </div>
@@ -61,7 +61,7 @@ export function AvatarUploadEditor({ open, file, onClose, onFinish }: AvatarUplo
                 <EditorPreviewImage t={t} size={28} circular />
                 <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-background" />
               </div>
-              <span className="text-sm truncate">{username}</span>
+              <span translate="no" className="text-sm truncate">{username}</span>
             </div>
           </div>
 
@@ -73,7 +73,7 @@ export function AvatarUploadEditor({ open, file, onClose, onFinish }: AvatarUplo
             <div className="flex items-center gap-2 px-1.5 py-1.5 rounded bg-background/70">
               <EditorPreviewImage t={t} size={32} circular />
               <div className="min-w-0">
-                <p className="text-xs font-semibold truncate">{username}</p>
+                <p translate="no" className="text-xs font-semibold truncate">{username}</p>
                 <p className="text-[10px] text-muted-foreground truncate">You: hey 👋</p>
               </div>
             </div>

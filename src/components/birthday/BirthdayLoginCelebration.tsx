@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ConfettiCanvas } from '@/components/effects/ConfettiCanvas';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMyBirthdayStatus, claimMyBirthdayBadge } from '@/hooks/useBirthday';
+import { userKey } from '@/lib/userScope';
 
 const GOLDEN_COLORS = [
   'hsl(45, 95%, 58%)',
@@ -25,8 +26,8 @@ export function BirthdayLoginCelebration() {
     if (!user || !data?.isBirthday) return;
     const key = todayKey();
     try {
-      if (localStorage.getItem(key)) return;
-      localStorage.setItem(key, '1');
+      if (localStorage.getItem(userKey(key))) return;
+      localStorage.setItem(userKey(key), '1');
     } catch {
       // ignore
     }

@@ -1,371 +1,129 @@
-import React, { useState } from 'react';
-import { Search, Plus, Pencil, Bell, BellOff, MoreVertical, Trash2, Check, X, Star } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { useThreads, useUpdateThread, useDeleteThread } from '@/hooks/useThreads';
-import { useIsFollowingThread, useFollowThread, useUnfollowThread } from '@/hooks/useThreadFollow';
+import React, { useMemo, useState } from 'react';
+import { Search, X } from '@/components/icons/discord/lucide';
+import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu';
+import { ThreadContextMenuBody } from './ThreadContextMenuBody';
+import { DeleteThreadDialog } from './DeleteThreadDialog';
+import { ThreadSettingsPage } from './ThreadSettingsPage';
+import { useAuth } from '@/contexts/AuthContext';
+import { useMultipleChannelPermissions } from '@/hooks/useUserChannelPermissions';
+import { Loader2 } from 'lucide-react';
+import { UserAvatarImage } from '@/components/ui/user-avatar-image';
+import { useThreads, useDeleteThread } from '@/hooks/useThreads';
+import { useFollowedThreads } from '@/hooks/useFollowedThreads';
 import { Thread } from '@/types/thread';
-import { formatDistanceToNow } from '@/lib/dateUtils';
-import { fr } from '@/lib/dateUtils';
-import CreateThreadModal from './CreateThreadModal';
+import { shortAgo } from '@/lib/shortAgo';
+import { openNewThread } from '@/lib/threadEvents';
 import StreamlineThreads from '@/components/icons/StreamlineThreads';
 import { cn } from '@/lib/utils';
 
-interface ThreadsPopoverProps {
+/*
+ * Liste des fils d'un salon (video de reference) : en-tete "Fils" avec recherche (contour bleu) et "Creer", puis
+ * "N fils rejoints" et "N autres fils" ; chaque fil est une carte (nom, "auteur : dernier message • il y a ...",
+ * avatar a droite). Les fils inactifs depuis plus que leur duree de masquage passent dans "anciens fils".
+ */
+
+interface Props {
   channelId: string;
+  channelName?: string;
   onSelectThread: (threadId: string) => void;
+  onDone?: () => void;
+  /** Presentation en fenetre centree (lien "Voir tous les fils") : ajoute le bouton fermer. */
+  onClose?: () => void;
 }
 
-const ThreadsPopover: React.FC<ThreadsPopoverProps> = ({ channelId, onSelectThread }) => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const { data: threads = [], isLoading } = useThreads(channelId);
+const lastActivity = (t: Thread) => new Date(t.last_message_at || t.created_at).getTime();
+const isOld = (t: Thread, now: number) => now - lastActivity(t) > (t.auto_archive_minutes ?? 4320) * 60_000;
 
-  const filteredThreads = threads.filter((thread) =>
-    thread.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const handleThreadCreated = (threadId: string) => {
-    onSelectThread(threadId);
-  };
-
-  return (
-    <div className="flex flex-col max-h-[350px] sm:h-[450px] w-full max-w-[380px]">
-      {/* Header */}
-      <div className="p-3 border-b border-border">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <StreamlineThreads className="w-5 h-5 text-muted-foreground" />
-            <h3 className="font-semibold text-foreground">Threads</h3>
-          </div>
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => setShowCreateModal(true)}
-          >
-            <Plus className="w-4 h-4 mr-1" />
-            Créer
-          </Button>
-        </div>
-        <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Rechercher des threads..."
-            className="pl-8 h-8"
-          />
-        </div>
+function ThreadCard({ thread, onClick, menu }: { thread: Thread; onClick: () => void; menu?: React.ReactNode }) {
+  const last = thread.last_message;
+  const when = shortAgo(new Date(thread.last_message_at || thread.created_at));
+  const author = last?.author ?? (thread.creator ? { id: thread.creator.id, display_name: thread.creator.display_name, avatar_url: thread.creator.avatar_url } : null);
+  const card = (
+    <button type="button" onClick={onClick} className="w-full px-[15px] pt-4 pb-3.5 rounded-lg bg-[#3b3b45] hover:bg-[#41414b] border border-[#454550] flex items-center gap-3 text-left transition-colors">
+      <div className="min-w-0 flex-1">
+        <p translate="no" className={cn('text-base leading-5 font-semibold truncate', thread.closed || thread.locked ? 'text-[#b5bac1]' : 'text-white')}>{thread.name}</p>
+        <p className="flex items-center gap-1.5 text-[15px] leading-5 text-[#dbdee1] min-w-0">
+          {author && <UserAvatarImage src={author.avatar_url} alt="" className="w-4 h-4 shrink-0" fallbackClassName="text-[8px]" fallback={author.display_name.charAt(0).toUpperCase()} ownerId={author.id} />}
+          <span translate="no" className="truncate">
+            {last ? <><span className="font-medium text-white">{author?.display_name}</span>: {last.content}</> : <span className="italic">Commencé par <span className="font-medium text-white">{author?.display_name}</span></span>}
+          </span>
+          <span aria-hidden className="shrink-0">•</span>
+          <span className="shrink-0">{last ? when : `Dernière activité : ${when}`}</span>
+        </p>
       </div>
-
-      {/* Thread List */}
-      <ScrollArea className="flex-1">
-        {isLoading && threads.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-            Chargement...
-          </div>
-        ) : filteredThreads.length === 0 ? (
-          <EmptyState
-            hasSearchQuery={!!searchQuery}
-            onCreateClick={() => setShowCreateModal(true)}
-          />
-        ) : (
-          <div className="p-2 space-y-1">
-            {filteredThreads.map((thread) => (
-              <ThreadItem
-                key={thread.id}
-                thread={thread}
-                onClick={() => onSelectThread(thread.id)}
-              />
-            ))}
-          </div>
-        )}
-      </ScrollArea>
-
-      <CreateThreadModal
-        open={showCreateModal}
-        onOpenChange={setShowCreateModal}
-        channelId={channelId}
-        onThreadCreated={handleThreadCreated}
-      />
-    </div>
+      {author && <UserAvatarImage src={author.avatar_url} alt="" className="w-6 h-6 shrink-0" fallbackClassName="text-[10px]" fallback={author.display_name.charAt(0).toUpperCase()} ownerId={author.id} />}
+    </button>
   );
-};
+  if (!menu) return card;
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger asChild>{card}</ContextMenuTrigger>
+      {menu}
+    </ContextMenu>
+  );
+}
 
-const ThreadItem: React.FC<{ thread: Thread; onClick: () => void }> = ({
-  thread,
-  onClick,
-}) => {
-  const [isRenaming, setIsRenaming] = useState(false);
-  const [newName, setNewName] = useState(thread.name);
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  
-  const updateThread = useUpdateThread();
+const ThreadsPopover: React.FC<Props> = ({ channelId, channelName, onSelectThread, onDone, onClose }) => {
+  const { user } = useAuth();
+  const { can } = useMultipleChannelPermissions(channelId, ['manage_threads']);
   const deleteThread = useDeleteThread();
-  const { data: isFollowing } = useIsFollowingThread(thread.id);
-  const followThread = useFollowThread();
-  const unfollowThread = useUnfollowThread();
+  const [editThread, setEditThread] = useState<Thread | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const { data: threads = [], isLoading } = useThreads(channelId);
+  const { data: followed = [] } = useFollowedThreads(channelId);
+  const followedIds = useMemo(() => new Set(followed.map((t) => t.id)), [followed]);
+  const now = Date.now();
 
-  const handleRename = () => {
-    if (newName.trim() && newName !== thread.name) {
-      updateThread.mutate({ threadId: thread.id, name: newName.trim() });
-    }
-    setIsRenaming(false);
-  };
+  const filtered = threads.filter((t) => t.name.toLowerCase().includes(query.trim().toLowerCase()));
+  const active = filtered.filter((t) => !isOld(t, now) && !t.archived);
+  const joined = active.filter((t) => followedIds.has(t.id));
+  const others = active.filter((t) => !followedIds.has(t.id));
+  const old = filtered.filter((t) => isOld(t, now) || t.archived);
 
-  const handleDelete = () => {
-    deleteThread.mutate({ threadId: thread.id, channelId: thread.channel_id });
-    setShowDeleteDialog(false);
-  };
-
-  const handleToggleFollow = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (isFollowing) {
-      unfollowThread.mutate(thread.id);
-    } else {
-      followThread.mutate(thread.id);
-    }
-  };
-
-  // Truncate last message content
-  const truncateMessage = (content: string, maxLength: number = 50) => {
-    if (content.length <= maxLength) return content;
-    return content.substring(0, maxLength).trim() + '...';
-  };
+  const pick = (id: string) => { onSelectThread(id); onDone?.(); };
+  const section = (label: string) => <p className="px-1 pt-[9px] pb-[10px] text-sm leading-5 font-medium text-[#dbdee1]">{label}</p>;
 
   return (
-    <>
-      <div className="w-full flex items-start gap-3 p-2.5 rounded-md hover:bg-muted transition-colors group cursor-pointer" onClick={onClick}>
-        {/* Main content area */}
-        <div className="flex-1 min-w-0">
-          {/* Top row: Thread name + Avatars + Count */}
-          <div className="flex items-center justify-between gap-2 mb-1.5">
-            {isRenaming ? (
-              <div className="flex items-center gap-1 flex-1" onClick={(e) => e.stopPropagation()}>
-                <Input
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  className="h-6 text-sm flex-1"
-                  autoFocus
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleRename();
-                    if (e.key === 'Escape') {
-                      setNewName(thread.name);
-                      setIsRenaming(false);
-                    }
-                  }}
-                />
-                <Button size="iconSm" variant="ghost" onClick={handleRename} className="h-6 w-6">
-                  <Check className="w-3 h-3" />
-                </Button>
-                <Button size="iconSm" variant="ghost" onClick={() => {
-                  setNewName(thread.name);
-                  setIsRenaming(false);
-                }} className="h-6 w-6">
-                  <X className="w-3 h-3" />
-                </Button>
-              </div>
-            ) : (
-              <span className="font-semibold text-foreground truncate text-sm">
-                {thread.name}
-              </span>
-            )}
-            
-            {/* Right side: Stacked avatars + participant count */}
-            {!isRenaming && (
-              <div className="flex items-center gap-1.5 flex-shrink-0">
-                {/* Stacked avatars */}
-                {thread.participants && thread.participants.length > 0 && (
-                  <div className="flex -space-x-2">
-                    {thread.participants.slice(0, 4).map((participant, index) => (
-                      <Avatar
-                        key={participant.id}
-                        className={cn(
-                          "w-5 h-5 border-2 border-card",
-                          "ring-0"
-                        )}
-                        style={{ zIndex: 4 - index }}
-                      >
-                        <AvatarImage src={participant.avatar_url || undefined} />
-                        <AvatarFallback className="text-[8px]">
-                          {participant.display_name?.[0] || '?'}
-                        </AvatarFallback>
-                      </Avatar>
-                    ))}
-                  </div>
-                )}
-                
-                {/* Participant count badge */}
-                {thread.participant_count !== undefined && thread.participant_count > 0 && (
-                  <span className="text-[10px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
-                    {thread.participant_count}+
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
-          
-          {/* Bottom row: Last message preview with author and time */}
-          {thread.last_message ? (
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Avatar className="w-4 h-4 flex-shrink-0">
-                <AvatarImage src={thread.last_message.author?.avatar_url || undefined} />
-                <AvatarFallback className="text-[8px]">
-                  {thread.last_message.author?.display_name?.[0] || '?'}
-                </AvatarFallback>
-              </Avatar>
-              <span className="font-medium text-foreground/80 flex-shrink-0">
-                {thread.last_message.author?.display_name || 'Inconnu'}:
-              </span>
-              <span className="truncate flex-1">
-                {truncateMessage(thread.last_message.content)}
-              </span>
-              <span className="flex-shrink-0">•</span>
-              <span className="flex-shrink-0">
-                {formatDistanceToNow(new Date(thread.last_message.created_at), {
-                  addSuffix: false,
-                  locale: fr,
-                })}
-              </span>
-            </div>
-          ) : (
-            <div className="text-xs text-muted-foreground">
-              Aucun message
-            </div>
-          )}
-        </div>
-
-        {/* Actions - visible on hover */}
-        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="iconSm"
-                variant="ghost"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsRenaming(true);
-                }}
-                className="h-6 w-6"
-              >
-                <Pencil className="w-3 h-3" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="top">Renommer</TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="iconSm"
-                variant="ghost"
-                onClick={handleToggleFollow}
-                className={cn("h-6 w-6", isFollowing && "text-primary")}
-              >
-                {isFollowing ? (
-                  <Bell className="w-3 h-3 fill-current" />
-                ) : (
-                  <BellOff className="w-3 h-3" />
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="top">
-              {isFollowing ? 'Ne plus suivre' : 'Suivre'}
-            </TooltipContent>
-          </Tooltip>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                size="iconSm"
-                variant="ghost"
-                onClick={(e) => e.stopPropagation()}
-                className="h-6 w-6"
-              >
-                <MoreVertical className="w-3 h-3" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowDeleteDialog(true);
-                }}
-                className="text-destructive focus:text-destructive"
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Supprimer le thread
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+    <div className="flex flex-col w-full max-h-[480px]">
+      <div className="flex items-center gap-3 px-4 h-[56px] shrink-0 border-b border-white/[0.06]">
+        <span className="flex items-center gap-2 shrink-0 text-[15px] font-semibold text-white"><StreamlineThreads className="w-[21px] h-[21px] text-[#b5bac1]" /> Fils</span>
+        <span aria-hidden className="h-[22px] w-px bg-white/[0.12]" />
+        <label className="w-[318px] max-w-full min-w-0 flex items-center gap-2 h-[30px] px-2 rounded-[4px] bg-[#303038] border-2 border-transparent focus-within:border-[#5b63e4] transition-colors">
+          <Search className="w-[11px] h-[11px] text-[#b5bac1] shrink-0" />
+          <input
+            autoFocus
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Rechercher un nom de fil"
+            aria-label="Rechercher un nom de fil"
+            className="flex-1 min-w-0 bg-transparent outline-none text-sm text-white placeholder:text-[#80848e]"
+          />
+        </label>
+        <button type="button" onClick={() => { openNewThread(channelId); onDone?.(); }} className="ml-auto h-[30px] px-[13px] rounded-[4px] bg-[#5865f2] hover:bg-[#4752c4] text-sm font-medium text-white transition-colors shrink-0">Créer</button>
+        {onClose && (
+          <button type="button" aria-label="Fermer" onClick={onClose} className="w-7 h-7 flex items-center justify-center text-[#b5bac1] hover:text-white shrink-0"><X className="w-[14px] h-[14px]" /></button>
+        )}
       </div>
 
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Supprimer le thread</AlertDialogTitle>
-            <AlertDialogDescription>
-              Êtes-vous sûr de vouloir supprimer "{thread.name}" ? Cette action est irréversible.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Supprimer
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
-  );
-};
-
-const EmptyState: React.FC<{
-  hasSearchQuery: boolean;
-  onCreateClick: () => void;
-}> = ({ hasSearchQuery, onCreateClick }) => {
-  if (hasSearchQuery) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full py-8 px-4 text-center">
-        <Search className="w-12 h-12 text-muted-foreground/50 mb-3" />
-        <p className="text-muted-foreground text-sm">Aucun thread trouvé</p>
+      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin px-4 pb-6">
+        {isLoading && threads.length === 0 ? (
+          <div role="status" className="flex items-center justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+        ) : filtered.length === 0 ? (
+          <p className="py-12 text-center text-sm text-muted-foreground">{query ? 'Aucun fil ne correspond à ta recherche.' : "Il n'y a pas encore de fil dans ce salon."}</p>
+        ) : (
+          <>
+            {joined.length > 0 && section(`${joined.length} fils rejoints`)}
+            <div className="space-y-2">{joined.map((t) => <ThreadCard key={t.id} thread={t} onClick={() => pick(t.id)} menu={<ThreadContextMenuBody thread={t} channelId={channelId} canManage={can('manage_threads') || t.created_by === user?.id} onEdit={() => setEditThread(t)} onDelete={() => setDeleteId(t.id)} />} />)}</div>
+            {others.length > 0 && section(joined.length ? `${others.length} autres fils` : `${others.length} fils actifs`)}
+            <div className="space-y-2">{others.map((t) => <ThreadCard key={t.id} thread={t} onClick={() => pick(t.id)} menu={<ThreadContextMenuBody thread={t} channelId={channelId} canManage={can('manage_threads') || t.created_by === user?.id} onEdit={() => setEditThread(t)} onDelete={() => setDeleteId(t.id)} />} />)}</div>
+            {old.length > 0 && section('anciens fils')}
+            <div className="space-y-2">{old.map((t) => <ThreadCard key={t.id} thread={t} onClick={() => pick(t.id)} menu={<ThreadContextMenuBody thread={t} channelId={channelId} canManage={can('manage_threads') || t.created_by === user?.id} onEdit={() => setEditThread(t)} onDelete={() => setDeleteId(t.id)} />} />)}</div>
+          </>
+        )}
       </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-col items-center justify-center h-full py-8 px-4 text-center">
-      <div className="relative mb-4">
-        <StreamlineThreads className="w-16 h-16 text-muted-foreground/30" />
-        <div className="absolute -top-2 -right-2">
-          <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
-        </div>
-        <div className="absolute -bottom-1 -left-3">
-          <Star className="w-4 h-4 text-yellow-500/70 fill-yellow-500/70" />
-        </div>
-        <div className="absolute top-0 -left-4">
-          <Star className="w-3 h-3 text-yellow-500/50 fill-yellow-500/50" />
-        </div>
-      </div>
-      <h4 className="font-semibold text-foreground mb-1">
-        Pas encore de threads
-      </h4>
-      <p className="text-muted-foreground text-sm mb-4 max-w-[250px]">
-        Les threads permettent d'organiser des discussions sans encombrer le salon principal.
-      </p>
-      <Button size="sm" onClick={onCreateClick}>
-        <Plus className="w-4 h-4 mr-1" />
-        Créer un thread
-      </Button>
+      <DeleteThreadDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)} name={threads.find((t) => t.id === deleteId)?.name ?? ''} onConfirm={() => { if (deleteId) deleteThread.mutate({ threadId: deleteId, channelId }); setDeleteId(null); }} />
+      {editThread && <ThreadSettingsPage thread={editThread} channelName={channelName ?? ''} onClose={() => setEditThread(null)} onDelete={() => deleteThread.mutate({ threadId: editThread.id, channelId })} />}
     </div>
   );
 };

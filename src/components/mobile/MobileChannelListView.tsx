@@ -3,7 +3,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { ServerProfileEditModal } from '@/components/profile/ServerProfileEditModal';
 import { cn } from '@/lib/utils';
-import { ChevronDown, ChevronLeft, ChevronRight, Settings, Calendar, LogOut, Plus, Flag, FolderOpen, Hash, Layers, Trash2, Loader2, UserPlus, Search, Bell, CheckCheck, UserCog, Globe } from 'lucide-react';
+import { Layers, Loader2, UserCog, Globe } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, Settings, Calendar, LogOut, Plus, Flag, FolderOpen, Hash, Trash2, UserPlus, Search, Bell, CheckCheck } from '@/components/icons/discord/lucide';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { EditCategoryModal } from '@/components/category-settings/EditCategoryModal';
 import { ChannelSettingsModal } from '@/components/channel-settings/ChannelSettingsModal';
@@ -270,7 +271,7 @@ function ServerProfileSheet({
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
-                <h3 className="font-bold text-base text-foreground truncate leading-tight">{serverName}</h3>
+                <h3 translate="no" className="font-bold text-base text-foreground truncate leading-tight">{serverName}</h3>
                 <div className="flex items-center gap-1 mt-0.5 text-[11px] text-muted-foreground min-w-0">
                   <Globe className="w-3 h-3 flex-shrink-0" />
                   <span className="truncate">{serverCategory}</span>
@@ -519,7 +520,7 @@ export function MobileChannelListView({
     <button type="button" className="flex items-center text-left min-w-0 leading-tight gap-1.5">
       <div className="flex flex-col min-w-0">
         <div className="flex items-center gap-1 min-w-0">
-          <h2 className="font-bold text-lg truncate text-foreground">{serverName}</h2>
+          <h2 translate="no" className="font-bold text-lg truncate text-foreground">{serverName}</h2>
           <ChevronRight className={cn("w-5 h-5 text-muted-foreground flex-shrink-0 transition-transform duration-200", isOpen && "rotate-90")} />
         </div>
         <p className="text-[11px] text-muted-foreground truncate max-w-full">
@@ -533,7 +534,7 @@ export function MobileChannelListView({
     <button type="button" className="flex items-center text-left min-w-0 leading-tight gap-1.5">
       <div className="flex flex-col min-w-0">
         <div className="flex items-center gap-1 min-w-0">
-          <h2 className="font-bold text-lg truncate text-white [text-shadow:0_1px_6px_rgba(0,0,0,0.9),0_0px_2px_rgba(0,0,0,0.8)]">{serverName}</h2>
+          <h2 translate="no" className="font-bold text-lg truncate text-white [text-shadow:0_1px_6px_rgba(0,0,0,0.9),0_0px_2px_rgba(0,0,0,0.8)]">{serverName}</h2>
           <ChevronRight className={cn("w-5 h-5 text-white/90 flex-shrink-0 [filter:drop-shadow(0_1px_4px_rgba(0,0,0,0.9))] transition-transform duration-200", isOpen && "rotate-90")} />
         </div>
         <p className="text-[11px] text-white/80 truncate max-w-full [text-shadow:0_1px_4px_rgba(0,0,0,0.9)]">
@@ -746,7 +747,7 @@ export function MobileChannelListView({
                   className={cn("channel-item w-full", activeChannelId === ch.id && "active")}
                 >
                   <Icon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                  <span className={cn(
+                  <span translate="no" className={cn(
                     "text-sm truncate flex-1 text-left",
                     info?.hasUnread ? "text-foreground font-medium" : "text-muted-foreground"
                   )}>{ch.name}</span>
@@ -875,7 +876,7 @@ export function MobileChannelListView({
                         className={cn("channel-item w-full", activeChannelId === ch.id && "active")}
                       >
                         <Icon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                        <span className={cn(
+                        <span translate="no" className={cn(
                           "text-sm truncate flex-1 text-left",
                           info?.hasUnread ? "text-foreground font-medium" : "text-muted-foreground"
                         )}>{ch.name}</span>
@@ -916,7 +917,7 @@ export function MobileChannelListView({
       {showEmptyLongPressMenu && (
         <div className="fixed inset-0 z-50" onClick={() => setShowEmptyLongPressMenu(false)}>
           <div
-            className="fixed bg-popover rounded-lg p-1 shadow-[0_8px_30px_rgba(0,0,0,0.35)] border border-border w-44"
+            className="fixed bg-popover rounded-[4px] p-1 shadow-[0_8px_16px_rgba(0,0,0,0.24)] border-0 w-44"
             style={{
               left: Math.max(8, longPressPosition.x - 180),
               top: Math.min(longPressPosition.y - 40, window.innerHeight - 100),
@@ -925,14 +926,14 @@ export function MobileChannelListView({
           >
             <button type="button"
               onClick={() => { setShowEmptyLongPressMenu(false); setShowCreateChannel(true); }}
-              className="w-full flex items-center gap-2 px-2.5 py-2 rounded-md hover:bg-muted transition-colors text-left"
+              className="w-full flex items-center gap-2 px-2 py-[6px] rounded-[4px] text-[14px] leading-[18px] text-foreground hover:bg-[hsl(var(--surface-hover))] transition-colors text-left"
             >
               <Hash className="w-4 h-4 text-muted-foreground" />
               <span className="text-xs text-foreground font-medium">Créer un salon</span>
             </button>
             <button type="button"
               onClick={() => { setShowEmptyLongPressMenu(false); setShowCreateCategory(true); }}
-              className="w-full flex items-center gap-2 px-2.5 py-2 rounded-md hover:bg-muted transition-colors text-left"
+              className="w-full flex items-center gap-2 px-2 py-[6px] rounded-[4px] text-[14px] leading-[18px] text-foreground hover:bg-[hsl(var(--surface-hover))] transition-colors text-left"
             >
               <Layers className="w-4 h-4 text-muted-foreground" />
               <span className="text-xs text-foreground font-medium">Créer une catégorie</span>

@@ -8,7 +8,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Trash2, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
+import { Trash2 } from '@/components/icons/discord/lucide';
 import { useDeleteCategory } from '@/hooks/useChannels';
 import { toast } from 'sonner';
 
@@ -72,7 +73,7 @@ export function CategoryDangerZone({
           <DialogHeader>
             <DialogTitle>Supprimer la catégorie</DialogTitle>
             <DialogDescription>
-              Tu es sûr(e) de vouloir supprimer <strong className="text-foreground">{categoryName}</strong> ? Cette action est irréversible.
+              Tu es sûr(e) de vouloir supprimer <strong translate="no" className="text-foreground">{categoryName}</strong> ? Cette action est irréversible.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex-row gap-2 sm:gap-2">

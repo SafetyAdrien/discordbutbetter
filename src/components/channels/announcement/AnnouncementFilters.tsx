@@ -1,4 +1,4 @@
-import { Plus, Settings2 } from 'lucide-react';
+import { Plus, Settings2 } from '@/components/icons/discord/lucide';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -68,7 +68,7 @@ export function AnnouncementFilters({
           onClick={() => onFilterChange(cat.id)}
         >
           {cat.icon && <span>{cat.icon}</span>}
-          <span>{cat.name}</span>
+          <span translate="no">{cat.name}</span>
           {cat.count !== undefined && (
             <span className="opacity-70 text-xs">({cat.count})</span>
           )}

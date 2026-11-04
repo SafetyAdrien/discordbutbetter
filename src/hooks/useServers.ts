@@ -84,9 +84,9 @@ export function useServers(options?: { prioritizeServerId?: string }) {
                 ? {
                     ...s,
                     name: next.name ?? s.name,
-                    icon_url: next.icon_url ?? s.icon_url,
-                    banner_url: next.banner_url ?? s.banner_url,
-                    description: next.description ?? s.description,
+                    icon_url: 'icon_url' in next ? next.icon_url ?? null : s.icon_url,
+                    banner_url: 'banner_url' in next ? next.banner_url ?? null : s.banner_url,
+                    description: 'description' in next ? next.description ?? null : s.description,
                     is_public: next.is_public ?? s.is_public,
                     owner_id: next.owner_id ?? s.owner_id,
                     // null is a valid value here, so use `in` to detect presence
@@ -430,6 +430,41 @@ const serverTemplates: Record<string, { categories: { name: string; channels: { 
         { name: 'Réunion', type: 'voice' }
       ]}
     ]
+  },
+  local: {
+    categories: [
+      { name: 'INFORMATION', channels: [
+        { name: 'bienvenue', type: 'text' },
+        { name: 'annonces', type: 'announcement' },
+        { name: 'événements', type: 'calendar' }
+      ]},
+      { name: 'GÉNÉRAL', channels: [
+        { name: 'général', type: 'text' },
+        { name: 'entraide', type: 'forum' }
+      ]},
+      { name: 'VOCAL', channels: [
+        { name: 'Salon vocal', type: 'voice' }
+      ]}
+    ]
+  },
+  creators: {
+    categories: [
+      { name: 'INFORMATION', channels: [
+        { name: 'annonces', type: 'announcement' },
+        { name: 'règles', type: 'text' }
+      ]},
+      { name: 'CRÉATIONS', channels: [
+        { name: 'galerie', type: 'media' },
+        { name: 'retours', type: 'forum' },
+        { name: 'projets', type: 'tasks' }
+      ]},
+      { name: 'GÉNÉRAL', channels: [
+        { name: 'général', type: 'text' }
+      ]},
+      { name: 'VOCAL', channels: [
+        { name: 'Atelier', type: 'voice' }
+      ]}
+    ]
   }
 };
 
@@ -511,7 +546,7 @@ export function useCreateServer() {
             .insert({
               server_id: server.id,
               name: catTemplate.name,
-              position: catIndex + 1, // Start after default category
+              position: catIndex + 2, // Start after the two default categories (textuels, vocaux)
             })
             .select()
             .single();

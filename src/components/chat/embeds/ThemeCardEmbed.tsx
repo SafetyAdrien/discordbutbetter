@@ -4,7 +4,7 @@
  * unique theme found in the message.
  */
 import { useMemo } from 'react';
-import { Sparkles, Check } from 'lucide-react';
+import { Sparkles, Check } from '@/components/icons/discord/lucide';
 import { Button } from '@/components/ui/button';
 import { extractThemesFromContent, type SharedCustomTheme } from '@/lib/customTheme/encode';
 import { applySharedTheme, useCustomTheme } from '@/hooks/useCustomTheme';

@@ -6,6 +6,23 @@ export interface SignalData {
   trackType?: 'audio' | 'camera' | 'screen';
 }
 
+export function parseSignalData(type: unknown, data: unknown): SignalData | null {
+  if (
+    type !== 'offer' &&
+    type !== 'answer' &&
+    type !== 'ice-candidate'
+  ) return null;
+  if (typeof data !== 'object' || data === null) return null;
+
+  if (type === 'ice-candidate') {
+    if (!('candidate' in data) || typeof data.candidate !== 'string') return null;
+    return { type, data: data as RTCIceCandidateInit };
+  }
+
+  if (!('sdp' in data) || typeof data.sdp !== 'string') return null;
+  return { type, data: data as RTCSessionDescriptionInit };
+}
+
 export type OnSignalCallback = (signal: SignalData) => void;
 export type OnAudioStreamCallback = (stream: MediaStream) => void;
 export type OnVideoStreamCallback = (stream: MediaStream, type: 'camera' | 'screen') => void;
@@ -134,11 +151,9 @@ export class PeerConnection {
 
     this.pc.oniceconnectionstatechange = () => {
       console.log('[PeerConnection] ICE state:', this.pc.iceConnectionState, 'for:', this.peerId);
-      if (
-        this.pc.iceConnectionState === 'disconnected' ||
-        this.pc.iceConnectionState === 'failed' ||
-        this.pc.iceConnectionState === 'closed'
-      ) {
+      if (this.pc.iceConnectionState === 'connected' || this.pc.iceConnectionState === 'completed') {
+        this.isRestarting = false;
+      } else if (this.pc.iceConnectionState === 'closed') {
         this.onDisconnect();
       }
     };

@@ -1,23 +1,12 @@
+import { withReplyMention } from '@/lib/replyMention';
 import { useState, forwardRef, useEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Message, Channel, User } from "@/types/app";
 import { cn } from "@/lib/utils";
 import { uuidToSnowflake } from "@/lib/snowflake";
 import { messageMentionsMe } from "@/lib/mention-detection";
-import {
-  Bell,
-  Pin,
-  Users,
-  Inbox,
-  Pencil,
-  MessageSquareText,
-  BellOff,
-  BellRing,
-  AtSign,
-  X,
-  Check,
-  BarChart2,
-} from "lucide-react";
+import { MessageSquareText, BellRing, BarChart2 } from "lucide-react";
+import { Bell, Pin, Users, Inbox, Pencil, BellOff, AtSign, X, Check } from "@/components/icons/discord/lucide";
 import { StreamlineMegaphone } from "@/components/icons/StreamlineMegaphone";
 import { UniversalMessageActions } from "@/components/chat/UniversalMessageActions";
 import { UniversalMessageContextMenu } from "@/components/chat/UniversalMessageContextMenu";
@@ -62,16 +51,17 @@ import { PublishedMessageHeader } from "./announcement/PublishedMessageHeader";
 import { useChannelFollowers, usePublishMessage, useDismissPublishPrompt } from "@/hooks/useChannelFollowers";
 import StreamlineThreads from "@/components/icons/StreamlineThreads";
 import ThreadsPopover from "@/components/threads/ThreadsPopover";
-import CreateThreadModal from "@/components/threads/CreateThreadModal";
+import { openNewThread } from "@/lib/threadEvents";
 import { ThreadSystemMessage } from "@/components/threads/ThreadSystemMessage";
 import { MessageAttachments, type StoredAttachment } from "@/components/chat/MessageAttachments";
 import { Thread } from "@/types/thread";
 import { useThreads, useUpdateThread, useDeleteThread } from "@/hooks/useThreads";
 import { useMultipleChannelPermissions } from "@/hooks/useUserChannelPermissions";
 import { usePermissions } from "@/hooks/usePermissions";
-import { ChannelSettingsModal } from "@/components/channel-settings/ChannelSettingsModal";
+import { LazyChannelSettingsModal as ChannelSettingsModal } from "@/components/lazy/LazyModals";
 import { RepliedLine } from "@/components/chat/RepliedLine";
 
+import { appLocale } from '@/i18n/locale';
 interface Role {
   id: string;
   name: string;
@@ -95,7 +85,7 @@ interface AnnouncementChannelProps {
 const QUICK_REACTIONS_HOVER = ["👍", "❤️", "😂"];
 
 function formatTime(date: Date): string {
-  return date.toLocaleTimeString("fr-FR", {
+  return date.toLocaleTimeString(appLocale(), {
     hour: "2-digit",
     minute: "2-digit",
   });
@@ -110,7 +100,7 @@ function formatDate(date: Date): string {
   } else if (date.toDateString() === yesterday.toDateString()) {
     return "Hier";
   }
-  return date.toLocaleDateString("fr-FR", {
+  return date.toLocaleDateString(appLocale(), {
     day: "numeric",
     month: "long",
     year: "numeric",
@@ -270,6 +260,12 @@ export function AnnouncementChannel({
   // State for channel settings modal
   const [channelSettingsId, setChannelSettingsId] = useState<string | null>(null);
   const [createThreadForMessageId, setCreateThreadForMessageId] = useState<string | null>(null);
+  // "Creer un fil" : meme panneau "Nouveau fil" que les salons textuels (champ de saisie complet).
+  useEffect(() => {
+    if (!createThreadForMessageId) return;
+    openNewThread(channel.id, createThreadForMessageId);
+    setCreateThreadForMessageId(null);
+  }, [createThreadForMessageId, channel.id]);
   
   // Threads
   const { data: threads = [] } = useThreads(channel.id);
@@ -406,7 +402,7 @@ export function AnnouncementChannel({
       setTimeout(() => setIsSending(false), 400);
       sendMessageMutation.mutate({
         channelId: channel.id,
-        content: messageInput,
+        content: replyingTo ? withReplyMention(messageInput, replyingTo.author.id, user?.id) : messageInput,
         replyToId: replyingTo?.id ?? null,
       });
       setMessageInput("");
@@ -490,15 +486,7 @@ export function AnnouncementChannel({
   };
 
   const handlePublishMessage = (message: Message) => {
-    publishMessage.mutate({
-      messageId: message.id,
-      channelId: channel.id,
-      content: message.content,
-      sourceServerId: channel.server_id || "",
-      sourceServerName: serverName,
-      sourceServerIcon: serverIcon || null,
-      sourceChannelName: channel.name,
-    });
+    publishMessage.mutate({ messageId: message.id, channelId: channel.id });
   };
 
   const handleDismissPublish = (messageId: string) => {
@@ -516,7 +504,7 @@ export function AnnouncementChannel({
       {!hideHeader && <div className="h-12 px-2 sm:px-4 flex items-center gap-2 sm:gap-4 flex-shrink-0 bg-[hsl(var(--surface-2))] w-full" style={{ borderBottom: "1px solid hsl(var(--border) / 0.5)", boxShadow: "var(--shadow-elevation-1)" }}>
         <div className="flex items-center gap-2 min-w-0 flex-shrink">
           <StreamlineMegaphone className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-           <h2 className="font-semibold text-foreground truncate">{channel.name}</h2>
+           <h2 translate="no" className="font-semibold text-foreground truncate">{channel.name}</h2>
           <Button
             variant="ghost"
             size="sm"
@@ -558,15 +546,15 @@ export function AnnouncementChannel({
             <PopoverContent side="bottom" align="end" className="w-64 p-3">
               <h4 className="font-semibold text-foreground mb-3">Notifications</h4>
               <div className="space-y-2">
-                <button type="button" className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-muted/50 transition-colors text-sm">
+                <button type="button" className="flex items-center gap-2 w-full px-2 py-[6px] rounded-[4px] text-[14px] leading-[18px] text-foreground hover:bg-[hsl(var(--surface-hover))] transition-colors">
                   <BellRing className="w-4 h-4 text-muted-foreground" />
                   <span>Tous les messages</span>
                 </button>
-                <button type="button" className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-muted/50 transition-colors text-sm">
+                <button type="button" className="flex items-center gap-2 w-full px-2 py-[6px] rounded-[4px] text-[14px] leading-[18px] text-foreground hover:bg-[hsl(var(--surface-hover))] transition-colors">
                   <AtSign className="w-4 h-4 text-muted-foreground" />
                   <span>Uniquement les mentions</span>
                 </button>
-                <button type="button" className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-muted/50 transition-colors text-sm">
+                <button type="button" className="flex items-center gap-2 w-full px-2 py-[6px] rounded-[4px] text-[14px] leading-[18px] text-foreground hover:bg-[hsl(var(--surface-hover))] transition-colors">
                   <BellOff className="w-4 h-4 text-muted-foreground" />
                   <span>Aucun message</span>
                 </button>
@@ -678,14 +666,14 @@ export function AnnouncementChannel({
                 <Users className="w-5 h-5" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>{showMembers ? "Masquer les membres" : "Afficher les membres"}</TooltipContent>
+            <TooltipContent>{showMembers ? "Masquer la liste des membres" : "Afficher la liste des membres"}</TooltipContent>
           </Tooltip>
         </div>
       </div>}
 
       {/* Messages */}
-      <ScrollArea className="flex-1 min-h-0 w-full [&>div[data-radix-scroll-area-viewport]]:!flex [&>div[data-radix-scroll-area-viewport]]:!flex-col [&>div[data-radix-scroll-area-viewport]>div]:!flex [&>div[data-radix-scroll-area-viewport]>div]:!flex-col [&>div[data-radix-scroll-area-viewport]>div]:!min-h-full [&>div[data-radix-scroll-area-viewport]>div]:!justify-end">
-        <div className="flex flex-col min-h-full px-4 py-4 space-y-0.5 w-full max-w-full">
+      <ScrollArea className="flex-1 min-h-0 w-full mb-6 [&>div[data-radix-scroll-area-viewport]]:!flex [&>div[data-radix-scroll-area-viewport]]:!flex-col [&>div[data-radix-scroll-area-viewport]>div]:!flex [&>div[data-radix-scroll-area-viewport]>div]:!flex-col [&>div[data-radix-scroll-area-viewport]>div]:!min-h-full [&>div[data-radix-scroll-area-viewport]>div]:!justify-end">
+        <div className="flex flex-col min-h-full px-4 pt-4 pb-0 space-y-0.5 w-full max-w-full">
           {/* Spacer to push content to bottom */}
           <div className="flex-1" />
           
@@ -718,13 +706,7 @@ export function AnnouncementChannel({
             const showDateSeparator = !prevMessage || currentDate.toDateString() !== prevMessage.timestamp.toDateString();
 
             const DateSeparator = showDateSeparator ? (
-              <div className="flex items-center gap-4 my-2">
-                <div className="flex-1 h-px bg-border" />
-                <span className="text-xs text-muted-foreground font-medium">
-                  {formatDate(currentDate)}
-                </span>
-                <div className="flex-1 h-px bg-border" />
-              </div>
+              <div className="flex items-center gap-2 my-4 mx-4"><div className="flex-1 h-px bg-white/[0.06]" /><span className="text-xs font-semibold text-[#949ba4] px-1">{formatDate(currentDate)}</span><div className="flex-1 h-px bg-white/[0.06]" /></div>
             ) : null;
 
             // Handle system messages for thread creation
@@ -751,9 +733,9 @@ export function AnnouncementChannel({
                           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                             <StreamlineThreads className="w-3.5 h-3.5 flex-shrink-0" />
                             <span>
-                              <span className="font-semibold text-foreground">{message.author.displayName}</span>
+                              <span translate="no" className="font-semibold text-foreground">{message.author.displayName}</span>
                               {' '}a créé un thread :{' '}
-                              <button type="button"
+                              <button translate="no" type="button"
                                 onClick={() => onSelectThread?.(threadId)}
                                 className="font-semibold text-primary hover:underline cursor-pointer"
                               >
@@ -774,11 +756,9 @@ export function AnnouncementChannel({
                                   thread={thread}
                                   onClick={() => onSelectThread?.(threadId)}
                                   canManage={canManageMessages}
-                                  onRename={(name) => updateThreadMut.mutate({ threadId: thread.id, name })}
-                                  onDelete={() => {
-                                    deleteThreadMut.mutate({ threadId: thread.id, channelId: channel.id });
-                                    deleteMessage.mutate({ messageId: message.id, channelId: channel.id });
-                                  }}
+                                  channelName={channel.name}
+                              serverId={channel.server_id}
+                                  onDelete={() => deleteThreadMut.mutate({ threadId: thread.id, channelId: channel.id })}
                                 />
                               ) : (
                                 <button type="button"
@@ -787,7 +767,7 @@ export function AnnouncementChannel({
                                 >
                                   <StreamlineThreads className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
                                   <div className="flex items-center gap-2">
-                                    <span className="text-sm font-semibold text-primary hover:underline">{threadName}</span>
+                                    <span translate="no" className="text-sm font-semibold text-primary hover:underline">{threadName}</span>
                                     <span className="text-xs text-foreground">0 Messages</span>
                                   </div>
                                 </button>
@@ -850,7 +830,7 @@ export function AnnouncementChannel({
                     }}
                     className={cn(
                       "group message-hover -mx-4 pl-[21px] pr-8 relative",
-                      showAuthor ? "pt-1" : "py-0",
+                      showAuthor ? "pt-1 pb-1" : "pb-1",
                       messageMentionsMe(message.content, user?.id, memberRoles?.get(user?.id ?? '')?.map(r => r.id) ?? []) && "message-mentioned",
                     )}
                     onMouseEnter={() => setHoveredMessageId(message.id)}
@@ -958,7 +938,7 @@ export function AnnouncementChannel({
                                 </Badge>
                               </>
                             ) : (
-                              <button type="button"
+                              <button translate="no" type="button"
                                 onClick={() => handleUserClick(message.author)}
                                 className="font-semibold hover:underline cursor-pointer truncate max-w-[200px] flex-shrink-0"
                                 style={{ color: memberRoles?.get(message.author.id)?.[0]?.color || undefined }}
@@ -1074,6 +1054,10 @@ export function AnnouncementChannel({
                             <ThreadSystemMessage
                               thread={threadsByMessageId.get(message.id)!}
                               onClick={() => onSelectThread?.(threadsByMessageId.get(message.id)!.id)}
+                              canManage={canManageMessages}
+                              channelName={channel.name}
+                              serverId={channel.server_id}
+                              onDelete={() => deleteThreadMut.mutate({ threadId: threadsByMessageId.get(message.id)!.id, channelId: channel.id })}
                             />
                           </div>
                         )}
@@ -1164,7 +1148,7 @@ export function AnnouncementChannel({
               </div>
             );
           })}
-          <div ref={messagesEndRef} />
+          <div ref={messagesEndRef} className="msg-end" />
         </div>
       </ScrollArea>
 
@@ -1174,6 +1158,8 @@ export function AnnouncementChannel({
         {replyingTo && (
           <ReplyBanner
             authorName={replyingTo.author.displayName}
+            authorId={replyingTo.author.id}
+            onJump={() => scrollToMessage(replyingTo.id)}
             authorAvatar={replyingTo.author.avatar}
             content={replyingTo.content}
             attachmentsCount={replyingTo.attachments?.length ?? 0}
@@ -1191,6 +1177,8 @@ export function AnnouncementChannel({
           canMentionEveryone={isAdminOrOwner || canPerm('mention_everyone')}
           showFollowBar={!canSendMessages && !permissionDeniedMessage}
           onFollowClick={() => setFollowModalOpen(true)}
+          onTypingStart={startTyping}
+          onTypingStop={stopTyping}
         />
       </div>
 
@@ -1232,20 +1220,6 @@ export function AnnouncementChannel({
         />
       )}
 
-      {/* Create Thread Modal */}
-      {createThreadForMessageId && (
-        <CreateThreadModal
-          channelId={channel.id}
-          messageId={createThreadForMessageId}
-          open={!!createThreadForMessageId}
-          onOpenChange={(open) => !open && setCreateThreadForMessageId(null)}
-          forcePublic
-          onThreadCreated={(threadId) => {
-            setCreateThreadForMessageId(null);
-            onSelectThread?.(threadId);
-          }}
-        />
-      )}
     </div>
   );
 }

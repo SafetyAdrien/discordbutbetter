@@ -6,7 +6,8 @@ import {
 } from '@/hooks/useDownloadPermissions';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, UserPlus, X, Download, ShieldAlert, Loader2 } from 'lucide-react';
+import { ShieldAlert, Loader2 } from 'lucide-react';
+import { Search, UserPlus, X, Download } from '@/components/icons/discord/lucide';
 import { UserAvatarImage } from '@/components/ui/user-avatar-image';
 import { AddDownloadPermissionModal } from './AddDownloadPermissionModal';
 

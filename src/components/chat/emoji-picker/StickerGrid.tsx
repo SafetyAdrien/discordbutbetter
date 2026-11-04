@@ -1,4 +1,4 @@
-import { Sticker as StickerIcon, Star } from 'lucide-react';
+import { Sticker as StickerIcon, Star } from '@/components/icons/discord/lucide';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/lib/haptics';

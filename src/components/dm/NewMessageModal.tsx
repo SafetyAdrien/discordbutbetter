@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
-import { X, Hash, Megaphone, Folder } from 'lucide-react';
+import { X, Hash, Megaphone, Folder } from '@/components/icons/discord/lucide';
 import { Input } from '@/components/ui/input';
 import { useFriends } from '@/hooks/useFriends';
 import { useCreateDMConversation } from '@/hooks/useDMs';
@@ -97,7 +97,7 @@ export function NewMessageModal({ onClose, onOpenDM }: NewMessageModalProps) {
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{friend.profile.display_name}</p>
+                    <p translate="no" className="text-sm font-medium truncate">{friend.profile.display_name}</p>
                     <p className="text-xs text-muted-foreground truncate">@{friend.profile.username}</p>
                   </div>
                 </button>

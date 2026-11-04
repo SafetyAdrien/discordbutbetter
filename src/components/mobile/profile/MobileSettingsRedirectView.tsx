@@ -1,5 +1,6 @@
 import { ReactNode } from 'react';
-import { ChevronRight, Bell, Palette, Shield, BellOff, Volume2, Moon, Sun, Monitor, EyeOff, FileText } from 'lucide-react';
+import { Palette, Moon, Sun } from 'lucide-react';
+import { ChevronRight, Bell, Shield, BellOff, Volume2, Monitor, EyeOff, FileText } from '@/components/icons/discord/lucide';
 import { MobileProfileSubpage } from './MobileProfileSubpage';
 import { haptics } from '@/lib/haptics';
 

@@ -1,5 +1,6 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
-import { Pen, Eraser, Trash2, X } from 'lucide-react';
+import { Eraser } from 'lucide-react';
+import { Pen, Trash2, X } from '@/components/icons/discord/lucide';
 import { cn } from '@/lib/utils';
 import { useMediaAnnotations, useCreateAnnotation, useClearMyAnnotations, type Annotation } from '@/hooks/useMediaAnnotations';
 import { useAuth } from '@/contexts/AuthContext';

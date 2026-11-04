@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { useAuth } from '@/contexts/AuthContext';
@@ -66,7 +66,7 @@ export function useFriends() {
           profile: profile as FriendWithProfile['profile'],
           isIncoming: friendship.friend_id === user.id,
         };
-      }).filter(f => f.profile);
+      }).filter(f => f.profile && !(f.status === 'blocked' && f.friend_id === user.id));
     },
     enabled: !!user,
   });
@@ -309,4 +309,70 @@ export function useRemoveFriend() {
       queryClient.invalidateQueries({ queryKey: ['friends'] });
     },
   });
+}
+
+/**
+ * Bloque un utilisateur : l'eventuelle amitie / demande est supprimee puis une ligne `blocked` (bloqueur -> bloque)
+ * la remplace. La personne bloquee ne la voit pas dans sa liste (voir `useFriends`).
+ */
+export function useBlockUser() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (target: string | { id: string; name?: string }) => {
+      if (!user) throw new Error('Not authenticated');
+      const targetId = typeof target === 'string' ? target : target.id;
+      const { error: delError } = await supabase
+        .from('friendships')
+        .delete()
+        .or(`and(user_id.eq.${user.id},friend_id.eq.${targetId}),and(user_id.eq.${targetId},friend_id.eq.${user.id})`);
+      if (delError) throw delError;
+      const { error } = await supabase.from('friendships').insert({ user_id: user.id, friend_id: targetId, status: 'blocked' });
+      if (error) throw error;
+      return typeof target === 'string' ? undefined : target.name;
+    },
+    onSuccess: (name) => toast.success(name ? `${name} est bloqué` : 'Utilisateur bloqué'),
+    onError: () => toast.error('Impossible de bloquer cet utilisateur'),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['friends'] });
+    },
+  });
+}
+
+export function useUnblockUser() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (targetId: string) => {
+      if (!user) throw new Error('Not authenticated');
+      const { error } = await supabase.from('friendships').delete().eq('user_id', user.id).eq('friend_id', targetId).eq('status', 'blocked');
+      if (error) throw error;
+    },
+    onError: () => toast.error('Impossible de débloquer cet utilisateur'),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['friends'] });
+    },
+  });
+}
+
+/** Etat de la relation avec un utilisateur : ami, demande, bloque par moi. */
+export function useRelationTo(targetId: string | null | undefined) {
+  const { user } = useAuth();
+  const { data: friends = [] } = useFriends();
+  const row = targetId ? friends.find((f) => f.profile.id === targetId) : undefined;
+  return {
+    row,
+    isFriend: row?.status === 'accepted',
+    isPending: row?.status === 'pending',
+    isBlocked: row?.status === 'blocked' && row.user_id === user?.id,
+  };
+}
+
+/** Identifiants des utilisateurs que j'ai bloques. */
+export function useBlockedIds() {
+  const { user } = useAuth();
+  const { data: friends = [] } = useFriends();
+  return useMemo(() => new Set(friends.filter((f) => f.status === 'blocked' && f.user_id === user?.id).map((f) => f.profile.id)), [friends, user?.id]);
 }

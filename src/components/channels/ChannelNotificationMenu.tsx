@@ -7,7 +7,7 @@ import {
   ContextMenuRadioGroup,
   ContextMenuRadioItem,
 } from '@/components/ui/context-menu';
-import { Bell, BellOff, Clock, Check } from 'lucide-react';
+import { Bell, BellOff, Clock, Check } from '@/components/icons/discord/lucide';
 import { 
   useMuteChannel, 
   useMuteCategory,

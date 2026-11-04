@@ -1,8 +1,10 @@
 /* @refresh reset */
+import { appLocale } from '@/i18n/locale';
 import React, { createContext, useContext, ReactNode, useSyncExternalStore } from 'react';
 import { CodeBlock } from '@/components/ui/code-block';
 import { cn } from '@/lib/utils';
-import { Info, Lightbulb, MessageSquareWarning, TriangleAlert, OctagonAlert } from 'lucide-react';
+import { Lightbulb, MessageSquareWarning, TriangleAlert, OctagonAlert } from 'lucide-react';
+import { Info } from '@/components/icons/discord/lucide';
 import { 
   UserMention, 
   RoleMention, 
@@ -14,6 +16,8 @@ import {
 } from '@/components/chat/mentions/MentionComponents';
 import { snowflakeToUuid, isValidSnowflake, uuidToSnowflake } from '@/lib/snowflake';
 import { normalizeHex } from '@/lib/colorNames';
+import { customEmojiRegex, isJumboEmojiOnly, parseCustomEmoji, type CustomEmojiRef } from '@/lib/customEmoji';
+import { CustomEmoji } from '@/components/chat/CustomEmoji';
 
 
 // ============================================
@@ -26,7 +30,7 @@ interface MarkdownToken {
     | 'underlineItalic' | 'underlineBoldItalic' | 'link' | 'codeBlock'
     | 'userMention' | 'roleMention' | 'channelMention' | 'specialMention'
     | 'everyoneMention' | 'messageLinkEmbed' | 'timestamp' | 'autoLink'
-    | 'colorSwatch';
+    | 'colorSwatch' | 'customEmoji';
   content: string | MarkdownToken[];
   url?: string;
   language?: string;
@@ -35,6 +39,7 @@ interface MarkdownToken {
   timestamp?: number;
   timestampFormat?: string;
   colorHex?: string;
+  emoji?: CustomEmojiRef;
   embedData?: {
     serverId: string;
     channelId: string;
@@ -63,6 +68,8 @@ export interface MarkdownContext {
   onChannelNavigate?: (channelId: string, serverId?: string) => void;
   onMessageJump?: (serverId: string, channelId: string, messageId: string) => void;
   variant?: 'chat' | 'bio';
+  /** Message ne contenant que des emojis : affiches en grand. */
+  jumbo?: boolean;
 }
 
 // ============================================
@@ -183,6 +190,12 @@ function tokenizeInline(text: string): MarkdownToken[] {
       earliestMatch = { index: everyoneMatch.index, length: everyoneMatch[0].length, content: everyoneMatch[1], type: 'everyoneMention', mentionType: everyoneMatch[1].toLowerCase() };
     }
 
+    const emojiRe = customEmojiRegex();
+    const emojiMatch = emojiRe.exec(remaining);
+    if (emojiMatch && (earliestMatch === null || emojiMatch.index < earliestMatch.index)) {
+      earliestMatch = { index: emojiMatch.index, length: emojiMatch[0].length, content: emojiMatch[2], type: 'customEmoji', emoji: parseCustomEmoji(emojiMatch[1], emojiMatch[2], emojiMatch[3]) };
+    }
+
     const linkMatch = /\[([^\]]+)\]\(([^)]+)\)/.exec(remaining);
     if (linkMatch && (earliestMatch === null || linkMatch.index < earliestMatch.index)) {
       const rawUrl = linkMatch[2].trim();
@@ -230,7 +243,7 @@ function tokenizeInline(text: string): MarkdownToken[] {
         tokens.push({ type: 'text', content: remaining.slice(0, earliestMatch.index) });
       }
       
-      if (['link', 'autoLink', 'code', 'userMention', 'roleMention', 'channelMention', 'specialMention', 'everyoneMention', 'messageLinkEmbed', 'timestamp', 'colorSwatch'].includes(earliestMatch.type)) {
+      if (['link', 'autoLink', 'code', 'userMention', 'roleMention', 'channelMention', 'specialMention', 'everyoneMention', 'messageLinkEmbed', 'timestamp', 'colorSwatch', 'customEmoji'].includes(earliestMatch.type)) {
         tokens.push({
           type: earliestMatch.type,
           content: earliestMatch.content,
@@ -241,6 +254,7 @@ function tokenizeInline(text: string): MarkdownToken[] {
           timestamp: earliestMatch.timestamp,
           timestampFormat: earliestMatch.timestampFormat,
           colorHex: earliestMatch.colorHex,
+          emoji: earliestMatch.emoji,
         });
       } else {
         const innerTokens = tokenizeInline(earliestMatch.content);
@@ -369,10 +383,11 @@ function renderInlineToken(token: MarkdownToken, key: number, context: MarkdownC
     case 'specialMention': return <SpecialMention key={key} type={token.mentionType as any} />;
     case 'everyoneMention': return <EveryoneMention key={key} type={token.mentionType as any} serverId={context.serverId} />;
     case 'messageLinkEmbed': return token.embedData ? <MessageLinkEmbed key={key} serverId={token.embedData.serverId} channelId={token.embedData.channelId} messageId={token.embedData.messageId} onJump={() => context.onMessageJump?.(token.embedData!.serverId, token.embedData!.channelId, token.embedData!.messageId)} /> : null;
+    case 'customEmoji': return token.emoji ? <CustomEmoji key={key} emoji={token.emoji} jumbo={context.jumbo} /> : <React.Fragment key={key}>{`:${token.content as string}:`}</React.Fragment>;
     case 'colorSwatch': return <ColorSwatchToken key={key} hex={(token.colorHex || '#000000').toLowerCase()} />;
     case 'timestamp': {
       const ts = token.timestamp; if (!ts) return <React.Fragment key={key}>{token.content as string}</React.Fragment>;
-      const date = new Date(ts * 1000); const fmt = token.timestampFormat || 'f'; const locale = 'fr-FR'; let formatted: string;
+      const date = new Date(ts * 1000); const fmt = token.timestampFormat || 'f'; const locale = appLocale(); let formatted: string;
       switch (fmt) {
         case 't': formatted = date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }); break;
         case 'T': formatted = date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', second: '2-digit' }); break;
@@ -534,21 +549,27 @@ export function parseMarkdown(content: string, context: MarkdownContext = global
 // ============================================
 // MARKDOWN TEXT COMPONENT
 // ============================================
-export const MarkdownText = React.forwardRef<HTMLDivElement, { content: string; className?: string; variant?: 'chat' | 'bio' }>(
-  ({ content, className, variant }, ref) => {
+/**
+ * Contenu ecrit par les membres : jamais traduit par src/i18n (sauf
+ * `translatable`, pour les exemples de l'aide Markdown).
+ */
+export const MarkdownText = React.forwardRef<HTMLDivElement, { content: string; className?: string; variant?: 'chat' | 'bio'; translatable?: boolean }>(
+  ({ content, className, variant, translatable }, ref) => {
     const reactContext = useMarkdownContext();
     useSyncExternalStore(subscribeGlobal, getGlobalSnapshot);
     const activeContext = reactContext || globalMarkdownContext;
-    const ctxWithVariant = variant ? { ...activeContext, variant } : activeContext;
+    const jumbo = variant === 'chat' && isJumboEmojiOnly(content);
+    const ctxWithVariant = variant ? { ...activeContext, variant, jumbo } : activeContext;
     // Strip custom-theme markers — they're rendered as ThemeCardEmbeds below the message.
     const cleaned = content.indexOf('[[nexuschat-theme:') !== -1
       ? content.replace(/\[\[nexuschat-theme:v1:[A-Za-z0-9_\-=]+\]\]/g, '').replace(/[ \t]+\n/g, '\n').trim()
       : content;
     const hasAlert = cleaned.includes('> [!');
     if (!cleaned) return null;
-    return <div ref={ref} className={cn(
+    return <div ref={ref} translate={translatable ? undefined : 'no'} className={cn(
       variant === 'chat' && hasAlert ? 'block w-full' : 'inline-block max-w-full min-w-0 align-top',
       variant === 'chat' && 'chat-markdown',
+      jumbo && 'text-[3rem] leading-[1.25]',
       className
     )}>{parseMarkdown(cleaned, ctxWithVariant)}</div>;
   }

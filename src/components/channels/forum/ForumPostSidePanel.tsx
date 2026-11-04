@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
-import {
-  X, ArrowUp, MessageCircle, Send, Lock, Pin, Trash2, Tag as TagIcon, Archive, ArchiveRestore,
-} from 'lucide-react';
+import { ArrowUp, Archive, ArchiveRestore } from 'lucide-react';
+import { X, MessageCircle, Send, Lock, Pin, Trash2, Tag as TagIcon } from '@/components/icons/discord/lucide';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +16,8 @@ import {
 } from '@/hooks/useForumPosts';
 import { useHasChannelPermission } from '@/hooks/useUserChannelPermissions';
 
+import { appLocale } from '@/i18n/locale';
+import { ForumEmoji } from './ForumEmoji';
 function useProfile(userId: string | undefined) {
   return useQuery({
     queryKey: ['profile-lite', userId],
@@ -53,7 +54,7 @@ function CommentRow({ comment, postId, canDelete }: { comment: any; postId: stri
         <div className="flex items-baseline gap-2">
           <span className="font-medium text-sm">{profile?.display_name ?? 'Utilisateur'}</span>
           <span className="text-xs text-muted-foreground">
-            {new Date(comment.created_at).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })}
+            {new Date(comment.created_at).toLocaleString(appLocale(), { dateStyle: 'short', timeStyle: 'short' })}
           </span>
         </div>
         <p className="text-sm whitespace-pre-wrap break-words">{comment.content}</p>
@@ -108,7 +109,7 @@ export function ForumPostSidePanel({ post, hasVoted = false, onClose, tags }: Pr
             {post.is_locked && <Badge variant="outline" className="text-[10px]"><Lock className="w-3 h-3 mr-1" />Verrouillé</Badge>}
             {(tags ?? post.tags.map((t) => ({ id: t, name: t, emoji_name: null }))).map(t => (
               <Badge key={t.id} variant="outline" className="text-[10px]">
-                {t.emoji_name ? <span className="mr-1">{t.emoji_name}</span> : <TagIcon className="w-3 h-3 mr-1" />}
+                {t.emoji_name ? <ForumEmoji emoji={t.emoji_name} className="mr-1" /> : <TagIcon className="w-3 h-3 mr-1" />}
                 {t.name}
               </Badge>
             ))}
@@ -118,7 +119,7 @@ export function ForumPostSidePanel({ post, hasVoted = false, onClose, tags }: Pr
             <Avatar className="w-4 h-4"><AvatarImage src={author?.avatar_url ?? undefined} /><AvatarFallback>{author?.display_name?.[0] ?? '?'}</AvatarFallback></Avatar>
             <span className="truncate">{author?.display_name ?? 'Utilisateur'}</span>
             <span>·</span>
-            <span>{new Date(post.created_at).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })}</span>
+            <span>{new Date(post.created_at).toLocaleString(appLocale(), { dateStyle: 'short', timeStyle: 'short' })}</span>
           </div>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
@@ -184,7 +185,7 @@ export function ForumPostSidePanel({ post, hasVoted = false, onClose, tags }: Pr
       <ScrollArea className="flex-1">
         {post.content && (
           <div className="px-3 py-3 border-b border-border">
-            <p className="text-sm whitespace-pre-wrap break-words">{post.content}</p>
+            <p translate="no" className="text-sm whitespace-pre-wrap break-words">{post.content}</p>
           </div>
         )}
         <div className="px-3 pt-3 pb-1 text-xs font-semibold uppercase text-muted-foreground flex items-center gap-1">

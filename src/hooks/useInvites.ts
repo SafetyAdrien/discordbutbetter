@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { useAuth } from '@/contexts/AuthContext';
@@ -241,4 +241,49 @@ export function useJoinByInvite() {
       queryClient.invalidateQueries({ queryKey: ['servers'] });
     },
   });
+}
+
+/**
+ * Lien d'invitation par defaut de l'utilisateur pour un serveur : un lien
+ * illimite encore valide est reutilise, sinon un lien de 7 jours est cree.
+ * Sert a la fenetre "Inviter des amis" et au partage d'evenements.
+ */
+export function useDefaultInviteCode(serverId: string | null, enabled = true) {
+  const { user } = useAuth();
+  const { data: invites, isLoading } = useServerInvites(enabled ? serverId : null);
+  const createInvite = useCreateInvite();
+  const [state, setState] = useState<{ code: string; expiresAt: string | null } | null>(null);
+  const requested = useRef(false);
+
+  useEffect(() => {
+    if (!enabled || !serverId || requested.current || isLoading || !invites) return;
+    requested.current = true;
+    const now = Date.now();
+    const reusable = invites.find(
+      (i) =>
+        i.created_by === user?.id &&
+        i.max_uses == null &&
+        !i.code.startsWith('loading') &&
+        (!i.expires_at || new Date(i.expires_at).getTime() > now + 3_600_000),
+    );
+    if (reusable) {
+      setState({ code: reusable.code, expiresAt: reusable.expires_at });
+      return;
+    }
+    createInvite.mutate(
+      { serverId, expiresIn: 168, isPermanent: false },
+      { onSuccess: (data) => setState({ code: data.code, expiresAt: data.expires_at ?? null }) },
+    );
+  }, [enabled, invites, isLoading, user?.id, serverId, createInvite]);
+
+  return { code: state?.code ?? null, expiresAt: state?.expiresAt ?? null, setInvite: setState };
+}
+
+export function inviteExpiryLabel(expiresAt: string | null): string {
+  if (!expiresAt) return "Ton lien d'invitation n'expire jamais.";
+  const ms = new Date(expiresAt).getTime() - Date.now();
+  const days = Math.round(ms / 86_400_000);
+  if (days >= 1) return `Ton lien d'invitation expire dans ${days} jour${days > 1 ? 's' : ''}.`;
+  const hours = Math.max(1, Math.round(ms / 3_600_000));
+  return `Ton lien d'invitation expire dans ${hours} heure${hours > 1 ? 's' : ''}.`;
 }

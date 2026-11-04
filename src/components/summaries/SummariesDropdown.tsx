@@ -5,7 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import StreamlineSummaries from "@/components/icons/StreamlineSummaries";
-import { X, MessageCircle, Heart, Sparkles, Loader2, ArrowLeft } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { X, MessageCircle, Heart, Sparkles, ArrowLeft } from "@/components/icons/discord/lucide";
 
 interface SummariesDropdownProps {
   summaries: SummaryTopic[];

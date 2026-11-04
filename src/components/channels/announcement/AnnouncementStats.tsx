@@ -1,4 +1,4 @@
-import { Eye, TrendingUp, Calendar } from 'lucide-react';
+import { Eye, TrendingUp, Calendar } from '@/components/icons/discord/lucide';
 
 interface AnnouncementStatsProps {
   totalCount: number;

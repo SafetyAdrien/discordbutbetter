@@ -24,10 +24,10 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { format } from '@/lib/dateUtils';
 import { fr } from '@/lib/dateUtils';
-import { Loader2, ArrowLeft, Phone, Video, Check, X, UserCircle, AtSign } from 'lucide-react';
+import { Loader2, UserCircle } from 'lucide-react';
+import { ArrowLeft, Phone, Video, Check, X, AtSign } from '@/components/icons/discord/lucide';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { TypingIndicator } from '@/components/typing/TypingIndicator';
-import { DMCallView } from './DMCallView';
 import { MessageInput } from '@/components/chat/MessageInput';
 import { UniversalMessageActions } from '@/components/chat/UniversalMessageActions';
 import { UniversalMessageContextMenu } from '@/components/chat/UniversalMessageContextMenu';
@@ -41,8 +41,31 @@ import { SmartLinkEmbeds as LinkEmbeds } from '@/components/chat/embeds';
 import { usePendingAttachments, PendingAttachment } from '@/hooks/usePendingAttachments';
 import { UploadDropOverlay } from '@/components/chat/upload/UploadDropOverlay';
 import { MessageAttachments, StoredAttachment } from '@/components/chat/MessageAttachments';
+import { PollClosedRow } from '@/components/chat/PollClosedSystemMessage';
+import { ForwardedFrame } from '@/components/chat/ForwardedFrame';
+import { OPEN_SERVER_EVENT } from '@/lib/invites';
+import { toast } from 'sonner';
+import { EditableAttachments } from '@/components/chat/EditableAttachments';
+import { AttachmentEditsPanel, useAttachmentEdits } from '@/components/chat/upload/AttachmentEditsPanel';
+import { useForwardedFrom } from '@/hooks/useForwardedFrom';
+import { useMarkMessageUnread } from '@/hooks/useMarkMessageUnread';
+import { openForwardMessage } from '@/lib/forwardMessage';
 import { UserProfilePopup } from '@/components/profile/UserProfilePopup';
 import { DMUserInfoPanel } from './DMUserInfoPanel';
+import { DMCallStage } from './DMCallStage';
+import { DMCallRow } from './DMCallRow';
+import { withReplyMention } from '@/lib/replyMention';
+import { joinCallSession, useDMCallSession } from '@/lib/dmCallSession';
+import type { DMCall } from '@/hooks/useDMCalls';
+import { useRelations } from '@/hooks/useRelations';
+import { useBlockedIds, useUnblockUser } from '@/hooks/useFriends';
+import { HiddenMessagesRow } from './DMChrome';
+import { DMHeader, DMIntro } from './DMChrome';
+import { useEphemeralMessages } from '@/lib/ephemeralMessages';
+import { EphemeralMessageRow } from '@/components/chat/slash/EphemeralMessageRow';
+import { ClydeProfileCard } from '@/components/chat/slash/ClydeProfileCard';
+import { formatClock } from '@/lib/userSettings';
+import { ServerTagBadge } from '@/components/server-tags/ServerTagBadge';
 import { FullUserProfileModal } from '@/components/profile/FullUserProfileModal';
 import { DMPinnedMessagesPopover } from './DMPinnedMessagesPopover';
 import { usePinDMMessage, useUnpinDMMessage, useDMPinnedMessages } from '@/hooks/useDMPinnedMessages';
@@ -61,6 +84,7 @@ import { DMPollDisplay } from '@/components/chat/DMPollDisplay';
 import { BarChart2 } from 'lucide-react';
 import { computePollWinner } from '@/lib/pollWinner';
 
+import { appLocale } from '@/i18n/locale';
 const statusColors: Record<string, string> = {
   online: 'bg-[hsl(var(--online))]',
   idle: 'bg-[hsl(var(--idle))]',
@@ -77,7 +101,7 @@ function formatDate(date: Date): string {
   } else if (date.toDateString() === yesterday.toDateString()) {
     return "Hier";
   }
-  return date.toLocaleDateString("fr-FR", {
+  return date.toLocaleDateString(appLocale(), {
     day: "numeric",
     month: "long",
     year: "numeric",
@@ -99,7 +123,9 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState('');
   const [replyingTo, setReplyingTo] = useState<DMMessage | null>(null);
-  const [showUserInfoPanel, setShowUserInfoPanel] = useState(false);
+  const [showUserInfoPanel, setShowUserInfoPanel] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 1100);
+  const ephemeral = useEphemeralMessages(conversationId);
+  const [clydeCard, setClydeCard] = useState<DOMRect | null>(null);
   const [showFullProfile, setShowFullProfile] = useState(false);
   const [selectedProfileUser, setSelectedProfileUser] = useState<any>(null);
   const [profileInitialTab, setProfileInitialTab] = useState<'about' | 'servers' | 'friends'>('about');
@@ -107,6 +133,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
   const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   
   const { user, profile } = useAuth();
+  const attachmentEdits = useAttachmentEdits();
   const isShiftPressed = useShiftKey();
   const { startTyping, stopTyping } = useTypingIndicator(null, conversationId);
   const { markAsRead } = useUnreadCounts();
@@ -126,13 +153,37 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
   } = usePendingAttachments();
 
   const { data: conversations = [] } = useDMConversations();
-  const { data: messages = [], isLoading, loadOlder, hasMoreOlder, isLoadingOlder } = useDMMessages(conversationId);
+  const { data: allMessages = [], isLoading, loadOlder, hasMoreOlder, isLoadingOlder } = useDMMessages(conversationId);
+  const { nameFor, isIgnored } = useRelations();
+  // Comptes ignores ou bloques : leurs messages sont replies sous "N messages bloques - Afficher".
+  const blockedIds = useBlockedIds();
+  const [showHidden, setShowHidden] = useState(false);
+  const messages = useMemo(() => (showHidden ? allMessages : allMessages.filter((m) => !(m.author?.id && (blockedIds.has(m.author.id) || isIgnored(m.author.id))))), [allMessages, isIgnored, blockedIds, showHidden]);
+  const hiddenCount = showHidden ? 0 : allMessages.length - messages.length;
+  const unblock = useUnblockUser();
+  // Instantane de la lecture a l'ouverture : le premier message non lu recoit le separateur rouge "Nouveau".
+  const { data: readSnapshot } = useQuery({
+    queryKey: ['dm-read-snapshot', conversationId, user?.id],
+    enabled: !!user?.id,
+    staleTime: Infinity,
+    gcTime: 0,
+    queryFn: async () => {
+      const { data } = await supabase.from('dm_read_states').select('last_read_at').eq('conversation_id', conversationId).eq('user_id', user!.id).maybeSingle();
+      return data?.last_read_at ?? null;
+    },
+  });
+  const firstUnreadId = useMemo(() => (readSnapshot ? messages.find((m) => m.author?.id !== user?.id && !!m.created_at && m.created_at > readSnapshot)?.id ?? null : null), [messages, readSnapshot, user?.id]);
+  const forwardedMap = useForwardedFrom('dm', conversationId, messages.map((m) => m.id));
+  const markMessageUnread = useMarkMessageUnread();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const loadingOlderRef = useRef(false);
   const sendMessage = useSendDMMessage();
   const editMessage = useEditDMMessage();
   const deleteMessage = useDeleteDMMessage();
-  const { activeCall, startCall, endCall } = useDMCalls(conversationId);
+  const { activeCall, history: callHistory, startCall, endCall, acceptCall } = useDMCalls(conversationId);
+  const callSession = useDMCallSession();
+  const inCall = !!activeCall && callSession.joined?.callId === activeCall.id;
+  const sortedCalls = useMemo(() => [...callHistory].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()), [callHistory]);
   const pinMessage = usePinDMMessage();
   const unpinMessage = useUnpinDMMessage();
   const { data: pinnedMessages = [] } = useDMPinnedMessages(conversationId);
@@ -150,12 +201,23 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
     [polls],
   );
 
+  const renderCall = (c: DMCall) => (
+    <DMCallRow
+      key={`call-${c.id}`}
+      call={c}
+      meId={user?.id}
+      initiatorName={nameFor(c.initiator?.id ?? c.initiator_id, c.initiator?.display_name ?? c.initiator?.username ?? 'Quelqu\'un')}
+      joined={callSession.joined?.callId === c.id}
+      onJoin={() => void joinActiveCall()}
+    />
+  );
+
   const renderPoll = (poll: DMPoll) => {
     const isOwn = poll.author_id === user?.id;
     return (
       <div
         key={`poll-${poll.id}`}
-        className="px-4 py-2 group"
+        className="group message-hover -mx-4 px-8 py-2"
         ref={(el) => { if (el) messageRefs.current.set(poll.id, el); }}
       >
         <div className="flex items-start gap-3">
@@ -287,12 +349,23 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
     return () => vp.removeEventListener('scroll', onScroll);
   }, [hasMoreOlder, isLoadingOlder, loadOlder, messages.length, conversationId]);
 
+  const beginCall = (callType: 'voice' | 'video') =>
+    startCall.mutate(
+      { callType },
+      { onSuccess: (c) => joinCallSession(c.id, conversationId, participant ? nameFor(participant.id, participant.display_name) : '') },
+    );
   const handleVoiceCall = () => {
-    startCall.mutate({ callType: 'voice' });
+    if (activeCall && !inCall) void joinActiveCall();
+    else if (!activeCall) beginCall('voice');
   };
 
-  const handleVideoCall = () => {
-    startCall.mutate({ callType: 'video' });
+  const handleVideoCall = () => beginCall('video');
+
+  /** Rejoindre un appel en cours : le statut devient actif des que le second participant arrive. */
+  const joinActiveCall = async () => {
+    if (!activeCall) return;
+    if (activeCall.status === 'ringing' && activeCall.initiator_id !== user?.id) await acceptCall.mutateAsync(activeCall.id);
+    joinCallSession(activeCall.id, conversationId, participant ? nameFor(participant.id, participant.display_name) : '');
   };
 
   const handleEndCall = () => {
@@ -334,23 +407,32 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
   const handleStartEdit = (message: DMMessage) => {
     setEditingMessageId(message.id);
     setEditingContent(getGifOnlyUrl(message) ?? message.content);
+    attachmentEdits.reset((message.attachments ?? []) as never);
   };
 
   const handleSaveEdit = async () => {
-    if (editingMessageId && editingContent.trim()) {
+    if (!editingMessageId || !user) return;
+    if (!editingContent.trim() && attachmentEdits.count === 0) return;
+    try {
+      const attachments = attachmentEdits.hasChanges ? await attachmentEdits.resolve(user.id) : undefined;
       await editMessage.mutateAsync({
         messageId: editingMessageId,
         conversationId,
         content: editingContent.trim(),
+        attachments,
       });
       setEditingMessageId(null);
       setEditingContent('');
+      attachmentEdits.reset();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Erreur lors de la modification');
     }
   };
 
   const handleCancelEdit = () => {
     setEditingMessageId(null);
     setEditingContent('');
+    attachmentEdits.reset();
   };
 
   const handleDeleteMessage = (messageId: string) => {
@@ -390,7 +472,10 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
 
   const displayName = conversation?.is_group
     ? conversation.name || 'Groupe'
-    : participant?.display_name || 'Utilisateur';
+    : participant ? nameFor(participant.id, participant.display_name) : 'Utilisateur';
+
+  const peerBlocked = !!participant?.id && !conversation?.is_group && blockedIds.has(participant.id);
+  const introPerson = participant ? { id: participant.id, display_name: participant.display_name, username: participant.username, avatar_url: participant.avatar_url, status: participant.status || 'offline' } : null;
 
   return (
     <div 
@@ -406,111 +491,46 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
       <AnimatePresence>
         {isDragging && <UploadDropOverlay channelName={displayName} />}
       </AnimatePresence>
-      {/* Active Call View */}
+      {/* Header */}
+      <div className={cn(activeCall && 'bg-black')}>
+      <DMHeader
+        dark={!!activeCall}
+        callState={activeCall ? (inCall ? 'in' : 'other') : null}
+        person={participant ? { id: participant.id, display_name: participant.display_name, username: participant.username, avatar_url: participant.avatar_url, status: participant.status || 'offline', custom_status: (participant as { custom_status?: string | null }).custom_status ?? null } : null}
+        title={displayName}
+        isGroup={!!conversation?.is_group}
+        conversationId={conversationId}
+        panelOpen={showUserInfoPanel}
+        onTogglePanel={() => setShowUserInfoPanel(!showUserInfoPanel)}
+        onVoice={handleVoiceCall}
+        onVideo={handleVideoCall}
+        callDisabled={startCall.isPending}
+        onBack={isMobile ? onBack : undefined}
+        onOpenDM={(id) => window.dispatchEvent(new CustomEvent(OPEN_SERVER_EVENT, { detail: { serverId: null, conversationId: id } }))}
+        onSearch={(q) => {
+          const hit = [...messages].reverse().find((m) => m.content?.toLowerCase().includes(q.toLowerCase()));
+          if (!hit) return toast.info('Aucun résultat dans les messages chargés');
+          messageRefs.current.get(hit.id)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }}
+      />
       {activeCall && (activeCall.status === 'ringing' || activeCall.status === 'active') && (
-        <DMCallView 
-          call={activeCall} 
-          participant={participant || null} 
-          onEndCall={handleEndCall}
-          isInitiator={activeCall.initiator_id === user?.id}
+        <DMCallStage
+          call={activeCall}
+          conversationId={conversationId}
+          peer={participant ? { id: participant.id, display_name: nameFor(participant.id, participant.display_name), username: participant.username, avatar_url: participant.avatar_url } : null}
+          peerName={participant ? nameFor(participant.id, participant.display_name) : ''}
+          onJoin={async () => { await joinActiveCall(); }}
+          onEnd={handleEndCall}
         />
       )}
-
-      {/* Header */}
-      <div className="h-12 px-4 flex items-center gap-3 border-b border-border bg-[hsl(var(--surface-header))]">
-        {onBack && (
-          <Button variant="ghost" size="icon" onClick={onBack} className="mr-1">
-            <ArrowLeft className="w-4 h-4" />
-          </Button>
-        )}
-        <div className="relative">
-          <Avatar className="w-8 h-8">
-            <AvatarImage src={participant?.avatar_url || undefined} />
-            <AvatarFallback className="bg-primary/20 text-primary text-sm">
-              {displayName.charAt(0).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          {participant?.status && (
-            <div 
-              className={cn(
-                "absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-[2.5px] border-[hsl(var(--surface-header))]",
-                participant.status === 'online' && 'bg-status-online',
-                participant.status === 'idle' && 'bg-status-idle',
-                participant.status === 'dnd' && 'bg-status-dnd',
-                (!participant.status || participant.status === 'offline') && 'bg-status-offline'
-              )}
-            />
-          )}
-        </div>
-        <div 
-          className="flex items-center gap-1.5 flex-1 cursor-pointer hover:opacity-80 transition-opacity"
-          onClick={() => setShowUserInfoPanel(!showUserInfoPanel)}
-        >
-          <AtSign className="w-5 h-5 text-muted-foreground shrink-0" />
-          <h2 className="font-semibold text-base truncate">{displayName}</h2>
-        </div>
-        <div className="h-6 w-px bg-border mx-1" />
-        <div className="flex items-center gap-1">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleVoiceCall}
-                disabled={startCall.isPending || !!activeCall}
-                className="rounded-full bg-primary/10 text-primary hover:bg-primary/20 disabled:opacity-40 disabled:bg-muted/40 disabled:text-muted-foreground transition-all active:scale-95"
-                aria-label="Appel vocal"
-              >
-                <Phone className="w-[18px] h-[18px]" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Appel vocal</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleVideoCall}
-                disabled={startCall.isPending || !!activeCall}
-                className="rounded-full bg-primary/10 text-primary hover:bg-primary/20 disabled:opacity-40 disabled:bg-muted/40 disabled:text-muted-foreground transition-all active:scale-95"
-                aria-label="Appel vidéo"
-              >
-                <Video className="w-[18px] h-[18px]" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Appel vidéo</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div>
-                <DMPinnedMessagesPopover conversationId={conversationId} />
-              </div>
-            </TooltipTrigger>
-            <TooltipContent>Messages épinglés</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="icon"
-                onClick={() => setShowUserInfoPanel(!showUserInfoPanel)}
-                className={showUserInfoPanel ? 'bg-muted' : ''}
-              >
-                <UserCircle className="w-5 h-5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Profil de l'utilisateur</TooltipContent>
-          </Tooltip>
-        </div>
       </div>
 
       <div className="flex-1 flex min-h-0">
         {/* Left column: Messages + Input */}
         <div className="flex-1 flex flex-col min-h-0">
           {/* Messages */}
-          <ScrollArea ref={scrollAreaRef} className="flex-1 min-h-0">
-            <div className="flex flex-col justify-end min-h-full p-4 space-y-px">
+          <ScrollArea ref={scrollAreaRef} className="flex-1 min-h-0 mb-6">
+            <div className="flex flex-col justify-end min-h-full px-4 pt-4 pb-0 space-y-px">
               {isLoadingOlder && (
                 <div className="flex items-center justify-center py-2">
                   <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
@@ -521,24 +541,25 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                   <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
                 </div>
               ) : messages.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-center">
-                  <Avatar className="w-16 h-16 mb-4">
-                    <AvatarImage src={participant?.avatar_url || undefined} />
-                    <AvatarFallback className="bg-primary/20 text-primary text-2xl">
-                      {displayName.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <h3 className="text-lg font-semibold">{displayName}</h3>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    C'est le début de votre conversation avec {displayName}
-                  </p>
-                </div>
+                <>
+                  <DMIntro person={introPerson} title={displayName} isGroup={!!conversation?.is_group} />
+                  {hiddenCount > 0 && <HiddenMessagesRow count={hiddenCount} blocked={peerBlocked} onShow={() => setShowHidden(true)} />}
+                  {sortedCalls.map((c) => renderCall(c))}
+                  <div ref={messagesEndRef} className="msg-end" />
+                </>
               ) : (
                 <>
+                  {(!hasMoreOlder || messages.length < 50) && <DMIntro person={introPerson} title={displayName} isGroup={!!conversation?.is_group} />}
+                  {hiddenCount > 0 && <HiddenMessagesRow count={hiddenCount} blocked={peerBlocked} onShow={() => setShowHidden(true)} />}
                   {(() => {
                     let pollCursor = 0;
+                    let callCursor = 0;
                     const flushPollsBefore = (ts: number) => {
                       const out: JSX.Element[] = [];
+                      while (callCursor < sortedCalls.length && new Date(sortedCalls[callCursor].created_at).getTime() <= ts) {
+                        out.push(renderCall(sortedCalls[callCursor]));
+                        callCursor++;
+                      }
                       while (pollCursor < sortedPolls.length && new Date(sortedPolls[pollCursor].created_at).getTime() <= ts) {
                         out.push(renderPoll(sortedPolls[pollCursor]));
                         pollCursor++;
@@ -570,14 +591,12 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                         }}
                       >
                         {/* Date Separator */}
-                        {showDateSeparator && (
-                          <div className="flex items-center gap-4 my-2">
-                            <div className="flex-1 h-px bg-border" />
-                            <span className="text-xs text-muted-foreground font-medium">
-                              {formatDate(currentDate)}
-                            </span>
-                            <div className="flex-1 h-px bg-border" />
-                          </div>
+                        {(showDateSeparator || message.id === firstUnreadId) && (
+                          message.id === firstUnreadId ? (
+                            <div className="relative my-4 mx-4 flex items-center gap-2"><div className="h-px flex-1 bg-[#da373c]" />{showDateSeparator && <span className="px-1 text-xs font-semibold text-[#da373c]">{formatDate(currentDate)}</span>}<div className="h-px flex-1 bg-[#da373c]" /><span className="absolute -right-0 -top-[1px] -translate-y-1/2 rounded-[3px] bg-[#da373c] px-1 text-[10px] font-bold uppercase leading-[13px] text-white">Nouveau</span></div>
+                          ) : (
+                            <div className="flex items-center gap-2 my-4 mx-4"><div className="flex-1 h-px bg-white/[0.06]" /><span className="text-xs font-semibold text-[#949ba4] px-1">{formatDate(currentDate)}</span><div className="flex-1 h-px bg-white/[0.06]" /></div>
+                          )
                         )}
                         {message.system_type === 'poll_closed' && (() => {
                           const closedPoll = polls.find((p) => p.id === message.system_poll_id);
@@ -600,54 +619,19 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                               onCopyId={() => handleCopyId(message.id)}
                               onDelete={() => handleDeleteMessage(message.id)}
                             >
-                              <div className="flex flex-col items-center gap-1 py-1.5">
-                                <div className="flex items-center justify-center gap-2 text-xs italic text-muted-foreground">
-                                  <BarChart2 className="w-3.5 h-3.5" />
-                                  <span>
-                                    Le sondage «{' '}
-                                    <span className="font-semibold not-italic text-foreground">
-                                      {closedPoll?.question ?? 'inconnu'}
-                                    </span>
-                                    {' '}» de{' '}
-                                    <span className="font-semibold not-italic text-foreground">
-                                      {closedPoll?.author?.display_name ?? "quelqu'un"}
-                                    </span>
-                                    {' '}est clos.
-                                  </span>
-                                </div>
-                                {closedPoll && (
-                                  <div className="flex items-center gap-3 bg-[hsl(var(--surface-2))] rounded-xl py-2.5 pl-2.5 pr-2.5">
-                                    {hasWinner ? (
-                                      <span className="w-9 h-9 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0">
-                                        <Check className="w-5 h-5 text-white" />
-                                      </span>
-                                    ) : (
-                                      <span className="w-9 h-9 rounded-full bg-[hsl(var(--surface-3))] flex items-center justify-center text-base flex-shrink-0" role="img" aria-hidden>
-                                        💀
-                                      </span>
-                                    )}
-                                    <div className="flex flex-col items-start">
-                                      <span className="text-sm font-medium text-foreground whitespace-nowrap">{winnerLabel}</span>
-                                      {hasWinner && (
-                                        <span className="text-xs text-muted-foreground whitespace-nowrap">
-                                          Réponse gagnante • {winnerPercentage}%
-                                        </span>
-                                      )}
-                                    </div>
-                                    <button type="button"
-                                      onClick={() => handleJumpToMessage(closedPoll.id)}
-                                      className="ml-2 text-sm font-medium text-foreground bg-[hsl(var(--surface-3))] hover:bg-[hsl(var(--surface-3))]/70 transition-colors rounded-lg px-4 py-2 whitespace-nowrap"
-                                    >
-                                      Voir le sondage
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
+                              <PollClosedRow
+                                question={closedPoll?.question ?? 'inconnu'}
+                                authorName={closedPoll?.author?.display_name ?? "quelqu'un"}
+                                timeLabel={timestamp}
+                                mentionsMe={!!closedPoll && closedPoll.author_id === user?.id}
+                                result={closedPoll ? (hasWinner ? { kind: 'winner', text: String(winnerLabel), pct: winnerPercentage ?? 0 } : { kind: 'none' }) : null}
+                                onOpen={closedPoll ? () => handleJumpToMessage(closedPoll.id) : undefined}
+                              />
                             </UniversalMessageContextMenu>
                           );
                         })()}
                         {message.system_type && message.system_type !== 'poll_closed' && (() => {
-                          const who = message.author?.display_name || message.author?.username || 'Quelqu\'un';
+                          const who = nameFor(message.author?.id, message.author?.display_name || message.author?.username || 'Quelqu\'un');
                           const Icon =
                             message.system_type === 'screenshot'
                               ? Camera
@@ -673,7 +657,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                               onCopyId={() => handleCopyId(message.id)}
                               onDelete={() => handleDeleteMessage(message.id)}
                             >
-                              <div className="flex items-center justify-center gap-2 py-1.5 text-xs italic text-muted-foreground">
+                              <div className="message-hover -mx-4 px-4 flex items-center justify-center gap-2 py-1.5 text-xs italic text-muted-foreground">
                                 <Icon className="w-3.5 h-3.5" />
                                 <span>{label}</span>
                               </div>
@@ -717,6 +701,20 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                         isOwnMessage={isOwnMessage}
                         isPinned={isMessagePinned(message.id)}
                         messageId={message.id}
+                        reminder={{
+                          source: 'dm',
+                          messageId: message.id,
+                          conversationId,
+                          snapshot: {
+                            authorId: message.author?.id,
+                            authorName: message.author?.display_name || message.author?.username || 'Utilisateur',
+                            authorAvatar: message.author?.avatar_url ?? null,
+                            content: message.content,
+                            createdAt: new Date(message.created_at ?? Date.now()).toISOString(),
+                            channelName: displayName,
+                            serverName: 'Messages privés',
+                          },
+                        }}
                         previewAuthorName={message.author?.display_name || message.author?.username}
                         previewAuthorAvatar={message.author?.avatar_url || undefined}
                         previewContent={message.content}
@@ -725,6 +723,13 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                         onCopyText={() => handleCopyMessage(message.content)}
                         onCopyLink={() => handleCopyLink(message.id)}
                         onCopyId={() => handleCopyId(message.id)}
+                        onForward={() => openForwardMessage({
+                          content: message.content,
+                          attachments: (message.attachments ?? []) as StoredAttachment[],
+                          edited: !!message.edited_at,
+                          from: { kind: 'dm', messageId: message.id, createdAt: message.created_at, conversationId },
+                        })}
+                        onMarkUnread={() => markMessageUnread({ kind: 'dm', conversationId, createdAt: message.created_at })}
                         onEdit={isOwnMessage ? () => handleStartEdit(message) : undefined}
                         onDelete={isOwnMessage ? () => handleDeleteMessage(message.id) : undefined}
                         onPin={() => isMessagePinned(message.id) 
@@ -752,9 +757,10 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                         >
                         <div 
                           className={cn(
-                            'flex gap-3 group message-hover -mx-4 pl-[21px] pr-8 relative',
-                            showAuthor ? 'pt-1' : 'py-0',
-                            !showAuthor && 'pl-[65px]',
+                            'flex gap-4 group message-hover -mx-4 pl-4 pr-4 relative',
+                            replyingTo?.id === message.id && 'reply-target',
+                            showAuthor ? 'pt-1 pb-1' : 'pb-1',
+                            !showAuthor && 'pl-[72px]',
                             messageMentionsMe(message.content, user?.id, []) && 'message-mentioned',
                           )}
                           onMouseEnter={() => setHoveredMessageId(message.id)}
@@ -771,6 +777,13 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                             onCopyLink={() => handleCopyLink(message.id)}
                             onCopyId={() => handleCopyId(message.id)}
                             onCopyText={() => handleCopyMessage(message.content)}
+                            onForward={() => openForwardMessage({
+                              content: message.content,
+                              attachments: (message.attachments ?? []) as StoredAttachment[],
+                              edited: !!message.edited_at,
+                              from: { kind: 'dm', messageId: message.id, createdAt: message.created_at, conversationId },
+                            })}
+                            onMarkUnread={() => markMessageUnread({ kind: 'dm', conversationId, createdAt: message.created_at })}
                             onEdit={isOwnMessage ? () => handleStartEdit(message) : undefined}
                             onDelete={isOwnMessage ? () => handleDeleteMessage(message.id) : undefined}
                             onDropdownOpenChange={(open) => {
@@ -779,7 +792,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                             }}
                           />
                           {showAuthor && (
-                            <Avatar className="w-9 h-9 flex-shrink-0">
+                            <Avatar className="w-10 h-10 flex-shrink-0">
                               <GuardedAvatarImg src={message.author?.avatar_url || undefined} ownerId={message.author?.id} />
                               <AvatarFallback className="bg-primary/20 text-primary text-sm">
                                 {message.author?.display_name?.charAt(0).toUpperCase() || '?'}
@@ -791,7 +804,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                             {showAuthor && (
                               <div className="flex items-center gap-2">
                                 <button type="button"
-                                  className="font-semibold text-sm hover:underline text-left"
+                                  className="font-semibold text-base leading-[1.375rem] hover:underline text-left"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setSelectedProfileUser({
@@ -803,14 +816,16 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                                     });
                                   }}
                                 >
-                                  {message.author?.display_name || 'Utilisateur'}
+                                  {nameFor(message.author?.id, message.author?.display_name || 'Utilisateur')}
                                 </button>
-                                <span className="text-[.625rem] text-muted-foreground/60">
+                                <ServerTagBadge userId={message.author?.id} variant="compact" />
+                                <span className="text-xs text-muted-foreground">
                                   {timestamp}
                                 </span>
                               </div>
                             )}
 
+                            <ForwardedFrame from={forwardedMap.get(message.id)}>
                             {editingMessageId === message.id ? (
                               <div className="mt-1 space-y-2">
                                 <MarkdownTextarea
@@ -828,6 +843,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                                     }
                                   }}
                                 />
+                                <AttachmentEditsPanel edits={attachmentEdits} />
                                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                   <span>Échap pour annuler</span>
                                   <span>•</span>
@@ -839,22 +855,22 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                               </div>
                             ) : (
                               <>
-                                <div className={cn(
-                                  'text-sm break-words font-ginto',
-                                  message.isPending && 'opacity-50'
-                                )}>
+                                <div className={cn('flex flex-wrap items-baseline gap-x-1 text-base leading-[1.375rem] break-words font-ginto', message.isPending && 'opacity-50')}>
                                    <MarkdownText variant="chat" content={message.content} />
+                                   {message.edited_at && !forwardedMap.get(message.id) && <span className="text-[11px] text-muted-foreground/60 select-none">(modifié)</span>}
+                                   {message.isQueued && <span className="text-[11px] text-muted-foreground select-none">(en attente du réseau)</span>}
                                  </div>
                               </>
                             )}
 
                             {/* Message Attachments */}
-                            {message.attachments && message.attachments.length > 0 && (
-                              <MessageAttachments attachments={message.attachments as StoredAttachment[]} authorId={(message as any).author_id ?? (message as any).user_id ?? null} />
+                            {message.attachments && message.attachments.length > 0 && editingMessageId !== message.id && (
+                              <EditableAttachments attachments={message.attachments as StoredAttachment[]} authorId={(message as any).author_id ?? (message as any).user_id ?? null} messageId={message.id} scope={{ kind: 'dm', scopeId: conversationId }} editable={isOwnMessage && !message.isPending} hasText={!!message.content?.trim()} />
                             )}
 
                             {/* Link Embeds */}
                             <LinkEmbeds content={message.content} />
+                            </ForwardedFrame>
 
                             {/* Reactions */}
                             {(reactionsData[message.id]?.length ?? 0) > 0 && (
@@ -867,11 +883,6 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                                 />
                               </div>
                             )}
-
-                            {/* Edited indicator - after attachments */}
-                            {message.edited_at && (
-                              <span className="text-[.625rem] text-muted-foreground/40 mt-0.5 block">(modifié)</span>
-                            )}
                           </div>
                         </div>
                         </SwipeToReplyRow>
@@ -882,10 +893,12 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
                   });
                   return (<>
                     {messageNodes}
+                    {sortedCalls.slice(callCursor).map((c) => renderCall(c))}
                     {sortedPolls.slice(pollCursor).map((p) => renderPoll(p))}
                   </>);
                   })()}
-                  <div ref={messagesEndRef} />
+                  {ephemeral.map((m) => <EphemeralMessageRow key={m.id} message={m} time={formatClock(m.createdAt)} onAuthorClick={(r) => setClydeCard(r)} />)}
+                  <div ref={messagesEndRef} className="msg-end" />
                 </>
               )}
             </div>
@@ -898,6 +911,8 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
           {replyingTo && (
             <ReplyBanner
               authorName={replyingTo.author?.display_name || 'Utilisateur'}
+              authorId={replyingTo.author?.id}
+              onJump={() => handleJumpToMessage(replyingTo.id)}
               authorAvatar={replyingTo.author?.avatar_url}
               content={replyingTo.content}
               attachmentsCount={replyingTo.attachments?.length ?? 0}
@@ -906,6 +921,12 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
           )}
 
           {/* Input */}
+          {peerBlocked && participant ? (
+            <div className="mx-4 mb-6 flex h-[44px] items-center gap-3 rounded-lg bg-[hsl(var(--surface-card))] pl-4 pr-1.5">
+              <p className="flex-1 truncate text-base font-semibold text-white">Tu ne peux pas envoyer de messages à un utilisateur que tu as bloqué.</p>
+              <button type="button" onClick={() => unblock.mutate(participant.id)} className="h-8 shrink-0 rounded-[4px] bg-white/[0.08] px-4 text-sm font-medium text-white transition-colors hover:bg-white/[0.12]">Débloquer</button>
+            </div>
+          ) : (
           <div>
           <MessageInput
             value={messageInput}
@@ -914,7 +935,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
               if (!messageInput.trim() && attachments.length === 0) return;
               sendMessage.mutate({
                 conversationId,
-                content: messageInput.trim(),
+                content: replyingTo ? withReplyMention(messageInput.trim(), replyingTo.author?.id, user?.id) : messageInput.trim(),
                 attachments,
                 replyToId: replyingTo?.id ?? null,
               });
@@ -934,9 +955,7 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
               stopTyping();
             }}
             placeholder={
-              replyingTo
-                ? `Répondre à ${replyingTo.author?.display_name || 'Utilisateur'}`
-                : `Envoyer un message à ${displayName}`
+              `Envoyer un message à ${conversation?.is_group ? '' : '@'}${displayName}`
             }
             disabled={sendMessage.isPending}
             dmConversationId={conversationId}
@@ -949,8 +968,13 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
             onUpdateAttachment={updateAttachment}
             onToggleSpoiler={toggleSpoiler}
             onClearAttachments={clearAttachments}
+            slash={{
+              sendText: (content) => sendMessage.mutate({ conversationId, content, replyToId: null }),
+              sendExternal: (attachment) => sendMessage.mutate({ conversationId, content: '', replyToId: null, externalAttachment: attachment }),
+            }}
           />
           </div>
+          )}
         </div>
 
       {/* User Info Panel - Sheet on mobile, panel on desktop */}
@@ -966,15 +990,18 @@ export function DMConversation({ conversationId, onBack }: DMConversationProps) 
               status: participant.status || 'offline',
               created_at: participant.created_at,
             }}
-            onViewFullProfile={() => {
-              setProfileInitialTab('about');
+            onViewFullProfile={(focus) => {
+              setProfileInitialTab(focus ?? 'about');
               setShowFullProfile(true);
             }}
             onOpenNotes={handleOpenNotes}
+            blocked={peerBlocked}
           />
         )}
       </div>
 
+
+      {clydeCard && <ClydeProfileCard anchor={clydeCard} onClose={() => setClydeCard(null)} />}
 
       {/* Report Modal */}
       <ReportModal

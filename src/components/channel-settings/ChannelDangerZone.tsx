@@ -8,7 +8,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Loader2, Trash2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
+import { Trash2 } from '@/components/icons/discord/lucide';
 import { useDeleteChannel } from '@/hooks/useChannels';
 import { toast } from 'sonner';
 
@@ -17,9 +18,11 @@ interface ChannelDangerZoneProps {
   channelName: string;
   serverId: string;
   onDeleted: () => void;
+  /** Declencheur personnalise (entree "Supprimer le salon" de la navigation). */
+  renderTrigger?: (open: () => void) => React.ReactNode;
 }
 
-export function ChannelDangerZone({ channelId, channelName, serverId, onDeleted }: ChannelDangerZoneProps) {
+export function ChannelDangerZone({ channelId, channelName, serverId, onDeleted, renderTrigger }: ChannelDangerZoneProps) {
   const [showConfirm, setShowConfirm] = useState(false);
   const deleteChannel = useDeleteChannel();
 
@@ -50,13 +53,15 @@ export function ChannelDangerZone({ channelId, channelName, serverId, onDeleted 
 
   return (
     <>
-      <Button 
-        variant="destructive" 
-        onClick={() => setShowConfirm(true)}
-      >
-        <Trash2 className="w-4 h-4 mr-2" />
-        Supprimer le salon
-      </Button>
+      {renderTrigger ? renderTrigger(() => setShowConfirm(true)) : (
+        <Button
+          variant="destructive"
+          onClick={() => setShowConfirm(true)}
+        >
+          <Trash2 className="w-4 h-4 mr-2" />
+          Supprimer le salon
+        </Button>
+      )}
 
       <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
         <DialogContent className="sm:max-w-md">

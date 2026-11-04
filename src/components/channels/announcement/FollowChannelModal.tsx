@@ -5,16 +5,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchableSelect } from "./SearchableSelect";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { useAdminServers, useFollowChannel, useSendFollowSystemMessage } from "@/hooks/useChannelFollowers";
+import { useAdminServers, useFollowChannel } from "@/hooks/useChannelFollowers";
+import { StreamlineHash } from "@/components/icons/StreamlineHash";
 import { Loader2 } from "lucide-react";
 import { StreamlineMegaphone } from "@/components/icons/StreamlineMegaphone";
 
@@ -42,7 +37,6 @@ export function FollowChannelModal({
 
   const { data: adminServers = [], isLoading } = useAdminServers();
   const followChannel = useFollowChannel();
-  const sendSystemMessage = useSendFollowSystemMessage();
 
   // Reset when modal opens
   useEffect(() => {
@@ -63,13 +57,8 @@ export function FollowChannelModal({
         targetChannelId: selectedChannelId,
       });
 
-      // Send system message to target channel
-      await sendSystemMessage.mutateAsync({
-        targetChannelId: selectedChannelId,
-        sourceServerName,
-        sourceChannelName,
-      });
-
+      // Le message "X a ajoute ... dans ce salon" est poste par la base
+      // (trigger channel_followed_message).
       onSuccess();
     } catch (error) {
       // Error handled in mutation
@@ -78,122 +67,78 @@ export function FollowChannelModal({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px] bg-card border-border">
-        <DialogHeader className="flex flex-col items-center text-center pb-2">
-          <div className="flex items-center gap-3 mb-4">
-            <Avatar className="h-14 w-14 rounded-xl">
-              {sourceServerIcon ? (
-                <AvatarImage src={sourceServerIcon} alt={sourceServerName} />
-              ) : null}
-              <AvatarFallback className="rounded-xl bg-primary text-primary-foreground text-xl">
-                {sourceServerName.charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex items-center gap-2 bg-primary/20 px-3 py-1.5 rounded-full">
-              <StreamlineMegaphone className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium">{sourceChannelName}</span>
-            </div>
+      <DialogContent className="sm:max-w-[440px] p-0 gap-0 overflow-hidden">
+        {/* Bandeau : icone du serveur source + pastille du salon d'annonces */}
+        <div className="h-[80px] flex items-center justify-center gap-5 bg-[hsl(var(--card))]">
+          <Avatar className="h-14 w-14 rounded-full">
+            {sourceServerIcon ? <AvatarImage src={sourceServerIcon} alt={sourceServerName} /> : null}
+            <AvatarFallback className="rounded-full bg-primary text-primary-foreground text-xl">
+              {sourceServerName.charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex items-center gap-2 h-10 px-3 rounded-lg bg-[hsl(var(--button-secondary))]">
+            <StreamlineMegaphone className="w-5 h-5 text-[hsl(var(--icon-default))]" />
+            <span translate="no" className="text-base font-medium text-white">{sourceChannelName}</span>
           </div>
-          <DialogTitle className="text-xl">
-            Ajoute les mises à jour de ce salon à ton serveur !
-          </DialogTitle>
-          <p className="text-sm text-muted-foreground mt-2">
-            Sélectionne l'endroit où tu souhaites recevoir ces mises à jour. Tu
-            peux revenir sur ce choix à tout moment dans Paramètres du serveur
-            &gt; Intégrations &gt; Salons suivis.
+        </div>
+
+        <div className="px-6 pt-5">
+          <DialogHeader className="text-center sm:text-center space-y-0">
+            <DialogTitle className="text-2xl font-bold text-white leading-[30px]">
+              Ajoute les mises à jour de ce salon à ton serveur !
+            </DialogTitle>
+          </DialogHeader>
+          <p className="mt-2 text-center text-sm text-muted-foreground">
+            Sélectionne l'endroit où tu souhaites recevoir ces mises à jour. Tu peux revenir sur ce choix à tout moment dans Paramètres du serveur &gt; Intégrations &gt; Salons suivis.
           </p>
-        </DialogHeader>
 
-        <div className="space-y-4 pt-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-muted-foreground">
-              Envoyer vers
-            </label>
-            <Select
-              value={selectedServerId}
-              onValueChange={(value) => {
-                setSelectedServerId(value);
-                setSelectedChannelId("");
-              }}
-            >
-              <SelectTrigger className="w-full bg-background">
-                <SelectValue placeholder="Sélectionner un serveur" />
-              </SelectTrigger>
-              <SelectContent>
-                {isLoading ? (
-                  <div className="flex items-center justify-center p-4">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  </div>
-                ) : adminServers.length === 0 ? (
-                  <div className="p-4 text-center text-sm text-muted-foreground">
-                    Tu n'es administrateur d'aucun serveur
-                  </div>
-                ) : (
-                  adminServers.map((server) => (
-                    <SelectItem key={server.id} value={server.id}>
-                      <div className="flex items-center gap-2">
-                        <Avatar className="h-5 w-5 rounded">
-                          {server.icon_url ? (
-                            <AvatarImage src={server.icon_url} />
-                          ) : null}
-                          <AvatarFallback className="rounded text-xs">
-                            {server.name.charAt(0).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        {server.name}
-                      </div>
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
-          </div>
+          <label className="block mt-6 mb-2 text-base font-medium text-foreground">Envoyer vers</label>
+          <SearchableSelect
+            ariaLabel="Envoyer vers"
+            value={selectedServerId}
+            placeholder={isLoading ? "Chargement…" : "Sélectionner un serveur"}
+            emptyLabel="Aucun serveur où tu peux gérer les webhooks"
+            onChange={(v) => {
+              setSelectedServerId(v);
+              setSelectedChannelId("");
+            }}
+            options={adminServers.map((server) => ({
+              value: server.id,
+              label: server.name,
+              icon: server.icon_url ? (
+                <img src={server.icon_url} alt="" className="w-5 h-5 rounded-full object-cover shrink-0" />
+              ) : (
+                <span className="w-5 shrink-0 text-center text-xs font-semibold text-foreground">{server.name.charAt(0).toUpperCase()}</span>
+              ),
+            }))}
+          />
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-muted-foreground">
-              Sélectionner le salon
-            </label>
-            <Select
-              value={selectedChannelId}
-              onValueChange={setSelectedChannelId}
-              disabled={!selectedServerId}
-            >
-              <SelectTrigger className="w-full bg-background">
-                <SelectValue placeholder="Sélectionner" />
-              </SelectTrigger>
-              <SelectContent>
-                {selectedServer?.channels.length === 0 ? (
-                  <div className="p-4 text-center text-sm text-muted-foreground">
-                    Aucun salon disponible
-                  </div>
-                ) : (
-                  selectedServer?.channels.map((channel) => (
-                    <SelectItem key={channel.id} value={channel.id}>
-                      #{channel.name}
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
-          </div>
+          <label className="block mt-4 mb-2 text-base font-medium text-foreground">Sélectionner le salon</label>
+          <SearchableSelect
+            ariaLabel="Sélectionner le salon"
+            value={selectedChannelId}
+            placeholder="Sélectionner"
+            disabled={!selectedServerId}
+            emptyLabel="Aucun salon disponible"
+            onChange={setSelectedChannelId}
+            options={(selectedServer?.channels ?? []).map((channel) => ({
+              value: channel.id,
+              label: channel.name,
+              icon: channel.type === "announcement"
+                ? <StreamlineMegaphone className="w-5 h-5 shrink-0 text-[hsl(var(--icon-default))]" />
+                : <StreamlineHash className="w-5 h-5 shrink-0 text-[hsl(var(--icon-default))]" />,
+            }))}
+          />
 
-          <p className="text-xs text-muted-foreground">
-            Seuls les serveurs et les salons dont tu as les autorisations de
-            webhook sont affichés.
+          <p className="mt-4 text-sm text-muted-foreground">
+            Seuls les serveurs et les salons dont tu as les autorisations de webhook sont affichés.
           </p>
         </div>
 
-        <div className="flex justify-end gap-2 mt-4">
-          <Button variant="ghost" onClick={onClose}>
-            Annuler
-          </Button>
-          <Button
-            onClick={handleFollow}
-            disabled={!selectedChannelId || followChannel.isPending}
-          >
-            {followChannel.isPending ? (
-              <Loader2 className="w-4 h-4 animate-spin mr-2" />
-            ) : null}
+        <div className="px-6 pt-6 pb-6 flex justify-end gap-2">
+          <Button variant="secondary" className="h-11 px-7 text-base" onClick={onClose}>Annuler</Button>
+          <Button className="h-11 px-8 text-base" onClick={handleFollow} disabled={!selectedChannelId || followChannel.isPending}>
+            {followChannel.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
             Suivre
           </Button>
         </div>

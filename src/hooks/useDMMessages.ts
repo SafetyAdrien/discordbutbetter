@@ -1,24 +1,22 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { refreshSignedUrls } from '@/lib/storageUrls';
 import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { z } from 'zod';
+import { kindOfFile, contentTypeOf } from '@/lib/mediaTypes';
+import { parseMessageContent } from '@/lib/validation';
 import { PendingAttachment } from '@/hooks/usePendingAttachments';
+import { isTransientNetworkError } from '@/lib/networkErrors';
+import { subscribeWithDiagnostics } from '@/lib/realtimeDiagnostics';
 
-// Message validation schema
-const messageSchema = z.object({
-  content: z.string()
-    .trim()
-    .max(2000, 'Message too long (max 2000 characters)'),
-});
 
 export interface StoredAttachment {
   id: string;
   url: string;
   name: string;
-  type: 'image' | 'video' | 'file' | 'sticker' | 'gif';
+  type: 'image' | 'video' | 'audio' | 'file' | 'sticker' | 'gif';
   size: number;
   description?: string;
   isSpoiler?: boolean;
@@ -67,6 +65,17 @@ export interface DMMessage {
     avatar_url: string | null;
   } | null;
   isPending?: boolean;
+  isQueued?: boolean;
+}
+
+class AttachmentSendError extends Error {
+  readonly cause: unknown;
+
+  constructor(cause: unknown) {
+    super('Attachment transfer failed; it must be retried by the user.');
+    this.name = 'AttachmentSendError';
+    this.cause = cause;
+  }
 }
 
 // Helper to scope cache keys per user — avoids cross-account bleed if a user
@@ -86,7 +95,7 @@ export function useDMMessages(conversationId: string | null) {
 
   const query = useQuery({
     queryKey,
-    queryFn: async (): Promise<DMMessage[]> => {
+    queryFn: async (): Promise<DMMessage[]> => refreshSignedUrls(await (async (): Promise<DMMessage[]> => {
       if (!conversationId) return [];
 
       // Fetch the 50 MOST RECENT messages (desc + reverse), not the oldest 50.
@@ -175,7 +184,7 @@ export function useDMMessages(conversationId: string | null) {
             }
           : null,
       }));
-    },
+    })()),
     enabled: !!conversationId && !!user,
     placeholderData: () =>
       userId && conversationId ? cacheGetSync(dmIdbKey(userId, conversationId)) : undefined,
@@ -209,8 +218,20 @@ export function useDMMessages(conversationId: string | null) {
           const newMsg = payload.new as any;
           if (newMsg.author_id === user.id) return;
 
-          // Fetch complete message with author
-          const { data } = await supabase
+          const realtimeMessage: DMMessage = {
+            ...newMsg,
+            attachments: Array.isArray(newMsg.attachments) ? newMsg.attachments : [],
+            author: null,
+            repliedMessage: null,
+          };
+          queryClient.setQueryData<DMMessage[]>(queryKey, (old) => {
+            if (!old) return [realtimeMessage];
+            if (old.some((message) => message.id === realtimeMessage.id)) return old;
+            return [...old, realtimeMessage];
+          });
+
+          // Hydrate author and reply details without delaying message display.
+          const { data, error } = await supabase
             .from('dm_messages')
             .select(`
               id,
@@ -230,6 +251,11 @@ export function useDMMessages(conversationId: string | null) {
             `)
             .eq('id', newMsg.id)
             .single();
+
+          if (error) {
+            console.error('Realtime DM message hydration failed:', error);
+            return;
+          }
 
           if (data) {
             // Resolve replied snapshot if applicable
@@ -281,7 +307,11 @@ export function useDMMessages(conversationId: string | null) {
             };
             queryClient.setQueryData<DMMessage[]>(queryKey, (old) => {
               if (!old) return [parsedData];
-              if (old.some((m) => m.id === parsedData.id)) return old;
+              if (old.some((message) => message.id === parsedData.id)) {
+                return old.map((message) =>
+                  message.id === parsedData.id ? { ...message, ...parsedData } : message,
+                );
+              }
               return [...old, parsedData];
             });
           }
@@ -322,8 +352,11 @@ export function useDMMessages(conversationId: string | null) {
             return old.filter((m) => m.id !== deleted.id);
           });
         }
-      )
-      .subscribe((status) => {
+      );
+    const stopDiagnostics = subscribeWithDiagnostics(
+      channel,
+      `dm-messages-${instanceIdRef.current}`,
+      (status) => {
         // Race condition fix: messages inserted between the initial fetch and
         // the Realtime SUBSCRIBED window are otherwise lost until manual refresh.
         // Invalidating once on SUBSCRIBED guarantees catch-up.
@@ -333,6 +366,7 @@ export function useDMMessages(conversationId: string | null) {
       });
 
     return () => {
+      stopDiagnostics();
       supabase.removeChannel(channel);
     };
     // queryKey is stable per (userId, conversationId)
@@ -412,12 +446,13 @@ export function useDMMessages(conversationId: string | null) {
       });
 
       if (resolved.length < 50) setHasMoreOlder(false);
+      const refreshed = await refreshSignedUrls(resolved);
 
-      if (resolved.length > 0) {
+      if (refreshed.length > 0) {
         queryClient.setQueryData<DMMessage[]>(queryKey, (old) => {
           const existing = old || [];
           const existingIds = new Set(existing.map((m) => m.id));
-          const fresh = resolved.filter((m) => !existingIds.has(m.id));
+          const fresh = refreshed.filter((m) => !existingIds.has(m.id));
           return [...fresh, ...existing];
         });
       }
@@ -450,6 +485,7 @@ async function uploadDMAttachments(
       .upload(fileName, attachment.file, {
         cacheControl: '3600',
         upsert: false,
+        contentType: contentTypeOf(attachment.file),
       });
 
     if (error) {
@@ -467,9 +503,8 @@ async function uploadDMAttachments(
       throw new Error(`Échec de la génération du lien pour « ${attachment.name || attachment.file.name} »`);
     }
 
-    let type: 'image' | 'video' | 'file' = 'file';
-    if (attachment.file.type.startsWith('image/')) type = 'image';
-    else if (attachment.file.type.startsWith('video/')) type = 'video';
+    const kind = kindOfFile(attachment.file);
+    const type: 'image' | 'video' | 'audio' | 'file' = kind === 'image' || kind === 'video' || kind === 'audio' ? kind : 'file';
 
     uploadedAttachments.push({
       id: attachment.id,
@@ -496,23 +531,30 @@ export function useSendDMMessage() {
       attachments = [],
       replyToId,
       externalAttachment,
+      clientMessageId,
     }: {
       conversationId: string;
       content: string;
       attachments?: PendingAttachment[];
       replyToId?: string | null;
       externalAttachment?: ExternalAttachment;
+      clientMessageId?: string;
     }) => {
       if (!user) throw new Error('Not authenticated');
+      if (!clientMessageId) throw new Error('Missing client message ID');
 
-      const validated = messageSchema.parse({ content });
+      const validated = parseMessageContent(content);
       if (!validated.content.trim() && attachments.length === 0 && !externalAttachment) {
         throw new Error('Message must have content or attachments');
       }
 
       let uploadedAttachments: StoredAttachment[] = [];
       if (attachments.length > 0) {
-        uploadedAttachments = await uploadDMAttachments(user.id, attachments);
+        try {
+          uploadedAttachments = await uploadDMAttachments(user.id, attachments);
+        } catch (error) {
+          throw new AttachmentSendError(error);
+        }
       }
       if (externalAttachment) {
         uploadedAttachments = [
@@ -527,9 +569,10 @@ export function useSendDMMessage() {
         ];
       }
 
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('dm_messages')
         .insert({
+          id: clientMessageId,
           conversation_id: conversationId,
           content: validated.content,
           author_id: user.id,
@@ -553,6 +596,33 @@ export function useSendDMMessage() {
         `)
         .single();
 
+      if (error?.code === '23505') {
+        const { data: existingMessage, error: lookupError } = await supabase
+          .from('dm_messages')
+          .select(`
+            id,
+            content,
+            created_at,
+            edited_at,
+            attachments,
+            conversation_id,
+            reply_to_id,
+            author:profiles!dm_messages_author_id_fkey (
+              id,
+              username,
+              display_name,
+              avatar_url
+            )
+          `)
+          .eq('id', clientMessageId)
+          .eq('author_id', user.id)
+          .maybeSingle();
+        if (lookupError) throw lookupError;
+        if (existingMessage) {
+          data = existingMessage;
+          error = null;
+        }
+      }
       if (error) throw error;
 
       // Resolve replied snapshot from cache (the original message is in the same channel)
@@ -583,7 +653,23 @@ export function useSendDMMessage() {
         repliedMessage,
       } as DMMessage;
     },
-    onMutate: async ({ conversationId, content, attachments = [], replyToId, externalAttachment }) => {
+    networkMode: 'online',
+    // Keep retrying transport failures; the stable id makes the insert idempotent.
+    retry: (_failureCount, error) =>
+      !(error instanceof AttachmentSendError) &&
+      isTransientNetworkError(error),
+    retryDelay: (failureCount) => Math.min(1000 * (2 ** failureCount), 8000),
+    onMutate: async (variables) => {
+      const { conversationId, content, attachments = [], replyToId, externalAttachment } = variables;
+      variables.clientMessageId ??= crypto.randomUUID();
+      const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+      if (
+        isOffline &&
+        (attachments.length > 0 || externalAttachment)
+      ) {
+        throw new Error('OFFLINE_ATTACHMENTS_CANNOT_QUEUE');
+      }
+      if (isOffline) toast.info('Message texte mis en attente du retour du réseau.');
       if (!user) return { previousMessages: undefined, optimisticMessage: undefined };
       const key = dmKey(user.id, conversationId);
       await queryClient.cancelQueries({ queryKey: key });
@@ -594,8 +680,7 @@ export function useSendDMMessage() {
         id: a.id,
         url: a.previewUrl,
         name: a.name,
-        type: a.file.type.startsWith('image/') ? 'image' :
-              a.file.type.startsWith('video/') ? 'video' : 'file',
+        type: ((k) => (k === 'image' || k === 'video' || k === 'audio' ? k : 'file'))(kindOfFile(a.file)),
         size: a.file.size,
         description: a.description || undefined,
         isSpoiler: a.isSpoiler,
@@ -645,6 +730,7 @@ export function useSendDMMessage() {
           avatar_url: profile.avatar_url,
         } : null,
         isPending: true,
+        isQueued: isOffline,
       };
 
       queryClient.setQueryData<DMMessage[]>(key, (old) => [...(old || []), optimisticMessage]);
@@ -663,11 +749,15 @@ export function useSendDMMessage() {
       });
       queryClient.invalidateQueries({ queryKey: ['dm-conversations'] });
     },
-    onError: (_error, { conversationId }, context) => {
+    onError: (error, { conversationId }, context) => {
       if (user && context?.previousMessages) {
         queryClient.setQueryData(dmKey(user.id, conversationId), context.previousMessages);
       }
-      toast.error("Erreur lors de l'envoi du message");
+      toast.error(
+        error instanceof Error && error.message === 'OFFLINE_ATTACHMENTS_CANNOT_QUEUE'
+          ? 'Les pièces jointes ne peuvent pas être mises en attente hors ligne. Réessaie après le retour du réseau.'
+          : "Erreur lors de l'envoi du message"
+      );
     },
   });
 }
@@ -680,18 +770,20 @@ export function useEditDMMessage() {
     mutationFn: async ({
       messageId,
       content,
+      attachments,
     }: {
       messageId: string;
       conversationId: string;
       content: string;
+      attachments?: StoredAttachment[];
     }) => {
       if (!user) throw new Error('Not authenticated');
 
-      const validated = messageSchema.parse({ content });
+      const validated = parseMessageContent(content);
 
       const { data, error } = await supabase
         .from('dm_messages')
-        .update({ content: validated.content, edited_at: new Date().toISOString() })
+        .update({ content: validated.content, edited_at: new Date().toISOString(), ...(attachments ? { attachments: attachments as unknown as never } : {}) })
         .eq('id', messageId)
         .eq('author_id', user.id)
         .select()
@@ -700,7 +792,7 @@ export function useEditDMMessage() {
       if (error) throw error;
       return data;
     },
-    onMutate: async ({ messageId, conversationId, content }) => {
+    onMutate: async ({ messageId, conversationId, content, attachments }) => {
       if (!user) return { previousMessages: undefined };
       const key = dmKey(user.id, conversationId);
       await queryClient.cancelQueries({ queryKey: key });
@@ -709,7 +801,7 @@ export function useEditDMMessage() {
 
       queryClient.setQueryData<DMMessage[]>(
         key,
-        (old) => old?.map((m) => (m.id === messageId ? { ...m, content, edited_at: new Date().toISOString() } : m)) || []
+        (old) => old?.map((m) => (m.id === messageId ? { ...m, content, edited_at: new Date().toISOString(), ...(attachments ? { attachments } : {}) } : m)) || []
       );
 
       return { previousMessages };

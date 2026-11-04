@@ -29,14 +29,18 @@ export function ThreadSpine({ startY = 44 }: ThreadSpineProps) {
       const embed = children[children.length - 1] as HTMLElement;
       if (!embed || embed === (svg as unknown as HTMLElement)) return;
 
-      const embedRect = embed.getBoundingClientRect();
+      // La branche vise la carte elle-meme (le conteneur peut etre plus large et decale).
+      const card = embed.querySelector<HTMLElement>('button') ?? embed;
+      const embedRect = card.getBoundingClientRect();
       const turnY = embedRect.top - parentRect.top + embedRect.height / 2;
 
       if (turnY <= startY) return;
 
-      const x = 19;
+      // Axe vertical = centre de l'avatar du message ; la branche s'arrete au bord gauche de la carte.
+      const avatar = parent.querySelector<HTMLElement>('.w-10.h-10');
+      const x = avatar ? avatar.getBoundingClientRect().left - parentRect.left + avatar.getBoundingClientRect().width / 2 : 19;
       const radius = 15;
-      const endX = x + 18;
+      const endX = Math.max(x + radius + 2, embedRect.left - parentRect.left - 2);
 
       // Single continuous path: vertical → quadratic curve → horizontal
       const d = [`M ${x} ${startY}`, `V ${turnY - radius}`, `Q ${x} ${turnY} ${x + radius} ${turnY}`, `H ${endX}`].join(

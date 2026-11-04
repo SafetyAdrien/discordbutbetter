@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Copy, Check, ChevronDown } from 'lucide-react';
+import { Copy, Check, ChevronDown } from '@/components/icons/discord/lucide';
 import { cn } from '@/lib/utils';
 import { hexToRgb, rgbToHex, rgbToHsv, hsvToRgb, rgbToHsl } from '@/lib/colorMath';
 

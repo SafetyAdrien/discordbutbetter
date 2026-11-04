@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
-import { Star, MessageCircle } from 'lucide-react';
+import { Star, MessageCircle } from '@/components/icons/discord/lucide';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/lib/haptics';
@@ -255,7 +255,7 @@ export function MobileFriendCard({
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
-            <p className="text-sm font-semibold truncate">{friend.displayName}</p>
+            <p translate="no" className="text-sm font-semibold truncate">{friend.displayName}</p>
           </div>
           <p className="text-xs text-muted-foreground truncate">
             {friend.customStatus || `@${friend.username}`}

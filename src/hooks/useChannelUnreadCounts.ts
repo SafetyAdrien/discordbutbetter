@@ -5,6 +5,7 @@ import { useEffect, useRef } from 'react';
 import { cacheGetSync, cacheSetAsync } from '@/lib/cache';
 import { isDirectMentionForUser } from '@/lib/mentions';
 import { isBeforeReadGuard, recordReadAt, getLastReadAt } from '@/lib/readStateGuard';
+import { acquireSharedRealtimeEffect } from '@/lib/realtimeDiagnostics';
 
 export interface ChannelUnreadInfo {
   hasUnread: boolean;
@@ -15,7 +16,6 @@ export function useChannelUnreadCounts(serverId: string | null) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const countedMentionMessageIdsRef = useRef<Set<string>>(new Set());
-  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   const cachedKey = serverId && user?.id ? `channel-unread:${serverId}:${user.id}` : null;
   const cachedData = cachedKey ? cacheGetSync<Record<string, ChannelUnreadInfo>>(cachedKey) : undefined;
@@ -23,6 +23,7 @@ export function useChannelUnreadCounts(serverId: string | null) {
   // Realtime — direct cache patching for instant badges
   useEffect(() => {
     if (!user || !serverId) return;
+    return acquireSharedRealtimeEffect(`channel-unread:${user.id}:${serverId}`, () => {
 
     let serverChannelIds: Set<string> | null = null;
     supabase
@@ -60,7 +61,7 @@ export function useChannelUnreadCounts(serverId: string | null) {
     };
 
     const mentionsChannel = supabase
-      .channel(`channel-mentions-${serverId}-${instanceIdRef.current}`)
+      .channel(`channel-mentions-${serverId}-${user.id}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'channel_mentions', filter: `user_id=eq.${user.id}` },
@@ -102,7 +103,7 @@ export function useChannelUnreadCounts(serverId: string | null) {
       });
 
     const messagesChannel = supabase
-      .channel(`channel-messages-${serverId}-${instanceIdRef.current}`)
+      .channel(`channel-messages-${serverId}-${user.id}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages' },
@@ -143,17 +144,19 @@ export function useChannelUnreadCounts(serverId: string | null) {
       supabase.removeChannel(mentionsChannel);
       supabase.removeChannel(messagesChannel);
     };
+    });
   }, [user, serverId, queryClient]);
 
   // Realtime — listen to my own channel_read_states changes (cross-device sync)
   useEffect(() => {
     if (!user || !serverId) return;
+    return acquireSharedRealtimeEffect(`channel-read-states:${user.id}:${serverId}`, () => {
 
     const wasReadsRef = { current: false };
     const everReadsRef = { current: false };
 
     const readChannel = supabase
-      .channel(`channel-read-states-${serverId}-${user.id}-${instanceIdRef.current}`)
+      .channel(`channel-read-states-${serverId}-${user.id}`)
       .on(
         'postgres_changes',
         {
@@ -201,6 +204,7 @@ export function useChannelUnreadCounts(serverId: string | null) {
     return () => {
       supabase.removeChannel(readChannel);
     };
+    });
   }, [user, serverId, queryClient]);
 
   const query = useQuery({

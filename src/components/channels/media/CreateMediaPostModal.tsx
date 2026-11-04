@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useForumTags, useForumChannelConfig, MAX_APPLIED_TAGS_PER_POST } from '@/hooks/useForumTags';
-import { Tag as TagIcon, Lock } from 'lucide-react';
+import { Tag as TagIcon, Lock } from '@/components/icons/discord/lucide';
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
@@ -17,6 +17,7 @@ import { MarkdownTextarea } from '@/components/chat/MarkdownTextarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { EyeOff, ImageIcon, Plus, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ForumEmoji } from '@/components/channels/forum/ForumEmoji';
 
 interface QuotedPostLite {
   id: string;
@@ -290,7 +291,7 @@ export function CreateMediaPostModal({
                       onClick={() => !full && setAppliedTags(prev =>
                         prev.includes(tag.id) ? prev.filter(i => i !== tag.id) : [...prev, tag.id])}
                     >
-                      {tag.emoji_name ? <span>{tag.emoji_name}</span> : <TagIcon className="w-3 h-3" />}
+                      {tag.emoji_name ? <ForumEmoji emoji={tag.emoji_name} /> : <TagIcon className="w-3 h-3" />}
                       {tag.name}
                       {tag.moderated && <Lock className="w-2.5 h-2.5 opacity-70" />}
                     </Badge>

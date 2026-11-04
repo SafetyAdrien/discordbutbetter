@@ -4,6 +4,7 @@ import { MarkdownText } from '@/lib/markdown';
 import { cn } from '@/lib/utils';
 import type { AnnouncementCategory } from './AnnouncementFilters';
 
+import { appLocale } from '@/i18n/locale';
 interface AnnouncementCardProps {
   announcement: {
     id: string;
@@ -32,7 +33,7 @@ export function AnnouncementCard({ announcement, onClick }: AnnouncementCardProp
     if (hours < 1) return "À l'instant";
     if (hours < 24) return `Il y a ${hours}h`;
     if (days < 7) return `Il y a ${days}j`;
-    return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+    return date.toLocaleDateString(appLocale(), { day: 'numeric', month: 'short' });
   };
 
   return (

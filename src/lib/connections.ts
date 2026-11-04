@@ -1,20 +1,5 @@
-import {
-  Twitter,
-  Instagram,
-  Youtube,
-  Twitch,
-  Github,
-  Gitlab,
-  Facebook,
-  Linkedin,
-  Music2,
-  Gamepad2,
-  Globe,
-  MessageCircle,
-  Cloud,
-  AtSign,
-  type LucideIcon,
-} from 'lucide-react';
+import { Twitch, Github, Gitlab, Facebook, Linkedin, Globe, Cloud, type LucideIcon } from 'lucide-react';
+import { Twitter, Instagram, Youtube, Music2, Gamepad2, MessageCircle, AtSign } from '@/components/icons/discord/lucide';
 
 export interface ConnectionProvider {
   id: string;

@@ -3,7 +3,7 @@ import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Volume2, Headphones } from 'lucide-react';
+import { Volume2, Headphones } from '@/components/icons/discord/lucide';
 import { MicPermissionGate } from './MicPermissionGate';
 
 interface OutputSettingsPopoverProps {

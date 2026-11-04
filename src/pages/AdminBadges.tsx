@@ -11,10 +11,12 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Upload, Save, Trash2, ArrowLeft, Award, Palette } from 'lucide-react';
+import { Loader2, Save, Award, Palette } from 'lucide-react';
+import { Upload, Trash2, ArrowLeft } from '@/components/icons/discord/lucide';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ModernColorPicker } from '@/components/profile/calendar/ModernColorPicker';
 import { toast } from 'sonner';
+import { badgeIconUrl } from '@/lib/badgeIcons';
 
 interface ProfileSearchResult {
   id: string;
@@ -278,8 +280,8 @@ function AssignmentPanel({ badges }: { badges: Badge[] }) {
                     className="w-9 h-9 rounded-md flex items-center justify-center bg-background/40 border border-border/40"
                     style={{ color: b.color }}
                   >
-                    {b.icon_url ? (
-                      <img src={b.icon_url} alt={b.name} className="w-7 h-7 object-contain" />
+                    {badgeIconUrl(b) ? (
+                      <img src={badgeIconUrl(b)!} alt={b.name} className="w-7 h-7 object-contain" />
                     ) : (
                       <Award className="w-5 h-5" />
                     )}

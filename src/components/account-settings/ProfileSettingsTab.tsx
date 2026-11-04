@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { UserAvatarImage } from '@/components/ui/user-avatar-image';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Camera, Loader2, Pencil, CalendarDays, MessageCircle, Smile } from 'lucide-react';
+import { Camera, Loader2 } from 'lucide-react';
+import { Pencil, CalendarDays, MessageCircle, Smile } from '@/components/icons/discord/lucide';
 import { MarkdownLiveTextarea } from '@/components/profile/MarkdownLiveTextarea';
 import { ProfileCalendar } from '@/components/profile/calendar/ProfileCalendar';
 import { EventListBelow } from '@/components/profile/calendar/EventListBelow';
@@ -18,6 +19,11 @@ import { useCategoryCasePreferences } from '@/hooks/useCategoryCasePreferences';
 import { caseClass } from '@/lib/ui/categoryCase';
 import { cn } from '@/lib/utils';
 
+import { appLocale } from '@/i18n/locale';
+import { ServerTagPicker } from '@/components/server-tags/ServerTagPicker';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
+import { ProfileEditor } from '@/components/profile/editor/ProfileEditor';
+import { AccountPage } from '@/components/user-settings/pages/AccountPages';
 const BIO_MAX = 4000;
 
 const activityTypes = [
@@ -47,7 +53,7 @@ function FieldLabel({ children, htmlFor }: { children: React.ReactNode; htmlFor?
   );
 }
 
-export function ProfileSettingsTab() {
+function LegacyProfileSettingsTab() {
   const { profile } = useAuth();
   const updateProfile = useUpdateProfile();
   const uploadAvatar = useUploadAvatar();
@@ -361,6 +367,8 @@ export function ProfileSettingsTab() {
               </div>
             </div>
 
+            <div className="max-w-[320px]"><ServerTagPicker /></div>
+
             <div>
               <Button variant="outline" onClick={() => setServerProfileEditOpen(true)} className="gap-2 rounded-xl">
                 <Pencil className="w-4 h-4" />
@@ -447,7 +455,7 @@ export function ProfileSettingsTab() {
                     </p>
                     <p className="text-sm text-foreground/90 flex items-center gap-1.5">
                       <CalendarDays className="w-3.5 h-3.5 text-muted-foreground" />
-                      {new Date((profile as any).created_at).toLocaleDateString('fr-FR', {
+                      {new Date((profile as any).created_at).toLocaleDateString(appLocale(), {
                         day: 'numeric',
                         month: 'long',
                         year: 'numeric',
@@ -501,5 +509,20 @@ export function ProfileSettingsTab() {
       />
       <FullUserProfileModal user={previewUser} open={previewOpen} onOpenChange={setPreviewOpen} />
     </div>
+  );
+}
+
+/*
+ * Bureau : l'editeur de profil s'ouvre en fenetre par-dessus la page Compte (video de
+ * reference). Mobile : formulaire d'origine.
+ */
+export function ProfileSettingsTab() {
+  const { isMobile } = useBreakpoint();
+  if (isMobile) return <LegacyProfileSettingsTab />;
+  return (
+    <>
+      <AccountPage />
+      <ProfileEditor />
+    </>
   );
 }

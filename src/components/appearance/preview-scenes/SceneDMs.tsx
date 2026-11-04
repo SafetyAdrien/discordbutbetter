@@ -1,4 +1,4 @@
-import { Search, Phone, Video } from 'lucide-react';
+import { Search, Phone, Video } from '@/components/icons/discord/lucide';
 
 /** Mini DM list + active conversation with speech bubbles. */
 export function SceneDMs() {

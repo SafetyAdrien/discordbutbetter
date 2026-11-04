@@ -1,7 +1,8 @@
 import { useState, forwardRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Server } from '@/types/app';
-import { X, Search, Users, Compass, Gamepad2, Palette, Music, Code, ChevronLeft } from 'lucide-react';
+import { Palette, Code } from 'lucide-react';
+import { X, Search, Users, Compass, Gamepad2, Music, ChevronLeft } from '@/components/icons/discord/lucide';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -172,7 +173,7 @@ export const DiscoverModal = forwardRef<HTMLDivElement, DiscoverModalProps>(
                     </div>
                   </div>
                   <div className="p-4">
-                    <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">{server.name}</h4>
+                    <h4 translate="no" className="font-semibold text-foreground group-hover:text-primary transition-colors">{server.name}</h4>
                     <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{server.description}</p>
                     <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
                       <div className="flex items-center gap-1">

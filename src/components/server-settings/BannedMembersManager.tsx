@@ -3,7 +3,6 @@ import { useBannedMembers, useUnbanMember } from '@/hooks/useMemberActions';
 import { useServers } from '@/hooks/useServers';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -15,8 +14,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Search, UserX } from 'lucide-react';
+import { Gavel } from '@/components/icons/discord/lucide';
+import { Search } from '@/components/icons/serverSettingsIcons';
+import { SettingsEmptyState, SettingsPage } from './SettingsUI';
+import { settingsInputCls } from './settingsStyles';
 
+import { appLocale } from '@/i18n/locale';
 interface BannedMembersManagerProps {
   serverId: string;
 }
@@ -29,6 +32,7 @@ export function BannedMembersManager({ serverId }: BannedMembersManagerProps) {
   
   const server = servers.find(s => s.id === serverId);
   const [search, setSearch] = useState('');
+  const [draft, setDraft] = useState('');
   const [unbanTarget, setUnbanTarget] = useState<{ id: string; name: string } | null>(null);
 
   const isOwner = server?.owner_id === user?.id;
@@ -41,7 +45,8 @@ export function BannedMembersManager({ serverId }: BannedMembersManagerProps) {
     );
   };
 
-  const filteredBannedMembers = bannedMembers.filter(ban => 
+  const filteredBannedMembers = bannedMembers.filter(ban =>
+    ban.user_id === search.trim() ||
     ban.profile?.display_name.toLowerCase().includes(search.toLowerCase()) ||
     ban.profile?.username.toLowerCase().includes(search.toLowerCase())
   );
@@ -55,78 +60,67 @@ export function BannedMembersManager({ serverId }: BannedMembersManagerProps) {
   }
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h3 className="text-lg font-semibold mb-1">Membres bannis</h3>
-        <p className="text-sm text-muted-foreground">
-          {bannedMembers.length} membre{bannedMembers.length > 1 ? 's' : ''} banni{bannedMembers.length > 1 ? 's' : ''}
-        </p>
-      </div>
+    <SettingsPage
+      title="Liste des bannis du serveur"
+      description="Les bannissements s'appliquent au compte : un membre banni ne peut plus rejoindre le serveur, même avec une invitation."
+    >
+      <form
+        className="flex gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          setSearch(draft);
+        }}
+      >
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <input
+            placeholder="Rechercher les bannissements par identifiant ou nom d'utilisateur"
+            value={draft}
+            onChange={(e) => {
+              setDraft(e.target.value);
+              if (!e.target.value) setSearch('');
+            }}
+            className={`${settingsInputCls} pl-9`}
+          />
+        </div>
+        <Button type="submit">Rechercher</Button>
+      </form>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input
-          placeholder="Rechercher un membre banni..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
-        />
-      </div>
-
-      {/* Banned list */}
-      <div className="space-y-1 max-h-[500px] overflow-y-auto">
-        {filteredBannedMembers.map((ban) => (
-          <div
-            key={ban.id}
-            className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors"
-          >
-            <div className="flex items-center gap-3">
-              <Avatar className="w-10 h-10">
-                <AvatarImage src={ban.profile?.avatar_url || undefined} />
-                <AvatarFallback className="bg-destructive/20 text-destructive">
-                  {ban.profile?.display_name?.charAt(0).toUpperCase() || '?'}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">{ban.profile?.display_name || 'Utilisateur inconnu'}</span>
-                  <UserX className="w-4 h-4 text-destructive" />
+      <div className="mt-4 rounded-lg bg-[hsl(var(--card))] min-h-[360px]">
+        {filteredBannedMembers.length === 0 ? (
+          <SettingsEmptyState
+            className="py-20"
+            icon={<Gavel className="w-24 h-24" strokeWidth={1.25} />}
+            title={bannedMembers.length === 0 ? 'Aucun bannissement' : 'Aucun résultat'}
+            description={
+              bannedMembers.length === 0
+                ? "Tu n'as pour l'instant banni personne… mais si ça devait s'avérer nécessaire, tu ne dois pas hésiter une seule seconde !"
+                : 'Aucun membre banni ne correspond à ta recherche.'
+            }
+          />
+        ) : (
+          <div className="p-2">
+            {filteredBannedMembers.map((ban) => (
+              <div key={ban.id} className="flex items-center gap-3 h-14 px-2 rounded-lg hover:bg-[hsl(var(--interactive-background-hover))]">
+                <Avatar className="w-10 h-10">
+                  <AvatarImage src={ban.profile?.avatar_url || undefined} />
+                  <AvatarFallback>{ban.profile?.display_name?.charAt(0).toUpperCase() || '?'}</AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <p className="text-base font-medium text-white truncate">{ban.profile?.display_name || 'Utilisateur inconnu'}</p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {ban.profile?.username?.toLowerCase() || 'inconnu'}
+                    {ban.created_at && ` · banni le ${new Date(ban.created_at).toLocaleDateString(appLocale())}`}
+                    {ban.reason && ` · ${ban.reason}`}
+                  </p>
                 </div>
-                <span className="text-sm text-muted-foreground">
-                  @{ban.profile?.username?.toLowerCase() || 'inconnu'}
-                </span>
-                {ban.reason && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Raison: {ban.reason}
-                  </p>
-                )}
-                {ban.created_at && (
-                  <p className="text-xs text-muted-foreground">
-                    Banni le {new Date(ban.created_at).toLocaleDateString('fr-FR')}
-                  </p>
+                {isOwner && (
+                  <Button size="sm" variant="secondary" onClick={() => setUnbanTarget({ id: ban.user_id, name: ban.profile?.display_name || 'Utilisateur' })}>
+                    Révoquer le bannissement
+                  </Button>
                 )}
               </div>
-            </div>
-
-            {isOwner && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setUnbanTarget({ id: ban.user_id, name: ban.profile?.display_name || 'Utilisateur' })}
-              >
-                Débannir
-              </Button>
-            )}
-          </div>
-        ))}
-
-        {filteredBannedMembers.length === 0 && (
-          <div className="text-center py-12">
-            <UserX className="w-12 h-12 mx-auto text-muted-foreground/50 mb-3" />
-            <p className="text-muted-foreground">
-              {bannedMembers.length === 0 ? 'Aucun membre banni' : 'Aucun banni trouvé'}
-            </p>
+            ))}
           </div>
         )}
       </div>
@@ -152,6 +146,6 @@ export function BannedMembersManager({ serverId }: BannedMembersManagerProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </SettingsPage>
   );
 }

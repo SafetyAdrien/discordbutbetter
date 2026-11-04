@@ -1,5 +1,6 @@
 import { useState, useRef, KeyboardEvent } from 'react';
-import { ImagePlus, Paperclip, Smile, Send, ChevronDown, ChevronUp, MessageSquarePlus, Megaphone, X } from 'lucide-react';
+import { Paperclip, MessageSquarePlus } from 'lucide-react';
+import { ImagePlus, Smile, Send, ChevronDown, ChevronUp, Megaphone, X } from '@/components/icons/discord/lucide';
 import { Channel } from '@/types/app';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { Switch } from '@/components/ui/switch';
@@ -28,6 +29,12 @@ interface AnnouncementComposerProps {
   canMentionEveryone?: boolean;
   showFollowBar?: boolean;
   onFollowClick?: () => void;
+  /** Appele apres l'envoi. */
+  onSent?: () => void;
+  onTypingStart?: () => void;
+  onTypingStop?: () => void;
+  /** Mode "Annonce enrichie" de la zone de saisie : retour au message simple. */
+  onExit?: () => void;
 }
 
 export function AnnouncementComposer({
@@ -41,6 +48,10 @@ export function AnnouncementComposer({
   canMentionEveryone = false,
   showFollowBar,
   onFollowClick,
+  onSent,
+  onTypingStart,
+  onTypingStop,
+  onExit,
 }: AnnouncementComposerProps) {
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
@@ -83,6 +94,7 @@ export function AnnouncementComposer({
 
   const handleEmojiSelect = (emoji: string) => {
     setMessage((prev) => prev + emoji);
+    onTypingStart?.();
     textareaRef.current?.focus();
   };
 
@@ -141,6 +153,8 @@ export function AnnouncementComposer({
 
       const newMessageId = (result as any)?.id;
 
+      onSent?.();
+      onTypingStop?.();
       // Reset composer
       setTitle('');
       setMessage('');
@@ -166,15 +180,7 @@ export function AnnouncementComposer({
       // Auto-publish if enabled
       if (autoPublishEnabled && newMessageId && followers.length > 0) {
         try {
-          await publishMessage.mutateAsync({
-            messageId: newMessageId,
-            channelId: channel.id,
-            content: finalContent,
-            sourceServerId: channel.server_id,
-            sourceServerName: serverName,
-            sourceServerIcon: serverIcon ?? null,
-            sourceChannelName: channel.name,
-          });
+          await publishMessage.mutateAsync({ messageId: newMessageId, channelId: channel.id });
         } catch (err) {
           console.error('Publish failed', err);
         }
@@ -258,7 +264,7 @@ export function AnnouncementComposer({
   return (
     <div
       className={cn(
-        'relative w-full rounded-2xl bg-input shadow-md overflow-hidden transition-all',
+        'relative w-full rounded-lg bg-[hsl(var(--input))] border border-[hsl(var(--input-border))] overflow-hidden transition-all',
         isDragging && 'ring-2 ring-primary'
       )}
       onDragEnter={handleDragEnter}
@@ -272,8 +278,20 @@ export function AnnouncementComposer({
         </div>
       )}
 
+      {/* Retour au message simple (zone de saisie transformee) */}
+      {onExit && (
+        <button
+          type="button"
+          onClick={onExit}
+          className="absolute top-2 right-2 z-10 h-7 px-2 rounded-md flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-background/60 transition-colors"
+          title="Revenir à un message simple"
+        >
+          <X className="w-4 h-4" /> Message simple
+        </button>
+      )}
+
       {/* Collapse button — top right */}
-      <button
+      {!onExit && <button
         type="button"
         onClick={() => setCollapsed(true)}
         disabled={hasContent}
@@ -281,10 +299,10 @@ export function AnnouncementComposer({
         title={hasContent ? "Effacez le contenu pour réduire" : "Réduire"}
       >
         <ChevronDown className="w-4 h-4" />
-      </button>
+      </button>}
 
       {/* Header image tile + inputs */}
-      <div className="p-3 pb-2 pr-10 space-y-3">
+      <div className={cn('p-3 pb-2 space-y-3', onExit ? 'pr-32' : 'pr-10')}>
         {canAttachFiles && (
           <>
             <input
@@ -327,7 +345,12 @@ export function AnnouncementComposer({
           <input
             type="text"
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => {
+              const nextTitle = e.target.value;
+              setTitle(nextTitle);
+              if (nextTitle || message) onTypingStart?.();
+              else onTypingStop?.();
+            }}
             placeholder="Titre (optionnel)"
             className="w-full bg-transparent border-0 outline-none text-base font-bold text-foreground placeholder:text-muted-foreground/70 px-0 py-1"
             maxLength={200}
@@ -335,7 +358,11 @@ export function AnnouncementComposer({
           <MarkdownTextarea
             ref={textareaRef}
             value={message}
-            onChange={(v) => setMessage(v)}
+            onChange={(v) => {
+              setMessage(v);
+              if (v || title) onTypingStart?.();
+              else onTypingStop?.();
+            }}
             onKeyDown={handleKeyDown}
             placeholder={`Message #${channel.name}`}
             className="min-h-[44px] max-h-[280px] resize-none bg-transparent hover:bg-transparent border-0 px-0 py-1 text-sm placeholder:text-muted-foreground/70"
@@ -428,11 +455,11 @@ export function AnnouncementComposer({
             <HoverCardContent
               align="end"
               side="top"
-              className="w-56 p-2 bg-popover border border-border"
+              className="w-56 p-1 bg-popover rounded-[4px] shadow-[0_8px_16px_rgba(0,0,0,0.24)] border-0"
             >
               {canCreateThreads && (
-                <label className="flex items-center justify-between gap-3 px-2 py-1.5 rounded-md hover:bg-accent cursor-pointer">
-                  <span className="text-sm text-foreground">Créer un fil</span>
+                <label className="flex items-center justify-between gap-3 px-2 py-[6px] rounded-[4px] text-[14px] leading-[18px] text-foreground hover:bg-[hsl(var(--surface-hover))] cursor-pointer">
+                  <span className="text-foreground">Créer un fil</span>
                   <Switch
                     checked={createThreadEnabled}
                     onCheckedChange={setCreateThreadEnabled}
@@ -440,8 +467,8 @@ export function AnnouncementComposer({
                 </label>
               )}
               {canPublish && (
-                <label className="flex items-center justify-between gap-3 px-2 py-1.5 rounded-md hover:bg-accent cursor-pointer">
-                  <span className="text-sm text-foreground">Publier</span>
+                <label className="flex items-center justify-between gap-3 px-2 py-[6px] rounded-[4px] text-[14px] leading-[18px] text-foreground hover:bg-[hsl(var(--surface-hover))] cursor-pointer">
+                  <span className="text-foreground">Publier</span>
                   <Switch
                     checked={autoPublishEnabled}
                     onCheckedChange={setAutoPublishEnabled}

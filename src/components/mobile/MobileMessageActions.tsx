@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
-import { Reply, Pencil, Trash2, Link, Pin, SmilePlus, ClipboardCopy, Flag } from 'lucide-react';
+import { SmilePlus, ClipboardCopy } from 'lucide-react';
+import { Reply, Pencil, Trash2, Link, Pin, Flag } from '@/components/icons/discord/lucide';
 import StreamlineThreads from '@/components/icons/StreamlineThreads';
 import { cn } from '@/lib/utils';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';

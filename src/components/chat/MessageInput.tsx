@@ -1,24 +1,46 @@
+import StreamlineThreads from '@/components/icons/StreamlineThreads';
+import { IconApps } from '@/components/chat/message-menu/MessageMenuIcons';
+import { createDiscordIcon } from '@/components/icons/discord/createDiscordIcon';
+import { diFileUpload } from '@/components/icons/discord/discordIconData';
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { EmojiStickerPicker } from './EmojiStickerPicker';
-import { CreatePollModal } from './CreatePollModal';
+import { CreatePollModal, type PollDraft } from './CreatePollModal';
 import { CreateDMPollModal } from './CreateDMPollModal';
 import { InputMarkdownOverlay, hasOverlayMarkdown, OVERLAY_FONT_SIZE, OVERLAY_LINE_HEIGHT, INPUT_FONT_FAMILY, MentionEntry } from './InputMarkdownOverlay';
 import { ModernColorPicker } from '@/components/profile/calendar/ModernColorPicker';
 import { MentionAutocomplete, MentionMember, MentionRole, MentionChannel } from './MentionAutocomplete';
 import { NAMED_COLORS, normalizeHex, nearestColorName } from '@/lib/colorNames';
 import { AttachmentStagingArea } from './upload/AttachmentStagingArea';
-import { PendingAttachment } from '@/hooks/usePendingAttachments';
+import { PendingAttachment, type AttachmentMeta } from '@/hooks/usePendingAttachments';
+import { LazyMediaUploadModal as MediaUploadModal } from '@/components/lazy/LazyModals';
+import { ALL_MEDIA_KINDS, acceptFor } from '@/lib/mediaTypes';
+import { ColorInsertPanel } from './ColorInsertPanel';
 import { normalizeForSearch, cn } from '@/lib/utils';
-import { Plus, Sticker, Image, BarChart2, Smile, Send, Palette, ChevronLeft, ChevronRight, Bold, Italic, Underline, Strikethrough, Code, Quote, List, Link as LinkIcon, EyeOff, Heading1, Heading2, Heading3, Type, ListOrdered, TextQuote, SquareCode, Info, Lightbulb, MessageSquareWarning, TriangleAlert, OctagonAlert } from 'lucide-react';
+import { BarChart2, Palette, Bold, Italic, Underline, Strikethrough, Code, Quote, Heading1, Heading2, Heading3, Type, ListOrdered, TextQuote, SquareCode, Lightbulb, MessageSquareWarning, TriangleAlert, OctagonAlert } from 'lucide-react';
+import { ComposerPlus } from '@/components/icons/ComposerPlus';
+import { Gift, Sticker, Image, Smile, Send, ChevronLeft, ChevronRight, List, Link as LinkIcon, EyeOff, Info } from '@/components/icons/discord/lucide';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { toast } from 'sonner';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { uuidToSnowflake } from '@/lib/snowflake';
+import { emojiToken, lookupEmoji, resolveShortcodes } from '@/lib/customEmoji';
+import { MENTION_USER_EVENT, type MentionUserDetail } from '@/lib/mentionEvents';
+import { usePrefetchPickerAssets } from '@/hooks/useAllServerAssets';
 import { MentionEveryoneWarningModal, EveryoneMentionType, detectEveryoneMention } from './MentionEveryoneWarningModal';
 import { snowflakeToUuid } from '@/lib/snowflake';
+import { useUserSettingsValue } from '@/hooks/useUserSettings';
+import { SlashMenuLayer, SlashCommandRunner } from './slash/SlashLayers';
+import { openNewThread } from '@/lib/threadEvents';
+import type { SlashHandlers } from './slash/useSlashExecutor';
+import type { SlashCommand } from '@/lib/slashCommands';
+
 
 interface MessageInputProps {
+  /** Entrees supplementaires du menu "+" (ex. "Annonce enrichie"). */
+  extraPlusItems?: { key: string; label: string; icon: React.ElementType; onClick: () => void }[];
   value: string;
   onChange: (value: string) => void;
   onSend: (attachments?: { file: File; name: string; description: string; isSpoiler: boolean }[]) => void;
@@ -48,7 +70,7 @@ interface MessageInputProps {
   channels?: MentionChannel[];
   // External attachment management (from ChatArea)
   attachments?: PendingAttachment[];
-  onAddFiles?: (files: FileList | File[]) => void;
+  onAddFiles?: (files: FileList | File[], meta?: AttachmentMeta[]) => void;
   onRemoveAttachment?: (id: string) => void;
   onUpdateAttachment?: (id: string, updates: Partial<Pick<PendingAttachment, 'name' | 'description' | 'isSpoiler'>>) => void;
   onToggleSpoiler?: (id: string) => void;
@@ -64,7 +86,20 @@ interface MessageInputProps {
   // Announcement channel follow bar
   showFollowBar?: boolean;
   onFollowClick?: () => void;
+  /** Creation d'un fil : le sondage est garde en brouillon au lieu d'etre envoye. */
+  onDraftPoll?: (draft: PollDraft) => void;
+  /** Commandes slash (menu "/", options, execution) : absent = desactivees. */
+  slash?: SlashHandlers;
 }
+
+const DM_ACTION = 'flex h-8 w-[38px] items-center justify-center text-[hsl(var(--icon-default))] transition-colors hover:text-white';
+const FileUploadGlyph = createDiscordIcon(diFileUpload, 'PlusFileUpload');
+const PLUS_ITEM = 'flex h-[34px] whitespace-nowrap w-full items-center gap-3 rounded-[4px] px-2 text-left text-[14px] leading-[18px] font-medium text-white transition-colors hover:bg-[#464650]';
+const plusSvg = { viewBox: '0 0 24 24', className: 'h-5 w-5 shrink-0 text-[#b5bac1]', fill: 'currentColor', 'aria-hidden': true } as const;
+const PlusIconUpload = () => <FileUploadGlyph className="h-5 w-5 shrink-0 text-[#b5bac1]" />;
+const PlusIconThread = () => <StreamlineThreads className="h-5 w-5 shrink-0 text-[#b5bac1]" />;
+const PlusIconApps = () => <IconApps className="h-5 w-5 shrink-0 text-[#b5bac1]" />;
+const PlusIconPoll = () => (<svg {...plusSvg}><rect x="3" y="4.5" width="13" height="3" rx="1.5" /><rect x="3" y="10.5" width="18" height="3" rx="1.5" /><rect x="3" y="16.5" width="10" height="3" rx="1.5" /></svg>);
 
 interface MentionState {
   type: 'user' | 'channel' | 'color';
@@ -74,6 +109,7 @@ interface MentionState {
 }
 
 export function MessageInput({
+  extraPlusItems,
   value,
   onChange,
   onSend,
@@ -106,6 +142,8 @@ export function MessageInput({
   slowmodeSeconds = 0,
   showFollowBar = false,
   onFollowClick,
+  onDraftPoll,
+  slash,
 }: MessageInputProps) {
   const { isMobile, isTablet } = useBreakpoint();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -117,15 +155,24 @@ export function MessageInput({
   // Mention entries inserted via autocomplete (display text -> token mapping)
   const mentionEntriesRef = useRef<MentionEntry[]>([]);
   const [mentionRev, setMentionRev] = useState(0);
+  // Emojis de serveur : charges des l'ouverture de la conversation, le selecteur s'ouvre sans attente.
+  usePrefetchPickerAssets();
 
+  // "Afficher un apercu des emojis, des mentions et de la syntaxe Markdown"
+  const { markdown_preview: markdownPreview, send_button: alwaysShowSend } = useUserSettingsValue().appearance;
   const hasMarkdown = useMemo(() => {
-    return hasOverlayMarkdown(value, mentionEntriesRef.current);
-  }, [value, mentionRev]);
+    return markdownPreview && hasOverlayMarkdown(value, mentionEntriesRef.current);
+  }, [value, mentionRev, markdownPreview]);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [slashCommand, setSlashCommand] = useState<SlashCommand | null>(null);
+  const pickSlashCommand = useCallback((cmd: SlashCommand) => {
+    onChange('');
+    setSlashCommand(cmd);
+  }, [onChange]);
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
   const [pollModalOpen, setPollModalOpen] = useState(false);
-  const [colorPickerOpen, setColorPickerOpen] = useState(false);
-  const [draftColor, setDraftColor] = useState('#5865F2');
+  const [plusMenuView, setPlusMenuView] = useState<'root' | 'color'>('root');
+  const [mediaModalOpen, setMediaModalOpen] = useState(false);
   const [colorEditor, setColorEditor] = useState<{
     entryIndex: number;
     hex: string;
@@ -219,12 +266,13 @@ export function MessageInput({
   const [cooldownRemaining, setCooldownRemaining] = useState(0);
 
   // Adjust textarea height and reset overlay scroll position
-  // Uses a single 28px baseline matching the textarea's min-h-[28px] class
+  // Uses a single 24px baseline matching the textarea's min-h-[24px] class
+  // and its 24px line-height (a 28px floor left the text 2px above centre)
   // to prevent vertical jumps when toggling markdown content.
   const adjustTextareaHeight = useCallback(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
-    const MIN_HEIGHT = 28;
+    const MIN_HEIGHT = 24;
     textarea.style.height = 'auto';
     const sh = textarea.scrollHeight;
     textarea.style.height = Math.max(sh, MIN_HEIGHT) + 'px';
@@ -285,8 +333,34 @@ export function MessageInput({
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
   }, [isMobile, disabled, permissionDeniedMessage]);
 
-  const insertEmoji = useCallback((emoji: string) => {
+  const insertEmoji = useCallback((emoji: string, custom?: { name: string; url: string }) => {
     const textarea = textareaRef.current;
+    const token = custom ? emojiToken(custom) : null;
+    if (custom && token && token.startsWith('<')) {
+      // Emoji de serveur : une entree (affichee comme l'image, ecrite comme son jeton a l'envoi), rangee dans l'ordre du texte.
+      const display = '\u2003\u2002';
+      const at = textarea ? textarea.selectionStart : value.length;
+      const end = textarea ? textarea.selectionEnd : value.length;
+      const list = mentionEntriesRef.current;
+      let cursor = 0;
+      let idx = list.length;
+      for (let i = 0; i < list.length; i++) {
+        const pos = value.indexOf(list[i].display, cursor);
+        if (pos === -1) continue;
+        if (pos >= at) { idx = i; break; }
+        cursor = pos + list[i].display.length;
+      }
+      mentionEntriesRef.current = [...list.slice(0, idx), { display, token, kind: 'emoji', url: custom.url }, ...list.slice(idx)];
+      setMentionRev((r) => r + 1);
+      onChange(value.slice(0, at) + display + value.slice(end));
+      setTimeout(() => {
+        if (textarea) {
+          textarea.selectionStart = textarea.selectionEnd = at + display.length;
+          textarea.focus();
+        }
+      }, 0);
+      return;
+    }
     if (textarea) {
       const start = textarea.selectionStart;
       const end = textarea.selectionEnd;
@@ -300,6 +374,40 @@ export function MessageInput({
       onChange(value + emoji);
     }
   }, [value, onChange]);
+
+  // "Mentionner" depuis le menu d'un membre : ajoute la mention au champ du salon ouvert.
+  useEffect(() => {
+    if (compact || threadId || dmConversationId) return;
+    const onMention = (e: Event) => {
+      const { userId, name } = (e as CustomEvent<MentionUserDetail>).detail ?? {};
+      const root = containerRef.current;
+      if (!userId || !root || root.offsetParent === null) return;
+      const display = `@${name}`;
+      const textarea = textareaRef.current;
+      const at = textarea ? textarea.selectionStart : value.length;
+      const end = textarea ? textarea.selectionEnd : value.length;
+      const list = mentionEntriesRef.current;
+      let cursor = 0;
+      let idx = list.length;
+      for (let i = 0; i < list.length; i++) {
+        const pos = value.indexOf(list[i].display, cursor);
+        if (pos === -1) continue;
+        if (pos >= at) { idx = i; break; }
+        cursor = pos + list[i].display.length;
+      }
+      mentionEntriesRef.current = [...list.slice(0, idx), { display, token: `<@${uuidToSnowflake(userId)}>`, kind: 'user' }, ...list.slice(idx)];
+      setMentionRev((r) => r + 1);
+      onChange(value.slice(0, at) + display + ' ' + value.slice(end));
+      setTimeout(() => {
+        if (textarea) {
+          textarea.selectionStart = textarea.selectionEnd = at + display.length + 1;
+          textarea.focus();
+        }
+      }, 0);
+    };
+    window.addEventListener(MENTION_USER_EVENT, onMention);
+    return () => window.removeEventListener(MENTION_USER_EVENT, onMention);
+  }, [compact, threadId, dmConversationId, value, onChange]);
 
   const insertColor = useCallback((hex: string) => {
     const glyph = `\u25A0 ${nearestColorName(hex)}`;
@@ -472,6 +580,34 @@ export function MessageInput({
     const newValue = e.target.value;
     const cursorPos = e.target.selectionStart;
     
+    // `:nom:` complet qui designe un emoji de serveur : remplace par l'emoji (comme en le choisissant dans le selecteur).
+    const typed = /(^|[\s>])(:([A-Za-z0-9_]{2,32}):)$/.exec(newValue.slice(0, cursorPos));
+    const known = typed ? lookupEmoji(typed[3]) : undefined;
+    if (typed && known && cursorPos === e.target.selectionEnd && emojiToken(known).startsWith('<')) {
+      const start = cursorPos - typed[2].length;
+      const display = '\u2003\u2002';
+      const list = mentionEntriesRef.current;
+      let cursor = 0;
+      let idx = list.length;
+      for (let i = 0; i < list.length; i++) {
+        const pos = newValue.indexOf(list[i].display, cursor);
+        if (pos === -1) continue;
+        if (pos >= start) { idx = i; break; }
+        cursor = pos + list[i].display.length;
+      }
+      mentionEntriesRef.current = [...list.slice(0, idx), { display, token: emojiToken(known), kind: 'emoji', url: known.url }, ...list.slice(idx)];
+      setMentionRev((r) => r + 1);
+      const next = newValue.slice(0, start) + display + newValue.slice(cursorPos);
+      onChange(next);
+      const caret = start + display.length;
+      setTimeout(() => {
+        const ta = textareaRef.current;
+        if (ta) ta.selectionStart = ta.selectionEnd = caret;
+      }, 0);
+      setMentionState(null);
+      return;
+    }
+
     onChange(newValue);
     revalidateEntries(newValue);
     
@@ -493,7 +629,7 @@ export function MessageInput({
       
       typingTimeoutRef.current = setTimeout(() => {
         onTypingStop();
-      }, 2000);
+      }, 5000);
     }
   }, [onChange, onTypingStart, onTypingStop, detectMentionTrigger, revalidateEntries]);
 
@@ -788,7 +924,7 @@ export function MessageInput({
   // Resolve display-text mentions back into <@SNOWFLAKE> / <#…> / <@&…> tokens.
   const resolveContent = useCallback((text: string): string => {
     const entries = mentionEntriesRef.current;
-    if (entries.length === 0) return text;
+    if (entries.length === 0) return resolveShortcodes(text);
     let result = '';
     let cursor = 0;
     for (const e of entries) {
@@ -798,7 +934,7 @@ export function MessageInput({
       cursor = at + e.display.length;
     }
     result += text.slice(cursor);
-    return result;
+    return resolveShortcodes(result);
   }, []);
 
   // Pending-send pattern: when entries exist, we mutate `value` to the resolved
@@ -807,7 +943,7 @@ export function MessageInput({
   const pendingSendRef = useRef(false);
 
   const performSend = useCallback(() => {
-    if (mentionEntriesRef.current.length > 0) {
+    {
       const resolved = resolveContent(value);
       if (resolved !== value) {
         pendingSendRef.current = true;
@@ -936,14 +1072,25 @@ export function MessageInput({
    */
   const nonCompactPadding = isMobile
     ? "px-2 py-0 pb-[calc(0.125rem+env(safe-area-inset-bottom,0px))]"
-    : "px-4 pt-0 pb-2";
+    : "px-2 pt-0 pb-2";
   const nonCompactContainerClass = `${nonCompactPadding} flex-shrink-0 flex flex-col w-full min-w-0 relative`;
+
+  /* Anatomie du composeur Discord :
+       rayon          --radius-sm            8px  (etait 16px en rounded-2xl)
+       fond           --input                neutral-64
+       marge basse    16px
+       bordure        aucune
+       ombre          aucune
+     Le composeur de Discord est un simple bloc de fond : toute bordure ou
+     toute ombre le faisait ressembler a une carte flottante. */
+  const composerCls =
+    "flex items-center rounded-lg bg-[hsl(var(--input))] px-4 py-3";
 
   // Render follow bar for announcement channels when permission is denied
   if (permissionDeniedMessage && showFollowBar) {
     return (
       <div className={compact ? "p-3 border-t border-white/10 w-full relative" : nonCompactContainerClass}>
-        <div className="flex items-center justify-between rounded-2xl bg-[hsl(var(--input))] border border-border/50 px-4 py-3" style={{ boxShadow: 'var(--shadow-elevation-2)' }}>
+        <div className={`${composerCls} justify-between min-h-[58px]`}>
           <span className="text-muted-foreground text-sm">
             Suivez ce salon pour recevoir ses mises à jour sur votre propre serveur.
           </span>
@@ -964,7 +1111,8 @@ export function MessageInput({
   if (permissionDeniedMessage) {
     return (
       <div className={compact ? "p-3 border-t border-white/10 w-full relative" : nonCompactContainerClass}>
-        <div className="flex items-center rounded-2xl bg-[hsl(var(--input))] border border-border/50 px-4 py-3" style={{ boxShadow: 'var(--shadow-elevation-2)' }}>
+        {/* Meme hauteur que la barre de saisie (58 px) : aucun saut de mise en page quand le verdict arrive. */}
+        <div className={`${composerCls} min-h-[58px]`}>
           <span className="text-muted-foreground/50 text-sm">
             {permissionDeniedMessage}
           </span>
@@ -982,7 +1130,7 @@ export function MessageInput({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*,video/*,.svg,image/svg+xml"
+        accept={acceptFor(ALL_MEDIA_KINDS)}
         multiple
         onChange={handleFileInputChange}
         className="hidden"
@@ -997,6 +1145,16 @@ export function MessageInput({
       />
 
       <form onSubmit={handleSubmit} className="relative w-full min-w-0">
+        {slash && (
+          <SlashMenuLayer
+            value={value}
+            serverId={serverId}
+            textareaRef={textareaRef}
+            enabled={!slashCommand && !editingMessageId && !disabled}
+            onPick={pickSlashCommand}
+          />
+        )}
+
         {/* Mention Autocomplete */}
         {mentionState && (
           <MentionAutocomplete
@@ -1020,67 +1178,104 @@ export function MessageInput({
          * The toolbar used to add a bordered second line, which made the input
          * ~90px tall and impossible to align with the sidebar's user panel.
          */}
+        {slash && slashCommand ? (
+          <SlashCommandRunner
+            command={slashCommand}
+            serverId={serverId}
+            channelId={channelId ?? dmConversationId}
+            members={members}
+            handlers={slash}
+            onDone={() => {
+              setSlashCommand(null);
+              setTimeout(() => textareaRef.current?.focus(), 0);
+            }}
+          />
+        ) : (
         <div
           className={cn(
-            // 6px + 32px tool button + 6px = 44px, Discord's real
-            // `--custom-channel-textarea-text-area-height: 44px`.
-            'flex items-center gap-2 w-full min-w-0 bg-[hsl(var(--input))] transition-colors duration-200',
-            compact ? 'rounded px-2 py-1.5' : 'rounded px-4 py-1.5',
+            // Cotes de la capture de reference :
+            //   rayon 8px, bordure 1px #3d3e44, fond #393a41
+            //   hauteur 58px bordure comprise, marges de 8px autour
+            'composer-box flex items-center gap-3 w-full min-w-0 bg-[hsl(var(--input))] border border-[hsl(var(--input-border))] transition-colors duration-200',
+            compact
+              ? 'rounded-lg px-2 py-1.5'
+              : 'rounded-lg pl-3 pr-4 py-2 min-h-[58px]',
           )}
         >
-          <Popover open={plusMenuOpen} onOpenChange={setPlusMenuOpen}>
+          <Popover
+            open={plusMenuOpen}
+            onOpenChange={(o) => {
+              setPlusMenuOpen(o);
+              if (!o) setPlusMenuView('root');
+            }}
+          >
             <PopoverTrigger asChild>
               <button
                 type="button"
                 aria-label="Ajouter une pièce jointe ou un sondage"
                 className={cn(
-                  'shrink-0 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors h-8 w-8',
+                  'shrink-0 flex items-center justify-center text-[hsl(var(--icon-default))] hover:text-white transition-colors h-8 w-8',
                 )}
               >
-                <Plus className="w-6 h-6" strokeWidth={2} />
+                {/* Tailles mesurees sur la reference : 20px d'encre pour +, GIF, sticker et emoji ; trait du + plus fin que le glyphe generique. */}
+                <ComposerPlus />
               </button>
             </PopoverTrigger>
-            <PopoverContent side="top" align="start" className="w-48 p-1">
-              {canAttachFiles && (
-                <button
-                  type="button"
-                  className="flex items-center gap-2 w-full px-3 py-2 rounded-md hover:bg-muted transition-colors text-sm"
-                  onClick={() => {
+            <PopoverContent side="top" align="start" sideOffset={14} className={cn('rounded-lg border border-white/[0.06] bg-[#3b3b45] shadow-[0_8px_16px_rgba(0,0,0,0.24)]', plusMenuView === 'root' ? 'w-[218px] p-2' : 'w-auto p-1 py-2')}>
+              {plusMenuView === 'color' ? (
+                <ColorInsertPanel
+                  onBack={() => setPlusMenuView('root')}
+                  onPick={(hex) => {
                     setPlusMenuOpen(false);
-                    fileInputRef.current?.click();
+                    setPlusMenuView('root');
+                    insertColor(hex);
                   }}
-                >
-                  <Image className="w-4 h-4" />
-                  <span>Ajouter une image</span>
+                />
+              ) : (<>
+              {canAttachFiles && (
+                <button type="button" className={PLUS_ITEM} onClick={() => { setPlusMenuOpen(false); setMediaModalOpen(true); }}>
+                  <PlusIconUpload />
+                  <span>Uploader un fichier</span>
+                </button>
+              )}
+              {serverId && channelId && !threadId && !dmConversationId && !editingMessageId && (
+                <button type="button" className={PLUS_ITEM} onClick={() => { setPlusMenuOpen(false); openNewThread(channelId); }}>
+                  <PlusIconThread />
+                  <span>Créer un fil</span>
                 </button>
               )}
               {(channelId || threadId || dmConversationId) && canCreatePolls && (
-                <button
-                  type="button"
-                  className="flex items-center gap-2 w-full px-3 py-2 rounded-md hover:bg-muted transition-colors text-sm"
-                  onClick={() => {
-                    setPlusMenuOpen(false);
-                    setPollModalOpen(true);
-                  }}
-                >
-                  <BarChart2 className="w-4 h-4" />
-                  <span>Créer un sondage</span>
+                <button type="button" className={PLUS_ITEM} onClick={() => { setPlusMenuOpen(false); setPollModalOpen(true); }}>
+                  <PlusIconPoll />
+                  <span>Créer le sondage</span>
                 </button>
               )}
-              <button
-                type="button"
-                className="flex items-center gap-2 w-full px-3 py-2 rounded-md hover:bg-muted transition-colors text-sm"
-                onClick={() => {
-                  setPlusMenuOpen(false);
-                  setColorPickerOpen(true);
-                }}
-              >
-                <Palette className="w-4 h-4" />
-                <span>Couleur</span>
-              </button>
-              {!canAttachFiles && !canCreatePolls && (
-                <span className="text-xs text-muted-foreground px-3 py-2 block">Aucune action disponible</span>
+              {extraPlusItems?.map(({ key, label, icon: ItemIcon, onClick }) => (
+                <button key={key} type="button" className={PLUS_ITEM} onClick={() => { setPlusMenuOpen(false); onClick(); }}>
+                  <ItemIcon className="w-5 h-5" />
+                  <span>{label}</span>
+                </button>
+              ))}
+              {slash && (
+                <button
+                  type="button"
+                  className={PLUS_ITEM}
+                  onClick={() => {
+                    setPlusMenuOpen(false);
+                    onChange('/');
+                    setTimeout(() => textareaRef.current?.focus(), 0);
+                  }}
+                >
+                  <PlusIconApps />
+                  <span>Utiliser des applications</span>
+                </button>
               )}
+              <button type="button" className={PLUS_ITEM} onClick={() => setPlusMenuView('color')}>
+                <Palette className="w-5 h-5" />
+                <span className="flex-1 text-left">Couleur</span>
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              </button>
+              </>)}
             </PopoverContent>
           </Popover>
 
@@ -1200,7 +1395,7 @@ export function MessageInput({
               placeholder={placeholder}
               data-editing={editingMessageId ? 'true' : 'false'}
               disabled={disabled}
-              className={`relative z-10 m-0 w-full rounded-none border-0 bg-transparent px-0 py-0 shadow-none appearance-none placeholder:text-muted-foreground placeholder:overflow-hidden placeholder:text-ellipsis placeholder:whitespace-nowrap placeholder:opacity-30 focus:outline-none focus-visible:outline-none focus:ring-0 resize-none break-words box-border font-normal tracking-normal text-sm min-h-[24px] ${
+              className={`relative z-10 block m-0 w-full rounded-none border-0 bg-transparent px-0 py-0 shadow-none appearance-none placeholder:text-[hsl(var(--text-placeholder))] placeholder:overflow-hidden placeholder:text-ellipsis placeholder:whitespace-nowrap focus:outline-none focus-visible:outline-none focus:ring-0 resize-none break-words box-border font-normal tracking-normal text-sm min-h-[24px] ${
                 hasMarkdown ? 'text-transparent caret-foreground' : 'text-foreground'
               } ${
                 compact ? 'max-h-[120px] overflow-y-auto' : 'max-h-[200px] overflow-y-auto'
@@ -1211,100 +1406,110 @@ export function MessageInput({
           </div>
 
           {/*
-           * Right-hand tool cluster, in Discord's order: GIF, sticker, emoji,
-           * then send. The old build only had a single combined emoji picker,
-           * which is why the row looked empty next to the reference design.
+           * Serveurs et messages prives (videos de reference) : cadeau, GIF, autocollants, emoji et applications.
+           * Variante compacte (fils, panneaux) : un seul bouton emoji, le selecteur universel contient les onglets.
            */}
-          <div className="flex items-center gap-0.5 shrink-0">
-            {/* One picker instance per entry point, each opened on its own tab —
-                that is how Discord exposes GIF, stickers and emoji as three
-                distinct buttons without duplicating the picker logic. */}
-            <EmojiStickerPicker
-              serverId={serverId}
-              onEmojiSelect={insertEmoji}
-              onStickerSelect={(url, name) => onSendExternalAttachment?.({ url, name, type: 'sticker' })}
-              onGifSelect={(url, name) => onSendExternalAttachment?.({ url, name, type: 'gif' })}
-              defaultTab="gif"
-              trigger={
-                <button
-                  type="button"
-                  aria-label="Insérer un GIF"
-                  className="flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors h-8 w-8"
-                >
-                  <span className="rounded-[3px] border-[1.5px] border-current px-[3px] py-px text-[9px] font-bold leading-none tracking-tight">
-                    GIF
-                  </span>
-                </button>
-              }
-            />
-            <EmojiStickerPicker
-              serverId={serverId}
-              onEmojiSelect={insertEmoji}
-              onStickerSelect={(url, name) => onSendExternalAttachment?.({ url, name, type: 'sticker' })}
-              onGifSelect={(url, name) => onSendExternalAttachment?.({ url, name, type: 'gif' })}
-              defaultTab="sticker"
-              trigger={
-                <button
-                  type="button"
-                  aria-label="Insérer un sticker"
-                  className="flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors h-8 w-8"
-                >
-                  <Sticker className="w-[22px] h-[22px]" strokeWidth={1.8} />
-                </button>
-              }
-            />
-            <EmojiStickerPicker
-              serverId={serverId}
-              onEmojiSelect={insertEmoji}
-              onStickerSelect={(url, name) => onSendExternalAttachment?.({ url, name, type: 'sticker' })}
-              onGifSelect={(url, name) => onSendExternalAttachment?.({ url, name, type: 'gif' })}
-              defaultTab="emoji"
-              trigger={
-                <button
-                  type="button"
-                  aria-label="Insérer un emoji"
-                  className="flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors h-8 w-8"
-                >
-                  <Smile className="w-[22px] h-[22px]" strokeWidth={1.8} />
-                </button>
-              }
-            />
+          <div className={cn('flex items-center shrink-0', !compact ? 'gap-0' : 'gap-2')}>
+            {!compact ? (
+              <>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button type="button" aria-label="Offrir un cadeau" onClick={() => toast.info('Bientôt disponible')} className={DM_ACTION}>
+                      <Gift className="w-6 h-6" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Offrir un cadeau</TooltipContent>
+                </Tooltip>
+                {(['gif', 'sticker', 'emoji'] as const).map((tab) => (
+                  <EmojiStickerPicker
+                    key={tab}
+                    serverId={serverId}
+                    onEmojiSelect={insertEmoji}
+                    onStickerSelect={(url, name) => onSendExternalAttachment?.({ url, name, type: 'sticker' })}
+                    onGifSelect={(url, name) => onSendExternalAttachment?.({ url, name, type: 'gif' })}
+                    defaultTab={tab}
+                    trigger={
+                      <button type="button" aria-label={tab === 'gif' ? 'Ouvrir le sélecteur de GIF' : tab === 'sticker' ? 'Ouvrir le sélecteur d\'autocollants' : 'Ouvrir le sélecteur d\'emojis'} className={DM_ACTION}>
+                        {tab === 'gif' ? (
+                          <svg viewBox="0 0 24 24" className="w-6 h-6" aria-hidden><rect x="2.5" y="4.5" width="19" height="15" rx="3.5" fill="currentColor" /><text x="12" y="15.2" textAnchor="middle" fontSize="7.2" fontWeight="800" fill="hsl(var(--surface-card))" fontFamily="inherit">GIF</text></svg>
+                        ) : tab === 'sticker' ? (
+                          <Sticker className="w-6 h-6" />
+                        ) : (
+                          <Smile className="w-6 h-6" />
+                        )}
+                      </button>
+                    }
+                  />
+                ))}
+                {slash && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label="Utiliser des applications"
+                        onClick={() => {
+                          onChange('/');
+                          setTimeout(() => textareaRef.current?.focus(), 0);
+                        }}
+                        className={DM_ACTION}
+                      >
+                        <IconApps className="w-6 h-6" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">Applications</TooltipContent>
+                  </Tooltip>
+                )}
+              </>
+            ) : (
+              <EmojiStickerPicker
+                serverId={serverId}
+                onEmojiSelect={insertEmoji}
+                onStickerSelect={(url, name) => onSendExternalAttachment?.({ url, name, type: 'sticker' })}
+                onGifSelect={(url, name) => onSendExternalAttachment?.({ url, name, type: 'gif' })}
+                defaultTab="emoji"
+                trigger={
+                  <button
+                    type="button"
+                    aria-label="Insérer un emoji"
+                    className="flex items-center justify-center text-[hsl(var(--icon-default))] hover:text-white transition-colors h-8 w-8"
+                  >
+                    <Smile className="w-[22px] h-[22px]" />
+                  </button>
+                }
+              />
+            )}
             <button
               type="submit"
               disabled={disabled || !canSubmitMessage}
               aria-label="Envoyer"
+              // Absent de la capture : Discord n'affiche pas de bouton d'envoi
+              // tant que le champ est vide. On ne le montre que s'il sert.
               className={cn(
-                'ml-1 shrink-0 rounded-full flex items-center justify-center transition-all duration-200 active:scale-90 send-button-hover h-8 w-8',
+                'shrink-0 rounded-full flex items-center justify-center transition-all duration-200 active:scale-90 send-button-hover h-8 w-8',
                 isSending && 'animate-send-fly',
                 canSubmitMessage
                   ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                  : 'text-muted-foreground/50 cursor-not-allowed',
+                  : alwaysShowSend
+                    ? 'bg-[hsl(var(--button-secondary))] text-muted-foreground'
+                    : 'hidden',
               )}
             >
               <Send className="w-[18px] h-[18px]" strokeWidth={2.5} />
             </button>
           </div>
       </div>
+        )}
       </form>
 
-      <Dialog open={colorPickerOpen} onOpenChange={setColorPickerOpen}>
-        <DialogContent className="sm:max-w-[320px] overflow-hidden">
-          <DialogHeader>
-            <DialogTitle>Insérer une couleur</DialogTitle>
-          </DialogHeader>
-          <ModernColorPicker
-            value={draftColor}
-            onChange={setDraftColor}
-          />
-          <Button
-            size="sm"
-            className="w-full mt-4"
-            onClick={() => { insertColor(draftColor); setColorPickerOpen(false); }}
-          >
-            Insérer
-          </Button>
-        </DialogContent>
-      </Dialog>
+      <MediaUploadModal
+        open={mediaModalOpen}
+        onOpenChange={setMediaModalOpen}
+        targetName={dmConversationId ? undefined : `#${channelName}`}
+        onConfirm={(files, meta) => {
+          onAddFiles?.(files, meta);
+          setTimeout(() => textareaRef.current?.focus(), 0);
+        }}
+      />
 
       {colorEditor && (() => {
         const draft = colorEditorDraft;
@@ -1401,6 +1606,7 @@ export function MessageInput({
           threadId={threadId}
           open={pollModalOpen}
           onOpenChange={setPollModalOpen}
+          onDraft={onDraftPoll}
         />
       ) : null}
 

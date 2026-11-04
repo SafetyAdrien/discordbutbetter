@@ -8,12 +8,13 @@ import {
   ZonePref,
   normalizePrefs,
 } from '@/lib/ui/categoryCase';
+import { onScopeUserChange, userKey } from '@/lib/userScope';
 
 const LOCAL_KEY = 'nexuschat:ui:categoryCase';
 
 function readLocal(): CategoryCasePrefs {
   try {
-    const raw = localStorage.getItem(LOCAL_KEY);
+    const raw = localStorage.getItem(userKey(LOCAL_KEY));
     if (!raw) return DEFAULT_CATEGORY_CASE_PREFS;
     return normalizePrefs(JSON.parse(raw));
   } catch {
@@ -22,7 +23,7 @@ function readLocal(): CategoryCasePrefs {
 }
 
 function writeLocal(prefs: CategoryCasePrefs) {
-  try { localStorage.setItem(LOCAL_KEY, JSON.stringify(prefs)); } catch { /* noop */ }
+  try { localStorage.setItem(userKey(LOCAL_KEY), JSON.stringify(prefs)); } catch { /* noop */ }
 }
 
 // Module-level singleton so every component instance shares one state (avoids Realtime channel churn)
@@ -33,6 +34,11 @@ function setCache(next: CategoryCasePrefs) {
   writeLocal(next);
   listeners.forEach((l) => l(next));
 }
+
+onScopeUserChange(() => {
+  cache = readLocal();
+  listeners.forEach((l) => l(cache));
+});
 
 let realtimeInit = false;
 let realtimeUserId: string | null = null;

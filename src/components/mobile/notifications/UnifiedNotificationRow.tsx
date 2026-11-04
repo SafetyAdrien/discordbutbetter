@@ -3,17 +3,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from '@/lib/dateUtils';
 import { fr } from '@/lib/dateUtils';
-import {
-  AtSign,
-  MessageSquare,
-  AlertTriangle,
-  MessagesSquare,
-  Check,
-  X,
-  Trash2,
-  Star,
-  Bell,
-} from 'lucide-react';
+import { AlertTriangle, MessagesSquare } from 'lucide-react';
+import { AtSign, MessageSquare, Check, X, Trash2, Star, Bell } from '@/components/icons/discord/lucide';
 import { haptics } from '@/lib/haptics';
 import type { UnifiedNotification } from '@/hooks/useUnifiedNotifications';
 import type { ServerNotification } from '@/hooks/useNotifications';

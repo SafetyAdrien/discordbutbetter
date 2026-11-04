@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import type { Database } from '@/integrations/supabase/types';
 
 export interface ChannelFollower {
   id: string;
@@ -9,6 +10,8 @@ export interface ChannelFollower {
   target_channel_id: string;
   follower_user_id: string;
   created_at: string;
+  /** Nom de l'annonce (auteur affiche des messages publies), sinon "<serveur> #<salon>". */
+  display_name: string | null;
 }
 
 export interface ServerWithChannels {
@@ -57,19 +60,16 @@ export function useAdminServers() {
         const server = membership.server as any;
         if (!server) continue;
 
-        // Check if user is owner or has administrator permission
+        // Comme Discord : seuls les serveurs ou l'on peut gerer les webhooks
+        // (administrateur et proprietaire compris) peuvent recevoir un abonnement.
         const isOwner = server.owner_id === user.id;
-        
         if (!isOwner) {
-          // Check for admin permission
-          const { data: hasAdmin } = await supabase
-            .rpc('has_server_permission', {
-              _user_id: user.id,
-              _server_id: server.id,
-              _permission: 'administrator'
-            });
-          
-          if (!hasAdmin) continue;
+          const { data: canManageWebhooks } = await supabase.rpc('has_server_permission', {
+            _user_id: user.id,
+            _server_id: server.id,
+            _permission: 'manage_webhooks',
+          });
+          if (!canManageWebhooks) continue;
         }
 
         servers.push({
@@ -171,6 +171,7 @@ export function useUnfollowChannel() {
     },
     onSuccess: (_, { sourceChannelId }) => {
       queryClient.invalidateQueries({ queryKey: ['channel-followers', sourceChannelId] });
+      queryClient.invalidateQueries({ queryKey: ['followed-channels'] });
     },
     onError: (error) => {
       toast.error('Erreur lors de la suppression du suivi');
@@ -179,97 +180,34 @@ export function useUnfollowChannel() {
   });
 }
 
-// Publish a message to all followers
+// Publie un message d'annonce dans tous les salons abonnes (RPC : le salon
+// cible peut se trouver sur un serveur dont l'auteur n'est pas membre).
 export function usePublishMessage() {
-  const { user } = useAuth();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      messageId,
-      channelId,
-      content,
-      sourceServerId,
-      sourceServerName,
-      sourceServerIcon,
-      sourceChannelName,
-    }: {
-      messageId: string;
-      channelId: string;
-      content: string;
-      sourceServerId: string;
-      sourceServerName: string;
-      sourceServerIcon: string | null;
-      sourceChannelName: string;
-    }) => {
-      if (!user) throw new Error('Not authenticated');
-
-      // Get all followers of this channel
-      const { data: followers, error: followersError } = await supabase
-        .from('channel_followers')
-        .select('target_channel_id')
-        .eq('source_channel_id', channelId);
-
-      if (followersError) throw followersError;
-
-      if (!followers || followers.length === 0) {
-        throw new Error('Aucun salon ne suit ce salon');
-      }
-
-      // Create a message in each target channel
-      const messages = followers.map((follower) => ({
-        channel_id: follower.target_channel_id,
-        content: content,
-        author_id: user.id,
-        source_server_id: sourceServerId,
-        source_server_name: sourceServerName,
-        source_server_icon: sourceServerIcon,
-        source_channel_name: sourceChannelName,
-        is_published_message: true,
-        original_message_id: messageId,
-      }));
-
-      const { error: insertError } = await supabase
-        .from('messages')
-        .insert(messages);
-
-      if (insertError) throw insertError;
-
-      // Mark original message as published (dismiss prompt)
-      await supabase
-        .from('messages')
-        .update({ publish_dismissed: true })
-        .eq('id', messageId);
-
-      return { count: followers.length };
+    mutationFn: async ({ messageId }: { messageId: string; channelId: string }) => {
+      const { data, error } = await supabase.rpc('publish_announcement', { _message_id: messageId });
+      if (error) throw error;
+      return { count: data ?? 0 };
     },
     onSuccess: ({ count }, { channelId }) => {
       queryClient.invalidateQueries({ queryKey: ['messages', channelId] });
+      toast.success(count > 0 ? `Message publié dans ${count} salon${count > 1 ? 's' : ''} abonné${count > 1 ? 's' : ''}` : 'Message publié');
     },
-    onError: (error: any) => {
-      toast.error(error.message || 'Erreur lors de la publication');
-      console.error('Publish message error:', error);
+    onError: (error: Error) => {
+      toast.error(error.message?.includes('ALREADY_PUBLISHED') ? 'Ce message a déjà été publié' : 'Erreur lors de la publication');
     },
   });
 }
 
-// Dismiss publish prompt for a message
+// Masque l'invitation "Partage-ca avec tes abonnes !" sous un message.
 export function useDismissPublishPrompt() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      messageId,
-      channelId,
-    }: {
-      messageId: string;
-      channelId: string;
-    }) => {
-      const { error } = await supabase
-        .from('messages')
-        .update({ publish_dismissed: true })
-        .eq('id', messageId);
-
+    mutationFn: async ({ messageId }: { messageId: string; channelId: string }) => {
+      const { error } = await supabase.from('messages').update({ publish_dismissed: true }).eq('id', messageId);
       if (error) throw error;
     },
     onSuccess: (_, { channelId }) => {
@@ -278,33 +216,54 @@ export function useDismissPublishPrompt() {
   });
 }
 
-// Send a system message when a channel is followed
-export function useSendFollowSystemMessage() {
-  const { user, profile } = useAuth();
+export type FollowedChannelInfo = Database['public']['Functions']['get_followed_channel_info']['Returns'][number];
 
+export interface FollowedSource extends ChannelFollower {
+  source: FollowedChannelInfo | null;
+}
+
+/** Salons d'annonces suivis par un salon (Parametres du salon > Integrations > Salons suivis). */
+export function useFollowedChannels(targetChannelId: string | null) {
+  return useQuery({
+    queryKey: ['followed-channels', targetChannelId],
+    enabled: !!targetChannelId,
+    queryFn: async (): Promise<FollowedSource[]> => {
+      const { data, error } = await supabase.from('channel_followers').select('*').eq('target_channel_id', targetChannelId!);
+      if (error) throw error;
+      return Promise.all(
+        (data ?? []).map(async (f) => {
+          const { data: info } = await supabase.rpc('get_followed_channel_info', { _channel_id: f.source_channel_id });
+          return { ...(f as ChannelFollower), source: info?.[0] ?? null };
+        }),
+      );
+    },
+  });
+}
+
+/** Infos du salon d'annonces suivi (message systeme "X a ajoute ... dans ce salon"). */
+export function useFollowedChannelInfo(sourceChannelId: string | null) {
+  return useQuery({
+    queryKey: ['followed-channel-info', sourceChannelId],
+    enabled: !!sourceChannelId,
+    staleTime: 10 * 60_000,
+    queryFn: async () => {
+      const { data } = await supabase.rpc('get_followed_channel_info', { _channel_id: sourceChannelId! });
+      return data?.[0] ?? null;
+    },
+  });
+}
+
+export function useUpdateFollower() {
+  const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      targetChannelId,
-      sourceServerName,
-      sourceChannelName,
-    }: {
-      targetChannelId: string;
-      sourceServerName: string;
-      sourceChannelName: string;
-    }) => {
-      if (!user || !profile) throw new Error('Not authenticated');
-
-      const content = `→ **${profile.display_name}** a ajouté **${sourceServerName} #${sourceChannelName}** dans ce salon. Les mises à jour les plus importantes s'afficheront ici.`;
-
-      const { error } = await supabase
-        .from('messages')
-        .insert({
-          channel_id: targetChannelId,
-          content: content,
-          author_id: null, // System message
-        });
-
+    mutationFn: async ({ id, patch }: { id: string; patch: { display_name?: string | null; target_channel_id?: string } }) => {
+      const { error } = await supabase.from('channel_followers').update(patch).eq('id', id);
       if (error) throw error;
     },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['followed-channels'] });
+      queryClient.invalidateQueries({ queryKey: ['channel-followers'] });
+    },
+    onError: () => toast.error("Impossible d'enregistrer les modifications"),
   });
 }

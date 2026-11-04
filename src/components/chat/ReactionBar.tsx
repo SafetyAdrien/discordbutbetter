@@ -1,15 +1,13 @@
-import { useMemo } from 'react';
+import { forwardRef, useMemo, type ButtonHTMLAttributes } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { SmilePlus } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from '@/components/ui/hover-card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { IconSmile } from '@/components/chat/message-menu/MessageMenuIcons';
+import { emojiShortcode } from '@/lib/emojiNames';
 import { EmojiStickerPicker } from '@/components/chat/EmojiStickerPicker';
 import { useAuth } from '@/contexts/AuthContext';
+import { EmojiGlyph } from '@/components/chat/message-menu/EmojiGlyph';
+import { emojiToken } from '@/lib/customEmoji';
 import { supabase } from '@/integrations/supabase/client';
 
 interface ReactionLike {
@@ -27,7 +25,26 @@ interface ReactionBarProps {
   onViewReactors?: (emoji?: string) => void;
 }
 
-const MAX_PREVIEW_USERS = 3;
+
+/** Declencheur du selecteur : doit transmettre la ref et les props de Radix (Popover/Slot), d'ou le forwardRef. */
+const AddReactionButton = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTMLButtonElement>>((props, ref) => (
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <button
+        ref={ref}
+        type="button"
+        aria-label="Ajouter une réaction"
+        {...props}
+        onClick={(e) => { e.stopPropagation(); props.onClick?.(e); }}
+        className="inline-flex h-8 w-[34px] items-center justify-center rounded-lg bg-white/[0.04] text-[#b5bac1] transition-colors hover:bg-white/[0.08] hover:text-white"
+      >
+        <IconSmile className="h-5 w-5" />
+      </button>
+    </TooltipTrigger>
+    <TooltipContent side="top">Ajouter une réaction</TooltipContent>
+  </Tooltip>
+));
+AddReactionButton.displayName = 'AddReactionButton';
 
 export function ReactionBar({
   reactions,
@@ -77,95 +94,44 @@ export function ReactionBar({
   const hasAny = Object.keys(grouped).length > 0;
   if (!hasAny && !showAddButton) return null;
 
-  const pillClasses = size === 'sm'
-    ? 'h-6 px-1.5 gap-1 text-xs'
-    : 'h-7 px-2 gap-1.5 text-sm';
-
-  const iconSize = size === 'sm' ? 'w-3.5 h-3.5' : 'w-4 h-4';
+  const names = (userIds: string[]) => {
+    const n = userIds.map((uid) => profiles?.[uid]?.display_name ?? '…');
+    if (n.length === 1) return `${n[0]} a réagi avec`;
+    if (n.length <= 3) return `${n.slice(0, -1).join(', ')} et ${n[n.length - 1]} ont réagi avec`;
+    const rest = n.length - 3;
+    return `${n.slice(0, 3).join(', ')} et ${rest} autre${rest > 1 ? 's' : ''} ont réagi avec`;
+  };
 
   return (
-    <div className={cn('flex flex-wrap items-center gap-1', className)}>
-      {Object.entries(grouped).map(([emoji, { count, userReacted, userIds }]) => {
-        const previewIds = userIds.slice(0, MAX_PREVIEW_USERS);
-        const remaining = count - previewIds.length;
-
-        return (
-          <HoverCard key={emoji} openDelay={200} closeDelay={100}>
-            <HoverCardTrigger asChild>
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); onToggle(emoji); }}
-                className={cn(
-                  'inline-flex items-center rounded-full border transition-colors',
-                  pillClasses,
-                  userReacted
-                    ? 'bg-primary/15 border-primary/40 text-primary'
-                    : 'bg-muted/50 border-transparent hover:bg-muted',
-                )}
-              >
-                <span className="leading-none">{emoji}</span>
-                <span className="font-medium tabular-nums leading-none">{count}</span>
-              </button>
-            </HoverCardTrigger>
-            <HoverCardContent side="top" align="start" className="w-auto min-w-[180px] max-w-[260px] p-2">
-              <div className="flex items-center gap-1.5 pb-2 mb-1.5 border-b border-border/40">
-                <span className="text-base leading-none">{emoji}</span>
-                <span className="text-xs text-muted-foreground">
-                  {count} réaction{count > 1 ? 's' : ''}
-                </span>
-              </div>
-              <ul className="space-y-1">
-                {previewIds.map((uid) => {
-                  const profile = profiles?.[uid];
-                  const name = profile?.display_name ?? '…';
-                  return (
-                    <li key={uid} className="flex items-center gap-2">
-                      <Avatar className="w-5 h-5">
-                        <AvatarImage src={profile?.avatar_url ?? undefined} />
-                        <AvatarFallback className="text-[9px]">
-                          {name.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="text-xs font-medium truncate">
-                        {uid === user?.id ? 'Vous' : name}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-              {remaining > 0 && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onViewReactors?.(emoji);
-                  }}
-                  className="mt-2 w-full text-left text-xs text-primary hover:underline"
-                >
-                  et {remaining} autre{remaining > 1 ? 's' : ''} — Voir plus
-                </button>
+    <div className={cn('message-reactions flex flex-wrap items-center gap-1', className)}>
+      {Object.entries(grouped).map(([emoji, { count, userReacted, userIds }]) => (
+        <Tooltip key={emoji}>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onToggle(emoji); }}
+              className={cn(
+                'inline-flex h-8 items-center gap-2 rounded-lg border pl-1.5 pr-2 text-sm font-semibold leading-none transition-colors',
+                userReacted
+                  ? 'border-[#6269d8] bg-[rgba(88,101,242,0.25)] text-[#dfe1fb]'
+                  : 'border-transparent bg-white/[0.06] text-[#dbdee1] hover:border-white/[0.12]',
               )}
-            </HoverCardContent>
-          </HoverCard>
-        );
-      })}
+            >
+              <EmojiGlyph emoji={emoji} className="text-[20px]" />
+              <span className="tabular-nums">{count}</span>
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="flex items-center gap-3 px-3 py-[18px]">
+            <EmojiGlyph emoji={emoji} className="!h-12 !w-12 text-[44px]" />
+            <span translate="no" className="text-sm font-medium leading-[18px]">{names(userIds)} {emojiShortcode(emoji)}</span>
+          </TooltipContent>
+        </Tooltip>
+      ))}
       {showAddButton && (
         <EmojiStickerPicker
           serverId={serverId}
-          onEmojiSelect={(emoji) => onToggle(emoji)}
-          trigger={
-            <button
-              type="button"
-              onClick={(e) => e.stopPropagation()}
-              className={cn(
-                'inline-flex items-center justify-center rounded-full bg-muted/40 hover:bg-muted transition-colors text-muted-foreground hover:text-foreground',
-                size === 'sm' ? 'h-6 w-6' : 'h-7 w-7',
-              )}
-              aria-label="Ajouter une réaction"
-            >
-              <SmilePlus className={iconSize} />
-            </button>
-          }
+          onEmojiSelect={(emoji, custom) => onToggle(custom ? emojiToken(custom) : emoji)}
+          trigger={<AddReactionButton />}
         />
       )}
     </div>
